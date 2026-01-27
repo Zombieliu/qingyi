@@ -1,4 +1,5 @@
 import { Diamond, Gamepad2, Phone, ShieldCheck, User } from "lucide-react";
+import Link from "next/link";
 
 const grid = [
   { label: "联系客服", icon: Phone, color: "#6366f1" },
@@ -65,15 +66,15 @@ export default function Me() {
 
       <section className="dl-quick">
         {[
-          { label: "我的记录", icon: Gamepad2, bg: "linear-gradient(135deg, #ffd5ec 0%, #ffe8f5 100%)", color: "#c026d3" },
-          { label: "会员中心", icon: Diamond, bg: "linear-gradient(135deg, #e5d9ff 0%, #f1ecff 100%)", color: "#7c3aed" },
+          { label: "我的记录", icon: Gamepad2, bg: "linear-gradient(135deg, #ffd5ec 0%, #ffe8f5 100%)", color: "#c026d3", href: "/wallet" },
+          { label: "会员中心", icon: Diamond, bg: "linear-gradient(135deg, #e5d9ff 0%, #f1ecff 100%)", color: "#7c3aed", href: "/vip" },
         ].map((item) => (
-          <div key={item.label} className="dl-quick-card" style={{ background: item.bg }}>
+          <Link key={item.label} href={item.href} className="dl-quick-card" style={{ background: item.bg }}>
             <span className="dl-quick-icon" style={{ color: item.color }}>
               <item.icon size={20} />
             </span>
             <div className="dl-quick-text">{item.label}</div>
-          </div>
+          </Link>
         ))}
       </section>
 

@@ -1,13 +1,14 @@
 import Image from "next/image";
-import { Heart, MoreHorizontal, Search, Star, Verified } from "lucide-react";
+import { Heart, MoreHorizontal, Search, Verified } from "lucide-react";
+import OrderButton from "@/app/components/order-button";
 
 const tabs = ["达人"];
 const subTabs = ["推荐"];
 
 const creators = [
   {
-    name: "limi-刘亦菲",
-    tags: ["三角洲行动", "护航", "双排"],
+    name: "QY-羊杂",
+    tags: ["魔王", "双子星"],
     desc: "护航之王",
     price: "1330钻石",
     status: "空闲",
@@ -16,24 +17,15 @@ const creators = [
     verified: true,
   },
   {
-    name: "limi-梗无（09的…",
-    tags: ["三角洲行动", "护航"],
+    name: "QY-勇士",
+    tags: ["子龙", "双子星"],
     desc: "实力护航",
     price: "1330钻石",
+    amount: 1330,
     status: "空闲",
     orders: "5人付款",
     avatar: "https://placehold.co/64x64/ffcf8f/ffffff?text=B",
     verified: true,
-  },
-  {
-    name: "Limi-茗笙",
-    tags: ["三角洲行动"],
-    desc: "陪练",
-    price: "1330钻石",
-    status: "空闲",
-    orders: "8人付款",
-    avatar: "https://placehold.co/64x64/1f2937/ffffff?text=C",
-    verified: false,
   },
 ];
 
@@ -101,9 +93,7 @@ export default function Home() {
                 </div>
               </div>
             </div>
-            <button className="lc-order">
-              <Star size={14} /> 自助下单
-            </button>
+            <OrderButton user={c.name} item={c.desc || c.name} amount={c.amount ?? 1330} />
           </div>
         ))}
       </div>
