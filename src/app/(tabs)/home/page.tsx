@@ -13,7 +13,7 @@ const creators = [
     price: "1330钻石",
     status: "空闲",
     orders: "14人付款",
-    avatar: "https://placehold.co/64x64/8fb3ff/ffffff?text=A",
+    avatar: "/killer/yangza.jpg",
     verified: true,
   },
   {
@@ -24,7 +24,7 @@ const creators = [
     amount: 1330,
     status: "空闲",
     orders: "5人付款",
-    avatar: "https://placehold.co/64x64/ffcf8f/ffffff?text=B",
+    avatar: "/killer/yongshi.jpg",
     verified: true,
   },
 ];

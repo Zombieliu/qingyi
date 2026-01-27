@@ -4,12 +4,11 @@ import { Clock3, ArrowLeft } from "lucide-react";
 import { loadOrders, type LocalOrder } from "@/app/components/order-store";
 
 export default function Schedule() {
-  const [orders, setOrders] = useState<LocalOrder[]>([]);
+  const [orders, setOrders] = useState<LocalOrder[]>(() => loadOrders());
 
   const refresh = () => setOrders(loadOrders());
 
   useEffect(() => {
-    setOrders(loadOrders());
     const handler = () => refresh();
     window.addEventListener("orders-updated", handler);
     return () => window.removeEventListener("orders-updated", handler);
