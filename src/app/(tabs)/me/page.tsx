@@ -1,5 +1,6 @@
 import { Diamond, Gamepad2, Phone, ShieldCheck, User } from "lucide-react";
 import Link from "next/link";
+import PasskeyWallet from "@/app/components/passkey-wallet";
 
 const grid = [
   { label: "联系客服", icon: Phone, color: "#6366f1" },
@@ -47,6 +48,8 @@ export default function Me() {
           ))}
         </div>
       </section>
+
+      <PasskeyWallet />
 
       <section className="dl-card">
         <div className="dl-section-title">我的钱包</div>
