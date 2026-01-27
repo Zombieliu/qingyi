@@ -3,12 +3,16 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
+    "dev": "next dev --webpack",
+    "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint"
   },
   "dependencies": {
+    "@serwist/next": "^9.5.0",
+    "@serwist/precaching": "^9.5.0",
+    "@serwist/sw": "^9.5.0",
+    "lucide-react": "^0.563.0",
     "next": "16.1.5",
     "react": "19.2.3",
     "react-dom": "19.2.3"

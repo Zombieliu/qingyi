@@ -1,0 +1,38 @@
+{
+  "name": "情谊电竞",
+  "short_name": "情谊电竞",
+  "description": "情谊电竞：跨平台陪玩与组队调度，为三角洲行动玩家提供语音、约战与战术工具。",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0b1324",
+  "theme_color": "#22d3ee",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "开黑大厅",
+      "short_name": "大厅",
+      "url": "/",
+      "description": "快速进入组队大厅"
+    },
+    {
+      "name": "战队约战",
+      "short_name": "约战",
+      "url": "/matches",
+      "description": "查看/发布三角洲行动陪玩约战"
+    }
+  ]
+}
