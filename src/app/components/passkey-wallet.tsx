@@ -8,7 +8,7 @@ import {
   findCommonPublicKey,
 } from "@mysten/sui/keypairs/passkey";
 
-const STORAGE_KEY = "qy_passkey_wallet_v3";
+export const PASSKEY_STORAGE_KEY = "qy_passkey_wallet_v3";
 
 type StoredWallet = {
   address: string;
@@ -37,7 +37,7 @@ export default function PasskeyWallet() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(PASSKEY_STORAGE_KEY);
     if (raw) {
       try {
         setWallet(JSON.parse(raw) as StoredWallet);
@@ -48,9 +48,10 @@ export default function PasskeyWallet() {
   }, []);
 
   const persist = (stored: StoredWallet, toast: string) => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(stored));
+    localStorage.setItem(PASSKEY_STORAGE_KEY, JSON.stringify(stored));
     setWallet(stored);
     setMsg(toast);
+    window.dispatchEvent(new Event("passkey-updated"));
     setTimeout(() => setMsg(null), 3000);
   };
 
@@ -118,8 +119,9 @@ export default function PasskeyWallet() {
   };
 
   const reset = () => {
-    localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(PASSKEY_STORAGE_KEY);
     setWallet(null);
+    window.dispatchEvent(new Event("passkey-updated"));
   };
 
   return (

@@ -520,6 +520,95 @@ a {
   padding: 12px;
   box-shadow: 0 14px 32px rgba(0, 0, 0, 0.45);
 }
+
+/* 登录页 */
+.login-shell {
+  min-height: 100vh;
+  max-width: 520px;
+  margin: 0 auto;
+  padding: 48px 28px 32px;
+  background: linear-gradient(180deg, #fff 0%, #f8fafc 80%);
+  color: #0f172a;
+  display: flex;
+  flex-direction: column;
+}
+.login-header {
+  text-align: center;
+  margin-top: 24px;
+}
+.login-icon {
+  width: 76px;
+  height: 76px;
+  border-radius: 24px;
+  overflow: hidden;
+  margin: 0 auto 16px;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.12);
+}
+.login-title {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: 0.4px;
+}
+.login-sub {
+  font-size: 13px;
+  color: #6b7280;
+  margin-top: 6px;
+  line-height: 1.6;
+}
+.login-number {
+  margin: 40px 0 12px;
+  font-size: 20px;
+  font-weight: 700;
+  text-align: center;
+  letter-spacing: 1px;
+}
+.login-btn {
+  width: 100%;
+  padding: 14px;
+  border-radius: 999px;
+  border: none;
+  background: #0f172a;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 700;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.18);
+}
+.login-btn:disabled {
+  opacity: 0.7;
+}
+.login-alt {
+  display: flex;
+  justify-content: center;
+  gap: 18px;
+  margin: 16px 0 10px;
+}
+.login-alt button {
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08);
+}
+.login-check {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: #6b7280;
+  font-size: 12px;
+  margin-top: 6px;
+}
+.login-passkey {
+  margin-top: 18px;
+  text-align: center;
+  font-size: 13px;
+  color: #0f172a;
+  font-weight: 600;
+}
 .yx-carousel {
   position: relative;
   overflow: hidden;

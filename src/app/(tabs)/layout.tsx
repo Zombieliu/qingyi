@@ -8,6 +8,7 @@ import {
   MessageCircle,
   User,
 } from "lucide-react";
+import PasskeyGate from "../components/passkey-gate";
 
 export default function TabsLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -45,7 +46,9 @@ export default function TabsLayout({ children }: { children: React.ReactNode }) 
         })}
       </nav>
 
-      <main className="dl-main">{children}</main>
+      <main className="dl-main">
+        <PasskeyGate>{children}</PasskeyGate>
+      </main>
 
       <nav className="dl-tabbar dl-tabbar-mobile">
         {items.map((item) => {
