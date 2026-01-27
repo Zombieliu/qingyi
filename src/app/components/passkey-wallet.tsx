@@ -167,6 +167,11 @@ export default function PasskeyWallet() {
       )}
       {msg && <div className="mt-2 text-xs text-emerald-600">{msg}</div>}
       {error && <div className="mt-2 text-xs text-rose-500">{error}</div>}
+      {busy && (
+        <div className="auth-overlay">
+          <div className="auth-overlay-box">Passkey 操作进行中，请完成系统弹窗…</div>
+        </div>
+      )}
     </div>
   );
 }

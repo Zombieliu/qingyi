@@ -23,6 +23,7 @@ export default function PasskeyLoginButton() {
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [hasWallet, setHasWallet] = useState(false);
+  const [overlay, setOverlay] = useState(false);
 
   const providerOpts = useMemo<BrowserPasswordProviderOptions>(
     () => ({
@@ -49,6 +50,7 @@ export default function PasskeyLoginButton() {
   const handle = async () => {
     try {
       setLoading(true);
+      setOverlay(true);
       setToast(null);
       const provider = new BrowserPasskeyProvider("情谊电竞", providerOpts);
 
@@ -71,6 +73,7 @@ export default function PasskeyLoginButton() {
       setToast((e as Error).message || "Passkey 登录失败");
     } finally {
       setLoading(false);
+      setOverlay(false);
     }
   };
 
@@ -80,6 +83,11 @@ export default function PasskeyLoginButton() {
         {loading ? "处理中..." : hasWallet ? "使用 Passkey 一键登录" : "用 Passkey 注册并登录"}
       </button>
       {toast && <div className="mt-2 text-sm text-emerald-600">{toast}</div>}
+      {overlay && (
+        <div className="auth-overlay">
+          <div className="auth-overlay-box">Passkey 调用中，请在系统弹窗中完成验证…</div>
+        </div>
+      )}
     </div>
   );
 }

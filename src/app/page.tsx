@@ -1,11 +1,30 @@
+ "use client";
 import Image from "next/image";
 import Link from "next/link";
-import { ShieldCheck } from "lucide-react";
+import { ShieldCheck, AlertTriangle } from "lucide-react";
 import PasskeyLoginButton from "./components/passkey-login-button";
+import { useEffect, useState } from "react";
 
 export default function RootPage() {
+  const [showHttpsTip, setShowHttpsTip] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const isLocal = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+    const secure = window.isSecureContext || window.location.protocol === "https:";
+    setShowHttpsTip(!(secure || isLocal));
+  }, []);
+
   return (
     <div className="login-shell">
+      {showHttpsTip && (
+        <div className="dl-card" style={{ padding: 12, marginBottom: 14, border: "1px solid #fecdd3", background: "#fff1f2" }}>
+          <div className="flex items-center gap-2 text-sm text-rose-600">
+            <AlertTriangle size={16} />
+            <span>Passkey 仅在 HTTPS 或 localhost 下可用，请切换到安全域名再登录。</span>
+          </div>
+        </div>
+      )}
       <div className="login-header">
         <div className="login-icon">
           <Image src="/icon-192.png" alt="情谊电竞" width={76} height={76} priority />

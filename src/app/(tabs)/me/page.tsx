@@ -1,13 +1,50 @@
-import { Diamond, Gamepad2, Phone, ShieldCheck, User } from "lucide-react";
+"use client";
+import { Diamond, Gamepad2, Phone, ShieldCheck, User, Settings } from "lucide-react";
 import Link from "next/link";
-import PasskeyWallet from "@/app/components/passkey-wallet";
+import { useRouter, useSearchParams } from "next/navigation";
+import { PASSKEY_STORAGE_KEY } from "@/app/components/passkey-wallet";
+import { useState } from "react";
+import SettingsPanel from "@/app/components/settings-panel";
 
 const grid = [
   { label: "联系客服", icon: Phone, color: "#6366f1" },
+  { label: "优惠卡券", icon: Diamond, color: "#f97316" },
+  { label: "全部订单", icon: Gamepad2, color: "#0ea5e9" },
+  { label: "待开始", icon: Gamepad2, color: "#6366f1" },
+  { label: "待确认", icon: ShieldCheck, color: "#f59e0b" },
+  { label: "开发票", icon: Phone, color: "#22c55e" },
+  { label: "成为护航", icon: User, color: "#d946ef" },
   // 其他功能暂时隐藏
 ];
 
 export default function Me() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [wallet] = useState(() => {
+    if (typeof window === "undefined") return null;
+    try {
+      const raw = localStorage.getItem(PASSKEY_STORAGE_KEY);
+      return raw ? (JSON.parse(raw) as { address: string }) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  const goWallet = () => router.push("/wallet");
+  const goSettings = () => router.push("/me?settings=1");
+  const closeSettings = () => router.push("/me");
+  const logout = () => {
+    localStorage.removeItem(PASSKEY_STORAGE_KEY);
+    window.dispatchEvent(new Event("passkey-updated"));
+    router.push("/");
+  };
+
+  const showSettings = searchParams?.get("settings") === "1";
+
+  if (showSettings) {
+    return <SettingsPanel onBack={closeSettings} onLogout={logout} />;
+  }
+
   return (
     <>
       <header className="dl-topbar">
@@ -19,9 +56,9 @@ export default function Me() {
           <span className="dl-icon-circle">
             <ShieldCheck size={16} />
           </span>
-          <span className="dl-icon-circle">
-            <User size={16} />
-          </span>
+          <button onClick={goSettings} className="dl-icon-circle" aria-label="设置">
+            <Settings size={16} />
+          </button>
         </div>
       </header>
 
@@ -32,53 +69,49 @@ export default function Me() {
             <div className="dl-name">糕手玩玩</div>
             <span className="dl-chip">个人主页</span>
           </div>
-          <div className="dl-id">ID 80443259</div>
+          <div className="dl-id">{wallet ? `ID ${wallet.address}` : "请先用 Passkey 登录"}</div>
         </div>
         <button className="dl-edit">编辑</button>
         <div className="dl-stats">
           {[
-            { label: "动态", value: "0" },
-            { label: "关注", value: "0" },
-            { label: "粉丝", value: "0" },
-          ].map((item) => (
-            <div key={item.label} className="dl-stat">
-              <div className="dl-stat-value">{item.value}</div>
-              <div className="dl-stat-label">{item.label}</div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <PasskeyWallet />
-
-      <section className="dl-card">
-        <div className="dl-section-title">我的钱包</div>
-        <div className="dl-wallet">
-          {[
-            { label: "钻石", value: "0" },
+            { label: "钻石", value: "0", onClick: goWallet },
             { label: "星星", value: "0" },
             { label: "库存卡", value: "0" },
           ].map((item) => (
-            <div key={item.label} className="dl-wallet-item">
-              <div className="dl-wallet-value">{item.value}</div>
-              <div className="dl-wallet-label">{item.label}</div>
-            </div>
+            <button
+              key={item.label}
+              className="dl-stat"
+              onClick={item.onClick}
+              style={{ cursor: item.onClick ? "pointer" : "default", background: "transparent", border: "none" }}
+            >
+              <div className="dl-stat-value">{item.value}</div>
+              <div className="dl-stat-label">{item.label}</div>
+            </button>
           ))}
         </div>
       </section>
 
-      <section className="dl-quick">
-        {[
-          { label: "我的记录", icon: Gamepad2, bg: "linear-gradient(135deg, #ffd5ec 0%, #ffe8f5 100%)", color: "#c026d3", href: "/wallet" },
-          { label: "会员中心", icon: Diamond, bg: "linear-gradient(135deg, #e5d9ff 0%, #f1ecff 100%)", color: "#7c3aed", href: "/vip" },
-        ].map((item) => (
-          <Link key={item.label} href={item.href} className="dl-quick-card" style={{ background: item.bg }}>
-            <span className="dl-quick-icon" style={{ color: item.color }}>
-              <item.icon size={20} />
-            </span>
-            <div className="dl-quick-text">{item.label}</div>
-          </Link>
-        ))}
+      <section className="member-card">
+        <div className="member-top">
+          <div>
+            <div className="member-grade">V8 会员</div>
+            <div className="member-progress">还需 4236 里程值可保级至 V8</div>
+          </div>
+          <button className="member-btn">会员中心</button>
+        </div>
+        <div className="member-actions">
+          {[
+            { label: "月月领券", desc: "最高省270元" },
+            { label: "快速响应+", desc: "无限次" },
+            { label: "娱乐培", desc: "24小时/月" },
+            { label: "免费升级", desc: "1次/月" },
+          ].map((item) => (
+            <div key={item.label} className="member-item">
+              <div className="member-item-label">{item.label}</div>
+              <div className="member-item-desc">{item.desc}</div>
+            </div>
+          ))}
+        </div>
       </section>
 
       <section className="dl-card">
