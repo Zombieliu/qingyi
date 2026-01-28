@@ -1,6 +1,7 @@
 "use client";
-import { useRef, useState } from "react";
-import { ChevronDown, Clock3 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Clock3, Car } from "lucide-react";
+import { addOrder, loadOrders, type LocalOrder } from "@/app/components/order-store";
 
 type RideItem = {
   name: string;
@@ -11,6 +12,7 @@ type RideItem = {
   tag?: string;
   bold?: boolean;
   info?: string;
+  base?: number;
 };
 
 type RideSection = {
@@ -19,6 +21,8 @@ type RideSection = {
   highlight?: boolean;
   items: RideItem[];
 };
+
+type Mode = "select" | "notifying" | "enroute";
 
 const sections: RideSection[] = [
   {
@@ -75,9 +79,137 @@ export default function Schedule() {
   const [active, setActive] = useState("推荐");
   const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const [infoOpen, setInfoOpen] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+  const [orders, setOrders] = useState<LocalOrder[]>(() => loadOrders());
+  const [mode, setMode] = useState<Mode>("select");
+
+  useEffect(() => {
+    const handler = () => {
+      const list = loadOrders();
+      setOrders(list);
+      const latest = list.find((o) => o.status !== "取消") || null;
+      if (!latest) setMode("select");
+      else if (latest.driver) setMode("enroute");
+      else setMode("notifying");
+    };
+    handler();
+    window.addEventListener("orders-updated", handler);
+    return () => window.removeEventListener("orders-updated", handler);
+  }, []);
 
   const toggle = (name: string) => setChecked((p) => ({ ...p, [name]: !p[name] }));
-  const picked = Object.values(checked).filter(Boolean).length || 1;
+  const pickedNames = Object.entries(checked)
+    .filter(([, v]) => v)
+    .map(([k]) => k);
+  const picked = pickedNames.length || 1;
+  const pickedPrice = sections
+    .flatMap((s) => s.items)
+    .filter((i) => checked[i.name])
+    .reduce((sum, item) => {
+      const parsed = item.base ?? parseFloat(item.price.replace(/[^\d.]/g, ""));
+      return sum + (Number.isFinite(parsed) ? parsed : 0);
+    }, 0);
+
+  const currentOrder = orders.find((o) => o.status !== "取消") || null;
+
+  const cancelOrder = () => {
+    if (!currentOrder) return;
+    addOrder({
+      ...currentOrder,
+      status: "取消",
+      driver: undefined,
+      time: new Date().toISOString(),
+    });
+    setMode("select");
+  };
+
+  if (mode === "enroute" && currentOrder?.driver) {
+    return (
+      <div className="ride-shell">
+        <div className="ride-map-large">地图加载中…</div>
+        <div className="ride-driver-card dl-card">
+          <div className="flex items-center gap-3">
+            <div className="ride-driver-avatar" />
+            <div>
+              <div className="text-sm text-amber-600 font-semibold">司机正在赶来</div>
+              <div className="text-lg font-bold text-gray-900">{currentOrder.driver.name}</div>
+              <div className="text-xs text-gray-500">{currentOrder.driver.car}</div>
+            </div>
+            <div className="ml-auto text-right">
+              <div className="text-emerald-600 font-semibold text-sm">{currentOrder.driver.eta}</div>
+              {currentOrder.driver.price && <div className="text-xs text-gray-500">一口价 ¥{currentOrder.driver.price / 10}</div>}
+            </div>
+          </div>
+          <div className="ride-driver-actions">
+            <button className="dl-tab-btn" onClick={cancelOrder}>取消用车</button>
+            <button className="dl-tab-btn">安全中心</button>
+            <button className="dl-tab-btn" style={{ background: "#f97316", color: "#fff" }}>
+              联系司机
+            </button>
+          </div>
+          <div className="text-xs text-gray-500 mt-2">订单：{currentOrder.item}</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (mode === "notifying" && currentOrder) {
+    return (
+      <div className="ride-shell">
+        <div className="ride-tip" style={{ marginTop: 0 }}>
+          正在通知护航... 请耐心等待
+        </div>
+        <div className="ride-notify-illu" />
+        <div className="dl-card" style={{ padding: 16 }}>
+          <div className="text-sm font-semibold text-gray-900 mb-2">已选服务</div>
+          <div className="flex justify-between text-sm">
+            <span>{currentOrder.item}</span>
+            <span className="text-amber-600 font-bold">¥{currentOrder.amount}</span>
+          </div>
+          <div className="text-xs text-gray-500 mt-2">{new Date(currentOrder.time).toLocaleString()}</div>
+          <div className="text-xs text-gray-500 mt-3">如需加单，可返回继续选择。</div>
+        </div>
+      </div>
+    );
+  }
+
+  const submit = async () => {
+    if (pickedNames.length === 0) {
+      setToast("请先选择服务");
+      return;
+    }
+    try {
+      const res = await fetch("/api/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          user: "安排页面",
+          item: pickedNames.join("、"),
+          amount: pickedPrice || pickedNames.length,
+          status: "安排",
+          note: "来源：安排页呼叫服务",
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.sent) {
+        throw new Error(data.error || "推送失败");
+      }
+      addOrder({
+        id: data.orderId || `${Date.now()}`,
+        user: "安排页面",
+        item: pickedNames.join("、"),
+        amount: pickedPrice || pickedNames.length,
+        status: "通知中",
+        time: new Date().toISOString(),
+      });
+      setMode("notifying");
+      setToast("已推送到企业微信群");
+    } catch (e) {
+      setToast((e as Error).message);
+    } finally {
+      setTimeout(() => setToast(null), 3000);
+    }
+  };
 
   return (
     <div className="ride-shell">
@@ -163,19 +295,14 @@ export default function Schedule() {
         </div>
       </div>
 
-      <div className="ride-bottom-menu">
-        <span>预约出发</span>
-        <span>帮人叫车</span>
-        <span>偏好设置</span>
-      </div>
-
       <footer className="ride-footer">
         <div className="ride-footer-left">
-          <div className="ride-range">预估价 4-9</div>
-          <div className="ride-extra">含道路/动态调价</div>
+          <div className="ride-range">预估价 {pickedPrice ? pickedPrice.toFixed(0) : "4-9"}</div>
+          <div className="ride-extra">动态调价</div>
         </div>
-        <button className="ride-call">呼叫 {picked} 种车型</button>
+        <button className="ride-call" onClick={submit}>呼叫 {picked} 种服务</button>
       </footer>
+      {toast && <div className="ride-toast">{toast}</div>}
     </div>
   );
 }
