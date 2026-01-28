@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { loadOrders, updateOrder, type LocalOrder } from "@/app/components/order-store";
+import { loadOrders, updateOrder, removeOrder, type LocalOrder } from "@/app/components/order-store";
 import { Activity, Clock3, Car, MapPin } from "lucide-react";
 
 export default function Showcase() {
@@ -14,7 +14,9 @@ export default function Showcase() {
 
   const accept = (id: string) => {
     updateOrder(id, {
-      status: "已接单",
+      status: "待用户支付打手费",
+      depositPaid: true,
+      playerPaid: false,
       driver: {
         name: "护航·刘师傅",
         car: "白色新能源汽车",
@@ -32,6 +34,15 @@ export default function Showcase() {
       driver: undefined,
       time: new Date().toISOString(),
     });
+    removeOrder(id);
+  };
+
+  const complete = (id: string) => {
+    updateOrder(id, {
+      status: "已完成",
+      time: new Date().toISOString(),
+    });
+    removeOrder(id);
   };
 
   const clearAll = () => {
@@ -83,6 +94,14 @@ export default function Showcase() {
                   <MapPin size={14} />
                   取货用车
                 </div>
+                <div className="mt-2 text-xs">
+                  <span className="text-emerald-600 font-semibold mr-2">押金已付</span>
+                  {o.playerPaid ? (
+                    <span className="text-emerald-700 font-semibold">打手费已付，进行中</span>
+                  ) : (
+                    <span className="text-red-500 font-semibold">等待用户支付打手费</span>
+                  )}
+                </div>
                 <div className="mt-3 flex items-center gap-10 text-sm">
                   <div>
                     <div className="text-gray-900">{o.item}</div>
@@ -94,8 +113,8 @@ export default function Showcase() {
                   <button className="dl-tab-btn" style={{ padding: "8px 10px" }} onClick={() => cancel(o.id)}>
                     取消用车
                   </button>
-                  <button className="dl-tab-btn" style={{ padding: "8px 10px" }}>
-                    等待接驾
+                  <button className="dl-tab-btn" style={{ padding: "8px 10px" }} onClick={() => complete(o.id)}>
+                    完成
                   </button>
                   <button className="dl-tab-btn" style={{ padding: "8px 10px", background: "#f97316", color: "#fff" }}>
                     联系司机
@@ -111,12 +130,15 @@ export default function Showcase() {
                 <div className="mt-2 text-xs text-gray-500 flex items-center gap-2">
                   <Clock3 size={14} />
                   <span>{new Date(o.time).toLocaleString()}</span>
-                  <span className="text-amber-600 font-semibold">正在通知护航...</span>
+                  <span className="text-amber-600 font-semibold">等待支付押金后接单</span>
                 </div>
-                <div className="mt-2 text-xs text-gray-500">状态：{o.status}</div>
+                <div className="mt-2 text-xs text-gray-500">
+                  状态：{o.status} · 撮合费{typeof o.serviceFee === "number" ? ` ¥${o.serviceFee.toFixed(2)}` : "已付"}
+                </div>
+                <div className="mt-2 text-xs text-orange-600">需先付押金再接单</div>
                 <div className="mt-3 flex gap-2">
                   <button className="dl-tab-btn" style={{ padding: "8px 10px" }} onClick={() => accept(o.id)}>
-                    立即接单
+                    付押金并接单
                   </button>
                   <button className="dl-tab-btn" style={{ padding: "8px 10px" }} onClick={() => cancel(o.id)}>
                     取消

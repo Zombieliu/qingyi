@@ -1,36 +1,53 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 情谊电竞 PWA
 
-## Getting Started
+Next.js 16 + App Router，PWA（Serwist）+ 企业微信机器人下单推送。  
+包管理：pnpm
 
-First, run the development server:
-
+## 本地开发
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+pnpm install
+pnpm run dev -- --hostname 0.0.0.0 --port 3000   # 避免 Turbopack
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+环境变量：复制 `.env.example` 为 `.env.local`，填写
+```
+WECHAT_WEBHOOK_URL=你的企业微信机器人 URL
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 脚本
+- `pnpm run dev`    开发（webpack）
+- `pnpm run lint`   ESLint
+- `pnpm run build`  生产构建
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Vercel 部署
+- 已提供 `vercel.json`，使用 Next.js 默认构建，Node 20。  
+- 在 Vercel 环境变量里配置 `WECHAT_WEBHOOK_URL`（生产/预览）。  
+- 如果开启自动部署，请确保使用 `pnpm` 构建（Vercel 会自动识别）。
 
-## Learn More
+## CI（GitHub Actions）
+创建文件 `.github/workflows/ci.yml`，内容：
+```yaml
+name: CI
+on:
+  push: { branches: [main] }
+  pull_request: { branches: [main] }
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 9 }
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run lint
+      - run: pnpm run build
+```
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## 注意
+- 订单目前存 localStorage；后续可切换为后端/链上接口，复用 `addOrder/updateOrder`/`removeOrder`。  
+- 图片远程域需加到 `next.config.ts` 的 `images.remotePatterns` 才可用。  
+- 如需接地图 SDK，请在公共布局注入对应 script，并添加 API key。

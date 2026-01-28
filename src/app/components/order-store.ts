@@ -7,6 +7,11 @@ export type LocalOrder = {
   amount: number;
   status: string;
   time: string; // ISO
+  serviceFee?: number;
+  serviceFeePaid?: boolean;
+  depositPaid?: boolean;
+  playerPaid?: boolean;
+  playerDue?: number;
   driver?: {
     name: string;
     car: string;

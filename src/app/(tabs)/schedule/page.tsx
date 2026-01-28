@@ -1,7 +1,7 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
-import { Clock3, Car } from "lucide-react";
-import { addOrder, loadOrders, type LocalOrder } from "@/app/components/order-store";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Clock3, ShieldCheck, QrCode, Loader2, CheckCircle2 } from "lucide-react";
+import { addOrder, loadOrders, updateOrder, type LocalOrder } from "@/app/components/order-store";
 
 type RideItem = {
   name: string;
@@ -22,7 +22,7 @@ type RideSection = {
   items: RideItem[];
 };
 
-type Mode = "select" | "notifying" | "enroute";
+type Mode = "select" | "notifying" | "await-user-pay" | "enroute";
 
 const sections: RideSection[] = [
   {
@@ -82,15 +82,27 @@ export default function Schedule() {
   const [toast, setToast] = useState<string | null>(null);
   const [orders, setOrders] = useState<LocalOrder[]>(() => loadOrders());
   const [mode, setMode] = useState<Mode>("select");
+  const [feeOpen, setFeeOpen] = useState(false);
+  const [feeChecked, setFeeChecked] = useState(false);
+  const [locked, setLocked] = useState<{ total: number; service: number; player: number; items: string[] }>({
+    total: 0,
+    service: 0,
+    player: 0,
+    items: [],
+  });
+  const [calling, setCalling] = useState(false);
+  const [playerPaidTick, setPlayerPaidTick] = useState(false);
+
+  const platformQr = process.env.NEXT_PUBLIC_QR_PLATFORM_FEE || "/qr/platform-fee-qr.svg";
+  const playerQr = process.env.NEXT_PUBLIC_QR_PLAYER_FEE || "/qr/player-fee-qr.svg";
+  const MATCH_RATE = 0.15;
 
   useEffect(() => {
     const handler = () => {
       const list = loadOrders();
       setOrders(list);
-      const latest = list.find((o) => o.status !== "取消") || null;
-      if (!latest) setMode("select");
-      else if (latest.driver) setMode("enroute");
-      else setMode("notifying");
+      setMode(deriveMode(list));
+      setPlayerPaidTick(false);
     };
     handler();
     window.addEventListener("orders-updated", handler);
@@ -101,7 +113,6 @@ export default function Schedule() {
   const pickedNames = Object.entries(checked)
     .filter(([, v]) => v)
     .map(([k]) => k);
-  const picked = pickedNames.length || 1;
   const pickedPrice = sections
     .flatMap((s) => s.items)
     .filter((i) => checked[i.name])
@@ -110,7 +121,20 @@ export default function Schedule() {
       return sum + (Number.isFinite(parsed) ? parsed : 0);
     }, 0);
 
-  const currentOrder = orders.find((o) => o.status !== "取消") || null;
+  const currentOrder = useMemo(() => orders.find((o) => o.status !== "取消") || null, [orders]);
+
+  const playerDue = useMemo(() => {
+    if (!currentOrder) return 0;
+    if (typeof currentOrder.playerDue === "number") return currentOrder.playerDue;
+    const fee = currentOrder.serviceFee ?? Number((currentOrder.amount * MATCH_RATE).toFixed(2));
+    return Math.max(Number((currentOrder.amount - fee).toFixed(2)), 0);
+  }, [currentOrder]);
+  const serviceFeeDisplay =
+    currentOrder && typeof currentOrder.serviceFee === "number"
+      ? currentOrder.serviceFee
+      : currentOrder
+        ? Number((currentOrder.amount * MATCH_RATE).toFixed(2))
+        : locked.service;
 
   const cancelOrder = () => {
     if (!currentOrder) return;
@@ -120,8 +144,93 @@ export default function Schedule() {
       driver: undefined,
       time: new Date().toISOString(),
     });
+    // 删除记录以清空列表和状态
+    const list = loadOrders().filter((o) => o.id !== currentOrder.id);
+    localStorage.setItem("dl_orders", JSON.stringify(list));
+    window.dispatchEvent(new Event("orders-updated"));
     setMode("select");
   };
+
+  if (mode === "await-user-pay" && currentOrder?.driver) {
+    return (
+      <div className="ride-shell">
+        <div className="ride-tip" style={{ marginTop: 0 }}>
+          打手已支付押金，请完成打手费用支付后开始服务
+        </div>
+
+        <div className="ride-driver-card dl-card">
+          <div className="flex items-center gap-3">
+            <div className="ride-driver-avatar" />
+            <div>
+              <div className="text-sm text-amber-600 font-semibold">等待支付打手费用</div>
+              <div className="text-lg font-bold text-gray-900">{currentOrder.driver.name}</div>
+              <div className="text-xs text-gray-500">{currentOrder.driver.car}</div>
+            </div>
+            <div className="ml-auto text-right">
+              <div className="text-emerald-600 font-semibold text-sm">{currentOrder.driver.eta}</div>
+              {currentOrder.driver.price && <div className="text-xs text-gray-500">一口价 ¥{currentOrder.driver.price / 10}</div>}
+            </div>
+          </div>
+          <div className="ride-driver-actions">
+            <button className="dl-tab-btn" onClick={cancelOrder}>取消用车</button>
+            <button className="dl-tab-btn" style={{ background: "#f97316", color: "#fff" }}>
+              联系司机
+            </button>
+          </div>
+          <div className="text-xs text-gray-500 mt-2">订单：{currentOrder.item}</div>
+        </div>
+
+        <div className="ride-pay-box">
+          <div className="ride-pay-head">
+            <div>
+              <div className="ride-pay-title">支付打手费用</div>
+              <div className="ride-pay-sub">司机已付押金，付款后开始护航</div>
+            </div>
+            <div className="ride-pay-amount">¥{playerDue.toFixed(2)}</div>
+          </div>
+          <div className="ride-qr-inline">
+            <div className="ride-qr-img">
+              <img src={playerQr} alt="打手收款码" />
+            </div>
+            <div className="ride-qr-text">
+              <div className="text-sm font-semibold text-gray-900">打手收款码</div>
+              <div className="text-xs text-gray-500">支付后勾选，系统会通知司机开始</div>
+              <label className="ride-status-toggle" style={{ marginTop: 8 }}>
+                <input
+                  type="checkbox"
+                  checked={playerPaidTick}
+                  onChange={(e) => setPlayerPaidTick(e.target.checked)}
+                  aria-label="已支付打手费用"
+                />
+                <span>我已支付</span>
+                {playerPaidTick && <CheckCircle2 size={16} color="#22c55e" />}
+              </label>
+            </div>
+          </div>
+          <div className="ride-pay-actions">
+            <button className="dl-tab-btn" onClick={cancelOrder}>取消</button>
+            <button
+              className="dl-tab-btn"
+              style={{ background: "#0f172a", color: "#fff" }}
+              onClick={() => {
+                if (!currentOrder) return;
+                if (!playerPaidTick) {
+                  setToast("请先完成打手费用支付");
+                  setTimeout(() => setToast(null), 2000);
+                  return;
+                }
+                updateOrder(currentOrder.id, { playerPaid: true, status: "打手费已付" });
+                setMode("enroute");
+              }}
+            >
+              确认已支付
+            </button>
+          </div>
+        </div>
+        {toast && <div className="ride-toast">{toast}</div>}
+      </div>
+    );
+  }
 
   if (mode === "enroute" && currentOrder?.driver) {
     return (
@@ -157,7 +266,12 @@ export default function Schedule() {
     return (
       <div className="ride-shell">
         <div className="ride-tip" style={{ marginTop: 0 }}>
-          正在通知护航... 请耐心等待
+          正在通知护航，需打手支付押金后才能接单
+        </div>
+        <div className="ride-stepper">
+          <Step label={`撮合费 ¥${serviceFeeDisplay.toFixed(2)} 已收`} done={!!currentOrder.serviceFeePaid} />
+          <Step label="打手支付押金" done={!!currentOrder.depositPaid} />
+          <Step label="派单匹配" done={!!currentOrder.driver} />
         </div>
         <div className="ride-notify-illu" />
         <div className="dl-card" style={{ padding: 16 }}>
@@ -167,27 +281,46 @@ export default function Schedule() {
             <span className="text-amber-600 font-bold">¥{currentOrder.amount}</span>
           </div>
           <div className="text-xs text-gray-500 mt-2">{new Date(currentOrder.time).toLocaleString()}</div>
-          <div className="text-xs text-gray-500 mt-3">如需加单，可返回继续选择。</div>
+          <div className="text-xs text-gray-500 mt-3">押金未付前不会提示用户支付打手费。</div>
         </div>
       </div>
     );
   }
 
-  const submit = async () => {
+  const submit = () => {
     if (pickedNames.length === 0) {
       setToast("请先选择服务");
       return;
     }
+    const total = pickedPrice || Math.max(pickedNames.length * 10, 10);
+    const service = Number((total * MATCH_RATE).toFixed(2));
+    const player = Math.max(Number((total - service).toFixed(2)), 0);
+    setLocked({ total, service, player, items: pickedNames });
+    setFeeOpen(true);
+    setFeeChecked(false);
+  };
+
+  const callOrder = async () => {
+    if (!feeChecked) {
+      setToast("请先完成撮合费付款");
+      setTimeout(() => setToast(null), 2000);
+      return;
+    }
+    if (!locked.items.length) {
+      setToast("请选择服务");
+      return;
+    }
+    setCalling(true);
     try {
       const res = await fetch("/api/orders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           user: "安排页面",
-          item: pickedNames.join("、"),
-          amount: pickedPrice || pickedNames.length,
+          item: locked.items.join("、"),
+          amount: locked.total,
           status: "安排",
-          note: "来源：安排页呼叫服务",
+          note: `来源：安排页呼叫服务。撮合费${(MATCH_RATE * 100).toFixed(0)}%已付`,
         }),
       });
       const data = await res.json();
@@ -197,22 +330,77 @@ export default function Schedule() {
       addOrder({
         id: data.orderId || `${Date.now()}`,
         user: "安排页面",
-        item: pickedNames.join("、"),
-        amount: pickedPrice || pickedNames.length,
-        status: "通知中",
+        item: locked.items.join("、"),
+        amount: locked.total,
+        status: "待派单",
         time: new Date().toISOString(),
+        serviceFee: locked.service,
+        serviceFeePaid: true,
+        playerDue: locked.player,
+        depositPaid: false,
+        playerPaid: false,
       });
       setMode("notifying");
-      setToast("已推送到企业微信群");
+      setFeeOpen(false);
+      setToast("撮合费已记录，正在派单");
     } catch (e) {
       setToast((e as Error).message);
     } finally {
       setTimeout(() => setToast(null), 3000);
+      setCalling(false);
     }
   };
 
   return (
     <div className="ride-shell">
+      {feeOpen && (
+        <div className="ride-modal-mask" role="dialog" aria-modal="true">
+          <div className="ride-modal">
+            <div className="ride-modal-head">
+              <div>
+                <div className="ride-modal-title">支付平台撮合费</div>
+                <div className="ride-modal-sub">按订单金额 15% 计算，支付后开始呼叫</div>
+              </div>
+              <div className="ride-modal-amount">¥{locked.service.toFixed(2)}</div>
+            </div>
+            <div className="ride-qr-inline">
+              <div className="ride-qr-img">
+                <img src={platformQr} alt="平台撮合费收款码" />
+              </div>
+              <div className="ride-qr-text">
+                <div className="text-sm font-semibold text-gray-900">平台撮合费</div>
+                <div className="text-xs text-gray-500">订单 ¥{locked.total.toFixed(2)} × 15% = ¥{locked.service.toFixed(2)}</div>
+                <div className="ride-chip">撮合费不抵扣打手费用</div>
+                <label className="ride-status-toggle" style={{ marginTop: 10 }}>
+                  <input
+                    type="checkbox"
+                    checked={feeChecked}
+                    onChange={(e) => setFeeChecked(e.target.checked)}
+                    aria-label="已支付撮合费"
+                  />
+                  <span>我已支付</span>
+                  {feeChecked && <CheckCircle2 size={16} color="#22c55e" />}
+                </label>
+              </div>
+            </div>
+            <div className="ride-modal-actions">
+              <button className="dl-tab-btn" onClick={() => setFeeOpen(false)}>
+                取消
+              </button>
+              <button
+                className="dl-tab-btn"
+                style={{ background: "#0f172a", color: "#fff" }}
+                onClick={callOrder}
+                disabled={calling}
+              >
+                {calling ? <Loader2 size={16} className="spin" /> : null}
+                <span style={{ marginLeft: calling ? 6 : 0 }}>支付完成，开始派单</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="ride-tip" style={{ marginTop: 0 }}>
         本单含多种特惠计价，点击查看详情
       </div>
@@ -300,9 +488,30 @@ export default function Schedule() {
           <div className="ride-range">预估价 {pickedPrice ? pickedPrice.toFixed(0) : "4-9"}</div>
           <div className="ride-extra">动态调价</div>
         </div>
-        <button className="ride-call" onClick={submit}>呼叫 {picked} 种服务</button>
+        <button className="ride-call" onClick={submit}>
+          <QrCode size={16} style={{ marginRight: 6 }} />
+          先付撮合费再呼叫
+        </button>
       </footer>
       {toast && <div className="ride-toast">{toast}</div>}
+    </div>
+  );
+}
+
+function deriveMode(list: LocalOrder[]): Mode {
+  const latest = list.find((o) => o.status !== "取消") || null;
+  if (!latest) return "select";
+  if (latest.driver) {
+    return latest.playerPaid ? "enroute" : "await-user-pay";
+  }
+  return "notifying";
+}
+
+function Step({ label, done }: { label: string; done?: boolean }) {
+  return (
+    <div className={`ride-step ${done ? "is-done" : ""}`}>
+      <div className="ride-step-icon">{done ? <ShieldCheck size={16} /> : <Loader2 size={16} className="spin" />}</div>
+      <div className="ride-step-text">{label}</div>
     </div>
   );
 }
