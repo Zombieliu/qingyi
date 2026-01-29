@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "installCommand": "npm install --include=optional",
+  "installCommand": "NPM_CONFIG_OPTIONAL=true npm install --include=optional --force",
   "buildCommand": "npm run build --workspace app",
   "outputDirectory": "packages/app/.next",
   "framework": "nextjs"
