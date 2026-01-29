@@ -3,8 +3,5 @@
   "installCommand": "npm install --include=optional",
   "buildCommand": "npm run build --workspace app",
   "outputDirectory": "packages/app/.next",
-  "framework": "nextjs",
-  "env": {
-    "WECHAT_WEBHOOK_URL": "@WECHAT_WEBHOOK_URL"
-  }
+  "framework": "nextjs"
 }
