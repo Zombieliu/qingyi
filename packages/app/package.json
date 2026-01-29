@@ -20,6 +20,7 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@tailwindcss/oxide-wasm32-wasi": "4.1.18",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
@@ -29,6 +30,7 @@
     "typescript": "^5"
   },
   "optionalDependencies": {
-    "lightningcss-linux-x64-gnu": "1.30.2"
+    "lightningcss-linux-x64-gnu": "1.30.2",
+    "@tailwindcss/oxide-linux-x64-gnu": "4.1.18"
   }
 }
