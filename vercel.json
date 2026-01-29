@@ -5,6 +5,6 @@
   "outputDirectory": "packages/app/.next",
   "framework": "nextjs",
   "env": {
-    "WECHAT_WEBHOOK_URL": "@wechat_webhook_url"
+    "WECHAT_WEBHOOK_URL": "@WECHAT_WEBHOOK_URL"
   }
 }
