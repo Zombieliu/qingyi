@@ -1,0 +1,14 @@
+[package]
+published-at = "0x11f135de560352d64259f1eba0b1169d545a034429756d13f6a465dd11a2ca6f"
+name = "Dubhe"
+edition = "2024"
+version = "1.0.0"
+license = "apache2.0"
+authors = ["Obelisk Labs"]
+
+[dependencies]
+Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "mainnet-v1.46.3" }
+
+[addresses]
+dubhe = "0x11f135de560352d64259f1eba0b1169d545a034429756d13f6a465dd11a2ca6f"
+
