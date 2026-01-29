@@ -60,7 +60,6 @@ export async function POST(req: Request) {
     const client = new SuiClient({ url: rpcUrl });
     const signer = Ed25519Keypair.fromSecretKey(adminKey);
 
-    const sharedVersion = BigInt(dappHubInitialVersion.trim());
     const tx = new Transaction();
     tx.moveCall({
       target: `${packageId}::ledger_system::credit_balance`,
@@ -68,7 +67,7 @@ export async function POST(req: Request) {
         tx.object(
           Inputs.SharedObjectRef({
             objectId: dappHubId,
-            initialSharedVersion: sharedVersion,
+            initialSharedVersion: dappHubInitialVersion.trim(),
             mutable: true,
           })
         ),
