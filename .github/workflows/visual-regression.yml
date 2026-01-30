@@ -4,9 +4,24 @@ on:
   pull_request:
   push:
     branches: [main]
+  schedule:
+    - cron: "0 2 * * *"
+    - cron: "0 3 * * 1"
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: "visual profile to run"
+        required: true
+        default: "core"
+        type: choice
+        options:
+          - core
+          - full
+          - compat
 
 jobs:
-  visual:
+  smoke:
+    if: github.event_name == 'pull_request' || github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.profile == 'core')
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
@@ -27,5 +42,59 @@ jobs:
       - name: Install Playwright browsers
         run: npx playwright install --with-deps
 
-      - name: Run visual tests
-        run: npm run test:visual
+      - name: Run visual tests (core)
+        run: npm run test:visual:core
+
+  full:
+    if: (github.event_name == 'schedule' && github.event.schedule == '0 2 * * *') || (github.event_name == 'workflow_dispatch' && inputs.profile == 'full')
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps
+
+      - name: Run visual tests (full, sharded)
+        run: npm run test:visual:full -- --shard=${{ matrix.shard }}/3
+
+  compat:
+    if: (github.event_name == 'schedule' && github.event.schedule == '0 3 * * 1') || (github.event_name == 'workflow_dispatch' && inputs.profile == 'compat')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps
+
+      - name: Run visual tests (compat)
+        run: npm run test:visual:compat

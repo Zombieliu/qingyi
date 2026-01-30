@@ -1,6 +1,54 @@
-import { defineConfig, devices } from "@playwright/test";
+import { defineConfig, devices, type Project } from "@playwright/test";
 
 const baseURL = process.env.PLAYWRIGHT_BASE_URL || "http://127.0.0.1:3000";
+const profile = process.env.PW_PROFILE || "full";
+
+const coreProjects: Project[] = [
+  {
+    name: "Mobile Safari - iPhone 15",
+    use: { ...devices["iPhone 15"], browserName: "webkit" },
+  },
+  {
+    // Playwright 未内置 Pixel 8/9，使用 Pixel 7 作为近似主流尺寸基准
+    name: "Mobile Chrome - Pixel 7",
+    use: { ...devices["Pixel 7"], browserName: "chromium" },
+  },
+  {
+    name: "Desktop Chrome",
+    use: {
+      ...devices["Desktop Chrome"],
+      browserName: "chromium",
+      viewport: { width: 1440, height: 900 },
+    },
+  },
+];
+
+const regressionProjects: Project[] = [
+  { name: "Mobile Safari - iPhone 14", use: { ...devices["iPhone 14"], browserName: "webkit" } },
+  { name: "Mobile Safari - iPhone 13", use: { ...devices["iPhone 13"], browserName: "webkit" } },
+  { name: "Mobile Safari - iPhone 12", use: { ...devices["iPhone 12"], browserName: "webkit" } },
+  { name: "Small Mobile - iPhone SE", use: { ...devices["iPhone SE"], browserName: "webkit" } },
+  {
+    name: "Tablet - iPad Pro 11 landscape",
+    use: { ...devices["iPad Pro 11 landscape"], browserName: "webkit" },
+  },
+  { name: "Mobile Chrome - Galaxy S24", use: { ...devices["Galaxy S24"], browserName: "chromium" } },
+  { name: "Mobile Chrome - Galaxy S8", use: { ...devices["Galaxy S8"], browserName: "chromium" } },
+  { name: "Desktop Safari", use: { ...devices["Desktop Safari"], browserName: "webkit" } },
+  { name: "Desktop Firefox", use: { ...devices["Desktop Firefox"], browserName: "firefox" } },
+];
+
+const compatProjects: Project[] = [
+  { name: "Small Mobile - iPhone SE", use: { ...devices["iPhone SE"], browserName: "webkit" } },
+  { name: "Mobile Chrome - Galaxy S8", use: { ...devices["Galaxy S8"], browserName: "chromium" } },
+  { name: "Desktop Firefox", use: { ...devices["Desktop Firefox"], browserName: "firefox" } },
+];
+
+const projectsByProfile: Record<string, Project[]> = {
+  core: coreProjects,
+  full: [...coreProjects, ...regressionProjects],
+  compat: compatProjects,
+};
 
 export default defineConfig({
   testDir: "./tests",
@@ -30,27 +78,5 @@ export default defineConfig({
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
   },
-  projects: [
-    {
-      name: "Desktop Chrome",
-      use: {
-        ...devices["Desktop Chrome"],
-        browserName: "chromium",
-        viewport: { width: 1440, height: 900 },
-      },
-    },
-    {
-      name: "Desktop Edge",
-      use: {
-        ...devices["Desktop Edge"],
-        browserName: "chromium",
-      },
-    },
-    { name: "iPhone 15 Pro", use: { ...devices["iPhone 15 Pro"], browserName: "webkit" } },
-    { name: "iPhone SE (3rd gen)", use: { ...devices["iPhone SE (3rd gen)"], browserName: "webkit" } },
-    { name: "Pixel 7", use: { ...devices["Pixel 7"], browserName: "chromium" } },
-    { name: "Pixel 5", use: { ...devices["Pixel 5"], browserName: "chromium" } },
-    { name: "iPad Pro 11", use: { ...devices["iPad Pro 11"], browserName: "webkit" } },
-    { name: "iPad (gen 11)", use: { ...devices["iPad (gen 11)"], browserName: "webkit" } },
-  ],
+  projects: projectsByProfile[profile] ?? projectsByProfile.full,
 });
