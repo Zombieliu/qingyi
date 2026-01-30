@@ -8,6 +8,11 @@
     "dev": "npm run dev --workspace app",
     "build": "npm run build --workspace app",
     "start": "npm run start --workspace app",
-    "lint": "npm run lint --workspace app"
+    "lint": "npm run lint --workspace app",
+    "test:visual": "playwright test --config playwright.config.ts",
+    "test:visual:update": "playwright test --config playwright.config.ts --update-snapshots"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.50.1"
   }
 }
