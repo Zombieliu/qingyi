@@ -23,7 +23,12 @@ const coreBreakpoints: Project[] = [
 
 const fullBreakpoints: Project[] = [
   bp("Mobile Pro", 402, 874, mobileUse),
-  bp("Mobile Pro Max", 430, 932, mobileUse),
+  // iPhone 17 Air (2025) new size
+  bp("Mobile Air", 420, 912, mobileUse),
+  // iPhone 17 Pro Max (2025) new size
+  bp("Mobile Pro Max", 440, 956, mobileUse),
+  // iPhone 15/16 Pro Max & 16 Plus
+  bp("Mobile Plus/Max", 430, 932, mobileUse),
   bp("Android Standard", 360, 780, mobileUse),
   bp("Fold Outer", 361, 882, mobileUse),
   bp("Fold Inner", 695, 874, mobileUse),
