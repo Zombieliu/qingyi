@@ -57,6 +57,54 @@ const coreDevices: Project[] = [
 ];
 
 const fullDevices: Project[] = [
+  {
+    name: "Mobile Safari - iPhone 17",
+    use: {
+      browserName: "webkit",
+      viewport: { width: 402, height: 874 },
+      deviceScaleFactor: 3,
+      isMobile: true,
+      hasTouch: true,
+      userAgent:
+        "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1",
+    },
+  },
+  {
+    name: "Mobile Safari - iPhone 17 Pro",
+    use: {
+      browserName: "webkit",
+      viewport: { width: 402, height: 874 },
+      deviceScaleFactor: 3,
+      isMobile: true,
+      hasTouch: true,
+      userAgent:
+        "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1",
+    },
+  },
+  {
+    name: "Mobile Safari - iPhone 17 Air",
+    use: {
+      browserName: "webkit",
+      viewport: { width: 420, height: 912 },
+      deviceScaleFactor: 3,
+      isMobile: true,
+      hasTouch: true,
+      userAgent:
+        "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1",
+    },
+  },
+  {
+    name: "Mobile Safari - iPhone 17 Pro Max",
+    use: {
+      browserName: "webkit",
+      viewport: { width: 440, height: 956 },
+      deviceScaleFactor: 3,
+      isMobile: true,
+      hasTouch: true,
+      userAgent:
+        "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1",
+    },
+  },
   { name: "Mobile Safari - iPhone 14", use: { ...devices["iPhone 14"], browserName: "webkit" } },
   { name: "Mobile Safari - iPhone 13", use: { ...devices["iPhone 13"], browserName: "webkit" } },
   { name: "Mobile Safari - iPhone 12", use: { ...devices["iPhone 12"], browserName: "webkit" } },
