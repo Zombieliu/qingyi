@@ -3,12 +3,21 @@ import { requireAdmin } from "@/lib/admin-auth";
 import { removePlayer, updatePlayer } from "@/lib/admin-store";
 import type { AdminPlayer, PlayerStatus } from "@/lib/admin-types";
 
+type RouteContext = {
+  params: Promise<{ playerId: string }>;
+};
+
 export async function PATCH(
   req: Request,
-  { params }: { params: { playerId: string } }
+  { params }: RouteContext
 ) {
-  const auth = requireAdmin();
+  const auth = await requireAdmin();
   if (!auth.ok) return auth.response;
+
+  const { playerId } = await params;
+  if (!playerId) {
+    return NextResponse.json({ error: "Missing playerId" }, { status: 400 });
+  }
 
   let body: Partial<AdminPlayer> = {};
   try {
@@ -24,7 +33,7 @@ export async function PATCH(
   if (typeof body.notes === "string") patch.notes = body.notes;
   if (typeof body.status === "string") patch.status = body.status as PlayerStatus;
 
-  const updated = await updatePlayer(params.playerId, patch);
+  const updated = await updatePlayer(playerId, patch);
   if (!updated) {
     return NextResponse.json({ error: "not found" }, { status: 404 });
   }
@@ -33,12 +42,17 @@ export async function PATCH(
 
 export async function DELETE(
   req: Request,
-  { params }: { params: { playerId: string } }
+  { params }: RouteContext
 ) {
-  const auth = requireAdmin();
+  const auth = await requireAdmin();
   if (!auth.ok) return auth.response;
 
-  const removed = await removePlayer(params.playerId);
+  const { playerId } = await params;
+  if (!playerId) {
+    return NextResponse.json({ error: "Missing playerId" }, { status: 400 });
+  }
+
+  const removed = await removePlayer(playerId);
   if (!removed) {
     return NextResponse.json({ error: "not found" }, { status: 404 });
   }

@@ -5,14 +5,14 @@ import { addAnnouncement, listAnnouncements } from "@/lib/admin-store";
 import type { AdminAnnouncement, AnnouncementStatus } from "@/lib/admin-types";
 
 export async function GET() {
-  const auth = requireAdmin();
+  const auth = await requireAdmin();
   if (!auth.ok) return auth.response;
   const announcements = await listAnnouncements();
   return NextResponse.json(announcements);
 }
 
 export async function POST(req: Request) {
-  const auth = requireAdmin();
+  const auth = await requireAdmin();
   if (!auth.ok) return auth.response;
 
   let body: Partial<AdminAnnouncement> = {};

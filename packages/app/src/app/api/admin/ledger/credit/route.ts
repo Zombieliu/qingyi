@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin-auth";
 
 export async function POST(req: Request) {
-  const auth = requireAdmin();
+  const auth = await requireAdmin();
   if (!auth.ok) return auth.response;
 
   const adminToken = process.env.LEDGER_ADMIN_TOKEN;

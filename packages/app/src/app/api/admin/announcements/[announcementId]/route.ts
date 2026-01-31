@@ -3,12 +3,21 @@ import { requireAdmin } from "@/lib/admin-auth";
 import { updateAnnouncement } from "@/lib/admin-store";
 import type { AdminAnnouncement, AnnouncementStatus } from "@/lib/admin-types";
 
+type RouteContext = {
+  params: Promise<{ announcementId: string }>;
+};
+
 export async function PATCH(
   req: Request,
-  { params }: { params: { announcementId: string } }
+  { params }: RouteContext
 ) {
-  const auth = requireAdmin();
+  const auth = await requireAdmin();
   if (!auth.ok) return auth.response;
+
+  const { announcementId } = await params;
+  if (!announcementId) {
+    return NextResponse.json({ error: "Missing announcementId" }, { status: 400 });
+  }
 
   let body: Partial<AdminAnnouncement> = {};
   try {
@@ -23,7 +32,7 @@ export async function PATCH(
   if (typeof body.content === "string") patch.content = body.content;
   if (typeof body.status === "string") patch.status = body.status as AnnouncementStatus;
 
-  const updated = await updateAnnouncement(params.announcementId, patch);
+  const updated = await updateAnnouncement(announcementId, patch);
   if (!updated) {
     return NextResponse.json({ error: "not found" }, { status: 404 });
   }

@@ -12,12 +12,13 @@ export function isAdminTokenValid(token?: string | null) {
   return token === secret;
 }
 
-export function getAdminTokenFromCookies() {
-  return cookies().get("admin_token")?.value || "";
+export async function getAdminTokenFromCookies() {
+  const cookieStore = await cookies();
+  return cookieStore.get("admin_token")?.value || "";
 }
 
-export function requireAdmin() {
-  const token = getAdminTokenFromCookies();
+export async function requireAdmin() {
+  const token = await getAdminTokenFromCookies();
   if (!isAdminTokenValid(token)) {
     return {
       ok: false as const,

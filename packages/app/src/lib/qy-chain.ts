@@ -1,6 +1,6 @@
 "use client";
 
-import { SuiClient, getFullnodeUrl } from "@mysten/sui/client";
+import { SuiClient, getFullnodeUrl, type EventId } from "@mysten/sui/client";
 import { bcs } from "@mysten/sui/bcs";
 import { Transaction, Inputs } from "@mysten/sui/transactions";
 import { isValidSuiAddress, normalizeSuiAddress, toHex } from "@mysten/sui/utils";
@@ -57,8 +57,9 @@ export function isVisualTestMode(): boolean {
 
 function getProviderOptions(): BrowserPasswordProviderOptions {
   return {
-    rpName: RP_NAME,
-    rpId: typeof window !== "undefined" ? window.location.hostname : undefined,
+    rp: {
+      id: typeof window !== "undefined" ? window.location.hostname : undefined,
+    },
     authenticatorSelection: { authenticatorAttachment: "platform", userVerification: "preferred" },
   };
 }
@@ -94,8 +95,22 @@ export function getCurrentAddress(): string {
 function getRpcUrl(): string {
   const explicit = process.env.NEXT_PUBLIC_SUI_RPC_URL;
   if (explicit) return explicit;
-  const network = process.env.NEXT_PUBLIC_SUI_NETWORK || "testnet";
+  const network = normalizeSuiNetwork(process.env.NEXT_PUBLIC_SUI_NETWORK);
   return getFullnodeUrl(network);
+}
+
+type SuiNetwork = "testnet" | "mainnet" | "devnet" | "localnet";
+
+function normalizeSuiNetwork(value?: string): SuiNetwork {
+  switch (value) {
+    case "mainnet":
+    case "testnet":
+    case "devnet":
+    case "localnet":
+      return value;
+    default:
+      return "testnet";
+  }
 }
 
 function getRuleSetId(): string {
@@ -119,15 +134,17 @@ function getDefaultCompanion(): string {
 }
 
 function getDappHubSharedRef() {
-  if (!DAPP_HUB_ID || DAPP_HUB_ID === "0x0") {
+  const dappHubId = String(DAPP_HUB_ID || "");
+  if (!dappHubId || dappHubId === "0x0") {
     throw new Error("合约未部署：缺少 DAPP_HUB_ID");
   }
-  if (!DAPP_HUB_INITIAL_SHARED_VERSION || DAPP_HUB_INITIAL_SHARED_VERSION === "0") {
+  const sharedVersion = String(DAPP_HUB_INITIAL_SHARED_VERSION || "");
+  if (!sharedVersion || sharedVersion === "0") {
     throw new Error("合约未部署：缺少 DAPP_HUB_INITIAL_SHARED_VERSION");
   }
   return Inputs.SharedObjectRef({
-    objectId: DAPP_HUB_ID,
-    initialSharedVersion: BigInt(DAPP_HUB_INITIAL_SHARED_VERSION),
+    objectId: dappHubId,
+    initialSharedVersion: sharedVersion,
     mutable: true,
   });
 }
@@ -144,7 +161,8 @@ async function getDubhePackageId(client: SuiClient): Promise<string> {
 }
 
 function ensurePackageId() {
-  if (!PACKAGE_ID || PACKAGE_ID === "0x0") {
+  const packageId = String(PACKAGE_ID || "");
+  if (!packageId || packageId === "0x0") {
     throw new Error("合约未部署：缺少 PACKAGE_ID");
   }
 }
@@ -227,9 +245,9 @@ export function isChainOrdersEnabled(): boolean {
 }
 
 export function createChainOrderId(): string {
-  const now = BigInt(Date.now());
-  const rand = BigInt(Math.floor(Math.random() * 1000));
-  return (now * 1000n + rand).toString();
+  const now = Date.now();
+  const rand = Math.floor(Math.random() * 1000);
+  return String(now * 1000 + rand);
 }
 
 export async function createOrderOnChain(params: {
@@ -400,7 +418,8 @@ export async function fetchChainOrders(): Promise<ChainOrder[]> {
     return [];
   }
   ensurePackageId();
-  if (!DAPP_HUB_ID || DAPP_HUB_ID === "0x0") {
+  const dappHubId = String(DAPP_HUB_ID || "");
+  if (!dappHubId || dappHubId === "0x0") {
     throw new Error("合约未部署：缺少 DAPP_HUB_ID");
   }
   const client = new SuiClient({ url: getRpcUrl() });
@@ -409,7 +428,7 @@ export async function fetchChainOrders(): Promise<ChainOrder[]> {
   const targetKey = normalizeDappKey(`${strip0x(PACKAGE_ID)}::dapp_key::DappKey`);
   const orders = new Map<string, ChainOrder>();
 
-  let cursor: string | null = null;
+  let cursor: EventId | null = null;
   let remaining = Number.isFinite(EVENT_LIMIT) ? EVENT_LIMIT : 200;
   while (remaining > 0) {
     const page = await client.queryEvents({

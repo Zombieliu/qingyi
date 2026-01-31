@@ -5,14 +5,14 @@ import { addPlayer, listPlayers } from "@/lib/admin-store";
 import type { AdminPlayer, PlayerStatus } from "@/lib/admin-types";
 
 export async function GET() {
-  const auth = requireAdmin();
+  const auth = await requireAdmin();
   if (!auth.ok) return auth.response;
   const players = await listPlayers();
   return NextResponse.json(players);
 }
 
 export async function POST(req: Request) {
-  const auth = requireAdmin();
+  const auth = await requireAdmin();
   if (!auth.ok) return auth.response;
 
   let body: Partial<AdminPlayer> = {};

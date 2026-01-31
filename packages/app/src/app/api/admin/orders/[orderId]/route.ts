@@ -3,12 +3,21 @@ import { requireAdmin } from "@/lib/admin-auth";
 import { updateOrder } from "@/lib/admin-store";
 import type { AdminOrder, OrderStage } from "@/lib/admin-types";
 
+type RouteContext = {
+  params: Promise<{ orderId: string }>;
+};
+
 export async function PATCH(
   req: Request,
-  { params }: { params: { orderId: string } }
+  { params }: RouteContext
 ) {
-  const auth = requireAdmin();
+  const auth = await requireAdmin();
   if (!auth.ok) return auth.response;
+
+  const { orderId } = await params;
+  if (!orderId) {
+    return NextResponse.json({ error: "Missing orderId" }, { status: 400 });
+  }
 
   let body: Partial<AdminOrder> = {};
   try {
@@ -23,7 +32,7 @@ export async function PATCH(
   if (typeof body.assignedTo === "string") patch.assignedTo = body.assignedTo;
   if (typeof body.stage === "string") patch.stage = body.stage as OrderStage;
 
-  const updated = await updateOrder(params.orderId, patch);
+  const updated = await updateOrder(orderId, patch);
   if (!updated) {
     return NextResponse.json({ error: "not found" }, { status: 404 });
   }

@@ -5,14 +5,14 @@ import { addOrder, listOrders } from "@/lib/admin-store";
 import type { AdminOrder, OrderStage } from "@/lib/admin-types";
 
 export async function GET() {
-  const auth = requireAdmin();
+  const auth = await requireAdmin();
   if (!auth.ok) return auth.response;
   const orders = await listOrders();
   return NextResponse.json(orders);
 }
 
 export async function POST(req: Request) {
-  const auth = requireAdmin();
+  const auth = await requireAdmin();
   if (!auth.ok) return auth.response;
 
   let body: Partial<AdminOrder> = {};

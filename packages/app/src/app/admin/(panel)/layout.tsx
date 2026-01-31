@@ -3,12 +3,13 @@ import { redirect } from "next/navigation";
 import { getAdminSecret, isAdminTokenValid } from "@/lib/admin-auth";
 import AdminShell from "./admin-shell";
 
-export default function AdminPanelLayout({
+export default async function AdminPanelLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const token = cookies().get("admin_token")?.value || "";
+  const cookieStore = await cookies();
+  const token = cookieStore.get("admin_token")?.value || "";
   const secret = getAdminSecret();
 
   if (!secret || !isAdminTokenValid(token)) {
