@@ -13,11 +13,14 @@ pnpm run dev -- --hostname 0.0.0.0 --port 3000   # 避免 Turbopack
 ```
 WECHAT_WEBHOOK_URL=你的企业微信机器人 URL
 SUI_RPC_URL=你的 Sui RPC URL
+SUI_NETWORK=localnet（可选，testnet/mainnet/devnet/localnet）
 SUI_ADMIN_PRIVATE_KEY=suiprivkey...（链上管理员私钥）
 SUI_PACKAGE_ID=部署后的 qy 包地址
 SUI_DAPP_HUB_ID=Dubhe DappHub 共享对象 ID
 SUI_DAPP_HUB_INITIAL_SHARED_VERSION=DappHub 初始 shared 版本号
 LEDGER_ADMIN_TOKEN=后台记账接口鉴权 token
+ADMIN_DASH_TOKEN=管理后台登录密钥（未配置时回退 LEDGER_ADMIN_TOKEN）
+ADMIN_DATA_DIR=可选，本地管理后台数据存储目录
 ```
 
 ## 脚本
@@ -28,8 +31,19 @@ LEDGER_ADMIN_TOKEN=后台记账接口鉴权 token
 ## 后台记账接口（链上写入）
 `POST /api/ledger/credit`
 - Header：`Authorization: Bearer <LEDGER_ADMIN_TOKEN>` 或 `x-admin-token`
-- Body：`{ user: \"0x...\", amount: \"1000\" }`
-- 功能：调用 `qy::ledger_system::credit_balance` 写入链上余额
+- Body：`{ user: \"0x...\", amount: \"1000\", receiptId: \"pay_20260130_0001\" }`
+- 功能：调用 `qy::ledger_system::credit_balance_with_receipt` 写入链上余额（幂等）
+
+## 轻量管理后台
+- 入口：`/admin/login`（使用 `ADMIN_DASH_TOKEN` 登录）
+- 模块：订单调度 / 打手管理 / 公告资讯 / 链上记账
+- 数据：存储在 `packages/app/.data/admin-store.json`（或 `ADMIN_DATA_DIR` 指定目录）
+
+## Dubhe SDK 说明
+- 前端/后端如需走 Dubhe SDK，需要 `packages/contracts/metadata.json` 与 `packages/contracts/deployment.ts`。
+- 生成方式（在 `packages/contracts` 下执行）：
+  - `pnpm dubhe publish --network`
+  - `pnpm dubhe config-store --output-ts-path ./deployment.ts --network`
 
 ## Vercel 部署
 - 已提供 `vercel.json`，使用 Next.js 默认构建，Node 20。  

@@ -1,12 +1,23 @@
 import { MessageCircle, Flame } from "lucide-react";
+import { listPublicAnnouncements } from "@/lib/admin-store";
 
-const articles = [
-  { title: "三角洲行动版本更新", tag: "公告" },
-  { title: "陪玩安全须知", tag: "安全" },
-  { title: "周末赛事报名开启", tag: "赛事" },
+export const dynamic = "force-dynamic";
+
+const fallbackArticles = [
+  { title: "三角洲行动版本更新", tag: "公告", content: "" },
+  { title: "陪玩安全须知", tag: "安全", content: "" },
+  { title: "周末赛事报名开启", tag: "赛事", content: "" },
 ];
 
-export default function News() {
+export default async function News() {
+  const announcements = await listPublicAnnouncements();
+  const articles = announcements.length
+    ? announcements.map((item) => ({
+        title: item.title,
+        tag: item.tag,
+        content: item.content,
+      }))
+    : fallbackArticles;
   return (
     <>
       <header className="dl-topbar">
@@ -33,6 +44,9 @@ export default function News() {
                 <div className="text-xs text-gray-500 mt-1">{a.tag}</div>
               </div>
             </div>
+            {a.content ? (
+              <div className="text-xs text-gray-500 mt-3 leading-relaxed">{a.content}</div>
+            ) : null}
           </div>
         ))}
       </div>

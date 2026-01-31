@@ -12,6 +12,7 @@ const withSerwist = withSerwistInit({
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  transpilePackages: ["contracts"],
   images: {
     remotePatterns: [
       {

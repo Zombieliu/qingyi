@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import crypto from "crypto";
+import { addOrder } from "@/lib/admin-store";
 
 interface OrderPayload {
   user: string;
@@ -24,6 +25,28 @@ export async function POST(req: Request) {
   }
 
   const orderId = `ORD-${Date.now()}-${crypto.randomInt(1000, 9999)}`;
+  const createdAt = Date.now();
+
+  try {
+    await addOrder({
+      id: orderId,
+      user,
+      item,
+      amount,
+      currency,
+      paymentStatus: status,
+      stage: "待处理",
+      note,
+      source: "app",
+      createdAt,
+    });
+  } catch (error) {
+    console.error("Failed to persist order:", error);
+  }
+  if (process.env.E2E_SKIP_WEBHOOK === "1") {
+    return NextResponse.json({ orderId, sent: true, error: null });
+  }
+
   const webhook = process.env.WECHAT_WEBHOOK_URL;
   let sent = false;
   let error: string | undefined;

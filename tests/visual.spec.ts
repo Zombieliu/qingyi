@@ -17,6 +17,10 @@ const passkeyStub = {
 };
 
 test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => {
+    (window as typeof window & { __PW_VISUAL_TEST__?: boolean }).__PW_VISUAL_TEST__ = true;
+  });
+
   await page.addInitScript((value) => {
     window.localStorage.setItem("qy_passkey_wallet_v3", JSON.stringify(value));
   }, passkeyStub);

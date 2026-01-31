@@ -26,6 +26,7 @@
 - `POST /api/orders` → 企业微信机器人 Markdown 推送。需要 `WECHAT_WEBHOOK_URL`。
 - `POST /api/pay` → Ping++ 预生成支付 charge。需要 `PINGPP_API_KEY` 与 `PINGPP_APP_ID`。
   - 注意：当前前端未调用 `/api/pay`。
+- `POST /api/ledger/credit` → 管理员记账上链（Dubhe SDK）。需要链上相关环境变量。
 
 ## 5) PWA & Service Worker
 - Serwist InjectManifest: `src/app/sw.ts` 作为 SW 源文件，构建输出到 `public/sw.js`。
@@ -39,6 +40,13 @@
 - **Server-side**
   - `WECHAT_WEBHOOK_URL`: 订单推送企业微信机器人
   - `PINGPP_API_KEY`, `PINGPP_APP_ID`: Ping++ 支付
+  - `SUI_RPC_URL`: Sui RPC
+  - `SUI_NETWORK`: 网络标识（testnet/mainnet/devnet/localnet，可选）
+  - `SUI_ADMIN_PRIVATE_KEY`: 管理员私钥
+  - `SUI_PACKAGE_ID`: qy 合约 package id
+  - `SUI_DAPP_HUB_ID`: DappHub shared object id
+  - `SUI_DAPP_HUB_INITIAL_SHARED_VERSION`: DappHub shared version
+  - `LEDGER_ADMIN_TOKEN`: 记账接口管理员 token
 - **Client-side (NEXT_PUBLIC_*)**
   - `NEXT_PUBLIC_QR_PLATFORM_FEE`: 平台撮合费二维码
   - `NEXT_PUBLIC_QR_PLAYER_FEE`: 打手费用二维码
@@ -82,6 +90,7 @@
 ### API routes
 - `packages/app/src/app/api/orders/route.ts` — 订单推送企业微信。
 - `packages/app/src/app/api/pay/route.ts` — Ping++ charge 生成。
+- `packages/app/src/app/api/ledger/credit/route.ts` — 管理员记账上链（Sui SDK）。
 
 ### Shared components
 - `packages/app/src/app/components/passkey-wallet.tsx` — Passkey 创建/登录/找回（Sui Passkey）。
@@ -96,6 +105,14 @@
 - `packages/app/src/app/components/lobby-card.tsx` — 单个房间卡片 UI（未被引用）。
 - `packages/app/src/app/components/hero.tsx` — 营销 Hero UI（未被引用）。
 - `packages/app/src/app/components/features.tsx` — 功能亮点 UI（未被引用）。
+- `packages/app/src/lib/dubhe.ts` — Dubhe SDK 客户端与记账交易构建辅助。
+
+## packages/contracts (Move + Dubhe SDK)
+- `packages/contracts/package.json` — Dubhe CLI/SDK 脚本与依赖。
+- `packages/contracts/dubhe.config.ts` — Dubhe 配置源（可生成 `dubhe.config.json`）。
+- `packages/contracts/dubhe.config.json` — 资源表与索引配置。
+- `packages/contracts/metadata.json` — Dubhe SDK 使用的 Move metadata（需通过发布生成）。
+- `packages/contracts/deployment.ts` — Dubhe config-store 输出的部署常量。
 
 ### Tabs layout & pages
 - `packages/app/src/app/(tabs)/layout.tsx` — Tab 导航布局 + PasskeyGate。

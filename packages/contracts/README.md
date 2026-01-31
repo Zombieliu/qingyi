@@ -16,9 +16,15 @@ cd packages/contracts/src/qy
 sui move build
 ```
 
+## Dubhe SDK 产物
+
+- `dubhe.config.ts` 为配置源，`pnpm dubhe schemagen` 生成 `dubhe.config.json`
+- `pnpm dubhe publish --network` 生成/更新 `metadata.json`
+- `pnpm dubhe config-store --output-ts-path ./deployment.ts --network` 生成/更新部署常量
+
 ## Init
 
-- 部署 Dubhe + qy 后，调用 `qy::genesis::init` 初始化表。
+- 部署 Dubhe + qy 后，调用 `qy::genesis::init_dapp` 初始化表。
 - 需要传入 Dubhe `DappHub` 共享对象与 `Clock`。
 
 ## Notes

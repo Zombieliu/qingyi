@@ -6,6 +6,7 @@
 
 - `ruleset_system`：规则集注册（hash + 争议窗口 + 平台费率）
 - `ledger_system`：余额记账（管理员充值）
+- `credit_receipt`：充值回执表（幂等记账）
 - `order_system`：订单状态机与清算
 - `genesis`：初始化表
 - `events`：订单/结算事件
@@ -35,6 +36,7 @@ Cancelled: 仅允许 Created/Paid
 
 - ruleset: `rule_hash`, `dispute_window_ms`, `platform_fee_bps`
 - ledger_balance: `owner`, `available`
+- credit_receipt: `receipt_id`, `owner`, `amount`, `admin`, `timestamp_ms`
 - order: 订单全量字段（见 `sources/codegen/resources/order.move`）
 
 ## 前端调用清单（Move entry）
@@ -44,8 +46,12 @@ Cancelled: 仅允许 Created/Paid
   - **用途**：管理员创建规则集
 
 ### 余额记账
+- `qy::ledger_system::credit_balance_with_receipt(dapp_hub, owner, amount, receipt_id, clock)`
+  - **用途**：管理员在确认二维码付款后记账充值（带回执，幂等）
+  - **receipt_id**：建议使用支付平台订单号/交易号（UTF-8 字节）
+  - **clock**：Sui 时钟对象（`0x6`）
 - `qy::ledger_system::credit_balance(dapp_hub, owner, amount)`
-  - **用途**：管理员在收到二维码付款后，为用户记账充值
+  - **用途**：管理员在收到二维码付款后，为用户记账充值（不幂等，兼容）
 
 ### 订单流程
 - `qy::order_system::create_order(dapp_hub, order_id, companion, rule_set_id, service_fee, deposit, clock)`
@@ -106,9 +112,10 @@ tx.moveCall({
 - `qy::events::OrderResolved`
 - `qy::events::OrderFinalized`
 - `qy::events::BalanceCredited`
+- `qy::events::CreditReceiptRecorded`
 
 ## 注意事项
 
 - 本版本为“记账型”合约，**清算不可逆**；争议必须在 `dispute_window_ms` 内提出。
 - `resolve_dispute` 仅管理员可调用。
-- `credit_balance` 建议只由后端在确认二维码支付后触发。
+- 生产环境建议优先使用 `credit_balance_with_receipt`，避免重复记账。

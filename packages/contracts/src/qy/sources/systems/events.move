@@ -53,6 +53,13 @@ module qy::events {
     admin: address,
   }
 
+  public struct CreditReceiptRecorded has copy, drop {
+    owner: address,
+    amount: u64,
+    admin: address,
+    timestamp_ms: u64,
+  }
+
   public fun emit_order_created(order_id: u64, user: address, companion: address, rule_set_id: u64, service_fee: u64, deposit: u64) {
     event::emit(OrderCreated { order_id, user, companion, rule_set_id, service_fee, deposit });
   }
@@ -83,5 +90,9 @@ module qy::events {
 
   public fun emit_balance_credited(owner: address, amount: u64, admin: address) {
     event::emit(BalanceCredited { owner, amount, admin });
+  }
+
+  public fun emit_credit_receipt(owner: address, amount: u64, admin: address, timestamp_ms: u64) {
+    event::emit(CreditReceiptRecorded { owner, amount, admin, timestamp_ms });
   }
 }

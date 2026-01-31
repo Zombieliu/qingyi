@@ -2,6 +2,20 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Clock3, ShieldCheck, QrCode, Loader2, CheckCircle2 } from "lucide-react";
 import { addOrder, loadOrders, updateOrder, type LocalOrder } from "@/app/components/order-store";
+import {
+  type ChainOrder,
+  cancelOrderOnChain,
+  createChainOrderId,
+  createOrderOnChain,
+  fetchChainOrders,
+  finalizeNoDisputeOnChain,
+  getCurrentAddress,
+  isChainOrdersEnabled,
+  isVisualTestMode,
+  markCompletedOnChain,
+  payServiceFeeOnChain,
+  raiseDisputeOnChain,
+} from "@/lib/qy-chain";
 
 type RideItem = {
   name: string;
@@ -92,6 +106,12 @@ export default function Schedule() {
   });
   const [calling, setCalling] = useState(false);
   const [playerPaidTick, setPlayerPaidTick] = useState(false);
+  const [chainOrders, setChainOrders] = useState<ChainOrder[]>([]);
+  const [chainLoading, setChainLoading] = useState(false);
+  const [chainError, setChainError] = useState<string | null>(null);
+  const [chainToast, setChainToast] = useState<string | null>(null);
+  const [chainAction, setChainAction] = useState<string | null>(null);
+  const [chainAddress, setChainAddress] = useState("");
 
   const platformQr = process.env.NEXT_PUBLIC_QR_PLATFORM_FEE || "/qr/platform-fee-qr.svg";
   const playerQr = process.env.NEXT_PUBLIC_QR_PLAYER_FEE || "/qr/player-fee-qr.svg";
@@ -109,6 +129,31 @@ export default function Schedule() {
     return () => window.removeEventListener("orders-updated", handler);
   }, []);
 
+  const loadChain = async () => {
+    if (!isChainOrdersEnabled()) return;
+    const visualTest = isVisualTestMode();
+    try {
+      if (!visualTest) {
+        setChainLoading(true);
+      }
+      setChainError(null);
+      setChainAddress(getCurrentAddress());
+      const list = await fetchChainOrders();
+      setChainOrders(list);
+    } catch (e) {
+      setChainError((e as Error).message || "链上订单加载失败");
+    } finally {
+      if (!visualTest) {
+        setChainLoading(false);
+      }
+    }
+  };
+
+  useEffect(() => {
+    if (!isChainOrdersEnabled()) return;
+    loadChain();
+  }, []);
+
   const toggle = (name: string) => setChecked((p) => ({ ...p, [name]: !p[name] }));
   const pickedNames = Object.entries(checked)
     .filter(([, v]) => v)
@@ -122,6 +167,13 @@ export default function Schedule() {
     }, 0);
 
   const currentOrder = useMemo(() => orders.find((o) => o.status !== "取消") || null, [orders]);
+  const chainCurrentOrder = useMemo(() => {
+    const addr = chainAddress;
+    const list = addr
+      ? chainOrders.filter((o) => o.user === addr)
+      : chainOrders;
+    return list.length > 0 ? list[0] : null;
+  }, [chainOrders, chainAddress]);
 
   const playerDue = useMemo(() => {
     if (!currentOrder) return 0;
@@ -150,6 +202,64 @@ export default function Schedule() {
     window.dispatchEvent(new Event("orders-updated"));
     setMode("select");
   };
+
+  const statusLabel = (status: number) => {
+    switch (status) {
+      case 0:
+        return "已创建";
+      case 1:
+        return "已支付撮合费";
+      case 2:
+        return "押金已锁定";
+      case 3:
+        return "已完成待结算";
+      case 4:
+        return "争议中";
+      case 5:
+        return "已结算";
+      case 6:
+        return "已取消";
+      default:
+        return `未知状态(${status})`;
+    }
+  };
+
+  const formatAmount = (value: string) => {
+    const num = Number(value);
+    if (!Number.isFinite(num)) return value;
+    return (num / 100).toFixed(2);
+  };
+
+  const formatTime = (value: string) => {
+    const num = Number(value);
+    if (!Number.isFinite(num) || num <= 0) return "-";
+    return new Date(num).toLocaleString();
+  };
+
+  const runChainAction = async (key: string, action: () => Promise<{ digest: string }>, success: string) => {
+    try {
+      setChainAction(key);
+      await action();
+      setChainToast(success);
+      await loadChain();
+    } catch (e) {
+      setChainToast((e as Error).message || "链上操作失败");
+    } finally {
+      setChainAction(null);
+      setTimeout(() => setChainToast(null), 3000);
+    }
+  };
+
+  useEffect(() => {
+    if (!chainCurrentOrder) return;
+    if (!currentOrder || currentOrder.id !== chainCurrentOrder.orderId) return;
+    const patch: Partial<LocalOrder> = {};
+    if (chainCurrentOrder.status >= 1) patch.serviceFeePaid = true;
+    if (chainCurrentOrder.status >= 2) patch.depositPaid = true;
+    if (Object.keys(patch).length > 0) {
+      updateOrder(currentOrder.id, patch);
+    }
+  }, [chainCurrentOrder, currentOrder]);
 
   if (mode === "await-user-pay" && currentOrder?.driver) {
     return (
@@ -312,6 +422,18 @@ export default function Schedule() {
     }
     setCalling(true);
     try {
+      let chainOrderId: string | null = null;
+      let chainDigest: string | null = null;
+      if (isChainOrdersEnabled()) {
+        chainOrderId = createChainOrderId();
+        const chainResult = await createOrderOnChain({
+          orderId: chainOrderId,
+          serviceFee: locked.total,
+          deposit: 0,
+          autoPay: true,
+        });
+        chainDigest = chainResult.digest;
+      }
       const res = await fetch("/api/orders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -328,12 +450,13 @@ export default function Schedule() {
         throw new Error(data.error || "推送失败");
       }
       addOrder({
-        id: data.orderId || `${Date.now()}`,
+        id: chainOrderId || data.orderId || `${Date.now()}`,
         user: "安排页面",
         item: locked.items.join("、"),
         amount: locked.total,
         status: "待派单",
         time: new Date().toISOString(),
+        chainDigest: chainDigest || undefined,
         serviceFee: locked.service,
         serviceFeePaid: true,
         playerDue: locked.player,
@@ -342,7 +465,7 @@ export default function Schedule() {
       });
       setMode("notifying");
       setFeeOpen(false);
-      setToast("撮合费已记录，正在派单");
+      setToast(chainDigest ? "已上链并派单" : "撮合费已记录，正在派单");
     } catch (e) {
       setToast((e as Error).message);
     } finally {
@@ -353,6 +476,116 @@ export default function Schedule() {
 
   return (
     <div className="ride-shell">
+      {isChainOrdersEnabled() && (
+        <div className="dl-card" style={{ marginBottom: 12 }}>
+          <div className="flex items-center justify-between">
+            <div className="text-sm font-semibold text-gray-900">链上订单状态</div>
+            <button className="dl-tab-btn" style={{ padding: "6px 10px" }} onClick={loadChain}>
+              {chainLoading ? "刷新中..." : "刷新"}
+            </button>
+          </div>
+          <div className="text-xs text-gray-500 mt-2">
+            当前地址：{chainAddress ? `${chainAddress.slice(0, 6)}...${chainAddress.slice(-4)}` : "未登录"}
+          </div>
+          {chainError && <div className="mt-2 text-xs text-rose-500">{chainError}</div>}
+          {chainToast && <div className="mt-2 text-xs text-emerald-600">{chainToast}</div>}
+          {!chainCurrentOrder ? (
+            <div className="mt-2 text-xs text-gray-500">暂无链上订单</div>
+          ) : (
+            <div className="mt-3 text-xs text-gray-600">
+              <div>订单号：{chainCurrentOrder.orderId}</div>
+              <div>状态：{statusLabel(chainCurrentOrder.status)}</div>
+              <div>撮合费：¥{formatAmount(chainCurrentOrder.serviceFee)}</div>
+              <div>押金：¥{formatAmount(chainCurrentOrder.deposit)}</div>
+              <div>争议截止：{formatTime(chainCurrentOrder.disputeDeadline)}</div>
+              <div className="mt-2 flex gap-2 flex-wrap">
+                {chainCurrentOrder.status === 0 && (
+                  <button
+                    className="dl-tab-btn"
+                    style={{ padding: "6px 10px" }}
+                    disabled={chainAction === `pay-${chainCurrentOrder.orderId}`}
+                    onClick={() =>
+                      runChainAction(
+                        `pay-${chainCurrentOrder.orderId}`,
+                        () => payServiceFeeOnChain(chainCurrentOrder.orderId),
+                        "撮合费已上链"
+                      )
+                    }
+                  >
+                    支付撮合费
+                  </button>
+                )}
+                {(chainCurrentOrder.status === 0 || chainCurrentOrder.status === 1) && (
+                  <button
+                    className="dl-tab-btn"
+                    style={{ padding: "6px 10px" }}
+                    disabled={chainAction === `cancel-${chainCurrentOrder.orderId}`}
+                    onClick={() =>
+                      runChainAction(
+                        `cancel-${chainCurrentOrder.orderId}`,
+                        () => cancelOrderOnChain(chainCurrentOrder.orderId),
+                        "订单已取消"
+                      )
+                    }
+                  >
+                    取消订单
+                  </button>
+                )}
+                {chainCurrentOrder.status === 2 && (
+                  <button
+                    className="dl-tab-btn"
+                    style={{ padding: "6px 10px" }}
+                    disabled={chainAction === `complete-${chainCurrentOrder.orderId}`}
+                    onClick={() =>
+                      runChainAction(
+                        `complete-${chainCurrentOrder.orderId}`,
+                        () => markCompletedOnChain(chainCurrentOrder.orderId),
+                        "已确认完成"
+                      )
+                    }
+                  >
+                    确认完成
+                  </button>
+                )}
+                {chainCurrentOrder.status === 3 && (
+                  <>
+                    <button
+                      className="dl-tab-btn"
+                      style={{ padding: "6px 10px" }}
+                      disabled={chainAction === `dispute-${chainCurrentOrder.orderId}`}
+                      onClick={() => {
+                        const evidence = window.prompt("请输入争议说明或证据哈希（可留空）") || "";
+                        runChainAction(
+                          `dispute-${chainCurrentOrder.orderId}`,
+                          () => raiseDisputeOnChain(chainCurrentOrder.orderId, evidence),
+                          "已提交争议"
+                        );
+                      }}
+                    >
+                      发起争议
+                    </button>
+                    <button
+                      className="dl-tab-btn"
+                      style={{ padding: "6px 10px" }}
+                      disabled={chainAction === `finalize-${chainCurrentOrder.orderId}`}
+                      onClick={() =>
+                        runChainAction(
+                          `finalize-${chainCurrentOrder.orderId}`,
+                          () => finalizeNoDisputeOnChain(chainCurrentOrder.orderId),
+                          "订单已结算"
+                        )
+                      }
+                    >
+                      无争议结算
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {feeOpen && (
         <div className="ride-modal-mask" role="dialog" aria-modal="true">
           <div className="ride-modal">

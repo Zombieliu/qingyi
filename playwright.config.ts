@@ -1,7 +1,36 @@
+import fs from "node:fs";
+import path from "node:path";
 import { defineConfig, devices, type Project } from "@playwright/test";
+
+function loadEnvFile(filePath: string): Record<string, string> {
+  if (!fs.existsSync(filePath)) return {};
+  const content = fs.readFileSync(filePath, "utf8");
+  const env: Record<string, string> = {};
+  for (const rawLine of content.split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith("#")) continue;
+    const idx = line.indexOf("=");
+    if (idx <= 0) continue;
+    const key = line.slice(0, idx).trim();
+    let value = line.slice(idx + 1).trim();
+    if ((value.startsWith("\"") && value.endsWith("\"")) || (value.startsWith("'") && value.endsWith("'"))) {
+      value = value.slice(1, -1);
+    }
+    env[key] = value;
+  }
+  return env;
+}
+
+const envFromFile = loadEnvFile(path.resolve(__dirname, ".env.local"));
 
 const baseURL = process.env.PLAYWRIGHT_BASE_URL || "http://127.0.0.1:3000";
 const profile = process.env.PW_PROFILE || "full";
+const isVisualProfile = profile === "core" || profile === "full" || profile === "compat";
+const isChainProfile = profile === "chain";
+
+if (isChainProfile) {
+  process.env.E2E_RPC_LOG = process.env.E2E_RPC_LOG || "1";
+}
 
 const mobileUse = { isMobile: true, hasTouch: true };
 const bp = (name: string, width: number, height: number, use: Project["use"] = {}): Project => ({
@@ -121,10 +150,19 @@ const compatProjects: Project[] = [
   { name: "Desktop Firefox", use: { ...devices["Desktop Firefox"], browserName: "firefox" } },
 ];
 
+const chainProjects: Project[] = [
+  {
+    name: "Chain E2E - Chromium",
+    testMatch: "**/chain.e2e.spec.ts",
+    use: { ...devices["Desktop Chrome"], browserName: "chromium" },
+  },
+];
+
 const projectsByProfile: Record<string, Project[]> = {
   core: [...coreBreakpoints, ...coreDevices],
   full: [...coreBreakpoints, ...fullBreakpoints, ...coreDevices, ...fullDevices],
   compat: compatProjects,
+  chain: chainProjects,
 };
 
 export default defineConfig({
@@ -152,7 +190,13 @@ export default defineConfig({
   webServer: {
     command: "npm run dev --workspace app -- --hostname 127.0.0.1 --port 3000",
     url: baseURL,
-    reuseExistingServer: !process.env.CI,
+    env: {
+      ...envFromFile,
+      ...process.env,
+      ...(isVisualProfile ? { NEXT_PUBLIC_VISUAL_TEST: "1" } : { NEXT_PUBLIC_VISUAL_TEST: "0" }),
+      ...(isChainProfile ? { E2E_SKIP_WEBHOOK: "1", NEXT_PUBLIC_PASSKEY_AUTOMATION: "1" } : {}),
+    } as Record<string, string>,
+    reuseExistingServer: !process.env.CI && !isChainProfile,
     timeout: 120_000,
   },
   projects: projectsByProfile[profile] ?? projectsByProfile.full,

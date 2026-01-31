@@ -2,7 +2,38 @@
 # This file should be checked in.
 
 [move]
-version = 4
+version = 3
+manifest_digest = "62A985682B1F287A4744C6DA467E6F5098BFE5FD51CD13A18BC9A998A1A2A2CF"
+deps_digest = "3C4103934B1E040BB6B23F1D610B4EF9F2F1166A50A104EADCF77467C004C600"
+dependencies = [
+  { id = "Dubhe", name = "Dubhe" },
+  { id = "Sui", name = "Sui" },
+]
+
+[[move.package]]
+id = "Dubhe"
+source = { git = "https://github.com/0xobelisk/dubhe.git", rev = "v1.2.0-pre.93", subdir = "framework/src/dubhe" }
+
+dependencies = [
+  { id = "Sui", name = "Sui" },
+]
+
+[[move.package]]
+id = "MoveStdlib"
+source = { git = "https://github.com/MystenLabs/sui.git", rev = "mainnet-v1.46.3", subdir = "crates/sui-framework/packages/move-stdlib" }
+
+[[move.package]]
+id = "Sui"
+source = { git = "https://github.com/MystenLabs/sui.git", rev = "mainnet-v1.46.3", subdir = "crates/sui-framework/packages/sui-framework" }
+
+dependencies = [
+  { id = "MoveStdlib", name = "MoveStdlib" },
+]
+
+[move.toolchain-version]
+compiler-version = "1.61.2"
+edition = "2024"
+flavor = "sui"
 
 [pinned.testnet.Dubhe]
 source = { local = "../dubhe" }
@@ -27,3 +58,10 @@ source = { root = true }
 use_environment = "testnet"
 manifest_digest = "192E189E0B41899B794815FD2DF493E2FC3785F812D69288C3D28C9D7FF40BD1"
 deps = { Dubhe = "Dubhe", Sui = "Sui" }
+
+
+[env.testnet]
+chain-id = "4c78adac"
+original-published-id = "0x192b102df0f8aa41d03ce4023b66dc3db1711be1185a26105b017765eedcca42"
+latest-published-id = "0x192b102df0f8aa41d03ce4023b66dc3db1711be1185a26105b017765eedcca42"
+published-version = "1"

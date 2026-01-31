@@ -2,6 +2,7 @@
 
 # dependencies
 /node_modules
+**/node_modules/
 /.pnp
 .pnp.*
 .yarn/*
@@ -56,6 +57,13 @@ next-env.d.ts
 
 # build caches
 .turbo
+
+# pnpm store (just in case)
+**/.pnpm-store/
+
+# local admin data store
+.data/
+**/.data/
 
 # move / dubhe build artifacts
 **/build/

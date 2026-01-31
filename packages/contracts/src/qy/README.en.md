@@ -6,6 +6,7 @@ This package implements a **ledger-based** flow (no on-chain coins). It stores b
 
 - `ruleset_system`: register rulesets (hash + dispute window + platform fee)
 - `ledger_system`: admin credits balances
+- `credit_receipt`: credit receipts (idempotent credits)
 - `order_system`: order state machine & settlement
 - `genesis`: initialize tables
 - `events`: domain events
@@ -37,6 +38,10 @@ Dispute codes:
 - `qy::ruleset_system::create_ruleset(dapp_hub, rule_set_id, rule_hash, dispute_window_ms, platform_fee_bps)`
 
 ### Ledger
+- `qy::ledger_system::credit_balance_with_receipt(dapp_hub, owner, amount, receipt_id, clock)`
+  - **Use**: admin credit after QR payment (idempotent with receipt)
+  - **receipt_id**: use payment order/transaction id (UTF-8 bytes)
+  - **clock**: Sui clock object (`0x6`)
 - `qy::ledger_system::credit_balance(dapp_hub, owner, amount)`
 
 ### Order Flow
@@ -95,8 +100,10 @@ tx.moveCall({
 - `qy::events::OrderResolved`
 - `qy::events::OrderFinalized`
 - `qy::events::BalanceCredited`
+- `qy::events::CreditReceiptRecorded`
 
 ## Notes
 
 - This is a **ledger** model (no on-chain coins). All QR payments are confirmed off-chain and then credited on-chain by admin.
 - Disputes must be raised within `dispute_window_ms`.
+- For production, prefer `credit_balance_with_receipt` to avoid duplicate credits.

@@ -13,7 +13,7 @@ module qy::ruleset_system {
   }
 
   /// 管理员创建规则集 / Admin registers a ruleset by id.
-  public entry fun create_ruleset(
+  public fun create_ruleset(
     dapp_hub: &mut DappHub,
     rule_set_id: u64,
     rule_hash: vector<u8>,

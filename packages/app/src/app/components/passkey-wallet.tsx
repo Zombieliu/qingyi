@@ -25,14 +25,22 @@ export default function PasskeyWallet() {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const isAutomation = process.env.NEXT_PUBLIC_PASSKEY_AUTOMATION === "1";
 
   const providerOpts = useMemo<BrowserPasswordProviderOptions>(
     () => ({
       rpName: "情谊电竞",
       rpId: typeof window !== "undefined" ? window.location.hostname : undefined,
-      authenticatorSelection: { authenticatorAttachment: "platform", userVerification: "preferred" },
+      authenticatorSelection: isAutomation
+        ? {
+            authenticatorAttachment: "cross-platform",
+            residentKey: "preferred",
+            requireResidentKey: false,
+            userVerification: "preferred",
+          }
+        : { authenticatorAttachment: "platform", userVerification: "preferred" },
     }),
-    []
+    [isAutomation]
   );
 
   useEffect(() => {

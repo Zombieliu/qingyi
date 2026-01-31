@@ -1,0 +1,112 @@
+"use client";
+
+import { useState } from "react";
+import { Send, CheckCircle2, AlertCircle } from "lucide-react";
+
+export default function LedgerPage() {
+  const [form, setForm] = useState({
+    user: "",
+    amount: "",
+    receiptId: "",
+    note: "",
+  });
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState<string>("");
+  const [error, setError] = useState<string>("");
+
+  const submit = async () => {
+    setError("");
+    setResult("");
+    if (!form.user.trim() || !form.amount.trim() || !form.receiptId.trim()) {
+      setError("请填写 user / amount / receiptId");
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await fetch("/api/admin/ledger/credit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          user: form.user.trim(),
+          amount: form.amount.trim(),
+          receiptId: form.receiptId.trim(),
+          note: form.note.trim(),
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(data?.error || "写入失败");
+      } else {
+        setResult(`已写入链上，digest: ${data?.digest || ""}`.trim());
+        setForm({ user: "", amount: "", receiptId: "", note: "" });
+      }
+    } catch {
+      setError("网络错误，请稍后重试");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="admin-section">
+      <div className="admin-card">
+        <h3>链上记账（Dubhe）</h3>
+        <p>用于人工补记余额或对账后的链上记录写入。</p>
+        <div className="admin-form" style={{ marginTop: 12 }}>
+          <label className="admin-field">
+            用户地址
+            <input
+              className="admin-input"
+              placeholder="0x..."
+              value={form.user}
+              onChange={(event) => setForm((prev) => ({ ...prev, user: event.target.value }))}
+            />
+          </label>
+          <label className="admin-field">
+            金额（整数）
+            <input
+              className="admin-input"
+              placeholder="1000"
+              value={form.amount}
+              onChange={(event) => setForm((prev) => ({ ...prev, amount: event.target.value }))}
+            />
+          </label>
+          <label className="admin-field">
+            业务凭证号
+            <input
+              className="admin-input"
+              placeholder="pay_20260130_0001"
+              value={form.receiptId}
+              onChange={(event) => setForm((prev) => ({ ...prev, receiptId: event.target.value }))}
+            />
+          </label>
+          <label className="admin-field">
+            备注（可选）
+            <input
+              className="admin-input"
+              placeholder="补记说明"
+              value={form.note}
+              onChange={(event) => setForm((prev) => ({ ...prev, note: event.target.value }))}
+            />
+          </label>
+        </div>
+        <button className="admin-btn primary" style={{ marginTop: 16 }} onClick={submit} disabled={loading}>
+          <Send size={16} style={{ marginRight: 6 }} />
+          {loading ? "提交中..." : "写入链上"}
+        </button>
+        {result ? (
+          <div className="admin-badge" style={{ marginTop: 14 }}>
+            <CheckCircle2 size={14} />
+            {result}
+          </div>
+        ) : null}
+        {error ? (
+          <div className="admin-badge warm" style={{ marginTop: 14 }}>
+            <AlertCircle size={14} />
+            {error}
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+}

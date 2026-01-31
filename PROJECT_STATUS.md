@@ -8,11 +8,12 @@
 
 ## 2) 近期主要变更
 - 新增 qy Move 合约包：`packages/contracts/src/qy`
-  - 资源表：ruleset / ledger_balance / order
+  - 资源表：ruleset / ledger_balance / credit_receipt / order
   - 系统模块：ruleset_system / ledger_system / order_system / genesis / events
   - 中文 + 英文 README
 - 复制 Dubhe Move 包到：`packages/contracts/src/dubhe`（用于本地构建）
 - 新增链上记账 API：`packages/app/src/app/api/ledger/credit/route.ts`
+- 补齐 Dubhe SDK 产物结构：`packages/contracts/{package.json,metadata.json,deployment.ts,dubhe.config.ts}`
 - 新增 `vercel.json`（根目录）用于强制安装 optional 依赖，避免 lightningcss 报错
 - 新增 `.npmrc` 以确保 optional 依赖安装
 - `.gitignore` 新增忽略 Move/Dubhe 构建产物（build, Move.lock, *.mv, *.mvd）
@@ -27,10 +28,12 @@
   - Created -> Paid -> Deposited -> Completed -> (Disputed) -> Resolved
   - Cancelled 仅允许 Created / Paid
 - 备注：当前为“记账型”设计，不收币，仅维护余额数字
+- 新增：`credit_balance_with_receipt`（带回执幂等记账）
 
 ## 4) 前端/后端接口
 - 订单推送：`POST /api/orders`（企业微信机器人）
-- 记账写链：`POST /api/ledger/credit`（管理员鉴权 + Sui SDK 写链）
+- 记账写链：`POST /api/ledger/credit`（管理员鉴权 + Dubhe SDK 写链）
+  - 新增参数：`receiptId`（支付订单号/交易号，用于幂等）
 - 充值 QR：前端仍为双二维码手动勾选
 
 ## 5) Vercel 构建状态
@@ -44,6 +47,7 @@
 - 已有：`WECHAT_WEBHOOK_URL`
 - 新增（链上记账）：
   - `SUI_RPC_URL`
+  - `SUI_NETWORK`（可选）
   - `SUI_ADMIN_PRIVATE_KEY`
   - `SUI_PACKAGE_ID`
   - `SUI_DAPP_HUB_ID`

@@ -1,0 +1,73 @@
+{
+  "projectName": "qy",
+  "network": "testnet",
+  "startCheckpoint": "291949252",
+  "packageId": "0x192b102df0f8aa41d03ce4023b66dc3db1711be1185a26105b017765eedcca42",
+  "dappHub": "0xb65df6ea777f1ed0fb9a0d9173eec6b43f2ae1da4346af1b48f678d8af796379",
+  "upgradeCap": "0x33765d8008eb0b5e2a3936ecdd563e8d8766a2c9e3c320e297608cf0fa8c786d",
+  "version": 1,
+  "components": {},
+  "resources": {
+    "ruleset": {
+      "offchain": false,
+      "fields": {
+        "rule_set_id": "u64",
+        "rule_hash": "vector<u8>",
+        "dispute_window_ms": "u64",
+        "platform_fee_bps": "u64"
+      },
+      "keys": [
+        "rule_set_id"
+      ]
+    },
+    "ledger_balance": {
+      "offchain": false,
+      "fields": {
+        "owner": "address",
+        "available": "u64"
+      },
+      "keys": [
+        "owner"
+      ]
+    },
+    "credit_receipt": {
+      "offchain": false,
+      "fields": {
+        "receipt_id": "vector<u8>",
+        "owner": "address",
+        "amount": "u64",
+        "admin": "address",
+        "timestamp_ms": "u64"
+      },
+      "keys": [
+        "receipt_id"
+      ]
+    },
+    "order": {
+      "offchain": false,
+      "fields": {
+        "order_id": "u64",
+        "user": "address",
+        "companion": "address",
+        "rule_set_id": "u64",
+        "service_fee": "u64",
+        "deposit": "u64",
+        "platform_fee_bps": "u64",
+        "status": "u8",
+        "created_at": "u64",
+        "finish_at": "u64",
+        "dispute_deadline": "u64",
+        "vault_service": "u64",
+        "vault_deposit": "u64",
+        "evidence_hash": "vector<u8>",
+        "dispute_status": "u8",
+        "resolved_by": "address",
+        "resolved_at": "u64"
+      },
+      "keys": [
+        "order_id"
+      ]
+    }
+  },
+  "enums": {}
+}

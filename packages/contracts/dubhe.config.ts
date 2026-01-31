@@ -1,0 +1,62 @@
+import { DubheConfig } from "@0xobelisk/sui-common";
+
+export const dubheConfig = {
+  name: "qy",
+  description: "qingyi ledger contracts",
+  enums: {},
+  components: {},
+  resources: {
+    ruleset: {
+      offchain: false,
+      fields: {
+        rule_set_id: "u64",
+        rule_hash: "vector<u8>",
+        dispute_window_ms: "u64",
+        platform_fee_bps: "u64",
+      },
+      keys: ["rule_set_id"],
+    },
+    ledger_balance: {
+      offchain: false,
+      fields: {
+        owner: "address",
+        available: "u64",
+      },
+      keys: ["owner"],
+    },
+    credit_receipt: {
+      offchain: false,
+      fields: {
+        receipt_id: "vector<u8>",
+        owner: "address",
+        amount: "u64",
+        admin: "address",
+        timestamp_ms: "u64",
+      },
+      keys: ["receipt_id"],
+    },
+    order: {
+      offchain: false,
+      fields: {
+        order_id: "u64",
+        user: "address",
+        companion: "address",
+        rule_set_id: "u64",
+        service_fee: "u64",
+        deposit: "u64",
+        platform_fee_bps: "u64",
+        status: "u8",
+        created_at: "u64",
+        finish_at: "u64",
+        dispute_deadline: "u64",
+        vault_service: "u64",
+        vault_deposit: "u64",
+        evidence_hash: "vector<u8>",
+        dispute_status: "u8",
+        resolved_by: "address",
+        resolved_at: "u64",
+      },
+      keys: ["order_id"],
+    },
+  },
+} as DubheConfig;

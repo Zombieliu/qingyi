@@ -6,7 +6,6 @@ module qy::ruleset {
   use sui::bcs::{to_bytes};
   use sui::bcs;
   use std::ascii::{string, String};
-  use std::vector;
   use dubhe::dapp_system;
   use dubhe::dapp_service::DappHub;
   use qy::dapp_key;

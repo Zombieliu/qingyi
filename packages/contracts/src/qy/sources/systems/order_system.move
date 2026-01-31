@@ -18,7 +18,6 @@ module qy::order_system {
   use qy::events;
   use sui::clock::Clock;
   use sui::clock;
-  use std::vector;
 
   const STATUS_CREATED: u8 = 0;
   const STATUS_PAID: u8 = 1;
@@ -33,14 +32,13 @@ module qy::order_system {
   const DISPUTE_RESOLVED: u8 = 2;
 
   const E_ORDER_EXISTS: u64 = 20;
-  const E_ORDER_NOT_FOUND: u64 = 21;
   const E_BAD_STATUS: u64 = 22;
   const E_NOT_OWNER: u64 = 23;
   const E_DISPUTE_WINDOW: u64 = 24;
   const E_INVALID_BPS: u64 = 25;
 
   /// 创建订单 / Create an order with selected ruleset and pricing.
-  public entry fun create_order(
+  public fun create_order(
     dapp_hub: &mut DappHub,
     order_id: u64,
     companion: address,
@@ -81,37 +79,39 @@ module qy::order_system {
   }
 
   /// 用户支付服务费（扣减余额） / User pays service fee from ledger balance.
-  public entry fun pay_service_fee(dapp_hub: &mut DappHub, order_id: u64, ctx: &mut TxContext) {
+  public fun pay_service_fee(dapp_hub: &mut DappHub, order_id: u64, ctx: &mut TxContext) {
     order::ensure_has(dapp_hub, order_id);
     let mut ord = order::get_struct(dapp_hub, order_id);
     assert!(order::status(&ord) == STATUS_CREATED, E_BAD_STATUS);
     assert!(order::user(&ord) == ctx.sender(), E_NOT_OWNER);
 
-    ledger_system::debit_balance(dapp_hub, order::user(&ord), order::service_fee(&ord));
-    order::update_vault_service(&mut ord, order::service_fee(&ord));
+    let fee = order::service_fee(&ord);
+    let user = order::user(&ord);
+    ledger_system::debit_balance(dapp_hub, user, fee);
+    order::update_vault_service(&mut ord, fee);
     order::update_status(&mut ord, STATUS_PAID);
-    let paid_fee = order::service_fee(&ord);
     order::set_struct(dapp_hub, order_id, ord);
-    events::emit_order_paid(order_id, ctx.sender(), paid_fee);
+    events::emit_order_paid(order_id, ctx.sender(), fee);
   }
 
   /// 陪玩缴押金（扣减余额） / Companion locks deposit from ledger balance.
-  public entry fun lock_deposit(dapp_hub: &mut DappHub, order_id: u64, ctx: &mut TxContext) {
+  public fun lock_deposit(dapp_hub: &mut DappHub, order_id: u64, ctx: &mut TxContext) {
     order::ensure_has(dapp_hub, order_id);
     let mut ord = order::get_struct(dapp_hub, order_id);
     assert!(order::status(&ord) == STATUS_PAID, E_BAD_STATUS);
     assert!(order::companion(&ord) == ctx.sender(), E_NOT_OWNER);
 
-    ledger_system::debit_balance(dapp_hub, order::companion(&ord), order::deposit(&ord));
-    order::update_vault_deposit(&mut ord, order::deposit(&ord));
+    let deposit = order::deposit(&ord);
+    let companion = order::companion(&ord);
+    ledger_system::debit_balance(dapp_hub, companion, deposit);
+    order::update_vault_deposit(&mut ord, deposit);
     order::update_status(&mut ord, STATUS_DEPOSITED);
-    let locked_deposit = order::deposit(&ord);
     order::set_struct(dapp_hub, order_id, ord);
-    events::emit_deposit_locked(order_id, ctx.sender(), locked_deposit);
+    events::emit_deposit_locked(order_id, ctx.sender(), deposit);
   }
 
   /// 用户标记完成，开启争议窗口 / User marks order completed; opens dispute window.
-  public entry fun mark_completed(dapp_hub: &mut DappHub, order_id: u64, clock: &Clock, ctx: &mut TxContext) {
+  public fun mark_completed(dapp_hub: &mut DappHub, order_id: u64, clock: &Clock, ctx: &mut TxContext) {
     order::ensure_has(dapp_hub, order_id);
     let mut ord = order::get_struct(dapp_hub, order_id);
     assert!(order::status(&ord) == STATUS_DEPOSITED, E_BAD_STATUS);
@@ -128,7 +128,7 @@ module qy::order_system {
   }
 
   /// 争议期内任意一方可发起争议 / Either party can dispute within the dispute window.
-  public entry fun raise_dispute(
+  public fun raise_dispute(
     dapp_hub: &mut DappHub,
     order_id: u64,
     evidence_hash: vector<u8>,
@@ -153,7 +153,7 @@ module qy::order_system {
   }
 
   /// 争议期后可结算（收平台费） / Anyone can finalize after dispute window; applies platform fee.
-  public entry fun finalize_no_dispute(dapp_hub: &mut DappHub, order_id: u64, clock: &Clock) {
+  public fun finalize_no_dispute(dapp_hub: &mut DappHub, order_id: u64, clock: &Clock) {
     order::ensure_has(dapp_hub, order_id);
     let mut ord = order::get_struct(dapp_hub, order_id);
     assert!(order::status(&ord) == STATUS_COMPLETED, E_BAD_STATUS);
@@ -178,7 +178,7 @@ module qy::order_system {
   }
 
   /// 管理员裁决（支持部分退款） / Admin resolves dispute with refund/slash ratios (bps).
-  public entry fun resolve_dispute(
+  public fun resolve_dispute(
     dapp_hub: &mut DappHub,
     order_id: u64,
     service_refund_bps: u64,
@@ -212,7 +212,7 @@ module qy::order_system {
   }
 
   /// 用户在押金前取消 / User cancels before companion deposit; refunds service fee if paid.
-  public entry fun cancel_order(dapp_hub: &mut DappHub, order_id: u64, ctx: &mut TxContext) {
+  public fun cancel_order(dapp_hub: &mut DappHub, order_id: u64, ctx: &mut TxContext) {
     order::ensure_has(dapp_hub, order_id);
     let mut ord = order::get_struct(dapp_hub, order_id);
     assert!(order::user(&ord) == ctx.sender(), E_NOT_OWNER);

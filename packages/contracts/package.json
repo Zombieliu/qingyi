@@ -1,0 +1,22 @@
+{
+  "name": "contracts",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "account:gen": "pnpm dubhe generate-key",
+    "check-balance": "pnpm dubhe check-balance --network",
+    "config:store": "pnpm dubhe config-store --output-ts-path ./deployment.ts --network",
+    "deploy": "pnpm dubhe publish --network",
+    "faucet": "pnpm dubhe faucet --network",
+    "indexer": "dubhe-channel --database-url postgres://postgres:postgres@localhost:5432/postgres --checkpoint-url .chk --config-json dubhe.config.json",
+    "schemagen": "pnpm dubhe schemagen",
+    "setup:localnet": "pnpm account:gen && pnpm faucet localnet && pnpm run deploy localnet && pnpm run config:store localnet && pnpm run indexer --force",
+    "setup:testnet": "pnpm account:gen && pnpm check-balance testnet && pnpm run deploy testnet && pnpm run config:store testnet && pnpm run indexer --force"
+  },
+  "dependencies": {
+    "@0xobelisk/sui-cli": "^1.2.0-pre.86",
+    "@0xobelisk/sui-client": "^1.2.0-pre.86",
+    "@0xobelisk/sui-common": "^1.2.0-pre.86",
+    "dotenv": "^16.4.5"
+  }
+}

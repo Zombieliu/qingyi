@@ -1,0 +1,87 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { ShieldCheck, KeyRound } from "lucide-react";
+
+export default function AdminLoginPage() {
+  const router = useRouter();
+  const [token, setToken] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setError("");
+    if (!token.trim()) {
+      setError("请输入后台密钥");
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await fetch("/api/admin/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: token.trim() }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(data?.error || "登录失败，请检查密钥");
+        return;
+      }
+      router.push("/admin");
+    } catch {
+      setError("网络异常，请稍后再试");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="admin-login">
+      <div className="admin-card admin-login-card">
+        <div className="admin-topbar" style={{ marginBottom: 18 }}>
+          <div>
+            <h2 className="admin-title">运营管理后台</h2>
+            <p className="admin-subtitle">使用后台密钥登录，开始订单与运营管理</p>
+          </div>
+        </div>
+        <div className="admin-chip" style={{ marginBottom: 14 }}>
+          <ShieldCheck size={14} />
+          ADMIN_DASH_TOKEN / LEDGER_ADMIN_TOKEN
+        </div>
+        <form className="admin-form" onSubmit={handleSubmit}>
+          <label className="admin-field">
+            后台密钥
+            <div style={{ position: "relative" }}>
+              <KeyRound
+                size={16}
+                style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "#64748b" }}
+              />
+              <input
+                className="admin-input"
+                style={{ paddingLeft: 36 }}
+                type="password"
+                placeholder="请输入 ADMIN_DASH_TOKEN"
+                value={token}
+                onChange={(event) => setToken(event.target.value)}
+              />
+            </div>
+          </label>
+          {error ? (
+            <div className="admin-badge warm" style={{ alignSelf: "flex-start" }}>
+              {error}
+            </div>
+          ) : null}
+          <button className="admin-btn primary" type="submit" disabled={loading}>
+            {loading ? "登录中..." : "进入后台"}
+          </button>
+        </form>
+        <div style={{ marginTop: 18, fontSize: 12, color: "#64748b", lineHeight: 1.6 }}>
+          提示：在 `.env.local` 中设置 `ADMIN_DASH_TOKEN`。如未设置，将回退使用
+          `LEDGER_ADMIN_TOKEN`。
+        </div>
+      </div>
+    </div>
+  );
+}
