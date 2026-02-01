@@ -5,6 +5,9 @@ export type SupportStatus = "待处理" | "处理中" | "已完成";
 export type CouponStatus = "可用" | "停用" | "已过期";
 export type InvoiceStatus = "待审核" | "已开票" | "已拒绝";
 export type GuardianStatus = "待审核" | "面试中" | "已通过" | "已拒绝";
+export type MembershipTierStatus = "上架" | "下架";
+export type MemberStatus = "有效" | "已过期" | "待开通";
+export type MembershipRequestStatus = "待审核" | "已通过" | "已拒绝";
 export type AdminRole = "admin" | "ops" | "finance" | "viewer";
 
 export interface AdminSession {
@@ -147,6 +150,48 @@ export interface AdminGuardianApplication {
   updatedAt?: number;
 }
 
+export interface AdminMembershipTier {
+  id: string;
+  name: string;
+  level: number;
+  badge?: string;
+  price?: number;
+  durationDays?: number;
+  minPoints?: number;
+  status: MembershipTierStatus;
+  perks?: Array<{ label: string; desc?: string }> | string[];
+  createdAt: number;
+  updatedAt?: number;
+}
+
+export interface AdminMember {
+  id: string;
+  userAddress?: string;
+  userName?: string;
+  tierId?: string;
+  tierName?: string;
+  points?: number;
+  status: MemberStatus;
+  expiresAt?: number;
+  note?: string;
+  createdAt: number;
+  updatedAt?: number;
+}
+
+export interface AdminMembershipRequest {
+  id: string;
+  userAddress?: string;
+  userName?: string;
+  contact?: string;
+  tierId?: string;
+  tierName?: string;
+  status: MembershipRequestStatus;
+  note?: string;
+  meta?: Record<string, unknown>;
+  createdAt: number;
+  updatedAt?: number;
+}
+
 export interface AdminStore {
   orders: AdminOrder[];
   players: AdminPlayer[];
@@ -158,6 +203,9 @@ export interface AdminStore {
   coupons: AdminCoupon[];
   invoiceRequests: AdminInvoiceRequest[];
   guardianApplications: AdminGuardianApplication[];
+  membershipTiers: AdminMembershipTier[];
+  members: AdminMember[];
+  membershipRequests: AdminMembershipRequest[];
 }
 
 export const ORDER_STAGE_OPTIONS: OrderStage[] = ["待处理", "已确认", "进行中", "已完成", "已取消"];
@@ -167,4 +215,7 @@ export const SUPPORT_STATUS_OPTIONS: SupportStatus[] = ["待处理", "处理中"
 export const COUPON_STATUS_OPTIONS: CouponStatus[] = ["可用", "停用", "已过期"];
 export const INVOICE_STATUS_OPTIONS: InvoiceStatus[] = ["待审核", "已开票", "已拒绝"];
 export const GUARDIAN_STATUS_OPTIONS: GuardianStatus[] = ["待审核", "面试中", "已通过", "已拒绝"];
+export const MEMBERSHIP_TIER_STATUS_OPTIONS: MembershipTierStatus[] = ["上架", "下架"];
+export const MEMBER_STATUS_OPTIONS: MemberStatus[] = ["有效", "已过期", "待开通"];
+export const MEMBERSHIP_REQUEST_STATUS_OPTIONS: MembershipRequestStatus[] = ["待审核", "已通过", "已拒绝"];
 export const ADMIN_ROLE_OPTIONS: AdminRole[] = ["admin", "ops", "finance", "viewer"];

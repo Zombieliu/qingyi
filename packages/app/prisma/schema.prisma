@@ -179,3 +179,55 @@ model AdminGuardianApplication {
   @@index([createdAt])
   @@index([status])
 }
+
+model AdminMembershipTier {
+  id           String   @id
+  name         String
+  level        Int
+  badge        String?
+  price        Float?
+  durationDays Int?
+  minPoints    Int?
+  status       String
+  perks        Json?
+  createdAt    DateTime
+  updatedAt    DateTime?
+
+  @@index([status])
+  @@index([level])
+}
+
+model AdminMember {
+  id          String   @id
+  userAddress String?
+  userName    String?
+  tierId      String?
+  tierName    String?
+  points      Int?
+  status      String
+  expiresAt   DateTime?
+  note        String?
+  createdAt   DateTime
+  updatedAt   DateTime?
+
+  @@index([status])
+  @@index([tierId])
+  @@index([userAddress])
+}
+
+model AdminMembershipRequest {
+  id          String   @id
+  userAddress String?
+  userName    String?
+  contact     String?
+  tierId      String?
+  tierName    String?
+  status      String
+  note        String?
+  meta        Json?
+  createdAt   DateTime
+  updatedAt   DateTime?
+
+  @@index([status])
+  @@index([tierId])
+}
