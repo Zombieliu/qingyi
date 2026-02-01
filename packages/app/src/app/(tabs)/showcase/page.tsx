@@ -92,10 +92,10 @@ export default function Showcase() {
   const complete = async (id: string) => {
     await patchOrder(id, {
       status: "已完成",
+      driver: undefined,
       time: new Date().toISOString(),
       userAddress: getCurrentAddress(),
     });
-    await deleteOrder(id, getCurrentAddress());
     await refreshOrders();
   };
 
@@ -163,6 +163,8 @@ export default function Showcase() {
     chainAddress && chainAddress.length > 0
       ? chainOrders.filter((o) => o.user === chainAddress || o.companion === chainAddress)
       : chainOrders;
+
+  const visibleOrders = orders.filter((o) => !o.status.includes("完成") && !o.status.includes("取消"));
 
   return (
     <div className="dl-shell">
@@ -311,11 +313,11 @@ export default function Showcase() {
         </div>
       )}
 
-      {orders.length === 0 ? (
+      {visibleOrders.length === 0 ? (
         <div className="dl-card text-sm text-slate-500">暂无呼叫记录，去首页/安排页选择服务吧。</div>
       ) : (
         <div className="space-y-3">
-          {orders.map((o, idx) =>
+          {visibleOrders.map((o, idx) =>
             o.driver ? (
               <div key={`${o.id}-${idx}`} className="dl-card" style={{ padding: 14, borderColor: "#fed7aa", background: "#fff7ed" }}>
                 <div className="flex items-center gap-2 text-amber-600 text-sm font-semibold">
