@@ -80,6 +80,14 @@ npm run test:flow -- --chain
 npm run test:flow -- --ledger
 ```
 
+### 5.1 后台 UI E2E（Playwright）
+```bash
+npm run test:admin:e2e
+```
+说明：
+- 需要 `.env.local` 中配置 `ADMIN_DASH_TOKEN` 或 `LEDGER_ADMIN_TOKEN`
+- 会自动启动/复用本地 dev server，并在后台完成订单/公告/打手的完整操作
+
 ## 6. 链上流程（可选）
 需要 `.env.local` 中配置：
 ```

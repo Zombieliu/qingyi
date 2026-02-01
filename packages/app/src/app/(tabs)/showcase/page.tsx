@@ -73,7 +73,7 @@ export default function Showcase() {
         phone: "138****0000",
         price: 63,
       },
-      userAddress: chainAddress,
+      userAddress: getCurrentAddress(),
     });
     await refreshOrders();
   };
@@ -83,9 +83,9 @@ export default function Showcase() {
       status: "取消",
       driver: undefined,
       time: new Date().toISOString(),
-      userAddress: chainAddress,
+      userAddress: getCurrentAddress(),
     });
-    await deleteOrder(id, chainAddress);
+    await deleteOrder(id, getCurrentAddress());
     await refreshOrders();
   };
 
@@ -93,16 +93,16 @@ export default function Showcase() {
     await patchOrder(id, {
       status: "已完成",
       time: new Date().toISOString(),
-      userAddress: chainAddress,
+      userAddress: getCurrentAddress(),
     });
-    await deleteOrder(id, chainAddress);
+    await deleteOrder(id, getCurrentAddress());
     await refreshOrders();
   };
 
   const clearAll = async () => {
     if (!orders.length) return;
     for (const order of orders) {
-      await deleteOrder(order.id, chainAddress);
+      await deleteOrder(order.id, getCurrentAddress());
     }
     await refreshOrders();
   };

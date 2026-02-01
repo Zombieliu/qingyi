@@ -190,7 +190,7 @@ export default function Schedule() {
 
   const cancelOrder = async () => {
     if (!currentOrder) return;
-    await deleteOrder(currentOrder.id, chainAddress);
+    await deleteOrder(currentOrder.id, getCurrentAddress());
     await refreshOrders();
     setMode("select");
   };
@@ -249,7 +249,7 @@ export default function Schedule() {
     if (chainCurrentOrder.status >= 1) patch.serviceFeePaid = true;
     if (chainCurrentOrder.status >= 2) patch.depositPaid = true;
     if (Object.keys(patch).length > 0) {
-      patchOrder(currentOrder.id, { ...patch, userAddress: chainAddress });
+      patchOrder(currentOrder.id, { ...patch, userAddress: getCurrentAddress() });
       refreshOrders();
     }
   }, [chainCurrentOrder, currentOrder]);
@@ -322,7 +322,7 @@ export default function Schedule() {
                   setTimeout(() => setToast(null), 2000);
                   return;
                 }
-                await patchOrder(currentOrder.id, { playerPaid: true, status: "打手费已付", userAddress: chainAddress });
+                await patchOrder(currentOrder.id, { playerPaid: true, status: "打手费已付", userAddress: getCurrentAddress() });
                 await refreshOrders();
                 setMode("enroute");
               }}
@@ -431,7 +431,7 @@ export default function Schedule() {
       const result = await createOrder({
         id: chainOrderId || `${Date.now()}`,
         user: "安排页面",
-        userAddress: chainAddress,
+        userAddress: getCurrentAddress(),
         item: locked.items.join("、"),
         amount: locked.total,
         status: "待派单",

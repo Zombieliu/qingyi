@@ -7,6 +7,7 @@ This repository is now a workspace root. The Next.js app lives in `packages/app`
 - `npm run build` – build the app
 - `npm run lint` – lint the app
 - `npm run test:flow` – run local flow smoke checks (API/admin; optional chain)
+- `npm run test:admin:e2e` – run admin UI E2E (Playwright)
 - `npm run test:chain:script` – run chain end-to-end script (requires SUI keys)
 - `npm run db:push --workspace app` – apply Prisma schema to local Postgres
 - `npm run db:seed --workspace app` – seed local Postgres data

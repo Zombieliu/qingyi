@@ -158,11 +158,20 @@ const chainProjects: Project[] = [
   },
 ];
 
+const adminProjects: Project[] = [
+  {
+    name: "Admin E2E - Chromium",
+    testMatch: "**/admin.e2e.spec.ts",
+    use: { ...devices["Desktop Chrome"], browserName: "chromium" },
+  },
+];
+
 const projectsByProfile: Record<string, Project[]> = {
   core: [...coreBreakpoints, ...coreDevices],
   full: [...coreBreakpoints, ...fullBreakpoints, ...coreDevices, ...fullDevices],
   compat: compatProjects,
   chain: chainProjects,
+  admin: adminProjects,
 };
 
 export default defineConfig({
