@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Megaphone, Pencil, PlusCircle } from "lucide-react";
+import { Megaphone, Pencil, PlusCircle, Trash2, Archive } from "lucide-react";
 import type { AdminAnnouncement, AnnouncementStatus } from "@/lib/admin-types";
 import { ANNOUNCEMENT_STATUS_OPTIONS } from "@/lib/admin-types";
 
@@ -79,6 +79,26 @@ export default function AnnouncementsPage() {
       content: item.content,
       status: item.status,
     });
+  };
+
+  const updateStatus = async (id: string, status: AnnouncementStatus) => {
+    const res = await fetch(`/api/admin/announcements/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status }),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      setAnnouncements((prev) => prev.map((item) => (item.id === id ? data : item)));
+    }
+  };
+
+  const removeItem = async (id: string) => {
+    if (!confirm("确定要删除该公告吗？")) return;
+    const res = await fetch(`/api/admin/announcements/${id}`, { method: "DELETE" });
+    if (res.ok) {
+      setAnnouncements((prev) => prev.filter((item) => item.id !== id));
+    }
   };
 
   return (
@@ -169,10 +189,27 @@ export default function AnnouncementsPage() {
                       {item.content || "（无正文）"}
                     </div>
                   </div>
-                  <button className="admin-btn ghost" onClick={() => handleEdit(item)}>
-                    <Pencil size={14} style={{ marginRight: 4 }} />
-                    编辑
-                  </button>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    <button className="admin-btn ghost" onClick={() => handleEdit(item)}>
+                      <Pencil size={14} style={{ marginRight: 4 }} />
+                      编辑
+                    </button>
+                    {item.status !== "archived" ? (
+                      <button className="admin-btn ghost" onClick={() => updateStatus(item.id, "archived")}>
+                        <Archive size={14} style={{ marginRight: 4 }} />
+                        归档
+                      </button>
+                    ) : (
+                      <button className="admin-btn ghost" onClick={() => updateStatus(item.id, "draft")}>
+                        <Archive size={14} style={{ marginRight: 4 }} />
+                        取消归档
+                      </button>
+                    )}
+                    <button className="admin-btn ghost" onClick={() => removeItem(item.id)}>
+                      <Trash2 size={14} style={{ marginRight: 4 }} />
+                      删除
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}

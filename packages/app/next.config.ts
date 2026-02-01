@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import path from "path";
 import withSerwistInit from "@serwist/next";
 
 const withSerwist = withSerwistInit({
@@ -13,6 +14,7 @@ const withSerwist = withSerwistInit({
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   transpilePackages: ["contracts"],
+  outputFileTracingRoot: path.resolve(process.cwd()),
   images: {
     remotePatterns: [
       {

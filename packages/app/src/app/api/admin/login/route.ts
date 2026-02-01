@@ -1,10 +1,15 @@
 import { NextResponse } from "next/server";
-import { getAdminSecret } from "@/lib/admin-auth";
+import {
+  ADMIN_SESSION_COOKIE,
+  createAdminSession,
+  enforceLoginRateLimit,
+  getAdminRoleForToken,
+} from "@/lib/admin-auth";
+import { recordAudit } from "@/lib/admin-audit";
 
 export async function POST(req: Request) {
-  const secret = getAdminSecret();
-  if (!secret) {
-    return NextResponse.json({ error: "ADMIN_DASH_TOKEN 未配置" }, { status: 500 });
+  if (!enforceLoginRateLimit(req)) {
+    return NextResponse.json({ error: "登录过于频繁" }, { status: 429 });
   }
 
   let body: { token?: string } = {};
@@ -15,18 +20,32 @@ export async function POST(req: Request) {
   }
 
   const token = body.token?.trim();
-  if (!token || token !== secret) {
+  if (!token) {
     return NextResponse.json({ error: "密钥错误" }, { status: 401 });
   }
 
-  const response = NextResponse.json({ ok: true });
+  const roleEntry = getAdminRoleForToken(token);
+  if (!roleEntry) {
+    return NextResponse.json({ error: "密钥错误" }, { status: 401 });
+  }
+
+  const sessionResult = await createAdminSession({
+    role: roleEntry.role,
+    label: roleEntry.label,
+    ip: req.headers.get("x-forwarded-for")?.split(",")[0]?.trim(),
+    userAgent: req.headers.get("user-agent") || undefined,
+  });
+
+  const response = NextResponse.json({ ok: true, role: roleEntry.role });
+  await recordAudit(req, { role: roleEntry.role, sessionId: sessionResult.session.id, authType: "login" }, "auth.login");
   response.cookies.set({
-    name: "admin_token",
-    value: token,
+    name: ADMIN_SESSION_COOKIE,
+    value: sessionResult.token,
     httpOnly: true,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
     path: "/",
+    maxAge: 60 * 60 * Number(process.env.ADMIN_SESSION_TTL_HOURS || "12"),
   });
   return response;
 }

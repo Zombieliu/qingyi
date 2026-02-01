@@ -1,18 +1,26 @@
 import { NextResponse } from "next/server";
 import crypto from "crypto";
 import { requireAdmin } from "@/lib/admin-auth";
-import { addOrder, listOrders } from "@/lib/admin-store";
+import { addOrder, queryOrders } from "@/lib/admin-store";
+import { recordAudit } from "@/lib/admin-audit";
 import type { AdminOrder, OrderStage } from "@/lib/admin-types";
 
-export async function GET() {
-  const auth = await requireAdmin();
+export async function GET(req: Request) {
+  const auth = await requireAdmin(req, { role: "viewer" });
   if (!auth.ok) return auth.response;
-  const orders = await listOrders();
-  return NextResponse.json(orders);
+  const { searchParams } = new URL(req.url);
+  const page = Math.max(1, Number(searchParams.get("page") || "1"));
+  const pageSize = Math.min(200, Math.max(5, Number(searchParams.get("pageSize") || "20")));
+  const stage = searchParams.get("stage") || undefined;
+  const q = searchParams.get("q") || undefined;
+  const paymentStatus = searchParams.get("paymentStatus") || undefined;
+  const assignedTo = searchParams.get("assignedTo") || undefined;
+  const result = await queryOrders({ page, pageSize, stage, q, paymentStatus, assignedTo });
+  return NextResponse.json(result);
 }
 
 export async function POST(req: Request) {
-  const auth = await requireAdmin();
+  const auth = await requireAdmin(req, { role: "ops" });
   if (!auth.ok) return auth.response;
 
   let body: Partial<AdminOrder> = {};
@@ -41,5 +49,9 @@ export async function POST(req: Request) {
   };
 
   await addOrder(order);
+  await recordAudit(req, auth, "orders.create", "order", order.id, {
+    amount: order.amount,
+    source: order.source,
+  });
   return NextResponse.json(order, { status: 201 });
 }

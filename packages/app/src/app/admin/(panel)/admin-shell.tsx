@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import type { ElementType } from "react";
 import {
   LayoutGrid,
   ClipboardList,
@@ -11,14 +12,22 @@ import {
   Wallet,
   LogOut,
   Menu,
+  Link2,
+  FileText,
+  CreditCard,
 } from "lucide-react";
 
-const navItems = [
-  { href: "/admin", label: "运营概览", icon: LayoutGrid },
-  { href: "/admin/orders", label: "订单调度", icon: ClipboardList },
-  { href: "/admin/players", label: "打手管理", icon: Users },
-  { href: "/admin/announcements", label: "公告资讯", icon: Megaphone },
-  { href: "/admin/ledger", label: "链上记账", icon: Wallet },
+type AdminRole = "admin" | "ops" | "finance" | "viewer";
+
+const navItems: Array<{ href: string; label: string; icon: ElementType; minRole: AdminRole }> = [
+  { href: "/admin", label: "运营概览", icon: LayoutGrid, minRole: "viewer" },
+  { href: "/admin/orders", label: "订单调度", icon: ClipboardList, minRole: "ops" },
+  { href: "/admin/players", label: "打手管理", icon: Users, minRole: "ops" },
+  { href: "/admin/announcements", label: "公告资讯", icon: Megaphone, minRole: "ops" },
+  { href: "/admin/ledger", label: "链上记账", icon: Wallet, minRole: "finance" },
+  { href: "/admin/chain", label: "链上对账", icon: Link2, minRole: "finance" },
+  { href: "/admin/payments", label: "支付事件", icon: CreditCard, minRole: "finance" },
+  { href: "/admin/audit", label: "审计日志", icon: FileText, minRole: "admin" },
 ];
 
 const subtitles: Record<string, string> = {
@@ -27,17 +36,55 @@ const subtitles: Record<string, string> = {
   "/admin/players": "打手档案、状态与接单能力",
   "/admin/announcements": "公告与资讯统一发布",
   "/admin/ledger": "充值记账与链上凭证",
+  "/admin/chain": "链上订单对账与争议裁决",
+  "/admin/payments": "支付回调记录与核验",
+  "/admin/audit": "后台关键操作审计",
 };
+
+function roleRank(role: AdminRole) {
+  switch (role) {
+    case "admin":
+      return 4;
+    case "finance":
+      return 3;
+    case "ops":
+      return 2;
+    default:
+      return 1;
+  }
+}
 
 export default function AdminShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [role, setRole] = useState<AdminRole>("viewer");
 
-  const active = useMemo(
-    () => navItems.find((item) => pathname === item.href) || navItems[0],
-    [pathname]
+  const visibleNav = useMemo(
+    () => navItems.filter((item) => roleRank(role) >= roleRank(item.minRole)),
+    [role]
   );
+  const active = useMemo(
+    () => visibleNav.find((item) => pathname === item.href) || visibleNav[0] || navItems[0],
+    [pathname, visibleNav]
+  );
+
+  useEffect(() => {
+    const loadRole = async () => {
+      const res = await fetch("/api/admin/me");
+      if (res.ok) {
+        const data = await res.json().catch(() => ({}));
+        if (data?.role) setRole(data.role as AdminRole);
+        const expiresAt = Number(data?.expiresAt || 0);
+        if (expiresAt && expiresAt - Date.now() < 30 * 60 * 1000) {
+          await fetch("/api/admin/refresh", { method: "POST" });
+        }
+      } else if (res.status === 401) {
+        router.push("/admin/login");
+      }
+    };
+    loadRole();
+  }, []);
 
   const handleLogout = async () => {
     await fetch("/api/admin/logout", { method: "POST" });
@@ -62,7 +109,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
           </div>
         </div>
         <nav className="admin-nav">
-          {navItems.map((item) => {
+          {visibleNav.map((item) => {
             const Icon = item.icon;
             const isActive = pathname === item.href;
             return (
@@ -79,7 +126,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
           })}
         </nav>
         <div className="admin-sidebar-footer">
-          <div>当前权限：管理员</div>
+          <div>当前权限：{role}</div>
           <button className="admin-btn secondary" onClick={handleLogout}>
             <LogOut size={16} style={{ marginRight: 6 }} />
             退出登录

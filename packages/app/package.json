@@ -6,7 +6,17 @@
     "dev": "next dev --webpack",
     "build": "next build --webpack",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "prisma": "prisma",
+    "db:push": "prisma db push",
+    "db:migrate": "prisma migrate dev",
+    "db:deploy": "prisma migrate deploy",
+    "db:generate": "prisma generate",
+    "postinstall": "prisma generate",
+    "db:seed": "prisma db seed"
+  },
+  "prisma": {
+    "seed": "node prisma/seed.mjs"
   },
   "dependencies": {
     "@0xobelisk/sui-client": "^1.2.0-pre.86",
@@ -14,6 +24,7 @@
     "@serwist/next": "^9.5.0",
     "@serwist/precaching": "^9.5.0",
     "@serwist/sw": "^9.5.0",
+    "@prisma/client": "^5.19.1",
     "contracts": "file:../contracts",
     "lucide-react": "^0.563.0",
     "next": "16.1.5",
@@ -21,6 +32,7 @@
     "react-dom": "19.2.3"
   },
   "devDependencies": {
+    "prisma": "^5.19.1",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",

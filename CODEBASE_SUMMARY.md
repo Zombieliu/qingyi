@@ -1,8 +1,8 @@
-# 情谊电竞 / Delta Monorepo — Codebase Summary (generated 2026-01-29)
+# 情谊电竞 / Delta Monorepo — Codebase Summary (generated 2026-02-01)
 
 ## 1) Quick overview
 - **Repo type**: npm workspaces monorepo with a single Next.js app in `packages/app`.
-- **Product**: 情谊电竞 PWA for《三角洲行动》陪玩/组队调度，含 Passkey 登录、下单/派单、充值与信息展示。
+- **Product**: 情谊电竞 PWA for《三角洲行动》陪玩/组队调度，含 Passkey 登录、下单/派单、充值与信息展示，并内置轻量运营后台。
 - **Runtime**: Next.js 16 App Router, React 19, TypeScript, Tailwind v4 + custom CSS classes, Serwist PWA, Lucide icons, Mysten Sui Passkey.
 
 ## 2) Key user flows (logic-level)
@@ -27,6 +27,8 @@
 - `POST /api/pay` → Ping++ 预生成支付 charge。需要 `PINGPP_API_KEY` 与 `PINGPP_APP_ID`。
   - 注意：当前前端未调用 `/api/pay`。
 - `POST /api/ledger/credit` → 管理员记账上链（Dubhe SDK）。需要链上相关环境变量。
+- `POST /api/pay/webhook` → 支付回调记录与校验（Ping++ 签名或自定义 token）。
+- `/api/admin/*` → 运营后台接口（登录、会话、订单、打手、公告、链上对账、支付事件、审计、导出）。
 
 ## 5) PWA & Service Worker
 - Serwist InjectManifest: `src/app/sw.ts` 作为 SW 源文件，构建输出到 `public/sw.js`。
@@ -47,6 +49,10 @@
   - `SUI_DAPP_HUB_ID`: DappHub shared object id
   - `SUI_DAPP_HUB_INITIAL_SHARED_VERSION`: DappHub shared version
   - `LEDGER_ADMIN_TOKEN`: 记账接口管理员 token
+  - `ADMIN_DASH_TOKEN`, `ADMIN_TOKENS`, `ADMIN_TOKENS_JSON`: 后台密钥（角色）
+  - `ADMIN_SESSION_TTL_HOURS`, `ADMIN_RATE_LIMIT_MAX`, `ADMIN_LOGIN_RATE_LIMIT_MAX`: 后台会话/限流
+  - `ADMIN_AUDIT_LOG_LIMIT`, `ADMIN_PAYMENT_EVENT_LIMIT`, `ADMIN_CHAIN_EVENT_LIMIT`: 后台存储上限
+  - `PINGPP_WEBHOOK_PUBLIC_KEY`, `PINGPP_WEBHOOK_SECRET`, `PINGPP_WEBHOOK_TOKEN`: webhook 校验
 - **Client-side (NEXT_PUBLIC_*)**
   - `NEXT_PUBLIC_QR_PLATFORM_FEE`: 平台撮合费二维码
   - `NEXT_PUBLIC_QR_PLAYER_FEE`: 打手费用二维码
@@ -91,6 +97,8 @@
 - `packages/app/src/app/api/orders/route.ts` — 订单推送企业微信。
 - `packages/app/src/app/api/pay/route.ts` — Ping++ charge 生成。
 - `packages/app/src/app/api/ledger/credit/route.ts` — 管理员记账上链（Sui SDK）。
+- `packages/app/src/app/api/pay/webhook/route.ts` — 支付回调接收。
+- `packages/app/src/app/api/admin/*` — 运营后台 API。
 
 ### Shared components
 - `packages/app/src/app/components/passkey-wallet.tsx` — Passkey 创建/登录/找回（Sui Passkey）。
@@ -106,6 +114,15 @@
 - `packages/app/src/app/components/hero.tsx` — 营销 Hero UI（未被引用）。
 - `packages/app/src/app/components/features.tsx` — 功能亮点 UI（未被引用）。
 - `packages/app/src/lib/dubhe.ts` — Dubhe SDK 客户端与记账交易构建辅助。
+- `packages/app/src/lib/admin-auth.ts` — 后台鉴权与会话管理。
+- `packages/app/src/lib/admin-store.ts` — 后台数据存储（Postgres via Prisma）。
+- `packages/app/src/lib/admin-audit.ts` — 审计日志写入。
+- `packages/app/src/lib/chain-admin.ts` — 链上对账/裁决工具。
+- `packages/app/prisma/schema.prisma` — Prisma 数据模型（Postgres）。
+- `packages/app/prisma/seed.mjs` — 本地种子数据。
+- `packages/app/prisma/migrations/*` — Prisma 迁移文件。
+- `scripts/admin-maintenance.mjs` — 审计/支付事件表裁剪。
+- `scripts/init-local.mjs` — 本地 Docker + 迁移 + seed 一键初始化。
 
 ## packages/contracts (Move + Dubhe SDK)
 - `packages/contracts/package.json` — Dubhe CLI/SDK 脚本与依赖。
@@ -123,6 +140,7 @@
 - `packages/app/src/app/(tabs)/me/page.tsx` — 个人中心 + 进入设置/钱包。
 - `packages/app/src/app/(tabs)/wallet/page.tsx` — 钻石充值（双二维码手动支付）。
 - `packages/app/src/app/(tabs)/vip/page.tsx` — VIP 等级展示。
+- `packages/app/src/app/admin/(panel)/*` — 运营后台页面（订单/打手/公告/链上/支付/审计）。
 
 ### Public assets
 - `packages/app/public/manifest.json` — PWA manifest。

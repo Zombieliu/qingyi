@@ -1,0 +1,98 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model AdminOrder {
+  id            String   @id
+  user          String
+  item          String
+  amount        Float
+  currency      String
+  paymentStatus String
+  stage         String
+  note          String?
+  assignedTo    String?
+  source        String?
+  createdAt     DateTime
+  updatedAt     DateTime?
+
+  @@index([createdAt])
+  @@index([stage])
+  @@index([paymentStatus])
+}
+
+model AdminPlayer {
+  id        String   @id
+  name      String
+  role      String?
+  contact   String?
+  status    String
+  notes     String?
+  createdAt DateTime
+  updatedAt DateTime?
+
+  @@index([createdAt])
+  @@index([status])
+}
+
+model AdminAnnouncement {
+  id        String   @id
+  title     String
+  tag       String
+  content   String
+  status    String
+  createdAt DateTime
+  updatedAt DateTime?
+
+  @@index([createdAt])
+  @@index([status])
+}
+
+model AdminSession {
+  id         String   @id
+  tokenHash  String   @unique
+  role       String
+  label      String?
+  createdAt  DateTime
+  expiresAt  DateTime
+  lastSeenAt DateTime?
+  ip         String?
+  userAgent  String?
+
+  @@index([expiresAt])
+}
+
+model AdminAuditLog {
+  id             String   @id
+  actorRole      String
+  actorSessionId String?
+  action         String
+  targetType     String?
+  targetId       String?
+  meta           Json?
+  ip             String?
+  createdAt      DateTime
+
+  @@index([createdAt])
+  @@index([action])
+}
+
+model AdminPaymentEvent {
+  id        String   @id
+  provider  String
+  event     String
+  orderNo   String?
+  amount    Float?
+  status    String?
+  verified  Boolean
+  createdAt DateTime
+  raw       Json?
+
+  @@index([createdAt])
+  @@index([orderNo])
+}

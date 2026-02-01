@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin-auth";
-import { updateOrder } from "@/lib/admin-store";
+import { getOrderById, updateOrder } from "@/lib/admin-store";
+import { recordAudit } from "@/lib/admin-audit";
 import type { AdminOrder, OrderStage } from "@/lib/admin-types";
 
 type RouteContext = {
@@ -11,7 +12,7 @@ export async function PATCH(
   req: Request,
   { params }: RouteContext
 ) {
-  const auth = await requireAdmin();
+  const auth = await requireAdmin(req, { role: "ops" });
   if (!auth.ok) return auth.response;
 
   const { orderId } = await params;
@@ -36,5 +37,23 @@ export async function PATCH(
   if (!updated) {
     return NextResponse.json({ error: "not found" }, { status: 404 });
   }
+  await recordAudit(req, auth, "orders.update", "order", orderId, patch);
   return NextResponse.json(updated);
+}
+
+export async function GET(
+  req: Request,
+  { params }: RouteContext
+) {
+  const auth = await requireAdmin(req, { role: "viewer" });
+  if (!auth.ok) return auth.response;
+  const { orderId } = await params;
+  if (!orderId) {
+    return NextResponse.json({ error: "Missing orderId" }, { status: 400 });
+  }
+  const order = await getOrderById(orderId);
+  if (!order) {
+    return NextResponse.json({ error: "not found" }, { status: 404 });
+  }
+  return NextResponse.json(order);
 }

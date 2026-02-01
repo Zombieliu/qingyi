@@ -46,7 +46,7 @@ export default function AdminDashboard() {
         }
         if (ordersRes.ok) {
           const data = await ordersRes.json();
-          setOrders(Array.isArray(data) ? data : []);
+          setOrders(Array.isArray(data?.items) ? data.items : Array.isArray(data) ? data : []);
         }
         if (playersRes.ok) {
           const data = await playersRes.json();

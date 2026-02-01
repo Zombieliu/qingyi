@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin-auth";
 import { removePlayer, updatePlayer } from "@/lib/admin-store";
+import { recordAudit } from "@/lib/admin-audit";
 import type { AdminPlayer, PlayerStatus } from "@/lib/admin-types";
 
 type RouteContext = {
@@ -11,7 +12,7 @@ export async function PATCH(
   req: Request,
   { params }: RouteContext
 ) {
-  const auth = await requireAdmin();
+  const auth = await requireAdmin(req, { role: "ops" });
   if (!auth.ok) return auth.response;
 
   const { playerId } = await params;
@@ -37,6 +38,7 @@ export async function PATCH(
   if (!updated) {
     return NextResponse.json({ error: "not found" }, { status: 404 });
   }
+  await recordAudit(req, auth, "players.update", "player", playerId, patch);
   return NextResponse.json(updated);
 }
 
@@ -44,7 +46,7 @@ export async function DELETE(
   req: Request,
   { params }: RouteContext
 ) {
-  const auth = await requireAdmin();
+  const auth = await requireAdmin(req, { role: "ops" });
   if (!auth.ok) return auth.response;
 
   const { playerId } = await params;
@@ -56,5 +58,6 @@ export async function DELETE(
   if (!removed) {
     return NextResponse.json({ error: "not found" }, { status: 404 });
   }
+  await recordAudit(req, auth, "players.delete", "player", playerId);
   return NextResponse.json({ ok: true });
 }

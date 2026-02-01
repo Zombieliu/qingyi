@@ -48,7 +48,7 @@ export default function AdminLoginPage() {
         </div>
         <div className="admin-chip" style={{ marginBottom: 14 }}>
           <ShieldCheck size={14} />
-          ADMIN_DASH_TOKEN / LEDGER_ADMIN_TOKEN
+          ADMIN_DASH_TOKEN / LEDGER_ADMIN_TOKEN / ADMIN_TOKENS
         </div>
         <form className="admin-form" onSubmit={handleSubmit}>
           <label className="admin-field">
@@ -78,8 +78,8 @@ export default function AdminLoginPage() {
           </button>
         </form>
         <div style={{ marginTop: 18, fontSize: 12, color: "#64748b", lineHeight: 1.6 }}>
-          提示：在 `.env.local` 中设置 `ADMIN_DASH_TOKEN`。如未设置，将回退使用
-          `LEDGER_ADMIN_TOKEN`。
+          提示：在 `.env.local` 中设置 `ADMIN_DASH_TOKEN` 或 `ADMIN_TOKENS`。
+          如未设置，将回退使用 `LEDGER_ADMIN_TOKEN`。
         </div>
       </div>
     </div>

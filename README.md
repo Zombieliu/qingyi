@@ -6,6 +6,47 @@ This repository is now a workspace root. The Next.js app lives in `packages/app`
 - `npm run dev` – start the app workspace (`packages/app`)
 - `npm run build` – build the app
 - `npm run lint` – lint the app
+- `npm run test:flow` – run local flow smoke checks (API/admin; optional chain)
+- `npm run db:push --workspace app` – apply Prisma schema to local Postgres
+- `npm run db:seed --workspace app` – seed local Postgres data
+- `npm run db:deploy --workspace app` – apply Prisma migrations
+- `npm run db:maintain` – prune audit/payment tables by limits
+
+## Flow test (local)
+The flow script can start the dev server, run API/admin smoke checks, and optionally run chain E2E or ledger credit.
+
+Examples:
+```bash
+npm run test:flow
+npm run test:flow -- --chain
+npm run test:flow -- --ledger
+```
+
+Optional env:
+- `FLOW_BASE_URL` / `PLAYWRIGHT_BASE_URL` – override base URL (default `http://127.0.0.1:3000`)
+- `ADMIN_DASH_TOKEN` or `LEDGER_ADMIN_TOKEN` – enable admin API checks
+- `E2E_LEDGER_USER` – enable ledger credit check
+
+## Local Postgres (Docker)
+```bash
+docker compose up -d
+```
+Set `DATABASE_URL=postgresql://qingyi:qingyi@localhost:5432/qingyi?schema=public` in `.env.local`,
+then run:
+```bash
+npm run db:deploy --workspace app
+npm run db:seed --workspace app
+```
+
+## One-step local init
+```bash
+node scripts/init-local.mjs
+```
+
+If you previously ran `db:push`, migrations can be baselined via:
+```bash
+npx prisma migrate resolve --schema packages/app/prisma/schema.prisma --applied 20260201_init_admin_store
+```
 
 ## Structure
 - `packages/app` – Next.js frontend (moved from previous root)

@@ -1,0 +1,15 @@
+services:
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: qingyi
+      POSTGRES_PASSWORD: qingyi
+      POSTGRES_DB: qingyi
+    ports:
+      - "5432:5432"
+    volumes:
+      - qingyi_pgdata:/var/lib/postgresql/data
+
+volumes:
+  qingyi_pgdata:

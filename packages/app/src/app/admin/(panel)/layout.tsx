@@ -1,6 +1,5 @@
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { getAdminSecret, isAdminTokenValid } from "@/lib/admin-auth";
+import { getAdminSession } from "@/lib/admin-auth";
 import AdminShell from "./admin-shell";
 
 export default async function AdminPanelLayout({
@@ -8,11 +7,8 @@ export default async function AdminPanelLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const cookieStore = await cookies();
-  const token = cookieStore.get("admin_token")?.value || "";
-  const secret = getAdminSecret();
-
-  if (!secret || !isAdminTokenValid(token)) {
+  const session = await getAdminSession();
+  if (!session) {
     redirect("/admin/login");
   }
 

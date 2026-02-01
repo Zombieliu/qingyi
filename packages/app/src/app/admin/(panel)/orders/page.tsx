@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { RefreshCw, Search } from "lucide-react";
+import Link from "next/link";
 import type { AdminOrder, OrderStage } from "@/lib/admin-types";
 import { ORDER_STAGE_OPTIONS } from "@/lib/admin-types";
 
@@ -20,14 +21,24 @@ export default function OrdersPage() {
   const [query, setQuery] = useState("");
   const [stageFilter, setStageFilter] = useState("全部");
   const [saving, setSaving] = useState<Record<string, boolean>>({});
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const pageSize = 20;
 
-  const loadOrders = async () => {
+  const loadOrders = async (nextPage = page) => {
     setLoading(true);
     try {
-      const res = await fetch("/api/admin/orders");
+      const params = new URLSearchParams();
+      params.set("page", String(nextPage));
+      params.set("pageSize", String(pageSize));
+      if (stageFilter && stageFilter !== "全部") params.set("stage", stageFilter);
+      if (query.trim()) params.set("q", query.trim());
+      const res = await fetch(`/api/admin/orders?${params.toString()}`);
       if (res.ok) {
         const data = await res.json();
-        setOrders(Array.isArray(data) ? data : []);
+        setOrders(Array.isArray(data?.items) ? data.items : []);
+        setPage(data?.page || nextPage);
+        setTotalPages(data?.totalPages || 1);
       }
     } finally {
       setLoading(false);
@@ -35,21 +46,15 @@ export default function OrdersPage() {
   };
 
   useEffect(() => {
-    loadOrders();
-  }, []);
+    const handle = setTimeout(() => {
+      loadOrders(1);
+    }, 300);
+    return () => clearTimeout(handle);
+  }, [query, stageFilter]);
 
-  const filteredOrders = useMemo(() => {
-    return orders.filter((order) => {
-      const matchesStage = stageFilter === "全部" || order.stage === stageFilter;
-      const keyword = query.trim();
-      const matchesQuery =
-        !keyword ||
-        order.user.includes(keyword) ||
-        order.item.includes(keyword) ||
-        order.id.includes(keyword);
-      return matchesStage && matchesQuery;
-    });
-  }, [orders, query, stageFilter]);
+  useEffect(() => {
+    loadOrders(page);
+  }, [page]);
 
   const updateOrder = async (orderId: string, patch: Partial<AdminOrder>) => {
     setSaving((prev) => ({ ...prev, [orderId]: true }));
@@ -106,17 +111,25 @@ export default function OrdersPage() {
               </option>
             ))}
           </select>
-          <button className="admin-btn ghost" onClick={loadOrders}>
+          <button className="admin-btn ghost" onClick={() => loadOrders(1)}>
             <RefreshCw size={16} style={{ marginRight: 6 }} />
             刷新
           </button>
+          <a
+            className="admin-btn ghost"
+            href={`/api/admin/orders/export?format=csv&stage=${encodeURIComponent(stageFilter)}&q=${encodeURIComponent(
+              query.trim()
+            )}`}
+          >
+            导出 CSV
+          </a>
         </div>
       </div>
 
       <div className="admin-card">
         {loading ? (
           <p>加载订单中...</p>
-        ) : filteredOrders.length === 0 ? (
+        ) : orders.length === 0 ? (
           <p>没有符合条件的订单</p>
         ) : (
           <div style={{ overflowX: "auto" }}>
@@ -130,10 +143,11 @@ export default function OrdersPage() {
                   <th>派单</th>
                   <th>备注</th>
                   <th>更新</th>
+                  <th>详情</th>
                 </tr>
               </thead>
               <tbody>
-                {filteredOrders.map((order) => (
+                {orders.map((order) => (
                   <tr key={order.id}>
                     <td>
                       <div style={{ fontWeight: 600 }}>{order.user}</div>
@@ -234,12 +248,36 @@ export default function OrdersPage() {
                         {saving[order.id] ? "保存中" : "已同步"}
                       </span>
                     </td>
+                    <td>
+                      <Link className="admin-btn ghost" href={`/admin/orders/${order.id}`}>
+                        查看
+                      </Link>
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
         )}
+        <div style={{ display: "flex", justifyContent: "space-between", marginTop: 16, alignItems: "center" }}>
+          <button
+            className="admin-btn ghost"
+            disabled={page <= 1}
+            onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+          >
+            上一页
+          </button>
+          <div style={{ fontSize: 12, color: "#64748b" }}>
+            第 {page} / {totalPages} 页
+          </div>
+          <button
+            className="admin-btn ghost"
+            disabled={page >= totalPages}
+            onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
+          >
+            下一页
+          </button>
+        </div>
       </div>
     </div>
   );

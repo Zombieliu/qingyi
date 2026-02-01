@@ -14,7 +14,12 @@
     "test:visual:full": "PW_PROFILE=full playwright test --config playwright.config.ts",
     "test:visual:compat": "PW_PROFILE=compat playwright test --config playwright.config.ts",
     "test:visual:update": "PW_PROFILE=full playwright test --config playwright.config.ts --update-snapshots",
-    "test:chain:e2e": "PLAYWRIGHT_BASE_URL=http://localhost:3000 PW_PROFILE=chain playwright test --config playwright.config.ts"
+    "test:chain:e2e": "PLAYWRIGHT_BASE_URL=http://localhost:3000 PW_PROFILE=chain playwright test --config playwright.config.ts",
+    "test:flow": "node scripts/flow-test.mjs",
+    "db:push": "npm run db:push --workspace app",
+    "db:seed": "npm run db:seed --workspace app",
+    "db:deploy": "npm run db:deploy --workspace app",
+    "db:maintain": "node scripts/admin-maintenance.mjs"
   },
   "devDependencies": {
     "@playwright/test": "^1.50.1"

@@ -2,17 +2,18 @@ import { NextResponse } from "next/server";
 import crypto from "crypto";
 import { requireAdmin } from "@/lib/admin-auth";
 import { addAnnouncement, listAnnouncements } from "@/lib/admin-store";
+import { recordAudit } from "@/lib/admin-audit";
 import type { AdminAnnouncement, AnnouncementStatus } from "@/lib/admin-types";
 
-export async function GET() {
-  const auth = await requireAdmin();
+export async function GET(req: Request) {
+  const auth = await requireAdmin(req, { role: "viewer" });
   if (!auth.ok) return auth.response;
   const announcements = await listAnnouncements();
   return NextResponse.json(announcements);
 }
 
 export async function POST(req: Request) {
-  const auth = await requireAdmin();
+  const auth = await requireAdmin(req, { role: "ops" });
   if (!auth.ok) return auth.response;
 
   let body: Partial<AdminAnnouncement> = {};
@@ -36,5 +37,9 @@ export async function POST(req: Request) {
   };
 
   await addAnnouncement(announcement);
+  await recordAudit(req, auth, "announcements.create", "announcement", announcement.id, {
+    title: announcement.title,
+    status: announcement.status,
+  });
   return NextResponse.json(announcement, { status: 201 });
 }

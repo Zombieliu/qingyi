@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin-auth";
-import { updateAnnouncement } from "@/lib/admin-store";
+import { removeAnnouncement, updateAnnouncement } from "@/lib/admin-store";
+import { recordAudit } from "@/lib/admin-audit";
 import type { AdminAnnouncement, AnnouncementStatus } from "@/lib/admin-types";
 
 type RouteContext = {
@@ -11,7 +12,7 @@ export async function PATCH(
   req: Request,
   { params }: RouteContext
 ) {
-  const auth = await requireAdmin();
+  const auth = await requireAdmin(req, { role: "ops" });
   if (!auth.ok) return auth.response;
 
   const { announcementId } = await params;
@@ -36,5 +37,25 @@ export async function PATCH(
   if (!updated) {
     return NextResponse.json({ error: "not found" }, { status: 404 });
   }
+  await recordAudit(req, auth, "announcements.update", "announcement", announcementId, patch);
   return NextResponse.json(updated);
+}
+
+export async function DELETE(
+  req: Request,
+  { params }: RouteContext
+) {
+  const auth = await requireAdmin(req, { role: "ops" });
+  if (!auth.ok) return auth.response;
+
+  const { announcementId } = await params;
+  if (!announcementId) {
+    return NextResponse.json({ error: "Missing announcementId" }, { status: 400 });
+  }
+  const removed = await removeAnnouncement(announcementId);
+  if (!removed) {
+    return NextResponse.json({ error: "not found" }, { status: 404 });
+  }
+  await recordAudit(req, auth, "announcements.delete", "announcement", announcementId);
+  return NextResponse.json({ ok: true });
 }

@@ -1,150 +1,544 @@
 import "server-only";
-import fs from "fs";
-import path from "path";
-import { promises as fsp } from "fs";
-import type { AdminAnnouncement, AdminOrder, AdminPlayer, AdminStore } from "./admin-types";
+import type {
+  AdminAnnouncement,
+  AdminAuditLog,
+  AdminOrder,
+  AdminPaymentEvent,
+  AdminPlayer,
+  AdminSession,
+} from "./admin-types";
+import { prisma } from "./db";
+import { Prisma } from "@prisma/client";
 
-const DEFAULT_STORE: AdminStore = {
-  orders: [],
-  players: [],
-  announcements: [],
-};
+const MAX_AUDIT_LOGS = Number(process.env.ADMIN_AUDIT_LOG_LIMIT || "1000");
+const MAX_PAYMENT_EVENTS = Number(process.env.ADMIN_PAYMENT_EVENT_LIMIT || "1000");
 
-function resolveAppRoot() {
-  const cwd = process.cwd();
-  const workspaceApp = path.join(cwd, "packages", "app");
-  if (fs.existsSync(workspaceApp)) {
-    return workspaceApp;
-  }
-  return cwd;
-}
-
-function resolveDataFile() {
-  const base = process.env.ADMIN_DATA_DIR || path.join(resolveAppRoot(), ".data");
+function mapOrder(row: {
+  id: string;
+  user: string;
+  item: string;
+  amount: number;
+  currency: string;
+  paymentStatus: string;
+  stage: string;
+  note: string | null;
+  assignedTo: string | null;
+  source: string | null;
+  createdAt: Date;
+  updatedAt: Date | null;
+}): AdminOrder {
   return {
-    dir: base,
-    file: path.join(base, "admin-store.json"),
+    id: row.id,
+    user: row.user,
+    item: row.item,
+    amount: row.amount,
+    currency: row.currency,
+    paymentStatus: row.paymentStatus,
+    stage: row.stage as AdminOrder["stage"],
+    note: row.note || undefined,
+    assignedTo: row.assignedTo || undefined,
+    source: row.source || undefined,
+    createdAt: row.createdAt.getTime(),
+    updatedAt: row.updatedAt ? row.updatedAt.getTime() : undefined,
   };
 }
 
-async function readStore(): Promise<AdminStore> {
-  const { file } = resolveDataFile();
-  try {
-    const raw = await fsp.readFile(file, "utf8");
-    const parsed = JSON.parse(raw) as Partial<AdminStore>;
-    return {
-      orders: Array.isArray(parsed.orders) ? parsed.orders : [],
-      players: Array.isArray(parsed.players) ? parsed.players : [],
-      announcements: Array.isArray(parsed.announcements) ? parsed.announcements : [],
-    };
-  } catch {
-    return { ...DEFAULT_STORE };
-  }
+function mapPlayer(row: {
+  id: string;
+  name: string;
+  role: string | null;
+  contact: string | null;
+  status: string;
+  notes: string | null;
+  createdAt: Date;
+  updatedAt: Date | null;
+}): AdminPlayer {
+  return {
+    id: row.id,
+    name: row.name,
+    role: row.role || undefined,
+    contact: row.contact || undefined,
+    status: row.status as AdminPlayer["status"],
+    notes: row.notes || undefined,
+    createdAt: row.createdAt.getTime(),
+    updatedAt: row.updatedAt ? row.updatedAt.getTime() : undefined,
+  };
 }
 
-async function writeStore(store: AdminStore) {
-  const { dir, file } = resolveDataFile();
-  await fsp.mkdir(dir, { recursive: true });
-  const temp = `${file}.tmp`;
-  await fsp.writeFile(temp, JSON.stringify(store, null, 2), "utf8");
-  await fsp.rename(temp, file);
+function mapAnnouncement(row: {
+  id: string;
+  title: string;
+  tag: string;
+  content: string;
+  status: string;
+  createdAt: Date;
+  updatedAt: Date | null;
+}): AdminAnnouncement {
+  return {
+    id: row.id,
+    title: row.title,
+    tag: row.tag,
+    content: row.content,
+    status: row.status as AdminAnnouncement["status"],
+    createdAt: row.createdAt.getTime(),
+    updatedAt: row.updatedAt ? row.updatedAt.getTime() : undefined,
+  };
+}
+
+function mapSession(row: {
+  id: string;
+  tokenHash: string;
+  role: string;
+  label: string | null;
+  createdAt: Date;
+  expiresAt: Date;
+  lastSeenAt: Date | null;
+  ip: string | null;
+  userAgent: string | null;
+}): AdminSession {
+  return {
+    id: row.id,
+    tokenHash: row.tokenHash,
+    role: row.role as AdminSession["role"],
+    label: row.label || undefined,
+    createdAt: row.createdAt.getTime(),
+    expiresAt: row.expiresAt.getTime(),
+    lastSeenAt: row.lastSeenAt ? row.lastSeenAt.getTime() : undefined,
+    ip: row.ip || undefined,
+    userAgent: row.userAgent || undefined,
+  };
+}
+
+function mapAudit(row: {
+  id: string;
+  actorRole: string;
+  actorSessionId: string | null;
+  action: string;
+  targetType: string | null;
+  targetId: string | null;
+  meta: Prisma.JsonValue | null;
+  ip: string | null;
+  createdAt: Date;
+}): AdminAuditLog {
+  return {
+    id: row.id,
+    actorRole: row.actorRole as AdminAuditLog["actorRole"],
+    actorSessionId: row.actorSessionId || undefined,
+    action: row.action,
+    targetType: row.targetType || undefined,
+    targetId: row.targetId || undefined,
+    meta: (row.meta as Record<string, unknown> | null) || undefined,
+    ip: row.ip || undefined,
+    createdAt: row.createdAt.getTime(),
+  };
+}
+
+function mapPayment(row: {
+  id: string;
+  provider: string;
+  event: string;
+  orderNo: string | null;
+  amount: number | null;
+  status: string | null;
+  verified: boolean;
+  createdAt: Date;
+  raw: Prisma.JsonValue | null;
+}): AdminPaymentEvent {
+  return {
+    id: row.id,
+    provider: row.provider,
+    event: row.event,
+    orderNo: row.orderNo || undefined,
+    amount: row.amount ?? undefined,
+    status: row.status || undefined,
+    verified: row.verified,
+    createdAt: row.createdAt.getTime(),
+    raw: (row.raw as Record<string, unknown> | null) || undefined,
+  };
 }
 
 export async function listOrders() {
-  const store = await readStore();
-  return store.orders.sort((a, b) => b.createdAt - a.createdAt);
+  const rows = await prisma.adminOrder.findMany({ orderBy: { createdAt: "desc" } });
+  return rows.map(mapOrder);
+}
+
+export async function queryOrders(params: {
+  page: number;
+  pageSize: number;
+  stage?: string;
+  q?: string;
+  paymentStatus?: string;
+  assignedTo?: string;
+}) {
+  const { page, pageSize, stage, q, paymentStatus, assignedTo } = params;
+  const keyword = (q || "").trim();
+  const where: Prisma.AdminOrderWhereInput = {};
+
+  if (stage && stage !== "全部") {
+    where.stage = stage;
+  }
+  if (paymentStatus) {
+    where.paymentStatus = paymentStatus;
+  }
+  if (assignedTo) {
+    where.assignedTo = assignedTo;
+  }
+  if (keyword) {
+    where.OR = [
+      { user: { contains: keyword } },
+      { item: { contains: keyword } },
+      { id: { contains: keyword } },
+    ];
+  }
+
+  const total = await prisma.adminOrder.count({ where });
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const clampedPage = Math.min(Math.max(page, 1), totalPages);
+  const rows = await prisma.adminOrder.findMany({
+    where,
+    orderBy: { createdAt: "desc" },
+    skip: (clampedPage - 1) * pageSize,
+    take: pageSize,
+  });
+
+  return {
+    items: rows.map(mapOrder),
+    total,
+    page: clampedPage,
+    pageSize,
+    totalPages,
+  };
+}
+
+export async function getOrderById(orderId: string) {
+  const row = await prisma.adminOrder.findUnique({ where: { id: orderId } });
+  return row ? mapOrder(row) : null;
 }
 
 export async function addOrder(order: AdminOrder) {
-  const store = await readStore();
-  store.orders = [order, ...store.orders];
-  await writeStore(store);
-  return order;
+  const row = await prisma.adminOrder.create({
+    data: {
+      id: order.id,
+      user: order.user,
+      item: order.item,
+      amount: order.amount,
+      currency: order.currency,
+      paymentStatus: order.paymentStatus,
+      stage: order.stage,
+      note: order.note ?? null,
+      assignedTo: order.assignedTo ?? null,
+      source: order.source ?? null,
+      createdAt: new Date(order.createdAt),
+      updatedAt: order.updatedAt ? new Date(order.updatedAt) : null,
+    },
+  });
+  return mapOrder(row);
 }
 
 export async function updateOrder(orderId: string, patch: Partial<AdminOrder>) {
-  const store = await readStore();
-  const index = store.orders.findIndex((order) => order.id === orderId);
-  if (index === -1) return null;
-  const current = store.orders[index];
-  const next = { ...current, ...patch, updatedAt: Date.now() };
-  store.orders[index] = next;
-  await writeStore(store);
-  return next;
+  try {
+    const row = await prisma.adminOrder.update({
+      where: { id: orderId },
+      data: {
+        paymentStatus: patch.paymentStatus,
+        note: patch.note ?? undefined,
+        assignedTo: patch.assignedTo ?? undefined,
+        stage: patch.stage,
+        updatedAt: new Date(),
+      },
+    });
+    return mapOrder(row);
+  } catch {
+    return null;
+  }
 }
 
 export async function listPlayers() {
-  const store = await readStore();
-  return store.players.sort((a, b) => b.createdAt - a.createdAt);
+  const rows = await prisma.adminPlayer.findMany({ orderBy: { createdAt: "desc" } });
+  return rows.map(mapPlayer);
 }
 
 export async function addPlayer(player: AdminPlayer) {
-  const store = await readStore();
-  store.players = [player, ...store.players];
-  await writeStore(store);
-  return player;
+  const row = await prisma.adminPlayer.create({
+    data: {
+      id: player.id,
+      name: player.name,
+      role: player.role ?? null,
+      contact: player.contact ?? null,
+      status: player.status,
+      notes: player.notes ?? null,
+      createdAt: new Date(player.createdAt),
+      updatedAt: player.updatedAt ? new Date(player.updatedAt) : null,
+    },
+  });
+  return mapPlayer(row);
 }
 
 export async function updatePlayer(playerId: string, patch: Partial<AdminPlayer>) {
-  const store = await readStore();
-  const index = store.players.findIndex((player) => player.id === playerId);
-  if (index === -1) return null;
-  const current = store.players[index];
-  const next = { ...current, ...patch, updatedAt: Date.now() };
-  store.players[index] = next;
-  await writeStore(store);
-  return next;
+  try {
+    const row = await prisma.adminPlayer.update({
+      where: { id: playerId },
+      data: {
+        name: patch.name,
+        role: patch.role ?? undefined,
+        contact: patch.contact ?? undefined,
+        notes: patch.notes ?? undefined,
+        status: patch.status,
+        updatedAt: new Date(),
+      },
+    });
+    return mapPlayer(row);
+  } catch {
+    return null;
+  }
 }
 
 export async function removePlayer(playerId: string) {
-  const store = await readStore();
-  const nextPlayers = store.players.filter((player) => player.id !== playerId);
-  if (nextPlayers.length === store.players.length) return false;
-  store.players = nextPlayers;
-  await writeStore(store);
-  return true;
+  try {
+    await prisma.adminPlayer.delete({ where: { id: playerId } });
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export async function listAnnouncements() {
-  const store = await readStore();
-  return store.announcements.sort((a, b) => b.createdAt - a.createdAt);
+  const rows = await prisma.adminAnnouncement.findMany({ orderBy: { createdAt: "desc" } });
+  return rows.map(mapAnnouncement);
 }
 
 export async function addAnnouncement(announcement: AdminAnnouncement) {
-  const store = await readStore();
-  store.announcements = [announcement, ...store.announcements];
-  await writeStore(store);
-  return announcement;
+  const row = await prisma.adminAnnouncement.create({
+    data: {
+      id: announcement.id,
+      title: announcement.title,
+      tag: announcement.tag,
+      content: announcement.content,
+      status: announcement.status,
+      createdAt: new Date(announcement.createdAt),
+      updatedAt: announcement.updatedAt ? new Date(announcement.updatedAt) : null,
+    },
+  });
+  return mapAnnouncement(row);
 }
 
 export async function updateAnnouncement(announcementId: string, patch: Partial<AdminAnnouncement>) {
-  const store = await readStore();
-  const index = store.announcements.findIndex((item) => item.id === announcementId);
-  if (index === -1) return null;
-  const current = store.announcements[index];
-  const next = { ...current, ...patch, updatedAt: Date.now() };
-  store.announcements[index] = next;
-  await writeStore(store);
-  return next;
+  try {
+    const row = await prisma.adminAnnouncement.update({
+      where: { id: announcementId },
+      data: {
+        title: patch.title,
+        tag: patch.tag,
+        content: patch.content,
+        status: patch.status,
+        updatedAt: new Date(),
+      },
+    });
+    return mapAnnouncement(row);
+  } catch {
+    return null;
+  }
+}
+
+export async function removeAnnouncement(announcementId: string) {
+  try {
+    await prisma.adminAnnouncement.delete({ where: { id: announcementId } });
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export async function listPublicAnnouncements() {
-  const store = await readStore();
-  return store.announcements
-    .filter((item) => item.status === "published")
-    .sort((a, b) => (b.updatedAt || b.createdAt) - (a.updatedAt || a.createdAt));
+  const rows = await prisma.adminAnnouncement.findMany({
+    where: { status: "published" },
+    orderBy: [{ updatedAt: "desc" }, { createdAt: "desc" }],
+  });
+  return rows.map(mapAnnouncement);
 }
 
 export async function getAdminStats() {
-  const store = await readStore();
-  const totalOrders = store.orders.length;
-  const pendingOrders = store.orders.filter((order) => order.stage !== "已完成" && order.stage !== "已取消").length;
-  const activePlayers = store.players.filter((player) => player.status !== "停用").length;
-  const publishedAnnouncements = store.announcements.filter((item) => item.status === "published").length;
+  const [totalOrders, pendingOrders, activePlayers, publishedAnnouncements] = await Promise.all([
+    prisma.adminOrder.count(),
+    prisma.adminOrder.count({
+      where: { stage: { notIn: ["已完成", "已取消"] } },
+    }),
+    prisma.adminPlayer.count({ where: { status: { not: "停用" } } }),
+    prisma.adminAnnouncement.count({ where: { status: "published" } }),
+  ]);
   return {
     totalOrders,
     pendingOrders,
     activePlayers,
     publishedAnnouncements,
   };
+}
+
+export async function addAuditLog(entry: AdminAuditLog) {
+  const row = await prisma.adminAuditLog.create({
+    data: {
+      id: entry.id,
+      actorRole: entry.actorRole,
+      actorSessionId: entry.actorSessionId ?? null,
+      action: entry.action,
+      targetType: entry.targetType ?? null,
+      targetId: entry.targetId ?? null,
+      meta: entry.meta ? (entry.meta as Prisma.InputJsonValue) : Prisma.DbNull,
+      ip: entry.ip ?? null,
+      createdAt: new Date(entry.createdAt),
+    },
+  });
+  if (MAX_AUDIT_LOGS > 0) {
+    const total = await prisma.adminAuditLog.count();
+    const excess = total - MAX_AUDIT_LOGS;
+    if (excess > 0) {
+      const oldRows = await prisma.adminAuditLog.findMany({
+        orderBy: { createdAt: "desc" },
+        skip: MAX_AUDIT_LOGS,
+        take: excess,
+        select: { id: true },
+      });
+      if (oldRows.length) {
+        await prisma.adminAuditLog.deleteMany({
+          where: { id: { in: oldRows.map((item) => item.id) } },
+        });
+      }
+    }
+  }
+  return mapAudit(row);
+}
+
+export async function queryAuditLogs(params: { page: number; pageSize: number; q?: string }) {
+  const { page, pageSize, q } = params;
+  const keyword = (q || "").trim();
+  const where: Prisma.AdminAuditLogWhereInput = {};
+  if (keyword) {
+    where.OR = [
+      { action: { contains: keyword } },
+      { targetId: { contains: keyword } },
+      { targetType: { contains: keyword } },
+    ];
+  }
+
+  const total = await prisma.adminAuditLog.count({ where });
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const clampedPage = Math.min(Math.max(page, 1), totalPages);
+  const rows = await prisma.adminAuditLog.findMany({
+    where,
+    orderBy: { createdAt: "desc" },
+    skip: (clampedPage - 1) * pageSize,
+    take: pageSize,
+  });
+
+  return {
+    items: rows.map(mapAudit),
+    total,
+    page: clampedPage,
+    pageSize,
+    totalPages,
+  };
+}
+
+export async function addPaymentEvent(entry: AdminPaymentEvent) {
+  const row = await prisma.adminPaymentEvent.create({
+    data: {
+      id: entry.id,
+      provider: entry.provider,
+      event: entry.event,
+      orderNo: entry.orderNo ?? null,
+      amount: entry.amount ?? null,
+      status: entry.status ?? null,
+      verified: entry.verified,
+      createdAt: new Date(entry.createdAt),
+      raw: entry.raw ? (entry.raw as Prisma.InputJsonValue) : Prisma.DbNull,
+    },
+  });
+  if (MAX_PAYMENT_EVENTS > 0) {
+    const total = await prisma.adminPaymentEvent.count();
+    const excess = total - MAX_PAYMENT_EVENTS;
+    if (excess > 0) {
+      const oldRows = await prisma.adminPaymentEvent.findMany({
+        orderBy: { createdAt: "desc" },
+        skip: MAX_PAYMENT_EVENTS,
+        take: excess,
+        select: { id: true },
+      });
+      if (oldRows.length) {
+        await prisma.adminPaymentEvent.deleteMany({
+          where: { id: { in: oldRows.map((item) => item.id) } },
+        });
+      }
+    }
+  }
+  return mapPayment(row);
+}
+
+export async function queryPaymentEvents(params: { page: number; pageSize: number }) {
+  const { page, pageSize } = params;
+  const total = await prisma.adminPaymentEvent.count();
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const clampedPage = Math.min(Math.max(page, 1), totalPages);
+  const rows = await prisma.adminPaymentEvent.findMany({
+    orderBy: { createdAt: "desc" },
+    skip: (clampedPage - 1) * pageSize,
+    take: pageSize,
+  });
+
+  return {
+    items: rows.map(mapPayment),
+    total,
+    page: clampedPage,
+    pageSize,
+    totalPages,
+  };
+}
+
+export async function createSession(session: AdminSession) {
+  const row = await prisma.adminSession.create({
+    data: {
+      id: session.id,
+      tokenHash: session.tokenHash,
+      role: session.role,
+      label: session.label ?? null,
+      createdAt: new Date(session.createdAt),
+      expiresAt: new Date(session.expiresAt),
+      lastSeenAt: session.lastSeenAt ? new Date(session.lastSeenAt) : null,
+      ip: session.ip ?? null,
+      userAgent: session.userAgent ?? null,
+    },
+  });
+  return mapSession(row);
+}
+
+export async function getSessionByHash(tokenHash: string) {
+  const row = await prisma.adminSession.findUnique({ where: { tokenHash } });
+  return row ? mapSession(row) : null;
+}
+
+export async function updateSessionByHash(tokenHash: string, patch: Partial<AdminSession>) {
+  try {
+    const row = await prisma.adminSession.update({
+      where: { tokenHash },
+      data: {
+        role: patch.role,
+        label: patch.label ?? undefined,
+        lastSeenAt: patch.lastSeenAt ? new Date(patch.lastSeenAt) : new Date(),
+        expiresAt: patch.expiresAt ? new Date(patch.expiresAt) : undefined,
+        ip: patch.ip ?? undefined,
+        userAgent: patch.userAgent ?? undefined,
+      },
+    });
+    return mapSession(row);
+  } catch {
+    return null;
+  }
+}
+
+export async function removeSessionByHash(tokenHash: string) {
+  try {
+    await prisma.adminSession.delete({ where: { tokenHash } });
+    return true;
+  } catch {
+    return false;
+  }
 }
