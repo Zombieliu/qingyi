@@ -1,7 +1,9 @@
 {
   "version": 2,
-  "installCommand": "NPM_CONFIG_OPTIONAL=true npm install --include=optional --force",
-  "buildCommand": "NAPI_RS_FORCE_WASI=1 npm run build --workspace app",
-  "outputDirectory": "packages/app/.next",
-  "framework": "nextjs"
+  "builds": [
+    { "src": "packages/app/package.json", "use": "@vercel/next" }
+  ],
+  "env": {
+    "WECHAT_WEBHOOK_URL": "@wechat_webhook_url"
+  }
 }
