@@ -5,7 +5,7 @@ import { PlusCircle, RefreshCw, Search } from "lucide-react";
 import type { AdminCoupon, CouponStatus } from "@/lib/admin-types";
 import { COUPON_STATUS_OPTIONS } from "@/lib/admin-types";
 
-function toDateInput(ts?: number) {
+function toDateInput(ts?: number | null) {
   if (!ts) return "";
   return new Date(ts).toISOString().slice(0, 10);
 }

@@ -108,11 +108,11 @@ export interface AdminCoupon {
   title: string;
   code?: string;
   description?: string;
-  discount?: number;
-  minSpend?: number;
+  discount?: number | null;
+  minSpend?: number | null;
   status: CouponStatus;
-  startsAt?: number;
-  expiresAt?: number;
+  startsAt?: number | null;
+  expiresAt?: number | null;
   createdAt: number;
   updatedAt?: number;
 }
@@ -155,9 +155,9 @@ export interface AdminMembershipTier {
   name: string;
   level: number;
   badge?: string;
-  price?: number;
-  durationDays?: number;
-  minPoints?: number;
+  price?: number | null;
+  durationDays?: number | null;
+  minPoints?: number | null;
   status: MembershipTierStatus;
   perks?: Array<{ label: string; desc?: string }> | string[];
   createdAt: number;
@@ -170,9 +170,9 @@ export interface AdminMember {
   userName?: string;
   tierId?: string;
   tierName?: string;
-  points?: number;
+  points?: number | null;
   status: MemberStatus;
-  expiresAt?: number;
+  expiresAt?: number | null;
   note?: string;
   createdAt: number;
   updatedAt?: number;

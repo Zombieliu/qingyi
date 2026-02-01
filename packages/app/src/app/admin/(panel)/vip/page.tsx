@@ -25,7 +25,7 @@ function formatTime(ts: number) {
   });
 }
 
-function toDateInput(ts?: number) {
+function toDateInput(ts?: number | null) {
   if (!ts) return "";
   return new Date(ts).toISOString().slice(0, 10);
 }
