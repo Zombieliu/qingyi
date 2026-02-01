@@ -72,7 +72,7 @@ node scripts/init-local.mjs
 
 If you previously ran `db:push`, migrations can be baselined via:
 ```bash
-npx prisma migrate resolve --schema packages/app/prisma/schema.prisma --applied 20260201_init_admin_store
+npx prisma migrate resolve --schema packages/app/prisma/schema.prisma --applied 20260201_00_init_admin_store
 ```
 
 ## Cron (maintenance / chain sync)
