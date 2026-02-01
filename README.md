@@ -29,6 +29,18 @@ Optional env:
 - `ADMIN_DASH_TOKEN` or `LEDGER_ADMIN_TOKEN` – enable admin API checks
 - `E2E_LEDGER_USER` – enable ledger credit check
 - `NEXT_PUBLIC_ORDER_SOURCE=server` – use server-backed orders (recommended)
+- `NEXT_PUBLIC_CHAIN_SPONSOR=auto|on|off` – enable sponsored gas (auto by default)
+
+## Sponsored gas (Sui)
+For chain orders, the app can sponsor user gas so wallets without SUI can still submit transactions.
+
+Required env:
+- `SUI_SPONSOR_PRIVATE_KEY` (or fallback to `SUI_ADMIN_PRIVATE_KEY`)
+- `SUI_RPC_URL` + `SUI_NETWORK`
+- `NEXT_PUBLIC_CHAIN_SPONSOR=on` (strict sponsor) or `auto` (fallback to self-pay)
+
+Optional:
+- `SUI_SPONSOR_GAS_BUDGET=50000000`
 
 ## Local Postgres (Docker)
 ```bash

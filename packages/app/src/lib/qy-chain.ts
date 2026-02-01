@@ -3,7 +3,7 @@
 import { SuiClient, getFullnodeUrl, type EventId } from "@mysten/sui/client";
 import { bcs } from "@mysten/sui/bcs";
 import { Transaction, Inputs } from "@mysten/sui/transactions";
-import { isValidSuiAddress, normalizeSuiAddress, toHex } from "@mysten/sui/utils";
+import { fromBase64, isValidSuiAddress, normalizeSuiAddress, toBase64, toHex } from "@mysten/sui/utils";
 import {
   PasskeyKeypair,
   BrowserPasskeyProvider,
@@ -42,17 +42,23 @@ const RP_NAME = "情谊电竞";
 const CHAIN_ORDERS_FLAG = process.env.NEXT_PUBLIC_CHAIN_ORDERS === "1";
 const VISUAL_TEST_FLAG = process.env.NEXT_PUBLIC_VISUAL_TEST === "1";
 const EVENT_LIMIT = Number(process.env.NEXT_PUBLIC_QY_EVENT_LIMIT || "200");
+const CHAIN_SPONSOR_MODE = (process.env.NEXT_PUBLIC_CHAIN_SPONSOR || "auto").toLowerCase();
 
 let cachedDubhePackageId: string | null = null;
-
-const fromBase64 = (b64: string) =>
-  new Uint8Array(atob(b64).split("").map((c) => c.charCodeAt(0)));
 
 export function isVisualTestMode(): boolean {
   if (VISUAL_TEST_FLAG) return true;
   if (typeof window === "undefined") return false;
   const flags = window as { __PW_VISUAL_TEST__?: boolean; __VISUAL_TEST__?: boolean };
   return Boolean(flags.__PW_VISUAL_TEST__ || flags.__VISUAL_TEST__);
+}
+
+function isSponsorEnabled() {
+  return !["0", "off", "false"].includes(CHAIN_SPONSOR_MODE);
+}
+
+function isSponsorStrict() {
+  return ["1", "on", "true"].includes(CHAIN_SPONSOR_MODE);
 }
 
 function getProviderOptions(): BrowserPasswordProviderOptions {
@@ -240,6 +246,69 @@ function getSignerAndClient() {
   return { signer, client, wallet };
 }
 
+async function executeSponsoredTransaction(tx: Transaction) {
+  const { signer, client, wallet } = getSignerAndClient();
+  tx.setSenderIfNotSet(wallet.address);
+  const kindBytes = await tx.build({ client, onlyTransactionKind: true });
+  const prepareRes = await fetch("/api/chain/sponsor", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      step: "prepare",
+      sender: wallet.address,
+      kindBytes: toBase64(kindBytes),
+    }),
+  });
+  const prepareData = await prepareRes.json().catch(() => ({}));
+  if (!prepareRes.ok) {
+    throw new Error(prepareData?.error || "赞助交易构建失败");
+  }
+  const txBytes = prepareData?.bytes;
+  if (!txBytes || typeof txBytes !== "string") {
+    throw new Error("赞助交易返回无效");
+  }
+  const userSignature = await signer.signTransaction(fromBase64(txBytes));
+  const execRes = await fetch("/api/chain/sponsor", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      step: "execute",
+      txBytes,
+      userSignature: userSignature.signature,
+    }),
+  });
+  const execData = await execRes.json().catch(() => ({}));
+  if (!execRes.ok) {
+    throw new Error(execData?.error || "赞助交易失败");
+  }
+  return { digest: execData?.digest as string };
+}
+
+async function executeTransaction(tx: Transaction) {
+  const directExecute = async () => {
+    const { signer, client } = getSignerAndClient();
+    const result = await client.signAndExecuteTransaction({
+      signer,
+      transaction: tx,
+      options: { showEffects: true },
+    });
+    return { digest: result.digest };
+  };
+
+  if (!isSponsorEnabled()) {
+    return directExecute();
+  }
+
+  try {
+    return await executeSponsoredTransaction(tx);
+  } catch (error) {
+    if (isSponsorStrict()) {
+      throw error;
+    }
+    return directExecute();
+  }
+}
+
 export function isChainOrdersEnabled(): boolean {
   return CHAIN_ORDERS_FLAG || isVisualTestMode();
 }
@@ -260,8 +329,6 @@ export async function createOrderOnChain(params: {
 }) {
   ensurePackageId();
   ensureOrderId(params.orderId);
-  const { signer, client } = getSignerAndClient();
-
   const ruleSetId = params.ruleSetId ?? getRuleSetId();
   const companion = params.companion ?? getDefaultCompanion();
   const serviceFee = toChainAmount(params.serviceFee);
@@ -290,73 +357,48 @@ export async function createOrderOnChain(params: {
     });
   }
 
-  const result = await client.signAndExecuteTransaction({
-    signer,
-    transaction: tx,
-    options: { showEffects: true },
-  });
-
-  return { digest: result.digest };
+  return executeTransaction(tx);
 }
 
 export async function payServiceFeeOnChain(orderId: string) {
   ensurePackageId();
   ensureOrderId(orderId);
-  const { signer, client } = getSignerAndClient();
   const tx = new Transaction();
   const dappHub = getDappHubSharedRef();
   tx.moveCall({
     target: PACKAGE_ID + "::order_system::pay_service_fee",
     arguments: [tx.object(dappHub), tx.pure.u64(orderId)],
   });
-  const result = await client.signAndExecuteTransaction({
-    signer,
-    transaction: tx,
-    options: { showEffects: true },
-  });
-  return { digest: result.digest };
+  return executeTransaction(tx);
 }
 
 export async function lockDepositOnChain(orderId: string) {
   ensurePackageId();
   ensureOrderId(orderId);
-  const { signer, client } = getSignerAndClient();
   const tx = new Transaction();
   const dappHub = getDappHubSharedRef();
   tx.moveCall({
     target: PACKAGE_ID + "::order_system::lock_deposit",
     arguments: [tx.object(dappHub), tx.pure.u64(orderId)],
   });
-  const result = await client.signAndExecuteTransaction({
-    signer,
-    transaction: tx,
-    options: { showEffects: true },
-  });
-  return { digest: result.digest };
+  return executeTransaction(tx);
 }
 
 export async function markCompletedOnChain(orderId: string) {
   ensurePackageId();
   ensureOrderId(orderId);
-  const { signer, client } = getSignerAndClient();
   const tx = new Transaction();
   const dappHub = getDappHubSharedRef();
   tx.moveCall({
     target: PACKAGE_ID + "::order_system::mark_completed",
     arguments: [tx.object(dappHub), tx.pure.u64(orderId), tx.object("0x6")],
   });
-  const result = await client.signAndExecuteTransaction({
-    signer,
-    transaction: tx,
-    options: { showEffects: true },
-  });
-  return { digest: result.digest };
+  return executeTransaction(tx);
 }
 
 export async function raiseDisputeOnChain(orderId: string, evidence: string) {
   ensurePackageId();
   ensureOrderId(orderId);
-  const { signer, client } = getSignerAndClient();
   const tx = new Transaction();
   const dappHub = getDappHubSharedRef();
   const evidenceBytes = Array.from(new TextEncoder().encode(evidence || ""));
@@ -369,48 +411,31 @@ export async function raiseDisputeOnChain(orderId: string, evidence: string) {
       tx.object("0x6"),
     ],
   });
-  const result = await client.signAndExecuteTransaction({
-    signer,
-    transaction: tx,
-    options: { showEffects: true },
-  });
-  return { digest: result.digest };
+  return executeTransaction(tx);
 }
 
 export async function finalizeNoDisputeOnChain(orderId: string) {
   ensurePackageId();
   ensureOrderId(orderId);
-  const { signer, client } = getSignerAndClient();
   const tx = new Transaction();
   const dappHub = getDappHubSharedRef();
   tx.moveCall({
     target: PACKAGE_ID + "::order_system::finalize_no_dispute",
     arguments: [tx.object(dappHub), tx.pure.u64(orderId), tx.object("0x6")],
   });
-  const result = await client.signAndExecuteTransaction({
-    signer,
-    transaction: tx,
-    options: { showEffects: true },
-  });
-  return { digest: result.digest };
+  return executeTransaction(tx);
 }
 
 export async function cancelOrderOnChain(orderId: string) {
   ensurePackageId();
   ensureOrderId(orderId);
-  const { signer, client } = getSignerAndClient();
   const tx = new Transaction();
   const dappHub = getDappHubSharedRef();
   tx.moveCall({
     target: PACKAGE_ID + "::order_system::cancel_order",
     arguments: [tx.object(dappHub), tx.pure.u64(orderId)],
   });
-  const result = await client.signAndExecuteTransaction({
-    signer,
-    transaction: tx,
-    options: { showEffects: true },
-  });
-  return { digest: result.digest };
+  return executeTransaction(tx);
 }
 
 export async function fetchChainOrders(): Promise<ChainOrder[]> {
