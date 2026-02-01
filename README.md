@@ -53,6 +53,18 @@ npm run db:deploy --workspace app
 npm run db:seed --workspace app
 ```
 
+## Supabase Postgres
+Use Supabase as a remote Postgres by setting `DATABASE_URL` to the connection string from Supabase.
+
+Recommended:
+- `DATABASE_URL` → Supabase connection string (pooler or direct)
+- For migrations, prefer running locally with the direct connection string
+
+Example:
+```bash
+DATABASE_URL=postgresql://USER:PASSWORD@HOST:5432/postgres?schema=public
+```
+
 ## One-step local init
 ```bash
 node scripts/init-local.mjs
@@ -68,6 +80,9 @@ npx prisma migrate resolve --schema packages/app/prisma/schema.prisma --applied 
 - `GET /api/cron/chain-sync`
 
 Use `CRON_SECRET` with `?token=` or `x-cron-secret` in production.
+
+Optional env:
+- `ORDER_RETENTION_DAYS` – delete orders older than N days (default 180)
 
 ## Structure
 - `packages/app` – Next.js frontend (moved from previous root)

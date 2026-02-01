@@ -35,9 +35,16 @@ export async function GET(req: Request) {
   }
   const maxAudit = Number(process.env.ADMIN_AUDIT_LOG_LIMIT || "1000");
   const maxPayments = Number(process.env.ADMIN_PAYMENT_EVENT_LIMIT || "1000");
+  const retentionDays = Number(process.env.ORDER_RETENTION_DAYS || "180");
 
   const deletedAudit = await prune(prisma.adminAuditLog, maxAudit);
   const deletedPayments = await prune(prisma.adminPaymentEvent, maxPayments);
+  let deletedOrders = 0;
+  if (Number.isFinite(retentionDays) && retentionDays > 0) {
+    const cutoff = new Date(Date.now() - retentionDays * 24 * 60 * 60 * 1000);
+    const result = await prisma.adminOrder.deleteMany({ where: { createdAt: { lt: cutoff } } });
+    deletedOrders = result.count;
+  }
 
-  return NextResponse.json({ ok: true, deletedAudit, deletedPayments });
+  return NextResponse.json({ ok: true, deletedAudit, deletedPayments, deletedOrders });
 }
