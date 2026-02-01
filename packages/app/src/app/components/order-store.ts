@@ -20,6 +20,7 @@ export type LocalOrder = {
     plate?: string;
     phone?: string;
     price?: number;
+    tier?: string;
   };
 };
 
