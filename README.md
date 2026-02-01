@@ -7,6 +7,7 @@ This repository is now a workspace root. The Next.js app lives in `packages/app`
 - `npm run build` – build the app
 - `npm run lint` – lint the app
 - `npm run test:flow` – run local flow smoke checks (API/admin; optional chain)
+- `npm run test:chain:script` – run chain end-to-end script (requires SUI keys)
 - `npm run db:push --workspace app` – apply Prisma schema to local Postgres
 - `npm run db:seed --workspace app` – seed local Postgres data
 - `npm run db:deploy --workspace app` – apply Prisma migrations
@@ -26,6 +27,7 @@ Optional env:
 - `FLOW_BASE_URL` / `PLAYWRIGHT_BASE_URL` – override base URL (default `http://127.0.0.1:3000`)
 - `ADMIN_DASH_TOKEN` or `LEDGER_ADMIN_TOKEN` – enable admin API checks
 - `E2E_LEDGER_USER` – enable ledger credit check
+- `NEXT_PUBLIC_ORDER_SOURCE=server` – use server-backed orders (recommended)
 
 ## Local Postgres (Docker)
 ```bash
@@ -47,6 +49,12 @@ If you previously ran `db:push`, migrations can be baselined via:
 ```bash
 npx prisma migrate resolve --schema packages/app/prisma/schema.prisma --applied 20260201_init_admin_store
 ```
+
+## Cron (maintenance / chain sync)
+- `GET /api/cron/maintenance`
+- `GET /api/cron/chain-sync`
+
+Use `CRON_SECRET` with `?token=` or `x-cron-secret` in production.
 
 ## Structure
 - `packages/app` – Next.js frontend (moved from previous root)

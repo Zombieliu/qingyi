@@ -11,6 +11,8 @@
 - 完整上线轻量运营后台（登录/会话/RBAC/审计/支付回调）
 - 后台 API：订单/打手/公告增删改查、订单导出、链上对账/争议裁决、支付事件、审计日志
 - 新增后台数据存储（Postgres）、会话存储与审计记录
+- 前台订单从 localStorage 迁移到服务端订单（可配置 NEXT_PUBLIC_ORDER_SOURCE）
+- 新增链上订单同步与定时维护接口（/api/cron/*）
 - 新增支付回调 `/api/pay/webhook`（支持 Ping++ 签名或自定义 token）
 - 新增流程冒烟测试脚本 `npm run test:flow`
 
@@ -31,6 +33,8 @@
   - 参数：`receiptId`（支付订单号/交易号，用于幂等）
 - 后台接口：`/api/admin/*`（订单/打手/公告/审计/支付事件/链上对账/争议裁决）
 - 支付回调：`POST /api/pay/webhook`
+- 订单读写：`/api/orders`（GET/POST + PATCH）
+- 定时维护与链上同步：`/api/cron/maintenance` / `api/cron/chain-sync`
 - 充值 QR：前端仍为双二维码手动勾选
 
 ## 5) 构建状态
@@ -53,6 +57,7 @@
   - `ADMIN_TOKENS`, `ADMIN_TOKENS_JSON`
   - `ADMIN_SESSION_TTL_HOURS`, `ADMIN_RATE_LIMIT_MAX`, `ADMIN_LOGIN_RATE_LIMIT_MAX`
   - `ADMIN_AUDIT_LOG_LIMIT`, `ADMIN_PAYMENT_EVENT_LIMIT`, `ADMIN_CHAIN_EVENT_LIMIT`
+  - `CRON_SECRET`
 - 支付回调校验：
   - `PINGPP_WEBHOOK_PUBLIC_KEY`, `PINGPP_WEBHOOK_SECRET`, `PINGPP_WEBHOOK_TOKEN`
 
@@ -60,4 +65,5 @@
 - 重新触发 Vercel 部署，验证 workspace/lockfile 选择与构建告警
 - 部署 Dubhe + qy 合约，获取 package id 与 DappHub shared 版本号
 - 已切换到 Postgres（本地可用 Docker，提供 init 脚本、迁移与 seed）
+- 链上端到端脚本：`scripts/chain-e2e.mjs`
 - 视需要把前端订单流程从 localStorage 改为后端/链上

@@ -1,7 +1,8 @@
 "use client";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Clock3, ShieldCheck, QrCode, Loader2, CheckCircle2 } from "lucide-react";
-import { addOrder, loadOrders, updateOrder, type LocalOrder } from "@/app/components/order-store";
+import { type LocalOrder } from "@/app/components/order-store";
+import { createOrder, deleteOrder, fetchOrders, patchOrder } from "@/app/components/order-service";
 import {
   type ChainOrder,
   cancelOrderOnChain,
@@ -94,7 +95,7 @@ export default function Schedule() {
   const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const [infoOpen, setInfoOpen] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
-  const [orders, setOrders] = useState<LocalOrder[]>(() => loadOrders());
+  const [orders, setOrders] = useState<LocalOrder[]>([]);
   const [mode, setMode] = useState<Mode>("select");
   const [feeOpen, setFeeOpen] = useState(false);
   const [feeChecked, setFeeChecked] = useState(false);
@@ -117,16 +118,15 @@ export default function Schedule() {
   const playerQr = process.env.NEXT_PUBLIC_QR_PLAYER_FEE || "/qr/player-fee-qr.svg";
   const MATCH_RATE = 0.15;
 
+  const refreshOrders = async () => {
+    const list = await fetchOrders();
+    setOrders(list);
+    setMode(deriveMode(list));
+    setPlayerPaidTick(false);
+  };
+
   useEffect(() => {
-    const handler = () => {
-      const list = loadOrders();
-      setOrders(list);
-      setMode(deriveMode(list));
-      setPlayerPaidTick(false);
-    };
-    handler();
-    window.addEventListener("orders-updated", handler);
-    return () => window.removeEventListener("orders-updated", handler);
+    refreshOrders();
   }, []);
 
   const loadChain = async () => {
@@ -188,18 +188,10 @@ export default function Schedule() {
         ? Number((currentOrder.amount * MATCH_RATE).toFixed(2))
         : locked.service;
 
-  const cancelOrder = () => {
+  const cancelOrder = async () => {
     if (!currentOrder) return;
-    addOrder({
-      ...currentOrder,
-      status: "取消",
-      driver: undefined,
-      time: new Date().toISOString(),
-    });
-    // 删除记录以清空列表和状态
-    const list = loadOrders().filter((o) => o.id !== currentOrder.id);
-    localStorage.setItem("dl_orders", JSON.stringify(list));
-    window.dispatchEvent(new Event("orders-updated"));
+    await deleteOrder(currentOrder.id, chainAddress);
+    await refreshOrders();
     setMode("select");
   };
 
@@ -257,7 +249,8 @@ export default function Schedule() {
     if (chainCurrentOrder.status >= 1) patch.serviceFeePaid = true;
     if (chainCurrentOrder.status >= 2) patch.depositPaid = true;
     if (Object.keys(patch).length > 0) {
-      updateOrder(currentOrder.id, patch);
+      patchOrder(currentOrder.id, { ...patch, userAddress: chainAddress });
+      refreshOrders();
     }
   }, [chainCurrentOrder, currentOrder]);
 
@@ -322,14 +315,15 @@ export default function Schedule() {
             <button
               className="dl-tab-btn"
               style={{ background: "#0f172a", color: "#fff" }}
-              onClick={() => {
+              onClick={async () => {
                 if (!currentOrder) return;
                 if (!playerPaidTick) {
                   setToast("请先完成打手费用支付");
                   setTimeout(() => setToast(null), 2000);
                   return;
                 }
-                updateOrder(currentOrder.id, { playerPaid: true, status: "打手费已付" });
+                await patchOrder(currentOrder.id, { playerPaid: true, status: "打手费已付", userAddress: chainAddress });
+                await refreshOrders();
                 setMode("enroute");
               }}
             >
@@ -434,24 +428,10 @@ export default function Schedule() {
         });
         chainDigest = chainResult.digest;
       }
-      const res = await fetch("/api/orders", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          user: "安排页面",
-          item: locked.items.join("、"),
-          amount: locked.total,
-          status: "安排",
-          note: `来源：安排页呼叫服务。撮合费${(MATCH_RATE * 100).toFixed(0)}%已付`,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok || !data.sent) {
-        throw new Error(data.error || "推送失败");
-      }
-      addOrder({
-        id: chainOrderId || data.orderId || `${Date.now()}`,
+      const result = await createOrder({
+        id: chainOrderId || `${Date.now()}`,
         user: "安排页面",
+        userAddress: chainAddress,
         item: locked.items.join("、"),
         amount: locked.total,
         status: "待派单",
@@ -462,10 +442,16 @@ export default function Schedule() {
         playerDue: locked.player,
         depositPaid: false,
         playerPaid: false,
+        note: `来源：安排页呼叫服务。撮合费${(MATCH_RATE * 100).toFixed(0)}%已付`,
       });
+      await refreshOrders();
       setMode("notifying");
       setFeeOpen(false);
-      setToast(chainDigest ? "已上链并派单" : "撮合费已记录，正在派单");
+      if (result.sent === false) {
+        setToast(result.error || "订单已创建，通知失败");
+      } else {
+        setToast(chainDigest ? "已上链并派单" : "撮合费已记录，正在派单");
+      }
     } catch (e) {
       setToast((e as Error).message);
     } finally {

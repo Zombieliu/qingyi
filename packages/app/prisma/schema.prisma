@@ -10,6 +10,8 @@ datasource db {
 model AdminOrder {
   id            String   @id
   user          String
+  userAddress   String?
+  companionAddress String?
   item          String
   amount        Float
   currency      String
@@ -18,12 +20,19 @@ model AdminOrder {
   note          String?
   assignedTo    String?
   source        String?
+  chainDigest   String?
+  chainStatus   Int?
+  serviceFee    Float?
+  deposit       Float?
+  meta          Json?
   createdAt     DateTime
   updatedAt     DateTime?
 
   @@index([createdAt])
   @@index([stage])
   @@index([paymentStatus])
+  @@index([userAddress])
+  @@index([chainStatus])
 }
 
 model AdminPlayer {

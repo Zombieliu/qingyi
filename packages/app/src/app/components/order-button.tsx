@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
-import { addOrder } from "./order-store";
-import { createChainOrderId, createOrderOnChain, isChainOrdersEnabled } from "@/lib/qy-chain";
+import { createOrder } from "./order-service";
+import { createChainOrderId, createOrderOnChain, getCurrentAddress, isChainOrdersEnabled } from "@/lib/qy-chain";
 
 interface Props {
   user: string;
@@ -30,25 +30,22 @@ export default function OrderButton({ user, item, amount, note }: Props) {
         });
         chainDigest = chainResult.digest;
       }
-      const res = await fetch("/api/orders", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ user, item, amount, note, status: "已支付" }),
-      });
-      const data = await res.json();
-      if (!res.ok || !data.sent) {
-        throw new Error(data.error || "发送失败");
-      }
-      addOrder({
-        id: chainOrderId || data.orderId || `${Date.now()}`,
+      const result = await createOrder({
+        id: chainOrderId || `${Date.now()}`,
         user,
+        userAddress: isChainOrdersEnabled() ? getCurrentAddress() : undefined,
         item,
         amount,
         status: "已支付",
         time: new Date().toISOString(),
         chainDigest: chainDigest || undefined,
+        note,
       });
-      setMsg(chainDigest ? "已上链并同步到微信群" : "已同步到微信群");
+      if (result.sent === false) {
+        setMsg(result.error || "订单已创建，通知失败");
+      } else {
+        setMsg(chainDigest ? "已上链并同步到微信群" : "已同步到微信群");
+      }
     } catch (e) {
       setMsg((e as Error).message || "下单失败");
     } finally {

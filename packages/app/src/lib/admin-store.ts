@@ -16,6 +16,8 @@ const MAX_PAYMENT_EVENTS = Number(process.env.ADMIN_PAYMENT_EVENT_LIMIT || "1000
 function mapOrder(row: {
   id: string;
   user: string;
+  userAddress: string | null;
+  companionAddress: string | null;
   item: string;
   amount: number;
   currency: string;
@@ -24,12 +26,19 @@ function mapOrder(row: {
   note: string | null;
   assignedTo: string | null;
   source: string | null;
+  chainDigest: string | null;
+  chainStatus: number | null;
+  serviceFee: number | null;
+  deposit: number | null;
+  meta: Prisma.JsonValue | null;
   createdAt: Date;
   updatedAt: Date | null;
 }): AdminOrder {
   return {
     id: row.id,
     user: row.user,
+    userAddress: row.userAddress || undefined,
+    companionAddress: row.companionAddress || undefined,
     item: row.item,
     amount: row.amount,
     currency: row.currency,
@@ -38,6 +47,11 @@ function mapOrder(row: {
     note: row.note || undefined,
     assignedTo: row.assignedTo || undefined,
     source: row.source || undefined,
+    chainDigest: row.chainDigest || undefined,
+    chainStatus: row.chainStatus ?? undefined,
+    serviceFee: row.serviceFee ?? undefined,
+    deposit: row.deposit ?? undefined,
+    meta: (row.meta as Record<string, unknown> | null) || undefined,
     createdAt: row.createdAt.getTime(),
     updatedAt: row.updatedAt ? row.updatedAt.getTime() : undefined,
   };
@@ -169,8 +183,9 @@ export async function queryOrders(params: {
   q?: string;
   paymentStatus?: string;
   assignedTo?: string;
+  userAddress?: string;
 }) {
-  const { page, pageSize, stage, q, paymentStatus, assignedTo } = params;
+  const { page, pageSize, stage, q, paymentStatus, assignedTo, userAddress } = params;
   const keyword = (q || "").trim();
   const where: Prisma.AdminOrderWhereInput = {};
 
@@ -182,6 +197,9 @@ export async function queryOrders(params: {
   }
   if (assignedTo) {
     where.assignedTo = assignedTo;
+  }
+  if (userAddress) {
+    where.userAddress = userAddress;
   }
   if (keyword) {
     where.OR = [
@@ -220,6 +238,8 @@ export async function addOrder(order: AdminOrder) {
     data: {
       id: order.id,
       user: order.user,
+      userAddress: order.userAddress ?? null,
+      companionAddress: order.companionAddress ?? null,
       item: order.item,
       amount: order.amount,
       currency: order.currency,
@@ -228,6 +248,11 @@ export async function addOrder(order: AdminOrder) {
       note: order.note ?? null,
       assignedTo: order.assignedTo ?? null,
       source: order.source ?? null,
+      chainDigest: order.chainDigest ?? null,
+      chainStatus: order.chainStatus ?? null,
+      serviceFee: order.serviceFee ?? null,
+      deposit: order.deposit ?? null,
+      meta: order.meta ? (order.meta as Prisma.InputJsonValue) : Prisma.DbNull,
       createdAt: new Date(order.createdAt),
       updatedAt: order.updatedAt ? new Date(order.updatedAt) : null,
     },
@@ -237,20 +262,91 @@ export async function addOrder(order: AdminOrder) {
 
 export async function updateOrder(orderId: string, patch: Partial<AdminOrder>) {
   try {
+    const data: Prisma.AdminOrderUpdateInput = {
+      updatedAt: new Date(),
+    };
+    if (patch.paymentStatus !== undefined) data.paymentStatus = patch.paymentStatus;
+    if (patch.note !== undefined) data.note = patch.note;
+    if (patch.assignedTo !== undefined) data.assignedTo = patch.assignedTo;
+    if (patch.stage !== undefined) data.stage = patch.stage;
+    if (patch.user !== undefined) data.user = patch.user;
+    if (patch.userAddress !== undefined) data.userAddress = patch.userAddress;
+    if (patch.companionAddress !== undefined) data.companionAddress = patch.companionAddress;
+    if (patch.item !== undefined) data.item = patch.item;
+    if (patch.amount !== undefined) data.amount = patch.amount;
+    if (patch.currency !== undefined) data.currency = patch.currency;
+    if (patch.source !== undefined) data.source = patch.source;
+    if (patch.chainDigest !== undefined) data.chainDigest = patch.chainDigest;
+    if (patch.chainStatus !== undefined) data.chainStatus = patch.chainStatus;
+    if (patch.serviceFee !== undefined) data.serviceFee = patch.serviceFee;
+    if (patch.deposit !== undefined) data.deposit = patch.deposit;
+    if (patch.meta !== undefined) {
+      const current = await prisma.adminOrder.findUnique({
+        where: { id: orderId },
+        select: { meta: true },
+      });
+      const merged = {
+        ...(current?.meta ? (current.meta as Record<string, unknown>) : {}),
+        ...(patch.meta || {}),
+      };
+      data.meta = Object.keys(merged).length ? (merged as Prisma.InputJsonValue) : Prisma.DbNull;
+    }
+
     const row = await prisma.adminOrder.update({
       where: { id: orderId },
-      data: {
-        paymentStatus: patch.paymentStatus,
-        note: patch.note ?? undefined,
-        assignedTo: patch.assignedTo ?? undefined,
-        stage: patch.stage,
-        updatedAt: new Date(),
-      },
+      data,
     });
     return mapOrder(row);
   } catch {
     return null;
   }
+}
+
+export async function upsertOrder(order: AdminOrder) {
+  const row = await prisma.adminOrder.upsert({
+    where: { id: order.id },
+    create: {
+      id: order.id,
+      user: order.user,
+      userAddress: order.userAddress ?? null,
+      companionAddress: order.companionAddress ?? null,
+      item: order.item,
+      amount: order.amount,
+      currency: order.currency,
+      paymentStatus: order.paymentStatus,
+      stage: order.stage,
+      note: order.note ?? null,
+      assignedTo: order.assignedTo ?? null,
+      source: order.source ?? null,
+      chainDigest: order.chainDigest ?? null,
+      chainStatus: order.chainStatus ?? null,
+      serviceFee: order.serviceFee ?? null,
+      deposit: order.deposit ?? null,
+      meta: order.meta ? (order.meta as Prisma.InputJsonValue) : Prisma.DbNull,
+      createdAt: new Date(order.createdAt),
+      updatedAt: order.updatedAt ? new Date(order.updatedAt) : null,
+    },
+    update: {
+      user: order.user,
+      userAddress: order.userAddress ?? null,
+      companionAddress: order.companionAddress ?? null,
+      item: order.item,
+      amount: order.amount,
+      currency: order.currency,
+      paymentStatus: order.paymentStatus,
+      stage: order.stage,
+      note: order.note ?? null,
+      assignedTo: order.assignedTo ?? null,
+      source: order.source ?? null,
+      chainDigest: order.chainDigest ?? null,
+      chainStatus: order.chainStatus ?? null,
+      serviceFee: order.serviceFee ?? null,
+      deposit: order.deposit ?? null,
+      meta: order.meta ? (order.meta as Prisma.InputJsonValue) : Prisma.DbNull,
+      updatedAt: new Date(),
+    },
+  });
+  return mapOrder(row);
 }
 
 export async function listPlayers() {

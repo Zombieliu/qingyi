@@ -42,6 +42,8 @@ export interface AdminPaymentEvent {
 export interface AdminOrder {
   id: string;
   user: string;
+  userAddress?: string;
+  companionAddress?: string;
   item: string;
   amount: number;
   currency: string;
@@ -50,6 +52,11 @@ export interface AdminOrder {
   note?: string;
   assignedTo?: string;
   source?: string;
+  chainDigest?: string;
+  chainStatus?: number;
+  serviceFee?: number;
+  deposit?: number;
+  meta?: Record<string, unknown>;
   createdAt: number;
   updatedAt?: number;
 }

@@ -51,5 +51,7 @@
   - 若需要在首页展示链上订单状态或入口
 - 争议裁决（管理员）入口
   - 已接入：后台 `/admin/chain` + `/api/admin/chain/resolve`
+- 后台链上同步
+  - 已接入：`/api/cron/chain-sync`
 - indexer/后端（可选）
   - 若需要全量订单列表或实时推送，可接 Dubhe indexer 或自建服务

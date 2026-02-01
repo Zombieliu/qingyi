@@ -26,9 +26,14 @@ ADMIN_TOKENS_JSON={"admin":["token1"],"finance":["token2"]}（可选）
 ADMIN_SESSION_TTL_HOURS=12
 ADMIN_RATE_LIMIT_MAX=120
 ADMIN_LOGIN_RATE_LIMIT_MAX=10
+ADMIN_AUDIT_LOG_LIMIT=1000
+ADMIN_PAYMENT_EVENT_LIMIT=1000
+ADMIN_CHAIN_EVENT_LIMIT=200
+CRON_SECRET=定时任务密钥（生产环境建议）
 PINGPP_WEBHOOK_PUBLIC_KEY=Ping++ webhook 公钥（可选）
 PINGPP_WEBHOOK_SECRET=Ping++ webhook 密钥（可选）
 PINGPP_WEBHOOK_TOKEN=自定义 webhook token（可选）
+NEXT_PUBLIC_ORDER_SOURCE=server
 ```
 
 ## 脚本
@@ -77,6 +82,11 @@ pnpm run db:seed
 ```bash
 pnpm prisma migrate resolve --applied 20260201_init_admin_store
 ```
+
+## 定时任务（生产）
+- `/api/cron/maintenance`
+- `/api/cron/chain-sync`
+建议配置 `CRON_SECRET`，使用 `?token=` 或 `x-cron-secret` 调用。
 
 ## CI（GitHub Actions）
 创建文件 `.github/workflows/ci.yml`，内容：

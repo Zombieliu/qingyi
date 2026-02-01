@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
-import { loadOrders, updateOrder, removeOrder, type LocalOrder } from "@/app/components/order-store";
+import { type LocalOrder } from "@/app/components/order-store";
+import { deleteOrder, fetchOrders, patchOrder } from "@/app/components/order-service";
 import { Activity, Clock3, Car, MapPin } from "lucide-react";
 import {
   type ChainOrder,
@@ -17,7 +18,7 @@ import {
 } from "@/lib/qy-chain";
 
 export default function Showcase() {
-  const [orders, setOrders] = useState<LocalOrder[]>(() => loadOrders());
+  const [orders, setOrders] = useState<LocalOrder[]>([]);
   const [chainOrders, setChainOrders] = useState<ChainOrder[]>([]);
   const [chainLoading, setChainLoading] = useState(false);
   const [chainError, setChainError] = useState<string | null>(null);
@@ -25,10 +26,13 @@ export default function Showcase() {
   const [chainAction, setChainAction] = useState<string | null>(null);
   const [chainAddress, setChainAddress] = useState("");
 
+  const refreshOrders = async () => {
+    const list = await fetchOrders();
+    setOrders(list);
+  };
+
   useEffect(() => {
-    const handler = () => setOrders(loadOrders());
-    window.addEventListener("orders-updated", handler);
-    return () => window.removeEventListener("orders-updated", handler);
+    refreshOrders();
   }, []);
 
   const loadChain = async () => {
@@ -56,8 +60,8 @@ export default function Showcase() {
     loadChain();
   }, []);
 
-  const accept = (id: string) => {
-    updateOrder(id, {
+  const accept = async (id: string) => {
+    await patchOrder(id, {
       status: "待用户支付打手费",
       depositPaid: true,
       playerPaid: false,
@@ -69,31 +73,38 @@ export default function Showcase() {
         phone: "138****0000",
         price: 63,
       },
+      userAddress: chainAddress,
     });
+    await refreshOrders();
   };
 
-  const cancel = (id: string) => {
-    updateOrder(id, {
+  const cancel = async (id: string) => {
+    await patchOrder(id, {
       status: "取消",
       driver: undefined,
       time: new Date().toISOString(),
+      userAddress: chainAddress,
     });
-    removeOrder(id);
+    await deleteOrder(id, chainAddress);
+    await refreshOrders();
   };
 
-  const complete = (id: string) => {
-    updateOrder(id, {
+  const complete = async (id: string) => {
+    await patchOrder(id, {
       status: "已完成",
       time: new Date().toISOString(),
+      userAddress: chainAddress,
     });
-    removeOrder(id);
+    await deleteOrder(id, chainAddress);
+    await refreshOrders();
   };
 
-  const clearAll = () => {
-    if (typeof window === "undefined") return;
-    localStorage.removeItem("dl_orders");
-    window.dispatchEvent(new Event("orders-updated"));
-    setOrders([]);
+  const clearAll = async () => {
+    if (!orders.length) return;
+    for (const order of orders) {
+      await deleteOrder(order.id, chainAddress);
+    }
+    await refreshOrders();
   };
 
   const statusLabel = (status: number) => {
@@ -381,7 +392,7 @@ export default function Showcase() {
         </div>
       )}
       <div className="text-xs text-gray-500 mt-6">
-        本地缓存订单仍保留；链上订单以 Passkey 地址过滤展示并可执行押金/结算流程。
+        订单来自服务端；链上订单以 Passkey 地址过滤展示并可执行押金/结算流程。
       </div>
     </div>
   );

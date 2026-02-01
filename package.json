@@ -19,7 +19,8 @@
     "db:push": "npm run db:push --workspace app",
     "db:seed": "npm run db:seed --workspace app",
     "db:deploy": "npm run db:deploy --workspace app",
-    "db:maintain": "node scripts/admin-maintenance.mjs"
+    "db:maintain": "node scripts/admin-maintenance.mjs",
+    "test:chain:script": "node scripts/chain-e2e.mjs"
   },
   "devDependencies": {
     "@playwright/test": "^1.50.1"

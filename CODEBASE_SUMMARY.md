@@ -2,7 +2,7 @@
 
 ## 1) Quick overview
 - **Repo type**: npm workspaces monorepo with a single Next.js app in `packages/app`.
-- **Product**: 情谊电竞 PWA for《三角洲行动》陪玩/组队调度，含 Passkey 登录、下单/派单、充值与信息展示，并内置轻量运营后台。
+- **Product**: 情谊电竞 PWA for《三角洲行动》陪玩/组队调度，含 Passkey 登录、下单/派单、充值与信息展示，并内置轻量运营后台与服务端订单存储。
 - **Runtime**: Next.js 16 App Router, React 19, TypeScript, Tailwind v4 + custom CSS classes, Serwist PWA, Lucide icons, Mysten Sui Passkey.
 
 ## 2) Key user flows (logic-level)
@@ -23,12 +23,15 @@
   - `orders-updated`: 订单变更时广播。
 
 ## 4) Backend/API (Next.js route handlers)
-- `POST /api/orders` → 企业微信机器人 Markdown 推送。需要 `WECHAT_WEBHOOK_URL`。
+- `GET/POST /api/orders` → 服务端订单读写 + 企业微信机器人推送。需要 `WECHAT_WEBHOOK_URL`。
+- `PATCH /api/orders/[orderId]` → 用户端状态写回（需 userAddress）。
 - `POST /api/pay` → Ping++ 预生成支付 charge。需要 `PINGPP_API_KEY` 与 `PINGPP_APP_ID`。
   - 注意：当前前端未调用 `/api/pay`。
 - `POST /api/ledger/credit` → 管理员记账上链（Dubhe SDK）。需要链上相关环境变量。
 - `POST /api/pay/webhook` → 支付回调记录与校验（Ping++ 签名或自定义 token）。
 - `/api/admin/*` → 运营后台接口（登录、会话、订单、打手、公告、链上对账、支付事件、审计、导出）。
+- `/api/cron/maintenance` → 维护裁剪审计/支付事件。
+- `/api/cron/chain-sync` → 链上订单同步到数据库。
 
 ## 5) PWA & Service Worker
 - Serwist InjectManifest: `src/app/sw.ts` 作为 SW 源文件，构建输出到 `public/sw.js`。
@@ -52,7 +55,10 @@
   - `ADMIN_DASH_TOKEN`, `ADMIN_TOKENS`, `ADMIN_TOKENS_JSON`: 后台密钥（角色）
   - `ADMIN_SESSION_TTL_HOURS`, `ADMIN_RATE_LIMIT_MAX`, `ADMIN_LOGIN_RATE_LIMIT_MAX`: 后台会话/限流
   - `ADMIN_AUDIT_LOG_LIMIT`, `ADMIN_PAYMENT_EVENT_LIMIT`, `ADMIN_CHAIN_EVENT_LIMIT`: 后台存储上限
+  - `CRON_SECRET`: 定时任务密钥
   - `PINGPP_WEBHOOK_PUBLIC_KEY`, `PINGPP_WEBHOOK_SECRET`, `PINGPP_WEBHOOK_TOKEN`: webhook 校验
+  - `E2E_SUI_USER_PRIVATE_KEY`, `E2E_SUI_COMPANION_PRIVATE_KEY`: 链上脚本测试
+  - `NEXT_PUBLIC_ORDER_SOURCE`: 订单来源（server/local）
 - **Client-side (NEXT_PUBLIC_*)**
   - `NEXT_PUBLIC_QR_PLATFORM_FEE`: 平台撮合费二维码
   - `NEXT_PUBLIC_QR_PLAYER_FEE`: 打手费用二维码
@@ -118,11 +124,14 @@
 - `packages/app/src/lib/admin-store.ts` — 后台数据存储（Postgres via Prisma）。
 - `packages/app/src/lib/admin-audit.ts` — 审计日志写入。
 - `packages/app/src/lib/chain-admin.ts` — 链上对账/裁决工具。
+- `packages/app/src/lib/chain-sync.ts` — 链上订单同步。
+- `packages/app/src/app/components/order-service.ts` — 客户端订单服务（服务端/本地切换）。
 - `packages/app/prisma/schema.prisma` — Prisma 数据模型（Postgres）。
 - `packages/app/prisma/seed.mjs` — 本地种子数据。
 - `packages/app/prisma/migrations/*` — Prisma 迁移文件。
 - `scripts/admin-maintenance.mjs` — 审计/支付事件表裁剪。
 - `scripts/init-local.mjs` — 本地 Docker + 迁移 + seed 一键初始化。
+- `scripts/chain-e2e.mjs` — 链上端到端脚本。
 
 ## packages/contracts (Move + Dubhe SDK)
 - `packages/contracts/package.json` — Dubhe CLI/SDK 脚本与依赖。
