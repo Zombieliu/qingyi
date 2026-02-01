@@ -47,23 +47,36 @@ npm run dev
 - 点击“查看”进入订单详情页
 - 点击“导出 CSV”
 
-3) 打手管理（/admin/players）
+3) 客服工单（/admin/support）
+- 查看工单列表、修改状态与备注
+
+4) 优惠卡券（/admin/coupons）
+- 新建优惠券
+- 修改状态/金额/有效期
+
+5) 打手管理（/admin/players）
 - 新建打手
 - 修改状态/备注
 - 删除打手
 
-4) 公告资讯（/admin/announcements）
+6) 护航申请（/admin/guardians）
+- 查看申请、修改状态与备注
+
+7) 公告资讯（/admin/announcements）
 - 新建公告
 - 发布/归档/取消归档
 - 删除公告
 
-5) 支付事件（/admin/payments）
+8) 发票申请（/admin/invoices）
+- 查看开票申请、修改状态与备注
+
+9) 支付事件（/admin/payments）
 - 查看支付回调记录（如未触发会为空）
 
-6) 审计日志（/admin/audit）
+10) 审计日志（/admin/audit）
 - 检查是否有操作记录
 
-7) 链上对账（/admin/chain）
+11) 链上对账（/admin/chain）
 - 若链上环境齐备，查看对账与争议裁决
 
 ## 5. 自动化冒烟测试（推荐）

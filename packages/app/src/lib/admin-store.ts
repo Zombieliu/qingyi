@@ -2,9 +2,13 @@ import "server-only";
 import type {
   AdminAnnouncement,
   AdminAuditLog,
+  AdminCoupon,
+  AdminGuardianApplication,
+  AdminInvoiceRequest,
   AdminOrder,
   AdminPaymentEvent,
   AdminPlayer,
+  AdminSupportTicket,
   AdminSession,
 } from "./admin-types";
 import { prisma } from "./db";
@@ -94,6 +98,128 @@ function mapAnnouncement(row: {
     tag: row.tag,
     content: row.content,
     status: row.status as AdminAnnouncement["status"],
+    createdAt: row.createdAt.getTime(),
+    updatedAt: row.updatedAt ? row.updatedAt.getTime() : undefined,
+  };
+}
+
+function mapSupportTicket(row: {
+  id: string;
+  userName: string | null;
+  userAddress: string | null;
+  contact: string | null;
+  topic: string | null;
+  message: string;
+  status: string;
+  note: string | null;
+  meta: Prisma.JsonValue | null;
+  createdAt: Date;
+  updatedAt: Date | null;
+}): AdminSupportTicket {
+  return {
+    id: row.id,
+    userName: row.userName || undefined,
+    userAddress: row.userAddress || undefined,
+    contact: row.contact || undefined,
+    topic: row.topic || undefined,
+    message: row.message,
+    status: row.status as AdminSupportTicket["status"],
+    note: row.note || undefined,
+    meta: (row.meta as Record<string, unknown> | null) || undefined,
+    createdAt: row.createdAt.getTime(),
+    updatedAt: row.updatedAt ? row.updatedAt.getTime() : undefined,
+  };
+}
+
+function mapCoupon(row: {
+  id: string;
+  title: string;
+  code: string | null;
+  description: string | null;
+  discount: number | null;
+  minSpend: number | null;
+  status: string;
+  startsAt: Date | null;
+  expiresAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date | null;
+}): AdminCoupon {
+  return {
+    id: row.id,
+    title: row.title,
+    code: row.code || undefined,
+    description: row.description || undefined,
+    discount: row.discount ?? undefined,
+    minSpend: row.minSpend ?? undefined,
+    status: row.status as AdminCoupon["status"],
+    startsAt: row.startsAt ? row.startsAt.getTime() : undefined,
+    expiresAt: row.expiresAt ? row.expiresAt.getTime() : undefined,
+    createdAt: row.createdAt.getTime(),
+    updatedAt: row.updatedAt ? row.updatedAt.getTime() : undefined,
+  };
+}
+
+function mapInvoiceRequest(row: {
+  id: string;
+  user: string | null;
+  userAddress: string | null;
+  contact: string | null;
+  email: string | null;
+  orderId: string | null;
+  amount: number | null;
+  title: string | null;
+  taxId: string | null;
+  address: string | null;
+  status: string;
+  note: string | null;
+  meta: Prisma.JsonValue | null;
+  createdAt: Date;
+  updatedAt: Date | null;
+}): AdminInvoiceRequest {
+  return {
+    id: row.id,
+    user: row.user || undefined,
+    userAddress: row.userAddress || undefined,
+    contact: row.contact || undefined,
+    email: row.email || undefined,
+    orderId: row.orderId || undefined,
+    amount: row.amount ?? undefined,
+    title: row.title || undefined,
+    taxId: row.taxId || undefined,
+    address: row.address || undefined,
+    status: row.status as AdminInvoiceRequest["status"],
+    note: row.note || undefined,
+    meta: (row.meta as Record<string, unknown> | null) || undefined,
+    createdAt: row.createdAt.getTime(),
+    updatedAt: row.updatedAt ? row.updatedAt.getTime() : undefined,
+  };
+}
+
+function mapGuardianApplication(row: {
+  id: string;
+  user: string | null;
+  userAddress: string | null;
+  contact: string | null;
+  games: string | null;
+  experience: string | null;
+  availability: string | null;
+  status: string;
+  note: string | null;
+  meta: Prisma.JsonValue | null;
+  createdAt: Date;
+  updatedAt: Date | null;
+}): AdminGuardianApplication {
+  return {
+    id: row.id,
+    user: row.user || undefined,
+    userAddress: row.userAddress || undefined,
+    contact: row.contact || undefined,
+    games: row.games || undefined,
+    experience: row.experience || undefined,
+    availability: row.availability || undefined,
+    status: row.status as AdminGuardianApplication["status"],
+    note: row.note || undefined,
+    meta: (row.meta as Record<string, unknown> | null) || undefined,
     createdAt: row.createdAt.getTime(),
     updatedAt: row.updatedAt ? row.updatedAt.getTime() : undefined,
   };
@@ -451,6 +577,335 @@ export async function listPublicAnnouncements() {
     orderBy: [{ updatedAt: "desc" }, { createdAt: "desc" }],
   });
   return rows.map(mapAnnouncement);
+}
+
+export async function querySupportTickets(params: { page: number; pageSize: number; status?: string; q?: string }) {
+  const { page, pageSize, status, q } = params;
+  const keyword = (q || "").trim();
+  const where: Prisma.AdminSupportTicketWhereInput = {};
+  if (status && status !== "全部") where.status = status;
+  if (keyword) {
+    where.OR = [
+      { userName: { contains: keyword } },
+      { contact: { contains: keyword } },
+      { topic: { contains: keyword } },
+      { message: { contains: keyword } },
+      { id: { contains: keyword } },
+    ];
+  }
+  const total = await prisma.adminSupportTicket.count({ where });
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const clampedPage = Math.min(Math.max(page, 1), totalPages);
+  const rows = await prisma.adminSupportTicket.findMany({
+    where,
+    orderBy: { createdAt: "desc" },
+    skip: (clampedPage - 1) * pageSize,
+    take: pageSize,
+  });
+  return {
+    items: rows.map(mapSupportTicket),
+    total,
+    page: clampedPage,
+    pageSize,
+    totalPages,
+  };
+}
+
+export async function addSupportTicket(ticket: AdminSupportTicket) {
+  const row = await prisma.adminSupportTicket.create({
+    data: {
+      id: ticket.id,
+      userName: ticket.userName ?? null,
+      userAddress: ticket.userAddress ?? null,
+      contact: ticket.contact ?? null,
+      topic: ticket.topic ?? null,
+      message: ticket.message,
+      status: ticket.status,
+      note: ticket.note ?? null,
+      meta: ticket.meta ? (ticket.meta as Prisma.InputJsonValue) : Prisma.DbNull,
+      createdAt: new Date(ticket.createdAt),
+      updatedAt: ticket.updatedAt ? new Date(ticket.updatedAt) : null,
+    },
+  });
+  return mapSupportTicket(row);
+}
+
+export async function updateSupportTicket(ticketId: string, patch: Partial<AdminSupportTicket>) {
+  try {
+    const row = await prisma.adminSupportTicket.update({
+      where: { id: ticketId },
+      data: {
+        status: patch.status,
+        note: patch.note,
+        meta: patch.meta ? (patch.meta as Prisma.InputJsonValue) : undefined,
+        updatedAt: new Date(),
+      },
+    });
+    return mapSupportTicket(row);
+  } catch {
+    return null;
+  }
+}
+
+export async function removeSupportTicket(ticketId: string) {
+  try {
+    await prisma.adminSupportTicket.delete({ where: { id: ticketId } });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function queryCoupons(params: { page: number; pageSize: number; status?: string; q?: string }) {
+  const { page, pageSize, status, q } = params;
+  const keyword = (q || "").trim();
+  const where: Prisma.AdminCouponWhereInput = {};
+  if (status && status !== "全部") where.status = status;
+  if (keyword) {
+    where.OR = [{ title: { contains: keyword } }, { code: { contains: keyword } }];
+  }
+  const total = await prisma.adminCoupon.count({ where });
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const clampedPage = Math.min(Math.max(page, 1), totalPages);
+  const rows = await prisma.adminCoupon.findMany({
+    where,
+    orderBy: { createdAt: "desc" },
+    skip: (clampedPage - 1) * pageSize,
+    take: pageSize,
+  });
+  return {
+    items: rows.map(mapCoupon),
+    total,
+    page: clampedPage,
+    pageSize,
+    totalPages,
+  };
+}
+
+export async function listActiveCoupons() {
+  const now = new Date();
+  const rows = await prisma.adminCoupon.findMany({
+    where: {
+      status: "可用",
+      AND: [
+        { OR: [{ startsAt: null }, { startsAt: { lte: now } }] },
+        { OR: [{ expiresAt: null }, { expiresAt: { gte: now } }] },
+      ],
+    },
+    orderBy: { createdAt: "desc" },
+  });
+  return rows.map(mapCoupon);
+}
+
+export async function addCoupon(coupon: AdminCoupon) {
+  const row = await prisma.adminCoupon.create({
+    data: {
+      id: coupon.id,
+      title: coupon.title,
+      code: coupon.code ?? null,
+      description: coupon.description ?? null,
+      discount: coupon.discount ?? null,
+      minSpend: coupon.minSpend ?? null,
+      status: coupon.status,
+      startsAt: coupon.startsAt ? new Date(coupon.startsAt) : null,
+      expiresAt: coupon.expiresAt ? new Date(coupon.expiresAt) : null,
+      createdAt: new Date(coupon.createdAt),
+      updatedAt: coupon.updatedAt ? new Date(coupon.updatedAt) : null,
+    },
+  });
+  return mapCoupon(row);
+}
+
+export async function updateCoupon(couponId: string, patch: Partial<AdminCoupon>) {
+  try {
+    const row = await prisma.adminCoupon.update({
+      where: { id: couponId },
+      data: {
+        title: patch.title,
+        code: patch.code,
+        description: patch.description,
+        discount:
+          typeof patch.discount === "number" ? patch.discount : patch.discount === null ? null : undefined,
+        minSpend:
+          typeof patch.minSpend === "number" ? patch.minSpend : patch.minSpend === null ? null : undefined,
+        status: patch.status,
+        startsAt: patch.startsAt ? new Date(patch.startsAt) : patch.startsAt === null ? null : undefined,
+        expiresAt: patch.expiresAt ? new Date(patch.expiresAt) : patch.expiresAt === null ? null : undefined,
+        updatedAt: new Date(),
+      },
+    });
+    return mapCoupon(row);
+  } catch {
+    return null;
+  }
+}
+
+export async function removeCoupon(couponId: string) {
+  try {
+    await prisma.adminCoupon.delete({ where: { id: couponId } });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function queryInvoiceRequests(params: { page: number; pageSize: number; status?: string; q?: string }) {
+  const { page, pageSize, status, q } = params;
+  const keyword = (q || "").trim();
+  const where: Prisma.AdminInvoiceRequestWhereInput = {};
+  if (status && status !== "全部") where.status = status;
+  if (keyword) {
+    where.OR = [
+      { user: { contains: keyword } },
+      { contact: { contains: keyword } },
+      { email: { contains: keyword } },
+      { orderId: { contains: keyword } },
+      { title: { contains: keyword } },
+      { taxId: { contains: keyword } },
+      { id: { contains: keyword } },
+    ];
+  }
+  const total = await prisma.adminInvoiceRequest.count({ where });
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const clampedPage = Math.min(Math.max(page, 1), totalPages);
+  const rows = await prisma.adminInvoiceRequest.findMany({
+    where,
+    orderBy: { createdAt: "desc" },
+    skip: (clampedPage - 1) * pageSize,
+    take: pageSize,
+  });
+  return {
+    items: rows.map(mapInvoiceRequest),
+    total,
+    page: clampedPage,
+    pageSize,
+    totalPages,
+  };
+}
+
+export async function addInvoiceRequest(request: AdminInvoiceRequest) {
+  const row = await prisma.adminInvoiceRequest.create({
+    data: {
+      id: request.id,
+      user: request.user ?? null,
+      userAddress: request.userAddress ?? null,
+      contact: request.contact ?? null,
+      email: request.email ?? null,
+      orderId: request.orderId ?? null,
+      amount: request.amount ?? null,
+      title: request.title ?? null,
+      taxId: request.taxId ?? null,
+      address: request.address ?? null,
+      status: request.status,
+      note: request.note ?? null,
+      meta: request.meta ? (request.meta as Prisma.InputJsonValue) : Prisma.DbNull,
+      createdAt: new Date(request.createdAt),
+      updatedAt: request.updatedAt ? new Date(request.updatedAt) : null,
+    },
+  });
+  return mapInvoiceRequest(row);
+}
+
+export async function updateInvoiceRequest(requestId: string, patch: Partial<AdminInvoiceRequest>) {
+  try {
+    const row = await prisma.adminInvoiceRequest.update({
+      where: { id: requestId },
+      data: {
+        status: patch.status,
+        note: patch.note,
+        updatedAt: new Date(),
+      },
+    });
+    return mapInvoiceRequest(row);
+  } catch {
+    return null;
+  }
+}
+
+export async function removeInvoiceRequest(requestId: string) {
+  try {
+    await prisma.adminInvoiceRequest.delete({ where: { id: requestId } });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function queryGuardianApplications(params: { page: number; pageSize: number; status?: string; q?: string }) {
+  const { page, pageSize, status, q } = params;
+  const keyword = (q || "").trim();
+  const where: Prisma.AdminGuardianApplicationWhereInput = {};
+  if (status && status !== "全部") where.status = status;
+  if (keyword) {
+    where.OR = [
+      { user: { contains: keyword } },
+      { contact: { contains: keyword } },
+      { games: { contains: keyword } },
+      { experience: { contains: keyword } },
+      { id: { contains: keyword } },
+    ];
+  }
+  const total = await prisma.adminGuardianApplication.count({ where });
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const clampedPage = Math.min(Math.max(page, 1), totalPages);
+  const rows = await prisma.adminGuardianApplication.findMany({
+    where,
+    orderBy: { createdAt: "desc" },
+    skip: (clampedPage - 1) * pageSize,
+    take: pageSize,
+  });
+  return {
+    items: rows.map(mapGuardianApplication),
+    total,
+    page: clampedPage,
+    pageSize,
+    totalPages,
+  };
+}
+
+export async function addGuardianApplication(application: AdminGuardianApplication) {
+  const row = await prisma.adminGuardianApplication.create({
+    data: {
+      id: application.id,
+      user: application.user ?? null,
+      userAddress: application.userAddress ?? null,
+      contact: application.contact ?? null,
+      games: application.games ?? null,
+      experience: application.experience ?? null,
+      availability: application.availability ?? null,
+      status: application.status,
+      note: application.note ?? null,
+      meta: application.meta ? (application.meta as Prisma.InputJsonValue) : Prisma.DbNull,
+      createdAt: new Date(application.createdAt),
+      updatedAt: application.updatedAt ? new Date(application.updatedAt) : null,
+    },
+  });
+  return mapGuardianApplication(row);
+}
+
+export async function updateGuardianApplication(applicationId: string, patch: Partial<AdminGuardianApplication>) {
+  try {
+    const row = await prisma.adminGuardianApplication.update({
+      where: { id: applicationId },
+      data: {
+        status: patch.status,
+        note: patch.note,
+        updatedAt: new Date(),
+      },
+    });
+    return mapGuardianApplication(row);
+  } catch {
+    return null;
+  }
+}
+
+export async function removeGuardianApplication(applicationId: string) {
+  try {
+    await prisma.adminGuardianApplication.delete({ where: { id: applicationId } });
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export async function getAdminStats() {

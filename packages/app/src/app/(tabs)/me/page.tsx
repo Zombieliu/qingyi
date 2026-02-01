@@ -7,13 +7,13 @@ import { useState } from "react";
 import SettingsPanel from "@/app/components/settings-panel";
 
 const grid = [
-  { label: "联系客服", icon: Phone, color: "#6366f1" },
-  { label: "优惠卡券", icon: Diamond, color: "#f97316" },
-  { label: "全部订单", icon: Gamepad2, color: "#0ea5e9" },
-  { label: "待开始", icon: Gamepad2, color: "#6366f1" },
-  { label: "待确认", icon: ShieldCheck, color: "#f59e0b" },
-  { label: "开发票", icon: Phone, color: "#22c55e" },
-  { label: "成为护航", icon: User, color: "#d946ef" },
+  { label: "联系客服", icon: Phone, color: "#6366f1", href: "/me/support" },
+  { label: "优惠卡券", icon: Diamond, color: "#f97316", href: "/me/coupons" },
+  { label: "全部订单", icon: Gamepad2, color: "#0ea5e9", href: "/me/orders" },
+  { label: "待开始", icon: Gamepad2, color: "#6366f1", href: "/me/orders?filter=pending-start" },
+  { label: "待确认", icon: ShieldCheck, color: "#f59e0b", href: "/me/orders?filter=pending-confirm" },
+  { label: "开发票", icon: Phone, color: "#22c55e", href: "/me/invoice" },
+  { label: "成为护航", icon: User, color: "#d946ef", href: "/me/guardian" },
   // 其他功能暂时隐藏
 ];
 
@@ -118,12 +118,12 @@ export default function Me() {
         <div className="dl-section-title">更多功能</div>
         <div className="dl-grid">
           {grid.map((item) => (
-            <div key={item.label} className="dl-grid-item">
+            <Link key={item.label} href={item.href} className="dl-grid-item">
               <span className="dl-grid-icon" style={{ color: item.color }}>
                 <item.icon size={20} />
               </span>
               <span className="dl-grid-label">{item.label}</span>
-            </div>
+            </Link>
           ))}
         </div>
       </section>

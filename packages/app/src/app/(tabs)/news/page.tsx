@@ -4,15 +4,16 @@ import { listPublicAnnouncements } from "@/lib/admin-store";
 export const dynamic = "force-dynamic";
 
 const fallbackArticles = [
-  { title: "三角洲行动版本更新", tag: "公告", content: "" },
-  { title: "陪玩安全须知", tag: "安全", content: "" },
-  { title: "周末赛事报名开启", tag: "赛事", content: "" },
+  { id: "fallback-1", title: "三角洲行动版本更新", tag: "公告", content: "" },
+  { id: "fallback-2", title: "陪玩安全须知", tag: "安全", content: "" },
+  { id: "fallback-3", title: "周末赛事报名开启", tag: "赛事", content: "" },
 ];
 
 export default async function News() {
   const announcements = await listPublicAnnouncements();
   const articles = announcements.length
     ? announcements.map((item) => ({
+        id: item.id,
         title: item.title,
         tag: item.tag,
         content: item.content,
@@ -33,8 +34,8 @@ export default async function News() {
       </header>
 
       <div className="space-y-3">
-        {articles.map((a) => (
-          <div key={a.title} className="dl-card" style={{ padding: 14 }}>
+        {articles.map((a, index) => (
+          <div key={a.id ?? `${a.title}-${a.tag}-${index}`} className="dl-card" style={{ padding: 14 }}>
             <div className="flex items-center gap-3">
               <span className="dl-grid-icon" style={{ color: "#ef4444", width: 44, height: 44 }}>
                 <Flame size={18} />

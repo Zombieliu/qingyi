@@ -105,3 +105,77 @@ model AdminPaymentEvent {
   @@index([createdAt])
   @@index([orderNo])
 }
+
+model AdminSupportTicket {
+  id          String   @id
+  userName    String?
+  userAddress String?
+  contact     String?
+  topic       String?
+  message     String
+  status      String
+  note        String?
+  meta        Json?
+  createdAt   DateTime
+  updatedAt   DateTime?
+
+  @@index([createdAt])
+  @@index([status])
+}
+
+model AdminCoupon {
+  id          String   @id
+  title       String
+  code        String?
+  description String?
+  discount    Float?
+  minSpend    Float?
+  status      String
+  startsAt    DateTime?
+  expiresAt   DateTime?
+  createdAt   DateTime
+  updatedAt   DateTime?
+
+  @@index([status])
+  @@index([expiresAt])
+}
+
+model AdminInvoiceRequest {
+  id          String   @id
+  user        String?
+  userAddress String?
+  contact     String?
+  email       String?
+  orderId     String?
+  amount      Float?
+  title       String?
+  taxId       String?
+  address     String?
+  status      String
+  note        String?
+  meta        Json?
+  createdAt   DateTime
+  updatedAt   DateTime?
+
+  @@index([createdAt])
+  @@index([status])
+  @@index([orderId])
+}
+
+model AdminGuardianApplication {
+  id          String   @id
+  user        String?
+  userAddress String?
+  contact     String?
+  games       String?
+  experience  String?
+  availability String?
+  status      String
+  note        String?
+  meta        Json?
+  createdAt   DateTime
+  updatedAt   DateTime?
+
+  @@index([createdAt])
+  @@index([status])
+}
