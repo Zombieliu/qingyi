@@ -28,4 +28,6 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default withSerwist(nextConfig);
+const enableSerwist = process.env.VERCEL !== "1" && process.env.DISABLE_PWA !== "1";
+
+export default enableSerwist ? withSerwist(nextConfig) : nextConfig;
