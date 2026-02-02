@@ -1,6 +1,14 @@
 /// <reference lib="webworker" />
-import { disableDevLogs, handlePrecaching, installSerwist, registerRuntimeCaching, type RuntimeCaching } from "@serwist/sw";
-import { NetworkFirst, StaleWhileRevalidate, CacheFirst } from "serwist";
+import {
+  CacheFirst,
+  NetworkFirst,
+  StaleWhileRevalidate,
+  disableDevLogs,
+  handlePrecaching,
+  installSerwist,
+  registerRuntimeCaching,
+  type RuntimeCaching,
+} from "@serwist/sw";
 
 declare const self: ServiceWorkerGlobalScope & {
   __SW_MANIFEST: Array<{
