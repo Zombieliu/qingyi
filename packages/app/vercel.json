@@ -1,9 +1,0 @@
-{
-  "version": 2,
-  "buildCommand": "pnpm run build",
-  "outputDirectory": ".next",
-  "framework": "nextjs",
-  "env": {
-    "WECHAT_WEBHOOK_URL": "@wechat_webhook_url"
-  }
-}
