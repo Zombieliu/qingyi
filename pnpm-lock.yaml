@@ -29,6 +29,9 @@ importers:
       '@serwist/precaching':
         specifier: ^9.5.0
         version: 9.5.3(browserslist@4.28.1)(typescript@5.9.3)
+      '@serwist/strategies':
+        specifier: ^9.5.0
+        version: 9.5.3(browserslist@4.28.1)(typescript@5.9.3)
       '@serwist/sw':
         specifier: ^9.5.0
         version: 9.5.3(browserslist@4.28.1)(typescript@5.9.3)
@@ -788,6 +791,14 @@ packages:
 
   '@serwist/precaching@9.5.3':
     resolution: {integrity: sha512-EydMgrkoRJ7LTmOlE+WAVylPzqU6xXI7Ev1nGGE4PGcvb1ghqFMl3j1MK3nieuwpm/CliWvNo0X2wi+KqfsFUw==}
+    peerDependencies:
+      typescript: '>=5.0.0'
+    peerDependenciesMeta:
+      typescript:
+        optional: true
+
+  '@serwist/strategies@9.5.3':
+    resolution: {integrity: sha512-nDK4trsTm1nehW9GMj3ngvuw5OMR0ZstTy1icODOPIC+b2KCxggve9PbXlvvsM+fFZWPtwjps2WThY02gV8EPg==}
     peerDependencies:
       typescript: '>=5.0.0'
     peerDependenciesMeta:
@@ -3706,6 +3717,14 @@ snapshots:
       - webpack
 
   '@serwist/precaching@9.5.3(browserslist@4.28.1)(typescript@5.9.3)':
+    dependencies:
+      serwist: 9.5.3(browserslist@4.28.1)(typescript@5.9.3)
+    optionalDependencies:
+      typescript: 5.9.3
+    transitivePeerDependencies:
+      - browserslist
+
+  '@serwist/strategies@9.5.3(browserslist@4.28.1)(typescript@5.9.3)':
     dependencies:
       serwist: 9.5.3(browserslist@4.28.1)(typescript@5.9.3)
     optionalDependencies:
