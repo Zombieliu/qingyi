@@ -15,6 +15,9 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   transpilePackages: ["contracts"],
   outputFileTracingRoot: path.resolve(process.cwd()),
+  turbopack: {
+    root: path.resolve(__dirname, "../.."),
+  },
   outputFileTracingIncludes: {
     "/**/*": ["node_modules/next/dist/compiled/source-map/**"],
   },
