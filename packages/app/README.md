@@ -9,7 +9,8 @@ pnpm install
 pnpm run dev -- --hostname 0.0.0.0 --port 3000   # 避免 Turbopack
 ```
 
-环境变量：复制 `.env.example` 为 `.env.local`，填写
+环境变量：复制 `.env.example` 为 `.env.local`，填写（`.env.local` 优先级最高）
+> `.env` 仅保留非敏感默认值；敏感密钥只放 `.env.local`。生产环境用 Vercel 的 Environment Variables。
 ```
 DATABASE_URL=postgresql://qingyi:qingyi@localhost:5432/qingyi?schema=public
 WECHAT_WEBHOOK_URL=你的企业微信机器人 URL

@@ -14,6 +14,11 @@ This repository is now a workspace root. The Next.js app lives in `packages/app`
 - `npm run db:deploy --workspace app` – apply Prisma migrations
 - `npm run db:maintain` – prune audit/payment tables by limits
 
+## Environment variables
+- 本地开发：复制 `packages/app/.env.example` 到 `packages/app/.env.local` 填写密钥。
+- `packages/app/.env` 仅保留非敏感默认值（可留空），密钥只放 `.env.local`。
+- 生产环境：在 Vercel 配置 Environment Variables（不要上传 `.env.local`）。
+
 ## Flow test (local)
 The flow script can start the dev server, run API/admin smoke checks, and optionally run chain E2E or ledger credit.
 
