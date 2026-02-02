@@ -93,7 +93,7 @@ export async function POST(req: Request) {
       (nextAction as { alipay_handle_redirect?: { url?: string } } | undefined)?.alipay_handle_redirect?.url ||
       null;
     const wechatQr =
-      (nextAction as { wechat_pay_display_qr_code?: Stripe.PaymentIntent.NextAction.WechatPayDisplayQrCode } | undefined)
+      (nextAction as { wechat_pay_display_qr_code?: { image_url?: string; image_data?: string; qr_code_url?: string } } | undefined)
         ?.wechat_pay_display_qr_code || null;
 
     return NextResponse.json({
