@@ -26,6 +26,10 @@ test.beforeEach(async ({ page }) => {
   }, passkeyStub);
 
   await page.addInitScript(() => {
+    window.localStorage.setItem("dl_orders", JSON.stringify([]));
+  });
+
+  await page.addInitScript(() => {
     const style = document.createElement("style");
     style.innerHTML = "*, *::before, *::after { animation: none !important; transition: none !important; }";
     document.documentElement.appendChild(style);

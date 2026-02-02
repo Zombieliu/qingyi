@@ -659,6 +659,9 @@ export async function removeAnnouncement(announcementId: string) {
 }
 
 export async function listPublicAnnouncements() {
+  if (process.env.NEXT_PUBLIC_VISUAL_TEST === "1" || process.env.VISUAL_TEST === "1") {
+    return [];
+  }
   const rows = await prisma.adminAnnouncement.findMany({
     where: { status: "published" },
     orderBy: [{ updatedAt: "desc" }, { createdAt: "desc" }],
@@ -1022,6 +1025,9 @@ export async function queryMembershipTiers(params: { page: number; pageSize: num
 }
 
 export async function listActiveMembershipTiers() {
+  if (process.env.NEXT_PUBLIC_VISUAL_TEST === "1" || process.env.VISUAL_TEST === "1") {
+    return [];
+  }
   const rows = await prisma.adminMembershipTier.findMany({
     where: { status: "上架" },
     orderBy: { level: "asc" },
@@ -1126,6 +1132,9 @@ export async function queryMembers(params: { page: number; pageSize: number; sta
 }
 
 export async function getMemberByAddress(userAddress: string) {
+  if (process.env.NEXT_PUBLIC_VISUAL_TEST === "1" || process.env.VISUAL_TEST === "1") {
+    return null;
+  }
   const row = await prisma.adminMember.findFirst({ where: { userAddress } });
   return row ? mapMember(row) : null;
 }

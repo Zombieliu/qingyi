@@ -21,7 +21,11 @@ function loadEnvFile(filePath: string): Record<string, string> {
   return env;
 }
 
-const envFromFile = loadEnvFile(path.resolve(__dirname, ".env.local"));
+const envFromRepo = loadEnvFile(path.resolve(__dirname, ".env.local"));
+const envFromApp = loadEnvFile(path.resolve(__dirname, "packages/app/.env.local"));
+const envFromFile = { ...envFromRepo, ...envFromApp };
+const defaultAdminToken =
+  process.env.ADMIN_DASH_TOKEN || envFromFile.ADMIN_DASH_TOKEN || process.env.LEDGER_ADMIN_TOKEN || "playwright-admin";
 
 const baseURL = process.env.PLAYWRIGHT_BASE_URL || "http://127.0.0.1:3000";
 const profile = process.env.PW_PROFILE || "full";
@@ -204,6 +208,15 @@ export default defineConfig({
       ...process.env,
       ...(isVisualProfile ? { NEXT_PUBLIC_VISUAL_TEST: "1" } : { NEXT_PUBLIC_VISUAL_TEST: "0" }),
       ...(isChainProfile ? { E2E_SKIP_WEBHOOK: "1", NEXT_PUBLIC_PASSKEY_AUTOMATION: "1" } : {}),
+      ...(isVisualProfile
+        ? {
+            VISUAL_TEST: "1",
+            ADMIN_RATE_LIMIT_WINDOW_MS: "60000",
+            ADMIN_RATE_LIMIT_MAX: "1000",
+            ADMIN_LOGIN_RATE_LIMIT_MAX: "1000",
+          }
+        : {}),
+      ...(defaultAdminToken ? { ADMIN_DASH_TOKEN: defaultAdminToken } : {}),
     } as Record<string, string>,
     reuseExistingServer: !process.env.CI && !isChainProfile,
     timeout: 120_000,

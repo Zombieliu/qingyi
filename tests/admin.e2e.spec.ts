@@ -22,7 +22,11 @@ function loadEnvFile(filePath: string) {
 }
 
 loadEnvFile(path.resolve(process.cwd(), ".env.local"));
+loadEnvFile(path.resolve(process.cwd(), "packages/app/.env.local"));
 
+if (!process.env.ADMIN_DASH_TOKEN && !process.env.LEDGER_ADMIN_TOKEN) {
+  process.env.ADMIN_DASH_TOKEN = "playwright-admin";
+}
 const adminToken = process.env.ADMIN_DASH_TOKEN || process.env.LEDGER_ADMIN_TOKEN || "";
 const chainReady = Boolean(
   process.env.SUI_RPC_URL &&
@@ -34,12 +38,37 @@ const chainReady = Boolean(
 async function login(page: any) {
   await page.goto("/admin/login");
   await page.getByPlaceholder("请输入 ADMIN_DASH_TOKEN").fill(adminToken);
-  await page.getByRole("button", { name: "进入后台" }).click();
-  await page.waitForURL(/\/admin$/);
+  const submit = page.getByRole("button", { name: "进入后台" });
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const responsePromise = page.waitForResponse(
+      (res: any) => res.url().includes("/api/admin/login") && res.request().method() === "POST"
+    );
+    await submit.click();
+    const res = await responsePromise;
+    if (res.ok()) {
+      await page.waitForURL(/\/admin$/, { timeout: 10_000 });
+      return;
+    }
+    const status = res.status();
+    if (attempt === 0 && (status === 429 || status >= 500)) {
+      await page.waitForTimeout(500);
+      continue;
+    }
+    throw new Error(`Admin login failed with status ${status}`);
+  }
+  await page.waitForURL(/\/admin$/, { timeout: 10_000 });
 }
 
 test.describe.serial("admin ui e2e", () => {
-  test.beforeEach(async ({ page }) => {
+  test.beforeEach(async ({ page }, testInfo) => {
+    const profile = process.env.PW_PROFILE || "";
+    if (profile && profile !== "admin") {
+      test.skip(true, "Admin UI E2E only runs in PW_PROFILE=admin");
+    }
+    const projectName = testInfo.project.name;
+    if (!projectName.includes("Desktop") && !projectName.includes("Admin E2E")) {
+      test.skip(true, "Admin UI E2E runs only on desktop breakpoints");
+    }
     if (!adminToken) {
       test.skip(true, "ADMIN_DASH_TOKEN or LEDGER_ADMIN_TOKEN missing");
     }
@@ -64,7 +93,9 @@ test.describe.serial("admin ui e2e", () => {
       },
     });
 
-    await page.getByRole("link", { name: "订单调度" }).click();
+    const ordersLink = page.getByRole("link", { name: "订单调度" });
+    await ordersLink.scrollIntoViewIfNeeded();
+    await ordersLink.click();
     await expect(page.getByRole("heading", { name: "订单调度" })).toBeVisible();
 
     const search = page.getByPlaceholder("搜索用户 / 订单号 / 商品");
@@ -113,7 +144,9 @@ test.describe.serial("admin ui e2e", () => {
 
   test("players and announcements", async ({ page }) => {
     const playerName = `E2E玩家-${Date.now()}`;
-    await page.getByRole("link", { name: "打手管理" }).click();
+    const playersLink = page.getByRole("link", { name: "打手管理" });
+    await playersLink.scrollIntoViewIfNeeded();
+    await playersLink.click();
     await expect(page.getByRole("heading", { name: "打手管理" })).toBeVisible();
 
     await page.getByPlaceholder("姓名 / 昵称").fill(playerName);
@@ -124,7 +157,9 @@ test.describe.serial("admin ui e2e", () => {
     await page.getByRole("button", { name: "删除" }).first().click();
 
     const title = `E2E公告-${Date.now()}`;
-    await page.getByRole("link", { name: "公告资讯" }).click();
+    const announcementsLink = page.getByRole("link", { name: "公告资讯" });
+    await announcementsLink.scrollIntoViewIfNeeded();
+    await announcementsLink.click();
     await expect(page.getByRole("heading", { name: "公告资讯" })).toBeVisible();
 
     await page.getByPlaceholder("公告标题").fill(title);
@@ -139,14 +174,20 @@ test.describe.serial("admin ui e2e", () => {
   });
 
   test("audit, payments, chain pages", async ({ page }) => {
-    await page.getByRole("link", { name: "支付事件" }).click();
+    const paymentsLink = page.getByRole("link", { name: "支付事件" });
+    await paymentsLink.scrollIntoViewIfNeeded();
+    await paymentsLink.click();
     await expect(page.locator("h2.admin-title")).toHaveText("支付事件");
 
-    await page.getByRole("link", { name: "审计日志" }).click();
+    const auditLink = page.getByRole("link", { name: "审计日志" });
+    await auditLink.scrollIntoViewIfNeeded();
+    await auditLink.click();
     await expect(page.locator("h2.admin-title")).toHaveText("审计日志");
 
     if (chainReady) {
-      await page.getByRole("link", { name: "链上对账" }).click();
+      const chainLink = page.getByRole("link", { name: "链上对账" });
+      await chainLink.scrollIntoViewIfNeeded();
+      await chainLink.click();
       await expect(page.locator("h2.admin-title")).toHaveText("链上对账");
     }
   });

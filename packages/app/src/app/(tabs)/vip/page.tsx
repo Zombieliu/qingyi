@@ -5,6 +5,7 @@ import { ArrowLeft, Crown, Shield } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { PASSKEY_STORAGE_KEY } from "@/app/components/passkey-wallet";
 import type { AdminMember, AdminMembershipTier } from "@/lib/admin-types";
+import { isVisualTestMode } from "@/lib/qy-chain";
 
 const fallbackPerks = [
   { label: "贵族铭牌", desc: "坚韧白银专属" },
@@ -46,6 +47,11 @@ export default function Vip() {
 
   useEffect(() => {
     const load = async () => {
+      if (isVisualTestMode()) {
+        setTiers([]);
+        setMember(null);
+        return;
+      }
       try {
         const [tiersRes, memberRes] = await Promise.all([
           fetch("/api/vip/tiers"),
