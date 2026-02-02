@@ -79,32 +79,57 @@ export async function POST(req: Request) {
     });
 
     const receiptBytes = Array.from(new TextEncoder().encode(receiptId));
-    const tx = new Transaction();
-    const args = [
-      tx.object(
-        Inputs.SharedObjectRef({
-          objectId: dappHubId,
-          initialSharedVersion: dappHubInitialVersion.trim(),
-          mutable: true,
-        })
-      ),
-      tx.pure.address(user),
-      tx.pure.u64(amountStr),
-      tx.pure.vector("u8", receiptBytes),
-      tx.object("0x6"),
-    ];
+    const buildTx = () => {
+      const tx = new Transaction();
+      const args = [
+        tx.object(
+          Inputs.SharedObjectRef({
+            objectId: dappHubId,
+            initialSharedVersion: dappHubInitialVersion.trim(),
+            mutable: true,
+          })
+        ),
+        tx.pure.address(user),
+        tx.pure.u64(amountStr),
+        tx.pure.vector("u8", receiptBytes),
+        tx.object("0x6"),
+      ];
 
-    const entry = (dubhe.tx as Record<string, any>)?.ledger_system?.credit_balance_with_receipt;
-    if (hasMetadata && entry) {
-      await entry({ tx, params: args, isRaw: true });
-    } else {
-      tx.moveCall({
-        target: `${packageId}::ledger_system::credit_balance_with_receipt`,
-        arguments: args,
-      });
+      const entry = (dubhe.tx as Record<string, any>)?.ledger_system?.credit_balance_with_receipt;
+      if (hasMetadata && entry) {
+        entry({ tx, params: args, isRaw: true });
+      } else {
+        tx.moveCall({
+          target: `${packageId}::ledger_system::credit_balance_with_receipt`,
+          arguments: args,
+        });
+      }
+      return tx;
+    };
+
+    const retryable = (message: string) =>
+      message.includes("already locked") || message.includes("wrong epoch") || message.includes("temporarily unavailable");
+
+    let result;
+    let lastError: Error | null = null;
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      try {
+        const tx = buildTx();
+        result = await dubhe.signAndSendTxn({ tx });
+        lastError = null;
+        break;
+      } catch (e) {
+        lastError = e as Error;
+        if (attempt < 2 && retryable(lastError.message || "")) {
+          await new Promise((resolve) => setTimeout(resolve, 600 + attempt * 600));
+          continue;
+        }
+        throw lastError;
+      }
     }
-
-    const result = await dubhe.signAndSendTxn({ tx });
+    if (!result) {
+      throw lastError || new Error("credit failed");
+    }
 
     return NextResponse.json({
       ok: true,

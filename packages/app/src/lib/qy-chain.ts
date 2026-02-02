@@ -326,13 +326,14 @@ export async function createOrderOnChain(params: {
   ruleSetId?: string;
   companion?: string;
   autoPay?: boolean;
+  rawAmount?: boolean;
 }) {
   ensurePackageId();
   ensureOrderId(params.orderId);
   const ruleSetId = params.ruleSetId ?? getRuleSetId();
   const companion = params.companion ?? getDefaultCompanion();
-  const serviceFee = toChainAmount(params.serviceFee);
-  const deposit = toChainAmount(params.deposit ?? 0);
+  const serviceFee = params.rawAmount ? String(Math.round(params.serviceFee)) : toChainAmount(params.serviceFee);
+  const deposit = params.rawAmount ? String(Math.round(params.deposit ?? 0)) : toChainAmount(params.deposit ?? 0);
 
   const tx = new Transaction();
   const dappHub = getDappHubSharedRef();

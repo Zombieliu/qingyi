@@ -99,6 +99,8 @@ export default function Schedule() {
   const [mode, setMode] = useState<Mode>("select");
   const [feeOpen, setFeeOpen] = useState(false);
   const [feeChecked, setFeeChecked] = useState(false);
+  const [diamondBalance, setDiamondBalance] = useState<string>("0");
+  const [balanceLoading, setBalanceLoading] = useState(false);
   const [locked, setLocked] = useState<{ total: number; service: number; player: number; items: string[] }>({
     total: 0,
     service: 0,
@@ -113,8 +115,8 @@ export default function Schedule() {
   const [chainToast, setChainToast] = useState<string | null>(null);
   const [chainAction, setChainAction] = useState<string | null>(null);
   const [chainAddress, setChainAddress] = useState("");
+  const redirectRef = useRef(false);
 
-  const platformQr = process.env.NEXT_PUBLIC_QR_PLATFORM_FEE || "/qr/platform-fee-qr.svg";
   const playerQr = process.env.NEXT_PUBLIC_QR_PLAYER_FEE || "/qr/player-fee-qr.svg";
   const MATCH_RATE = 0.15;
 
@@ -255,6 +257,13 @@ export default function Schedule() {
   }, [chainCurrentOrder, currentOrder]);
 
   if (mode === "await-user-pay" && currentOrder?.driver) {
+    const qrOptions = [
+      { key: "wechat", label: "微信收款码", url: currentOrder.driver.wechatQr || "" },
+      { key: "alipay", label: "支付宝收款码", url: currentOrder.driver.alipayQr || "" },
+    ].filter((item) => item.url);
+    if (qrOptions.length === 0) {
+      qrOptions.push({ key: "default", label: "打手收款码", url: playerQr });
+    }
     return (
       <div className="ride-shell">
         <div className="ride-tip" style={{ marginTop: 0 }}>
@@ -291,13 +300,19 @@ export default function Schedule() {
             </div>
             <div className="ride-pay-amount">¥{playerDue.toFixed(2)}</div>
           </div>
-          <div className="ride-qr-inline">
-            <div className="ride-qr-img">
-              <img src={playerQr} alt="打手收款码" />
-            </div>
-            <div className="ride-qr-text">
-              <div className="text-sm font-semibold text-gray-900">打手收款码</div>
-              <div className="text-xs text-gray-500">支付后勾选，系统会通知司机开始</div>
+          <div className="ride-qr-inline" style={{ gap: 16, flexWrap: "wrap" }}>
+            {qrOptions.map((opt) => (
+              <div key={opt.key} style={{ display: "flex", gap: 12, alignItems: "center" }}>
+                <div className="ride-qr-img">
+                  <img src={opt.url} alt={opt.label} />
+                </div>
+                <div className="ride-qr-text">
+                  <div className="text-sm font-semibold text-gray-900">{opt.label}</div>
+                  <div className="text-xs text-gray-500">老板扫码付款，打手确认到账后开始服务</div>
+                </div>
+              </div>
+            ))}
+            <div className="ride-qr-text" style={{ minWidth: 220 }}>
               <label className="ride-status-toggle" style={{ marginTop: 8 }}>
                 <input
                   type="checkbox"
@@ -404,9 +419,54 @@ export default function Schedule() {
     setFeeChecked(false);
   };
 
+  const diamondRate = 10;
+  const requiredDiamonds = Math.ceil(locked.service * diamondRate);
+  const hasEnoughDiamonds = Number(diamondBalance) >= requiredDiamonds;
+
+  const refreshBalance = async () => {
+    const addr = getCurrentAddress();
+    if (!addr) return;
+    setBalanceLoading(true);
+    try {
+      const res = await fetch(`/api/ledger/balance?address=${addr}`);
+      const data = await res.json();
+      if (data?.balance !== undefined) {
+        setDiamondBalance(String(data.balance));
+      }
+    } catch {
+      // ignore balance errors
+    } finally {
+      setBalanceLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (feeOpen) {
+      redirectRef.current = false;
+      refreshBalance();
+    }
+  }, [feeOpen]);
+
+  useEffect(() => {
+    if (!feeOpen) return;
+    if (balanceLoading) return;
+    const addr = getCurrentAddress();
+    if (!addr) {
+      setToast("请先登录 Passkey 钱包以便扣减钻石");
+      return;
+    }
+    if (!hasEnoughDiamonds && !redirectRef.current) {
+      redirectRef.current = true;
+      setToast("钻石余额不足，正在跳转充值...");
+      setTimeout(() => {
+        window.location.href = "/wallet";
+      }, 1200);
+    }
+  }, [feeOpen, balanceLoading, hasEnoughDiamonds]);
+
   const callOrder = async () => {
     if (!feeChecked) {
-      setToast("请先完成撮合费付款");
+      setToast("请先确认使用钻石支付撮合费");
       setTimeout(() => setToast(null), 2000);
       return;
     }
@@ -419,12 +479,20 @@ export default function Schedule() {
       let chainOrderId: string | null = null;
       let chainDigest: string | null = null;
       if (isChainOrdersEnabled()) {
+        const addr = getCurrentAddress();
+        if (!addr) {
+          throw new Error("请先登录 Passkey 钱包以便扣减钻石");
+        }
+        if (!hasEnoughDiamonds) {
+          throw new Error("钻石余额不足");
+        }
         chainOrderId = createChainOrderId();
         const chainResult = await createOrderOnChain({
           orderId: chainOrderId,
-          serviceFee: locked.total,
+          serviceFee: requiredDiamonds,
           deposit: 0,
           autoPay: true,
+          rawAmount: true,
         });
         chainDigest = chainResult.digest;
       }
@@ -442,7 +510,7 @@ export default function Schedule() {
         playerDue: locked.player,
         depositPaid: false,
         playerPaid: false,
-        note: `来源：安排页呼叫服务。撮合费${(MATCH_RATE * 100).toFixed(0)}%已付`,
+        note: `来源：安排页呼叫服务。撮合费使用钻石支付(${requiredDiamonds}钻石)`,
       });
       await refreshOrders();
       setMode("notifying");
@@ -577,19 +645,29 @@ export default function Schedule() {
           <div className="ride-modal">
             <div className="ride-modal-head">
               <div>
-                <div className="ride-modal-title">支付平台撮合费</div>
-                <div className="ride-modal-sub">按订单金额 15% 计算，支付后开始呼叫</div>
+                <div className="ride-modal-title">使用钻石支付撮合费</div>
+                <div className="ride-modal-sub">按订单金额 15% 计算，1元=10钻石</div>
               </div>
-              <div className="ride-modal-amount">¥{locked.service.toFixed(2)}</div>
+              <div className="ride-modal-amount">{requiredDiamonds} 钻石</div>
             </div>
             <div className="ride-qr-inline">
-              <div className="ride-qr-img">
-                <img src={platformQr} alt="平台撮合费收款码" />
-              </div>
               <div className="ride-qr-text">
-                <div className="text-sm font-semibold text-gray-900">平台撮合费</div>
-                <div className="text-xs text-gray-500">订单 ¥{locked.total.toFixed(2)} × 15% = ¥{locked.service.toFixed(2)}</div>
+                <div className="text-sm font-semibold text-gray-900">平台撮合费（钻石）</div>
+                <div className="text-xs text-gray-500">
+                  订单 ¥{locked.total.toFixed(2)} × 15% = ¥{locked.service.toFixed(2)} ≈ {requiredDiamonds} 钻石
+                </div>
                 <div className="ride-chip">撮合费不抵扣打手费用</div>
+                <div className="text-xs text-gray-500" style={{ marginTop: 6 }}>
+                  当前余额：{balanceLoading ? "查询中..." : `${diamondBalance} 钻石`}
+                </div>
+                {!hasEnoughDiamonds && (
+                  <div className="text-xs text-rose-500" style={{ marginTop: 4 }}>
+                    钻石余额不足，请先充值
+                  </div>
+                )}
+                <button className="dl-tab-btn" style={{ marginTop: 8 }} onClick={refreshBalance}>
+                  刷新余额
+                </button>
                 <label className="ride-status-toggle" style={{ marginTop: 10 }}>
                   <input
                     type="checkbox"
@@ -597,7 +675,7 @@ export default function Schedule() {
                     onChange={(e) => setFeeChecked(e.target.checked)}
                     aria-label="已支付撮合费"
                   />
-                  <span>我已支付</span>
+                  <span>使用钻石支付撮合费</span>
                   {feeChecked && <CheckCircle2 size={16} color="#22c55e" />}
                 </label>
               </div>
@@ -610,10 +688,10 @@ export default function Schedule() {
                 className="dl-tab-btn"
                 style={{ background: "#0f172a", color: "#fff" }}
                 onClick={callOrder}
-                disabled={calling}
+                disabled={calling || !hasEnoughDiamonds}
               >
                 {calling ? <Loader2 size={16} className="spin" /> : null}
-                <span style={{ marginLeft: calling ? 6 : 0 }}>支付完成，开始派单</span>
+                <span style={{ marginLeft: calling ? 6 : 0 }}>扣减钻石并派单</span>
               </button>
             </div>
           </div>

@@ -41,6 +41,8 @@ model AdminPlayer {
   name      String
   role      String?
   contact   String?
+  wechatQr  String?
+  alipayQr  String?
   status    String
   notes     String?
   createdAt DateTime

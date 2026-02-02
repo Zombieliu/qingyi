@@ -32,6 +32,8 @@ export async function POST(req: Request) {
     name: body.name,
     role: body.role,
     contact: body.contact,
+    wechatQr: body.wechatQr,
+    alipayQr: body.alipayQr,
     status: (body.status as PlayerStatus) || "可接单",
     notes: body.notes,
     createdAt: Date.now(),

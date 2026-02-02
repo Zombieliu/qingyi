@@ -69,6 +69,8 @@ function mapPlayer(row: {
   name: string;
   role: string | null;
   contact: string | null;
+  wechatQr: string | null;
+  alipayQr: string | null;
   status: string;
   notes: string | null;
   createdAt: Date;
@@ -79,6 +81,8 @@ function mapPlayer(row: {
     name: row.name,
     role: row.role || undefined,
     contact: row.contact || undefined,
+    wechatQr: row.wechatQr || undefined,
+    alipayQr: row.alipayQr || undefined,
     status: row.status as AdminPlayer["status"],
     notes: row.notes || undefined,
     createdAt: row.createdAt.getTime(),
@@ -574,6 +578,8 @@ export async function addPlayer(player: AdminPlayer) {
       name: player.name,
       role: player.role ?? null,
       contact: player.contact ?? null,
+      wechatQr: player.wechatQr ?? null,
+      alipayQr: player.alipayQr ?? null,
       status: player.status,
       notes: player.notes ?? null,
       createdAt: new Date(player.createdAt),
@@ -591,6 +597,8 @@ export async function updatePlayer(playerId: string, patch: Partial<AdminPlayer>
         name: patch.name,
         role: patch.role ?? undefined,
         contact: patch.contact ?? undefined,
+        wechatQr: patch.wechatQr ?? undefined,
+        alipayQr: patch.alipayQr ?? undefined,
         notes: patch.notes ?? undefined,
         status: patch.status,
         updatedAt: new Date(),

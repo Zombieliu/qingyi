@@ -73,6 +73,8 @@ export interface AdminPlayer {
   name: string;
   role?: string;
   contact?: string;
+  wechatQr?: string;
+  alipayQr?: string;
   status: PlayerStatus;
   notes?: string;
   createdAt: number;

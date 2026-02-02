@@ -31,6 +31,8 @@ export async function PATCH(
   if (typeof body.name === "string") patch.name = body.name;
   if (typeof body.role === "string") patch.role = body.role;
   if (typeof body.contact === "string") patch.contact = body.contact;
+  if (typeof body.wechatQr === "string") patch.wechatQr = body.wechatQr;
+  if (typeof body.alipayQr === "string") patch.alipayQr = body.alipayQr;
   if (typeof body.notes === "string") patch.notes = body.notes;
   if (typeof body.status === "string") patch.status = body.status as PlayerStatus;
 

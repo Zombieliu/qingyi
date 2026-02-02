@@ -13,6 +13,8 @@ export default function PlayersPage() {
     name: "",
     role: "",
     contact: "",
+    wechatQr: "",
+    alipayQr: "",
     status: "可接单" as PlayerStatus,
     notes: "",
   });
@@ -39,18 +41,20 @@ export default function PlayersPage() {
     const res = await fetch("/api/admin/players", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name: form.name.trim(),
-        role: form.role.trim(),
-        contact: form.contact.trim(),
-        status: form.status,
-        notes: form.notes.trim(),
-      }),
-    });
+        body: JSON.stringify({
+          name: form.name.trim(),
+          role: form.role.trim(),
+          contact: form.contact.trim(),
+          wechatQr: form.wechatQr.trim(),
+          alipayQr: form.alipayQr.trim(),
+          status: form.status,
+          notes: form.notes.trim(),
+        }),
+      });
     if (res.ok) {
       const data = await res.json();
       setPlayers((prev) => [data, ...prev]);
-      setForm({ name: "", role: "", contact: "", status: "可接单", notes: "" });
+      setForm({ name: "", role: "", contact: "", wechatQr: "", alipayQr: "", status: "可接单", notes: "" });
     }
   };
 
@@ -112,6 +116,24 @@ export default function PlayersPage() {
             />
           </label>
           <label className="admin-field">
+            微信收款码
+            <input
+              className="admin-input"
+              placeholder="图片 URL"
+              value={form.wechatQr}
+              onChange={(event) => setForm((prev) => ({ ...prev, wechatQr: event.target.value }))}
+            />
+          </label>
+          <label className="admin-field">
+            支付宝收款码
+            <input
+              className="admin-input"
+              placeholder="图片 URL"
+              value={form.alipayQr}
+              onChange={(event) => setForm((prev) => ({ ...prev, alipayQr: event.target.value }))}
+            />
+          </label>
+          <label className="admin-field">
             状态
             <select
               className="admin-select"
@@ -157,6 +179,8 @@ export default function PlayersPage() {
                   <th>名称</th>
                   <th>位置</th>
                   <th>联系方式</th>
+                  <th>微信收款码</th>
+                  <th>支付宝收款码</th>
                   <th>状态</th>
                   <th>备注</th>
                   <th>操作</th>
@@ -192,6 +216,34 @@ export default function PlayersPage() {
                           )
                         }
                         onBlur={(event) => updatePlayer(player.id, { contact: event.target.value })}
+                      />
+                    </td>
+                    <td>
+                      <input
+                        className="admin-input"
+                        value={player.wechatQr || ""}
+                        onChange={(event) =>
+                          setPlayers((prev) =>
+                            prev.map((p) =>
+                              p.id === player.id ? { ...p, wechatQr: event.target.value } : p
+                            )
+                          )
+                        }
+                        onBlur={(event) => updatePlayer(player.id, { wechatQr: event.target.value })}
+                      />
+                    </td>
+                    <td>
+                      <input
+                        className="admin-input"
+                        value={player.alipayQr || ""}
+                        onChange={(event) =>
+                          setPlayers((prev) =>
+                            prev.map((p) =>
+                              p.id === player.id ? { ...p, alipayQr: event.target.value } : p
+                            )
+                          )
+                        }
+                        onBlur={(event) => updatePlayer(player.id, { alipayQr: event.target.value })}
                       />
                     </td>
                     <td>

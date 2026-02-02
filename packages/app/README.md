@@ -31,9 +31,8 @@ ADMIN_AUDIT_LOG_LIMIT=1000
 ADMIN_PAYMENT_EVENT_LIMIT=1000
 ADMIN_CHAIN_EVENT_LIMIT=200
 CRON_SECRET=定时任务密钥（生产环境建议）
-PINGPP_WEBHOOK_PUBLIC_KEY=Ping++ webhook 公钥（可选）
-PINGPP_WEBHOOK_SECRET=Ping++ webhook 密钥（可选）
-PINGPP_WEBHOOK_TOKEN=自定义 webhook token（可选）
+STRIPE_SECRET_KEY=Stripe Secret Key
+STRIPE_WEBHOOK_SECRET=Stripe webhook secret（可选，推荐配置）
 NEXT_PUBLIC_ORDER_SOURCE=server
 ```
 
@@ -58,8 +57,8 @@ NEXT_PUBLIC_ORDER_SOURCE=server
 
 ## 支付回调（可选）
 `POST /api/pay/webhook`
-- 支持 `PINGPP_WEBHOOK_PUBLIC_KEY` 或 `PINGPP_WEBHOOK_SECRET` 校验
-- 可选使用 `PINGPP_WEBHOOK_TOKEN` 作为 header/query token
+- 使用 `STRIPE_WEBHOOK_SECRET` 校验（推荐）
+- 未配置 webhook secret 时会降级为不校验（仅建议开发环境）
 
 ## Dubhe SDK 说明
 - 前端/后端如需走 Dubhe SDK，需要 `packages/contracts/metadata.json` 与 `packages/contracts/deployment.ts`。

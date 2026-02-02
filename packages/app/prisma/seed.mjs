@@ -113,8 +113,8 @@ async function main() {
     data: [
       {
         id: "seed-pay-1",
-        provider: "pingpp",
-        event: "charge.succeeded",
+        provider: "stripe",
+        event: "payment_intent.succeeded",
         orderNo: "seed-order-1",
         amount: 199,
         status: "paid",

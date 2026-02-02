@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import RegisterPWA from "./register-pwa";
 import PwaUpdateToast from "./components/pwa-update-toast";
+import { BalanceProvider } from "./components/balance-provider";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -40,7 +41,7 @@ export default function RootLayout({
       >
         <RegisterPWA />
         <PwaUpdateToast />
-        {children}
+        <BalanceProvider>{children}</BalanceProvider>
       </body>
     </html>
   );

@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { PASSKEY_STORAGE_KEY } from "@/app/components/passkey-wallet";
 import { useState } from "react";
 import SettingsPanel from "@/app/components/settings-panel";
+import { useBalance } from "@/app/components/balance-provider";
 
 const grid = [
   { label: "联系客服", icon: Phone, color: "#6366f1", href: "/me/support" },
@@ -20,6 +21,7 @@ const grid = [
 export default function Me() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { balance } = useBalance();
   const [wallet] = useState(() => {
     if (typeof window === "undefined") return null;
     try {
@@ -74,7 +76,7 @@ export default function Me() {
         <button className="dl-edit">编辑</button>
         <div className="dl-stats">
           {[
-            { label: "钻石", value: "0", onClick: goWallet },
+            { label: "钻石", value: balance, onClick: goWallet },
             { label: "星星", value: "0" },
             { label: "库存卡", value: "0" },
           ].map((item) => (

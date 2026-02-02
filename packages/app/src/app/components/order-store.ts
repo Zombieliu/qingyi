@@ -21,6 +21,8 @@ export type LocalOrder = {
     phone?: string;
     price?: number;
     tier?: string;
+    wechatQr?: string;
+    alipayQr?: string;
   };
 };
 

@@ -1,85 +1,104 @@
 import { NextResponse } from "next/server";
-import crypto from "crypto";
+import Stripe from "stripe";
 import { addPaymentEvent, updateOrder } from "@/lib/admin-store";
 import { recordAudit } from "@/lib/admin-audit";
 
-function verifySignature(body: string, signature: string, publicKey?: string, secret?: string) {
-  if (publicKey) {
-    try {
-      return crypto.verify("RSA-SHA256", Buffer.from(body), publicKey, Buffer.from(signature, "base64"));
-    } catch {
-      return false;
-    }
-  }
-  if (secret) {
-    const hmacHex = crypto.createHmac("sha256", secret).update(body).digest("hex");
-    const hmacB64 = crypto.createHmac("sha256", secret).update(body).digest("base64");
-    const sig = signature.trim();
-    return sig === hmacHex || sig === hmacB64;
-  }
-  return false;
-}
+const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
+const stripe = stripeSecretKey ? new Stripe(stripeSecretKey) : null;
 
 export async function POST(req: Request) {
   const rawBody = await req.text();
-  const signature =
-    req.headers.get("x-pingplusplus-signature") ||
-    req.headers.get("x-signature") ||
-    req.headers.get("x-webhook-signature") ||
-    "";
-  const publicKey = process.env.PINGPP_WEBHOOK_PUBLIC_KEY;
-  const secret = process.env.PINGPP_WEBHOOK_SECRET;
-  const sharedToken = process.env.PINGPP_WEBHOOK_TOKEN;
+  const signature = req.headers.get("stripe-signature") || "";
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
-  if (sharedToken) {
-    const token = req.headers.get("x-webhook-token") || new URL(req.url).searchParams.get("token") || "";
-    if (token !== sharedToken) {
-      return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  let event: Stripe.Event;
+  let verified = false;
+
+  if (webhookSecret) {
+    if (!stripe) {
+      return NextResponse.json({ error: "STRIPE_SECRET_KEY not set" }, { status: 503 });
     }
-  } else if (publicKey || secret) {
-    if (!signature || !verifySignature(rawBody, signature, publicKey, secret)) {
+    try {
+      event = stripe.webhooks.constructEvent(rawBody, signature, webhookSecret);
+      verified = true;
+    } catch {
       return NextResponse.json({ error: "invalid_signature" }, { status: 401 });
     }
+  } else {
+    try {
+      event = JSON.parse(rawBody || "{}") as Stripe.Event;
+    } catch {
+      return NextResponse.json({ error: "invalid_json" }, { status: 400 });
+    }
   }
 
-  let payload: Record<string, unknown> = {};
-  try {
-    payload = rawBody ? (JSON.parse(rawBody) as Record<string, unknown>) : {};
-  } catch {
-    return NextResponse.json({ error: "invalid_json" }, { status: 400 });
-  }
+  const eventType = event?.type || "unknown";
+  const object = (event?.data as { object?: Stripe.PaymentIntent | Stripe.Charge } | undefined)?.object;
 
-  const eventType = (payload.type || payload.event || "unknown") as string;
-  const data = (payload.data as { object?: Record<string, unknown> } | undefined)?.object || {};
-  const metadata = (data.metadata as Record<string, unknown> | undefined) || {};
-  const orderId =
-    (metadata.orderId as string | undefined) ||
-    (metadata.order_id as string | undefined) ||
-    (data.order_no as string | undefined) ||
-    (payload.order_no as string | undefined);
-  const amountRaw = (data.amount as number | undefined) ?? undefined;
-  const status = (data.status as string | undefined) || (data.paid as boolean | undefined ? "paid" : undefined);
+  let orderId: string | undefined;
+  let userAddress: string | undefined;
+  let diamondAmount: string | undefined;
+  let amountRaw: number | undefined;
+  let status: string | undefined;
+
+  if (object && "metadata" in object) {
+    orderId = object.metadata?.orderId || object.metadata?.order_id;
+    userAddress = object.metadata?.userAddress || object.metadata?.user_address;
+    diamondAmount = object.metadata?.diamondAmount || object.metadata?.diamond_amount;
+  }
+  if (object && "amount" in object) {
+    amountRaw = object.amount ?? undefined;
+  }
+  if (object && "status" in object) {
+    status = object.status || undefined;
+  }
 
   await addPaymentEvent({
-    id: `pay_${Date.now()}_${crypto.randomInt(1000, 9999)}`,
-    provider: "pingpp",
+    id: `pay_${Date.now()}_${Math.floor(Math.random() * 9000 + 1000)}`,
+    provider: "stripe",
     event: eventType,
     orderNo: orderId,
     amount: amountRaw,
     status,
-    verified: Boolean(signature && (publicKey || secret)) || Boolean(sharedToken),
+    verified,
     createdAt: Date.now(),
-    raw: payload,
+    raw: event as unknown as Record<string, unknown>,
   });
 
-  const isPaid = typeof eventType === "string" && eventType.includes("succeeded");
+  const isPaid = eventType === "payment_intent.succeeded" || eventType === "charge.succeeded";
   if (orderId && isPaid) {
-    await updateOrder(orderId, { paymentStatus: "已支付" });
+    try {
+      await updateOrder(orderId, { paymentStatus: "已支付" });
+    } catch {
+      // ignore missing orders
+    }
+  }
+
+  if (isPaid && userAddress && diamondAmount && process.env.LEDGER_ADMIN_TOKEN) {
+    try {
+      const url = new URL("/api/ledger/credit", req.url);
+      await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${process.env.LEDGER_ADMIN_TOKEN}`,
+        },
+        body: JSON.stringify({
+          user: userAddress,
+          amount: diamondAmount,
+          receiptId: `stripe_${event?.id || orderId || Date.now()}`,
+          note: "stripe webhook credit",
+        }),
+      });
+    } catch {
+      // ignore credit errors to avoid blocking webhook response
+    }
   }
 
   await recordAudit(req, { role: "finance", authType: "webhook" }, "payments.webhook", "payment", orderId, {
     event: eventType,
+    verified,
   });
 
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, verified });
 }
