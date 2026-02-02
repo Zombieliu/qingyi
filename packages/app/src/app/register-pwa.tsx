@@ -12,9 +12,14 @@ declare global {
 export default function RegisterPWA() {
   useEffect(() => {
     if (typeof window === "undefined") return;
-    if ("serviceWorker" in navigator && window.serwist) {
+    if (!("serviceWorker" in navigator)) return;
+    if (window.serwist?.register) {
       window.serwist.register();
+      return;
     }
+    navigator.serviceWorker.register("/sw.js").catch(() => {
+      // ignore registration errors when sw.js is not available
+    });
   }, []);
 
   return null;

@@ -1,0 +1,37 @@
+name: PWA SW
+on:
+  push:
+    branches: [main]
+jobs:
+  build-sw:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Build SW
+        run: |
+          cd packages/app
+          NODE_OPTIONS=--max_old_space_size=4096 pnpm build:pwa
+      - name: Commit sw.js if changed
+        run: |
+          git status --porcelain
+          if git diff --quiet -- packages/app/public/sw.js; then
+            echo "sw.js unchanged"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add packages/app/public/sw.js
+          git commit -m "chore: update sw.js [skip ci]"
+          git push

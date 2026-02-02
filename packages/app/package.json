@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev --webpack",
     "build": "next build",
+    "build:pwa": "next build --webpack",
     "start": "next start",
     "lint": "eslint",
     "prisma": "prisma",
