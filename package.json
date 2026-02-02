@@ -2,6 +2,10 @@
   "name": "delta-monorepo",
   "private": true,
   "packageManager": "pnpm@9.15.4",
+  "engines": {
+    "node": "22.x",
+    "pnpm": "9.x"
+  },
   "workspaces": [
     "packages/*"
   ],
