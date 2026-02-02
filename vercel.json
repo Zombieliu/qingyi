@@ -2,8 +2,5 @@
   "version": 2,
   "builds": [
     { "src": "packages/app/package.json", "use": "@vercel/next" }
-  ],
-  "env": {
-    "WECHAT_WEBHOOK_URL": "@wechat_webhook_url"
-  }
+  ]
 }
