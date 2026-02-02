@@ -24,6 +24,7 @@
     "@serwist/next": "^9.5.0",
     "@serwist/precaching": "^9.5.0",
     "@serwist/sw": "^9.5.0",
+    "@serwist/strategies": "^9.5.0",
     "@prisma/client": "^5.19.1",
     "contracts": "file:../contracts",
     "lucide-react": "^0.563.0",
