@@ -15,6 +15,9 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   transpilePackages: ["contracts"],
   outputFileTracingRoot: path.resolve(process.cwd()),
+  outputFileTracingIncludes: {
+    "/**/*": ["node_modules/next/dist/compiled/source-map/**"],
+  },
   images: {
     remotePatterns: [
       {
