@@ -11,12 +11,14 @@ const withSerwist = withSerwistInit({
   reloadOnOnline: true,
 });
 
+const repoRoot = path.resolve(__dirname, "../..");
+
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   transpilePackages: ["contracts"],
-  outputFileTracingRoot: path.resolve(process.cwd()),
+  outputFileTracingRoot: repoRoot,
   turbopack: {
-    root: path.resolve(__dirname, "../.."),
+    root: repoRoot,
   },
   outputFileTracingIncludes: {
     "/**/*": ["node_modules/next/dist/compiled/source-map/**"],
