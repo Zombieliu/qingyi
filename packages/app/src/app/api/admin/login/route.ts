@@ -29,12 +29,18 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "密钥错误" }, { status: 401 });
   }
 
-  const sessionResult = await createAdminSession({
-    role: roleEntry.role,
-    label: roleEntry.label,
-    ip: req.headers.get("x-forwarded-for")?.split(",")[0]?.trim(),
-    userAgent: req.headers.get("user-agent") || undefined,
-  });
+  let sessionResult: Awaited<ReturnType<typeof createAdminSession>>;
+  try {
+    sessionResult = await createAdminSession({
+      role: roleEntry.role,
+      label: roleEntry.label,
+      ip: req.headers.get("x-forwarded-for")?.split(",")[0]?.trim(),
+      userAgent: req.headers.get("user-agent") || undefined,
+    });
+  } catch (error) {
+    console.error("admin login: failed to create session", error);
+    return NextResponse.json({ error: "服务暂不可用" }, { status: 503 });
+  }
 
   const response = NextResponse.json({ ok: true, role: roleEntry.role });
   await recordAudit(req, { role: roleEntry.role, sessionId: sessionResult.session.id, authType: "login" }, "auth.login");
