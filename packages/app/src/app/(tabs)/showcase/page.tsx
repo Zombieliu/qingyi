@@ -196,6 +196,35 @@ export default function Showcase() {
     return map;
   }, [orders]);
 
+  const copyGameProfile = async (profile: { gameName?: string; gameId?: string }) => {
+    const text = [profile.gameName ? `游戏名 ${profile.gameName}` : "", profile.gameId ? `ID ${profile.gameId}` : ""]
+      .filter(Boolean)
+      .join(" · ");
+    if (!text) return;
+    try {
+      await navigator.clipboard.writeText(text);
+      setChainToast("已复制游戏名/ID");
+    } catch {
+      const input = document.createElement("textarea");
+      input.value = text;
+      input.style.position = "fixed";
+      input.style.opacity = "0";
+      document.body.appendChild(input);
+      input.focus();
+      input.select();
+      try {
+        document.execCommand("copy");
+        setChainToast("已复制游戏名/ID");
+      } catch {
+        setChainToast("复制失败，请手动复制");
+      } finally {
+        document.body.removeChild(input);
+      }
+    } finally {
+      setTimeout(() => setChainToast(null), 3000);
+    }
+  };
+
   const shortAddr = (addr: string) => {
     if (!addr) return "-";
     return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
@@ -300,10 +329,22 @@ export default function Showcase() {
                       用户 {shortAddr(o.user)} · 陪玩 {shortAddr(o.companion)}
                     </div>
                     {isCompanion && o.status >= 2 && (
-                      <div className="mt-2 text-xs text-emerald-700">
-                        {gameProfile?.gameName && gameProfile?.gameId
-                          ? `游戏名 ${gameProfile.gameName} · ID ${gameProfile.gameId}`
-                          : "用户未填写游戏名/ID"}
+                      <div className="mt-2 flex items-center justify-between gap-2 text-xs text-emerald-700">
+                        <span>
+                          {gameProfile?.gameName && gameProfile?.gameId
+                            ? `游戏名 ${gameProfile.gameName} · ID ${gameProfile.gameId}`
+                            : "用户未填写游戏名/ID"}
+                        </span>
+                        {gameProfile?.gameName && gameProfile?.gameId && (
+                          <button
+                            type="button"
+                            className="dl-tab-btn"
+                            style={{ padding: "4px 8px" }}
+                            onClick={() => copyGameProfile(gameProfile)}
+                          >
+                            复制
+                          </button>
+                        )}
                       </div>
                     )}
                     <div className="mt-2 text-xs text-gray-500">
