@@ -414,16 +414,36 @@ export default function Showcase() {
                           className="dl-tab-btn"
                           style={{ padding: "8px 10px" }}
                           disabled={chainAction === `deposit-${o.orderId}`}
-                          onClick={() => {
+                          onClick={async () => {
                             if (!window.confirm("确认付押金并接单？押金锁定后如需取消请走争议/客服流程。")) {
                               return;
                             }
-                            runChainAction(
+                            const ok = await runChainAction(
                               `deposit-${o.orderId}`,
                               () => lockDepositOnChain(o.orderId),
                               "押金已锁定",
                               o.orderId
                             );
+                            if (!ok) return;
+                            try {
+                              const res = await fetch("/api/mantou/credit", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ orderId: o.orderId, address: chainAddress }),
+                              });
+                              const data = await res.json().catch(() => ({}));
+                              if (res.ok) {
+                                if (!data?.duplicated) {
+                                  setChainToast("已自动转换为馒头");
+                                }
+                              } else {
+                                setChainToast(data?.error || "馒头转换失败");
+                              }
+                            } catch (error) {
+                              setChainToast((error as Error).message || "馒头转换失败");
+                            } finally {
+                              setTimeout(() => setChainToast(null), 3000);
+                            }
                           }}
                         >
                           付押金接单

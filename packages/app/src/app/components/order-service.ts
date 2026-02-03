@@ -82,7 +82,7 @@ export async function fetchOrders(): Promise<LocalOrder[]> {
   const params = new URLSearchParams();
   params.set("page", "1");
   params.set("pageSize", "50");
-  if (userAddress) params.set("userAddress", userAddress);
+  if (userAddress) params.set("address", userAddress);
   const res = await fetch(`/api/orders?${params.toString()}`);
   if (!res.ok) return [];
   const data = await res.json();

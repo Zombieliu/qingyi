@@ -239,3 +239,43 @@ model AdminMembershipRequest {
   @@index([status])
   @@index([tierId])
 }
+
+model MantouWallet {
+  address   String   @id
+  balance   Int      @default(0)
+  frozen    Int      @default(0)
+  createdAt DateTime
+  updatedAt DateTime?
+
+  @@index([createdAt])
+}
+
+model MantouTransaction {
+  id        String   @id
+  address   String
+  type      String
+  amount    Int
+  orderId   String?
+  note      String?
+  createdAt DateTime
+
+  @@index([address])
+  @@index([orderId])
+  @@index([createdAt])
+  @@unique([orderId, type])
+}
+
+model MantouWithdrawRequest {
+  id        String   @id
+  address   String
+  amount    Int
+  status    String
+  note      String?
+  account   String?
+  createdAt DateTime
+  updatedAt DateTime?
+
+  @@index([address])
+  @@index([status])
+  @@index([createdAt])
+}

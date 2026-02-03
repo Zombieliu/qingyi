@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import RegisterPWA from "./register-pwa";
 import PwaUpdateToast from "./components/pwa-update-toast";
 import { BalanceProvider } from "./components/balance-provider";
+import { MantouProvider } from "./components/mantou-provider";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -41,7 +42,9 @@ export default function RootLayout({
       >
         <RegisterPWA />
         <PwaUpdateToast />
-        <BalanceProvider>{children}</BalanceProvider>
+        <BalanceProvider>
+          <MantouProvider>{children}</MantouProvider>
+        </BalanceProvider>
       </body>
     </html>
   );

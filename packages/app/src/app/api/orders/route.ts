@@ -27,7 +27,7 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const page = Math.max(1, Number(searchParams.get("page") || "1"));
   const pageSize = Math.min(200, Math.max(5, Number(searchParams.get("pageSize") || "20")));
-  const userAddressRaw = searchParams.get("userAddress") || "";
+  const userAddressRaw = searchParams.get("address") || searchParams.get("userAddress") || "";
   const userAddress = userAddressRaw ? normalizeSuiAddress(userAddressRaw) : "";
   if (userAddress && !isValidSuiAddress(userAddress)) {
     return NextResponse.json({ error: "invalid userAddress" }, { status: 400 });

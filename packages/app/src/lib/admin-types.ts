@@ -8,6 +8,8 @@ export type GuardianStatus = "待审核" | "面试中" | "已通过" | "已拒�
 export type MembershipTierStatus = "上架" | "下架";
 export type MemberStatus = "有效" | "已过期" | "待开通";
 export type MembershipRequestStatus = "待审核" | "已通过" | "已拒绝";
+export type MantouWithdrawStatus = "待审核" | "已通过" | "已拒绝";
+export const MANTOU_WITHDRAW_STATUS_OPTIONS: MantouWithdrawStatus[] = ["待审核", "已通过", "已拒绝"];
 export type AdminRole = "admin" | "ops" | "finance" | "viewer";
 
 export interface AdminSession {
@@ -197,6 +199,35 @@ export interface AdminMembershipRequest {
   status: MembershipRequestStatus;
   note?: string;
   meta?: Record<string, unknown>;
+  createdAt: number;
+  updatedAt?: number;
+}
+
+export interface MantouWallet {
+  address: string;
+  balance: number;
+  frozen: number;
+  createdAt: number;
+  updatedAt?: number;
+}
+
+export interface MantouTransaction {
+  id: string;
+  address: string;
+  type: string;
+  amount: number;
+  orderId?: string;
+  note?: string;
+  createdAt: number;
+}
+
+export interface MantouWithdrawRequest {
+  id: string;
+  address: string;
+  amount: number;
+  status: MantouWithdrawStatus;
+  note?: string;
+  account?: string;
   createdAt: number;
   updatedAt?: number;
 }

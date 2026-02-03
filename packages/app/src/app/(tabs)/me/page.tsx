@@ -6,10 +6,12 @@ import { PASSKEY_STORAGE_KEY } from "@/app/components/passkey-wallet";
 import { useState } from "react";
 import SettingsPanel from "@/app/components/settings-panel";
 import { useBalance } from "@/app/components/balance-provider";
+import { useMantouBalance } from "@/app/components/mantou-provider";
 
 const grid = [
   { label: "联系客服", icon: Phone, color: "#6366f1", href: "/me/support" },
   { label: "优惠卡券", icon: Diamond, color: "#f97316", href: "/me/coupons" },
+  { label: "馒头提现", icon: Diamond, color: "#22c55e", href: "/me/mantou" },
   { label: "全部订单", icon: Gamepad2, color: "#0ea5e9", href: "/me/orders" },
   { label: "游戏设置", icon: Gamepad2, color: "#10b981", href: "/me/game-settings" },
   { label: "待开始", icon: Gamepad2, color: "#6366f1", href: "/me/orders?filter=pending-start" },
@@ -23,6 +25,7 @@ export default function Me() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { balance } = useBalance();
+  const { balance: mantouBalance } = useMantouBalance();
   const [wallet] = useState(() => {
     if (typeof window === "undefined") return null;
     try {
@@ -35,6 +38,7 @@ export default function Me() {
 
   const goWallet = () => router.push("/wallet");
   const goSettings = () => router.push("/me?settings=1");
+  const goMantou = () => router.push("/me/mantou");
   const closeSettings = () => router.push("/me");
   const logout = () => {
     localStorage.removeItem(PASSKEY_STORAGE_KEY);
@@ -79,7 +83,7 @@ export default function Me() {
           {[
             { label: "钻石", value: balance, onClick: goWallet },
             { label: "星星", value: "0" },
-            { label: "库存卡", value: "0" },
+            { label: "馒头", value: mantouBalance, onClick: goMantou },
           ].map((item) => (
             <button
               key={item.label}
