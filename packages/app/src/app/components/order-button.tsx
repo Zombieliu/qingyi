@@ -1,13 +1,42 @@
 "use client";
 import { useState } from "react";
 import { createOrder } from "./order-service";
-import { createChainOrderId, createOrderOnChain, getCurrentAddress, isChainOrdersEnabled } from "@/lib/qy-chain";
+import {
+  createChainOrderId,
+  createOrderOnChain,
+  getCurrentAddress,
+  getDefaultCompanionAddress,
+  isChainOrdersEnabled,
+} from "@/lib/qy-chain";
 
 interface Props {
   user: string;
   item: string;
   amount: number;
   note?: string;
+}
+
+const GAME_PROFILE_KEY = "qy_game_profile_v1";
+
+type GameProfile = {
+  gameName: string;
+  gameId: string;
+  updatedAt: number;
+  userAddress?: string;
+};
+
+type StoredProfiles = Record<string, GameProfile>;
+
+function loadGameProfile(address: string) {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(GAME_PROFILE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as StoredProfiles;
+    return parsed[address] || parsed.local || null;
+  } catch {
+    return null;
+  }
 }
 
 export default function OrderButton({ user, item, amount, note }: Props) {
@@ -30,16 +59,25 @@ export default function OrderButton({ user, item, amount, note }: Props) {
         });
         chainDigest = chainResult.digest;
       }
+      const currentAddress = isChainOrdersEnabled() ? getCurrentAddress() : "";
+      const companionAddress = isChainOrdersEnabled() ? getDefaultCompanionAddress() : undefined;
+      const gameProfile = currentAddress ? loadGameProfile(currentAddress) : null;
       const result = await createOrder({
         id: chainOrderId || `${Date.now()}`,
         user,
-        userAddress: isChainOrdersEnabled() ? getCurrentAddress() : undefined,
+        userAddress: currentAddress || undefined,
+        companionAddress,
         item,
         amount,
         status: "已支付",
         time: new Date().toISOString(),
         chainDigest: chainDigest || undefined,
         note,
+        meta: {
+          gameProfile: gameProfile
+            ? { gameName: gameProfile.gameName, gameId: gameProfile.gameId, updatedAt: gameProfile.updatedAt }
+            : null,
+        },
       });
       if (result.sent === false) {
         setMsg(result.error || "订单已创建，通知失败");

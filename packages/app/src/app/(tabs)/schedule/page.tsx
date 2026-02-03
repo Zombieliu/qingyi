@@ -10,6 +10,7 @@ import {
   createOrderOnChain,
   fetchChainOrders,
   finalizeNoDisputeOnChain,
+  getDefaultCompanionAddress,
   getCurrentAddress,
   isChainOrdersEnabled,
   isVisualTestMode,
@@ -48,6 +49,29 @@ type PublicPlayer = {
   wechatQr?: string;
   alipayQr?: string;
 };
+
+const GAME_PROFILE_KEY = "qy_game_profile_v1";
+
+type GameProfile = {
+  gameName: string;
+  gameId: string;
+  updatedAt: number;
+  userAddress?: string;
+};
+
+type StoredProfiles = Record<string, GameProfile>;
+
+function loadGameProfile(address: string) {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(GAME_PROFILE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as StoredProfiles;
+    return parsed[address] || parsed.local || null;
+  } catch {
+    return null;
+  }
+}
 
 const sections: RideSection[] = [
   {
@@ -580,10 +604,13 @@ export default function Schedule() {
         });
         chainDigest = chainResult.digest;
       }
+      const gameProfile = loadGameProfile(getCurrentAddress());
+      const companionAddress = isChainOrdersEnabled() ? getDefaultCompanionAddress() : undefined;
       const result = await createOrder({
         id: chainOrderId || `${Date.now()}`,
         user: "安排页面",
         userAddress: getCurrentAddress(),
+        companionAddress,
         item: locked.items.join("、"),
         amount: locked.total,
         status: "待派单",
@@ -611,6 +638,13 @@ export default function Schedule() {
           requestedPlayerId: selectedPlayer?.id || null,
           requestedPlayerName: selectedPlayer?.name || null,
           requestedPlayerRole: selectedPlayer?.role || null,
+          gameProfile: gameProfile
+            ? {
+                gameName: gameProfile.gameName,
+                gameId: gameProfile.gameId,
+                updatedAt: gameProfile.updatedAt,
+              }
+            : null,
         },
       });
       await refreshOrders();

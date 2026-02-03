@@ -30,7 +30,7 @@ export async function GET(req: Request, { params }: RouteContext) {
     if (!isValidSuiAddress(normalized)) {
       return NextResponse.json({ error: "invalid userAddress" }, { status: 400 });
     }
-    if (order.userAddress && order.userAddress !== normalized) {
+    if (order.userAddress && order.userAddress !== normalized && order.companionAddress !== normalized) {
       return NextResponse.json({ error: "forbidden" }, { status: 403 });
     }
     return NextResponse.json(order);

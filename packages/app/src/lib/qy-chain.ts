@@ -145,6 +145,10 @@ function getDefaultCompanion(): string {
   return normalized;
 }
 
+export function getDefaultCompanionAddress(): string {
+  return getDefaultCompanion();
+}
+
 function getDappHubSharedRef() {
   const dappHubId = String(DAPP_HUB_ID || "");
   if (!dappHubId || dappHubId === "0x0") {

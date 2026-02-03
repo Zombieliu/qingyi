@@ -51,6 +51,7 @@ function normalizeOrder(order: ServerOrder): LocalOrder {
     playerPaid: meta.playerPaid as boolean | undefined,
     playerDue: meta.playerDue as number | undefined,
     driver: meta.driver as LocalOrder["driver"],
+    meta,
   };
 }
 

@@ -43,7 +43,7 @@ export async function GET(req: Request) {
   const result = await queryOrders({
     page,
     pageSize,
-    userAddress: userAddress || undefined,
+    address: userAddress || undefined,
     q: user || q || undefined,
   });
   return NextResponse.json(result);

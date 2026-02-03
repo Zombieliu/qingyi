@@ -186,6 +186,16 @@ export default function Showcase() {
     [chainOrders, disputeOrderId]
   );
 
+  const orderMetaById = useMemo(() => {
+    const map = new Map<string, Record<string, unknown>>();
+    for (const order of orders) {
+      if (order.meta && typeof order.meta === "object") {
+        map.set(order.id, order.meta as Record<string, unknown>);
+      }
+    }
+    return map;
+  }, [orders]);
+
   const shortAddr = (addr: string) => {
     if (!addr) return "-";
     return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
@@ -277,6 +287,9 @@ export default function Showcase() {
                 const deadline = Number(o.disputeDeadline);
                 const canFinalize = o.status === 3 && Number.isFinite(deadline) && now > deadline;
                 const canDispute = o.status === 3 && Number.isFinite(deadline) && now <= deadline;
+                const gameProfile = (orderMetaById.get(o.orderId)?.gameProfile || null) as
+                  | { gameName?: string; gameId?: string }
+                  | null;
                 return (
                   <div key={`chain-${o.orderId}`} className="dl-card" style={{ padding: 14 }}>
                     <div className="flex items-center justify-between">
@@ -286,6 +299,13 @@ export default function Showcase() {
                     <div className="mt-2 text-xs text-gray-500">
                       用户 {shortAddr(o.user)} · 陪玩 {shortAddr(o.companion)}
                     </div>
+                    {isCompanion && o.status >= 2 && (
+                      <div className="mt-2 text-xs text-emerald-700">
+                        {gameProfile?.gameName && gameProfile?.gameId
+                          ? `游戏名 ${gameProfile.gameName} · ID ${gameProfile.gameId}`
+                          : "用户未填写游戏名/ID"}
+                      </div>
+                    )}
                     <div className="mt-2 text-xs text-gray-500">
                       状态：{statusLabel(o.status)} · 押金 ¥{formatAmount(o.deposit)}
                     </div>

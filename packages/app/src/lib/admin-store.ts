@@ -409,8 +409,9 @@ export async function queryOrders(params: {
   paymentStatus?: string;
   assignedTo?: string;
   userAddress?: string;
+  address?: string;
 }) {
-  const { page, pageSize, stage, q, paymentStatus, assignedTo, userAddress } = params;
+  const { page, pageSize, stage, q, paymentStatus, assignedTo, userAddress, address } = params;
   const keyword = (q || "").trim();
   const where: Prisma.AdminOrderWhereInput = {};
 
@@ -423,7 +424,9 @@ export async function queryOrders(params: {
   if (assignedTo) {
     where.assignedTo = assignedTo;
   }
-  if (userAddress) {
+  if (address) {
+    where.OR = [{ userAddress: address }, { companionAddress: address }];
+  } else if (userAddress) {
     where.userAddress = userAddress;
   }
   if (keyword) {
