@@ -23,6 +23,12 @@ jobs:
         run: |
           cd packages/app
           PWA_BUILD=1 NODE_OPTIONS=--max_old_space_size=4096 pnpm build:pwa
+      - name: Ensure sw.js exists
+        run: |
+          if [ ! -f packages/app/public/sw.js ]; then
+            echo "sw.js not found, failing build"
+            exit 1
+          fi
       - name: Commit sw.js if changed
         run: |
           git status --porcelain
