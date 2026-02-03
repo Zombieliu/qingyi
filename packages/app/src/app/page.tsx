@@ -4,15 +4,29 @@ import Link from "next/link";
 import { ShieldCheck, AlertTriangle } from "lucide-react";
 import PasskeyLoginButton from "./components/passkey-login-button";
 import { useEffect, useState } from "react";
+import { PASSKEY_STORAGE_KEY } from "./components/passkey-wallet";
 
 export default function RootPage() {
   const [showHttpsTip, setShowHttpsTip] = useState(false);
+  const [hasWallet, setHasWallet] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
     const isLocal = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
     const secure = window.isSecureContext || window.location.protocol === "https:";
     setShowHttpsTip(!(secure || isLocal));
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const update = () => setHasWallet(!!localStorage.getItem(PASSKEY_STORAGE_KEY));
+    update();
+    window.addEventListener("passkey-updated", update);
+    window.addEventListener("storage", update);
+    return () => {
+      window.removeEventListener("passkey-updated", update);
+      window.removeEventListener("storage", update);
+    };
   }, []);
 
   return (
@@ -39,9 +53,13 @@ export default function RootPage() {
       </div>
       <PasskeyLoginButton />
       <div style={{ textAlign: "center", marginTop: 18, fontSize: 13 }}>
-        <Link href="/home" style={{ textDecoration: "underline" }}>
-          已完成验证？进入主页
-        </Link>
+        {hasWallet ? (
+          <Link href="/home" style={{ textDecoration: "underline" }}>
+            已完成验证？进入主页
+          </Link>
+        ) : (
+          <span style={{ color: "#6b7280" }}>请先完成 Passkey 登录</span>
+        )}
       </div>
     </div>
   );

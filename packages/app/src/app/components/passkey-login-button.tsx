@@ -36,7 +36,14 @@ export default function PasskeyLoginButton() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    setHasWallet(!!localStorage.getItem(PASSKEY_STORAGE_KEY));
+    const update = () => setHasWallet(!!localStorage.getItem(PASSKEY_STORAGE_KEY));
+    update();
+    window.addEventListener("passkey-updated", update);
+    window.addEventListener("storage", update);
+    return () => {
+      window.removeEventListener("passkey-updated", update);
+      window.removeEventListener("storage", update);
+    };
   }, []);
 
   const persist = (stored: StoredWallet, msg: string) => {
@@ -45,6 +52,14 @@ export default function PasskeyLoginButton() {
     setToast(msg);
     setTimeout(() => setToast(null), 3000);
     router.push("/home");
+  };
+
+  const createPasskey = async () => {
+    const keypair = await PasskeyKeypair.getPasskeyInstance(new BrowserPasskeyProvider("情谊电竞", providerOpts));
+    const publicKey = keypair.getPublicKey();
+    const address = publicKey.toSuiAddress();
+    persist({ address, publicKey: toBase64(publicKey.toRawBytes()) }, "Passkey 已创建并登录");
+    setHasWallet(true);
   };
 
   const handle = async () => {
@@ -58,17 +73,30 @@ export default function PasskeyLoginButton() {
         const raw = localStorage.getItem(PASSKEY_STORAGE_KEY);
         if (!raw) throw new Error("本地未找到 Passkey");
         const stored = JSON.parse(raw) as StoredWallet;
-        const keypair = new PasskeyKeypair(fromBase64(stored.publicKey), provider);
-        await keypair.signPersonalMessage(new TextEncoder().encode("login-check"));
-        persist(stored, "已登录");
-        return;
+        try {
+          const keypair = new PasskeyKeypair(fromBase64(stored.publicKey), provider);
+          await keypair.signPersonalMessage(new TextEncoder().encode("login-check"));
+          persist(stored, "已登录");
+          return;
+        } catch (e) {
+          const err = e as Error & { name?: string };
+          const msg = err.message || "";
+          const missing =
+            err.name === "NotFoundError" ||
+            msg.includes("No passkeys found") ||
+            msg.includes("not found") ||
+            msg.includes("No credentials");
+          if (missing) {
+            localStorage.removeItem(PASSKEY_STORAGE_KEY);
+            setHasWallet(false);
+            await createPasskey();
+            return;
+          }
+          throw e;
+        }
       }
 
-      const keypair = await PasskeyKeypair.getPasskeyInstance(provider);
-      const publicKey = keypair.getPublicKey();
-      const address = publicKey.toSuiAddress();
-      persist({ address, publicKey: toBase64(publicKey.toRawBytes()) }, "Passkey 已创建并登录");
-      setHasWallet(true);
+      await createPasskey();
     } catch (e) {
       setToast((e as Error).message || "Passkey 登录失败");
     } finally {
