@@ -22,7 +22,7 @@ jobs:
       - name: Build SW
         run: |
           cd packages/app
-          NODE_OPTIONS=--max_old_space_size=4096 pnpm build:pwa
+          PWA_BUILD=1 NODE_OPTIONS=--max_old_space_size=4096 pnpm build:pwa
       - name: Commit sw.js if changed
         run: |
           git status --porcelain

@@ -5,7 +5,7 @@ import withSerwistInit from "@serwist/next";
 const withSerwist = withSerwistInit({
   swSrc: "src/app/sw.ts",
   swDest: "public/sw.js",
-  disable: process.env.NODE_ENV === "development",
+  disable: process.env.PWA_BUILD !== "1",
   register: false, // manual registration via RegisterPWA component
   cacheOnNavigation: true,
   reloadOnOnline: true,
@@ -33,6 +33,4 @@ const nextConfig: NextConfig = {
   },
 };
 
-const enableSerwist = process.env.VERCEL !== "1" && process.env.DISABLE_PWA !== "1";
-
-export default enableSerwist ? withSerwist(nextConfig) : nextConfig;
+export default process.env.PWA_BUILD === "1" ? withSerwist(nextConfig) : nextConfig;
