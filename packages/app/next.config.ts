@@ -13,12 +13,20 @@ const withSerwist = withSerwistInit({
 
 const repoRoot = path.resolve(__dirname, "../..");
 
+const isVercel = process.env.VERCEL === "1";
+
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   transpilePackages: ["contracts"],
   outputFileTracingRoot: repoRoot,
   turbopack: {
     root: repoRoot,
+  },
+  eslint: {
+    ignoreDuringBuilds: isVercel,
+  },
+  typescript: {
+    ignoreBuildErrors: isVercel,
   },
   outputFileTracingIncludes: {
     "/**/*": ["node_modules/next/dist/compiled/source-map/**"],

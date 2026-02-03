@@ -1,5 +1,5 @@
 {
   "installCommand": "corepack enable && corepack prepare pnpm@9.15.4 --activate && corepack pnpm install --ignore-scripts && corepack pnpm --filter app prisma generate",
-  "buildCommand": "NODE_OPTIONS=--max_old_space_size=4096 pnpm build:webpack",
+  "buildCommand": "NODE_OPTIONS=--max_old_space_size=4096 NEXT_TELEMETRY_DISABLED=1 pnpm build:webpack",
   "framework": "nextjs"
 }
