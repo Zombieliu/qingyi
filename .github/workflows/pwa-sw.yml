@@ -22,7 +22,7 @@ jobs:
       - name: Build SW
         run: |
           cd packages/app
-          PWA_BUILD=1 NODE_OPTIONS=--max_old_space_size=4096 pnpm build:pwa
+          PWA_BUILD=1 NEXT_PUBLIC_PWA_PRECACHE=0 NODE_OPTIONS=--max_old_space_size=4096 pnpm build:pwa
       - name: Ensure sw.js exists
         run: |
           if [ ! -f packages/app/public/sw.js ]; then

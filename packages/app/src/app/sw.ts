@@ -39,8 +39,11 @@ const runtimeCaching: RuntimeCaching[] = [
   },
 ];
 
+const enablePrecaching = process.env.NEXT_PUBLIC_PWA_PRECACHE !== "0";
 // This array is injected at build time by @serwist/next (InjectManifest)
-handlePrecaching({ precacheEntries: self.__SW_MANIFEST });
+if (enablePrecaching) {
+  handlePrecaching({ precacheEntries: self.__SW_MANIFEST });
+}
 registerRuntimeCaching(...runtimeCaching);
 
 installSerwist({
