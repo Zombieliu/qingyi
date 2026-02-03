@@ -21,10 +21,32 @@
 
 ---
 
-## 2. 选择服务并打开托管弹窗
+## 2. 游戏设置（填写游戏名与ID）
+进入「我的」页，点击设置进入「游戏设置」，填写三角洲游戏名与游戏ID并保存。
+
+![](assets/user-flow/02-game-settings.png)
+
+要点：
+- 该信息用于下单时的游戏身份匹配。
+- 当前数据保存于本地（以 Passkey 地址区分）。
+
+---
+
+## 3. 钻石充值
+进入「钱包」页选择充值数量并完成支付，回到页面自动刷新余额。
+
+![](assets/user-flow/03-topup.png)
+
+要点：
+- 余额不足时，安排页会引导跳转到充值页。
+- 充值完成后建议下拉刷新或等待自动刷新提示。
+
+---
+
+## 4. 选择服务并打开托管弹窗
 进入「安排」页，选择服务后点击「先托管再呼叫」。
 
-![](assets/user-flow/02-open-escrow.png)
+![](assets/user-flow/04-open-escrow.png)
 
 要点：
 - 这是用户发起订单入口。
@@ -32,10 +54,10 @@
 
 ---
 
-## 3. 托管费用并创建链上订单
+## 5. 托管费用并创建链上订单
 勾选“使用钻石托管费用”，点击“扣减钻石并派单”。
 
-![](assets/user-flow/03-order-created.png)
+![](assets/user-flow/05-order-created.png)
 
 要点：
 - 扣减钻石成功后自动创建链上订单。
@@ -43,10 +65,10 @@
 
 ---
 
-## 4. 链上订单状态检查
+## 6. 链上订单状态检查
 切换到「展示」页，点击“刷新链上订单”查看订单状态（页面每 30 秒自动刷新一次，并显示上次刷新时间）。
 
-![](assets/user-flow/04-chain-order.png)
+![](assets/user-flow/06-chain-order.png)
 
 要点：
 - 链上订单会显示订单号与状态。
@@ -54,10 +76,10 @@
 
 ---
 
-## 5. 打手接单（付押金）
+## 7. 打手接单（付押金）
 由陪玩（演示中为同一 Passkey 地址）点击“付押金接单”（会弹出二次确认）。
 
-![](assets/user-flow/05-deposit-locked.png)
+![](assets/user-flow/07-deposit-locked.png)
 
 要点：
 - 成功后订单状态变为“押金已锁定”。
@@ -65,10 +87,10 @@
 
 ---
 
-## 6. 用户确认完成
+## 8. 用户确认完成
 用户点击“确认完成”（会弹出二次确认），订单进入待结算状态。
 
-![](assets/user-flow/06-user-confirmed.png)
+![](assets/user-flow/08-user-confirmed.png)
 
 要点：
 - 成功后状态为“已完成待结算”。
@@ -76,10 +98,10 @@
 
 ---
 
-## 7. 发起争议
+## 9. 发起争议
 用户点击“发起争议”并填写争议说明（弹窗提交）。
 
-![](assets/user-flow/07-dispute-raised.png)
+![](assets/user-flow/09-dispute-raised.png)
 
 要点：
 - 状态变为“争议中”。
@@ -87,10 +109,10 @@
 
 ---
 
-## 8. 后台裁决
+## 10. 后台裁决
 进入后台「链上对账」，找到争议订单并提交裁决。
 
-![](assets/user-flow/08-admin-dispute.png)
+![](assets/user-flow/10-admin-dispute.png)
 
 要点：
 - 可输入服务退款 / 押金扣罚比例。
@@ -98,10 +120,10 @@
 
 ---
 
-## 9. 结算完成
+## 11. 结算完成
 回到前台刷新链上订单，状态变为“已结算”。
 
-![](assets/user-flow/09-settled.png)
+![](assets/user-flow/11-settled.png)
 
 要点：
 - 订单生命周期结束。

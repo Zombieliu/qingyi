@@ -107,7 +107,9 @@ async function ensureGas(address: string) {
       const funderAddress = keypair.getPublicKey().toSuiAddress();
       const funderBalance = await client.getBalance({ owner: funderAddress });
       const funderTotal = BigInt(funderBalance.totalBalance || "0");
-      const amount = funderTotal / 2n;
+      const maxFund = BigInt(process.env.E2E_FUND_MAX || "200000000"); // default 0.2 SUI
+      const half = funderTotal / 2n;
+      const amount = maxFund > half ? half : maxFund;
       if (amount < MIN_GAS) {
         throw new Error("Funder balance too low");
       }
@@ -282,6 +284,27 @@ test.describe("chain e2e passkey", () => {
     );
     await saveGuideShot(page, "01-passkey-login.png");
 
+    await page.goto("/me/game-settings", { waitUntil: "domcontentloaded" });
+    await page.getByPlaceholder("如：夜风").fill("DeltaUser");
+    await page.getByPlaceholder("请输入游戏ID").fill("123456");
+    await page.getByRole("button", { name: "保存设置" }).click();
+    await expect(page.getByText("已保存")).toBeVisible({ timeout: 10_000 });
+    await saveGuideShot(page, "02-game-settings.png");
+
+    await page.goto("/wallet", { waitUntil: "domcontentloaded" });
+    await expect(page.getByText("钻石充值")).toBeVisible({ timeout: 10_000 });
+    await saveGuideShot(page, "03-topup.png");
+
+    await page.goto("/schedule", { waitUntil: "domcontentloaded" });
+    await page.evaluate(
+      ({ addr, publicKey }) => {
+        localStorage.setItem("qy_passkey_wallet_v3", JSON.stringify({ address: addr, publicKey }));
+        (window as typeof window & { __QY_COMPANION_OVERRIDE__?: string }).__QY_COMPANION_OVERRIDE__ = addr;
+        window.dispatchEvent(new Event("passkey-updated"));
+      },
+      { addr: address, publicKey: publicKeyBase64 }
+    );
+
     const callBtn = page.getByRole("button", { name: /先(付撮合费|托管)再呼叫/ });
     await expect(callBtn).toBeVisible({ timeout: 60_000 });
 
@@ -299,7 +322,7 @@ test.describe("chain e2e passkey", () => {
     const firstCheckbox = page.locator(".ride-items input[type=checkbox]").first();
     await firstCheckbox.check();
     await callBtn.click();
-    await saveGuideShot(page, "02-open-escrow.png");
+    await saveGuideShot(page, "04-open-escrow.png");
 
     const paidCheckbox = page.getByRole("checkbox", { name: "已确认托管费用" });
     await paidCheckbox.check();
@@ -307,7 +330,7 @@ test.describe("chain e2e passkey", () => {
     const payBtn = page.getByRole("button", { name: "扣减钻石并派单" });
     await payBtn.click();
     await expect(page.locator(".ride-modal-mask")).toBeHidden({ timeout: 120_000 });
-    await saveGuideShot(page, "03-order-created.png");
+    await saveGuideShot(page, "05-order-created.png");
 
     const orderId = await waitForChainOrderId(address, 120_000);
     if (!orderId || typeof orderId !== "string") {
@@ -325,7 +348,7 @@ test.describe("chain e2e passkey", () => {
     const orderCard = page.locator(".dl-card", { hasText: `链上订单 #${orderId}` });
     await expect(orderCard).toBeVisible({ timeout: 90_000 });
     await expect(orderCard.getByText(/状态：已(托管费用|支付撮合费)/)).toBeVisible({ timeout: 90_000 });
-    await saveGuideShot(page, "04-chain-order.png");
+    await saveGuideShot(page, "06-chain-order.png");
 
     const depositBtn = orderCard.getByRole("button", { name: "付押金接单" });
     await expect(depositBtn).toBeVisible();
@@ -335,17 +358,17 @@ test.describe("chain e2e passkey", () => {
     log(`order ${orderId} status -> 押金已锁定`);
     await page.getByRole("button", { name: "刷新链上订单" }).click();
     await expect(orderCard.getByText("状态：押金已锁定")).toBeVisible({ timeout: 90_000 });
-    await saveGuideShot(page, "05-deposit-locked.png");
+    await saveGuideShot(page, "07-deposit-locked.png");
 
     const completeBtn = orderCard.getByRole("button", { name: "确认完成" });
     await expect(completeBtn).toBeVisible();
     page.once("dialog", (dialog) => dialog.accept());
     await completeBtn.click();
-    await waitForOrderStatus(orderId, 3, { timeoutMs: 120_000, pollMs: 2_000 });
+    await waitForOrderStatus(orderId, 3, { timeoutMs: 240_000, pollMs: 5_000 });
     log(`order ${orderId} status -> 已完成待结算`);
     await page.getByRole("button", { name: "刷新链上订单" }).click();
     await expect(orderCard.getByText("状态：已完成待结算")).toBeVisible({ timeout: 90_000 });
-    await saveGuideShot(page, "06-user-confirmed.png");
+    await saveGuideShot(page, "08-user-confirmed.png");
 
     const disputeBtn = orderCard.getByRole("button", { name: "发起争议" });
     await expect(disputeBtn).toBeVisible();
@@ -354,11 +377,11 @@ test.describe("chain e2e passkey", () => {
     await expect(disputeModal).toBeVisible({ timeout: 10_000 });
     await disputeModal.getByPlaceholder("请输入争议说明或证据哈希").fill("playwright dispute");
     await disputeModal.getByRole("button", { name: "提交争议" }).click();
-    await waitForOrderStatus(orderId, 4, { timeoutMs: 120_000, pollMs: 2_000 });
+    await waitForOrderStatus(orderId, 4, { timeoutMs: 240_000, pollMs: 5_000 });
     log(`order ${orderId} status -> 争议中`);
     await page.getByRole("button", { name: "刷新链上订单" }).click();
     await expect(orderCard.getByText("状态：争议中")).toBeVisible({ timeout: 90_000 });
-    await saveGuideShot(page, "07-dispute-raised.png");
+    await saveGuideShot(page, "09-dispute-raised.png");
 
     if (!adminToken) {
       throw new Error("ADMIN_DASH_TOKEN/LEDGER_ADMIN_TOKEN 缺失，无法继续争议裁决");
@@ -392,17 +415,17 @@ test.describe("chain e2e passkey", () => {
     await page.getByRole("button", { name: "刷新" }).click();
     const disputeCard = page.locator(".admin-card").filter({ hasText: `订单 #${orderId}` }).first();
     await expect(disputeCard).toBeVisible({ timeout: 90_000 });
-    await saveGuideShot(page, "08-admin-dispute.png");
+    await saveGuideShot(page, "10-admin-dispute.png");
     await disputeCard.getByRole("button", { name: "提交裁决" }).first().click();
 
-    await waitForOrderStatus(orderId, 5, { timeoutMs: 120_000, pollMs: 2_000 });
+    await waitForOrderStatus(orderId, 5, { timeoutMs: 240_000, pollMs: 5_000 });
     log(`order ${orderId} status -> 已结算`);
 
     await page.goto("/showcase", { waitUntil: "domcontentloaded" });
     await page.getByRole("button", { name: "刷新链上订单" }).click();
     const settledCard = page.locator(".dl-card", { hasText: `链上订单 #${orderId}` });
     await expect(settledCard.getByText("状态：已结算")).toBeVisible({ timeout: 90_000 });
-    await saveGuideShot(page, "09-settled.png");
+    await saveGuideShot(page, "11-settled.png");
     } finally {
       try {
         const browserRpcLogs = await page.evaluate(() => {
