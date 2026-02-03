@@ -6,6 +6,16 @@ import { DAPP_HUB_ID, DAPP_HUB_INITIAL_SHARED_VERSION, NETWORK, PACKAGE_ID } fro
 const metadata = contractMetadata as SuiMoveNormalizedModules;
 const hasMetadata = Object.keys(metadata as Record<string, unknown>).length > 0;
 
+type DubheTx = {
+  ledger_system?: {
+    credit_balance_with_receipt?: (args: {
+      tx: Transaction;
+      params: unknown[];
+      isRaw: boolean;
+    }) => Promise<void> | void;
+  };
+};
+
 export function createDubheClient(params?: { secretKey?: string }) {
   return new Dubhe({
     networkType: NETWORK,
@@ -47,7 +57,7 @@ export async function attachCreditWithReceiptTx({
     tx.object("0x6"),
   ];
 
-  const entry = (dubhe.tx as Record<string, any>)?.ledger_system?.credit_balance_with_receipt;
+  const entry = (dubhe.tx as DubheTx).ledger_system?.credit_balance_with_receipt;
   if (hasMetadata && entry) {
     await entry({ tx, params: args, isRaw: true });
     return;

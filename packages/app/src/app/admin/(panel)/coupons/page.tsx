@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { PlusCircle, RefreshCw, Search } from "lucide-react";
 import type { AdminCoupon, CouponStatus } from "@/lib/admin-types";
 import { COUPON_STATUS_OPTIONS } from "@/lib/admin-types";
@@ -31,7 +31,7 @@ export default function CouponsPage() {
     description: "",
   });
 
-  const load = async (nextPage = page) => {
+  const load = useCallback(async (nextPage: number) => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
@@ -49,16 +49,16 @@ export default function CouponsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [pageSize, query, statusFilter]);
 
   useEffect(() => {
     const handle = setTimeout(() => load(1), 300);
     return () => clearTimeout(handle);
-  }, [query, statusFilter]);
+  }, [load]);
 
   useEffect(() => {
     load(page);
-  }, [page]);
+  }, [load, page]);
 
   const createCoupon = async () => {
     if (!form.title.trim()) return;

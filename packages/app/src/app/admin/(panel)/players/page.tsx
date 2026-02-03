@@ -13,8 +13,10 @@ export default function PlayersPage() {
     name: "",
     role: "",
     contact: "",
-    wechatQr: "",
-    alipayQr: "",
+    address: "",
+    depositBase: "",
+    depositLocked: "",
+    creditMultiplier: "1",
     status: "可接单" as PlayerStatus,
     notes: "",
   });
@@ -45,16 +47,28 @@ export default function PlayersPage() {
           name: form.name.trim(),
           role: form.role.trim(),
           contact: form.contact.trim(),
-          wechatQr: form.wechatQr.trim(),
-          alipayQr: form.alipayQr.trim(),
+          address: form.address.trim(),
+          depositBase: form.depositBase ? Number(form.depositBase) : undefined,
+          depositLocked: form.depositLocked ? Number(form.depositLocked) : undefined,
+          creditMultiplier: form.creditMultiplier ? Number(form.creditMultiplier) : undefined,
           status: form.status,
           notes: form.notes.trim(),
         }),
       });
     if (res.ok) {
-      const data = await res.json();
-      setPlayers((prev) => [data, ...prev]);
-      setForm({ name: "", role: "", contact: "", wechatQr: "", alipayQr: "", status: "可接单", notes: "" });
+      await res.json();
+      await loadPlayers();
+      setForm({
+        name: "",
+        role: "",
+        contact: "",
+        address: "",
+        depositBase: "",
+        depositLocked: "",
+        creditMultiplier: "1",
+        status: "可接单",
+        notes: "",
+      });
     }
   };
 
@@ -67,8 +81,8 @@ export default function PlayersPage() {
         body: JSON.stringify(patch),
       });
       if (res.ok) {
-        const data = await res.json();
-        setPlayers((prev) => prev.map((p) => (p.id === playerId ? data : p)));
+        await res.json();
+        await loadPlayers();
       }
     } finally {
       setSaving((prev) => ({ ...prev, [playerId]: false }));
@@ -116,21 +130,52 @@ export default function PlayersPage() {
             />
           </label>
           <label className="admin-field">
-            微信收款码
+            钱包地址
             <input
               className="admin-input"
-              placeholder="图片 URL"
-              value={form.wechatQr}
-              onChange={(event) => setForm((prev) => ({ ...prev, wechatQr: event.target.value }))}
+              placeholder="Sui 地址"
+              value={form.address}
+              onChange={(event) => setForm((prev) => ({ ...prev, address: event.target.value }))}
             />
           </label>
           <label className="admin-field">
-            支付宝收款码
+            基础押金(钻石)
             <input
               className="admin-input"
-              placeholder="图片 URL"
-              value={form.alipayQr}
-              onChange={(event) => setForm((prev) => ({ ...prev, alipayQr: event.target.value }))}
+              placeholder="如 1000"
+              value={form.depositBase}
+              onChange={(event) => setForm((prev) => ({ ...prev, depositBase: event.target.value }))}
+            />
+          </label>
+          <label className="admin-field">
+            已锁押金(钻石)
+            <input
+              className="admin-input"
+              placeholder="如 1000"
+              value={form.depositLocked}
+              onChange={(event) => setForm((prev) => ({ ...prev, depositLocked: event.target.value }))}
+            />
+            <button
+              className="admin-btn ghost"
+              type="button"
+              style={{ padding: "6px 10px", fontSize: 12, justifySelf: "start" }}
+              onClick={() =>
+                setForm((prev) => ({
+                  ...prev,
+                  depositLocked: prev.depositBase ? prev.depositBase : "",
+                }))
+              }
+            >
+              同基础
+            </button>
+          </label>
+          <label className="admin-field">
+            授信倍数(1-5)
+            <input
+              className="admin-input"
+              placeholder="1-5"
+              value={form.creditMultiplier}
+              onChange={(event) => setForm((prev) => ({ ...prev, creditMultiplier: event.target.value }))}
             />
           </label>
           <label className="admin-field">
@@ -179,8 +224,13 @@ export default function PlayersPage() {
                   <th>名称</th>
                   <th>位置</th>
                   <th>联系方式</th>
-                  <th>微信收款码</th>
-                  <th>支付宝收款码</th>
+                  <th>钱包地址</th>
+                  <th>基础押金(钻石)</th>
+                  <th>已锁押金(钻石)</th>
+                  <th>授信倍数</th>
+                  <th>可接额度(元)</th>
+                  <th>已占用(元)</th>
+                  <th>可用额度(元)</th>
                   <th>状态</th>
                   <th>备注</th>
                   <th>操作</th>
@@ -221,31 +271,89 @@ export default function PlayersPage() {
                     <td>
                       <input
                         className="admin-input"
-                        value={player.wechatQr || ""}
+                        value={player.address || ""}
                         onChange={(event) =>
                           setPlayers((prev) =>
                             prev.map((p) =>
-                              p.id === player.id ? { ...p, wechatQr: event.target.value } : p
+                              p.id === player.id ? { ...p, address: event.target.value } : p
                             )
                           )
                         }
-                        onBlur={(event) => updatePlayer(player.id, { wechatQr: event.target.value })}
+                        onBlur={(event) => updatePlayer(player.id, { address: event.target.value })}
                       />
                     </td>
                     <td>
                       <input
                         className="admin-input"
-                        value={player.alipayQr || ""}
+                        value={player.depositBase ?? ""}
                         onChange={(event) =>
                           setPlayers((prev) =>
                             prev.map((p) =>
-                              p.id === player.id ? { ...p, alipayQr: event.target.value } : p
+                              p.id === player.id ? { ...p, depositBase: Number(event.target.value) || 0 } : p
                             )
                           )
                         }
-                        onBlur={(event) => updatePlayer(player.id, { alipayQr: event.target.value })}
+                        onBlur={(event) =>
+                          updatePlayer(player.id, { depositBase: Number(event.target.value) || 0 })
+                        }
                       />
                     </td>
+                    <td>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <input
+                          className="admin-input"
+                          value={player.depositLocked ?? ""}
+                          onChange={(event) =>
+                            setPlayers((prev) =>
+                              prev.map((p) =>
+                                p.id === player.id
+                                  ? { ...p, depositLocked: Number(event.target.value) || 0 }
+                                  : p
+                              )
+                            )
+                          }
+                          onBlur={(event) =>
+                            updatePlayer(player.id, { depositLocked: Number(event.target.value) || 0 })
+                          }
+                        />
+                        <button
+                          className="admin-btn ghost"
+                          type="button"
+                          style={{ padding: "6px 10px", fontSize: 12 }}
+                          disabled={player.depositBase === undefined}
+                          onClick={() => {
+                            const nextLocked = player.depositBase ?? 0;
+                            setPlayers((prev) =>
+                              prev.map((p) =>
+                                p.id === player.id ? { ...p, depositLocked: nextLocked } : p
+                              )
+                            );
+                            updatePlayer(player.id, { depositLocked: nextLocked });
+                          }}
+                        >
+                          同基础
+                        </button>
+                      </div>
+                    </td>
+                    <td>
+                      <input
+                        className="admin-input"
+                        value={player.creditMultiplier ?? 1}
+                        onChange={(event) =>
+                          setPlayers((prev) =>
+                            prev.map((p) =>
+                              p.id === player.id ? { ...p, creditMultiplier: Number(event.target.value) || 1 } : p
+                            )
+                          )
+                        }
+                        onBlur={(event) =>
+                          updatePlayer(player.id, { creditMultiplier: Number(event.target.value) || 1 })
+                        }
+                      />
+                    </td>
+                    <td>{player.creditLimit ?? 0}</td>
+                    <td>{player.usedCredit ?? 0}</td>
+                    <td>{player.availableCredit ?? 0}</td>
                     <td>
                       <select
                         className="admin-select"

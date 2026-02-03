@@ -1,5 +1,6 @@
 "use client";
 
+import Image, { type ImageLoader } from "next/image";
 import Link from "next/link";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -16,6 +17,8 @@ type PayResponse = {
   redirectUrl?: string | null;
   qrCodeUrl?: string | null;
   qrCodeData?: string | null;
+  qrCodeLink?: string | null;
+  qrCodeText?: string | null;
 };
 
 const options: Option[] = [
@@ -27,6 +30,8 @@ const channels: { key: PayChannel; label: string; note: string }[] = [
   { key: "alipay", label: "支付宝", note: "跳转支付完成后返回" },
   { key: "wechat_pay", label: "微信支付", note: "扫码完成付款" },
 ];
+
+const qrImageLoader: ImageLoader = ({ src }) => src;
 
 export default function Wallet() {
   const [selected, setSelected] = useState<Option>(options[0]);
@@ -74,7 +79,7 @@ export default function Wallet() {
       }
     };
     fetchBalance();
-  }, []);
+  }, [refresh]);
 
   const wechatQrSrc = useMemo(() => {
     if (!payInfo) return null;
@@ -85,6 +90,14 @@ export default function Wallet() {
     }
     return payInfo.qrCodeUrl || null;
   }, [payInfo]);
+
+  const wechatQrHint = useMemo(() => {
+    if (!payInfo) return null;
+    if (wechatQrSrc) return null;
+    if (payInfo.qrCodeLink) return "如二维码未显示，可点击下方按钮打开支付指引页";
+    if (payInfo.qrCodeText) return "如二维码未显示，请稍后重试或刷新二维码";
+    return null;
+  }, [payInfo, wechatQrSrc]);
 
   const handleConfirm = async () => {
     if (!agree) {
@@ -130,7 +143,7 @@ export default function Wallet() {
         window.location.href = data.redirectUrl;
         return;
       }
-      if (!data.qrCodeData && !data.qrCodeUrl) {
+      if (!data.qrCodeData && !data.qrCodeUrl && !data.qrCodeLink && !data.qrCodeText) {
         if (channel === "alipay") {
           if (data.status === "succeeded") {
             setMsg("支付已完成，可在明细中查看状态。");
@@ -220,7 +233,7 @@ export default function Wallet() {
               </div>
               <div className="pay-qr-note">若未自动跳转，可点击下方按钮继续支付。</div>
               <div className="mt-2">
-                <a className="pay-submit" href={payInfo.redirectUrl} target="_blank" rel="noreferrer">
+                <a className="pay-submit" href={payInfo.redirectUrl} rel="noreferrer">
                   打开支付页面
                 </a>
               </div>
@@ -230,7 +243,19 @@ export default function Wallet() {
         {channel === "wechat_pay" && (
           <div className="pay-qr-card">
             <div className="pay-qr-img" aria-hidden>
-              {wechatQrSrc ? <img src={wechatQrSrc} alt="微信支付二维码" /> : <div>请点击下方按钮生成二维码</div>}
+              {wechatQrSrc ? (
+                <Image
+                  src={wechatQrSrc}
+                  alt="微信支付二维码"
+                  width={120}
+                  height={120}
+                  loader={qrImageLoader}
+                  unoptimized
+                  style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                />
+              ) : (
+                <div>请点击下方按钮生成二维码</div>
+              )}
             </div>
             <div className="pay-qr-info">
               <div className="pay-qr-title">
@@ -238,6 +263,14 @@ export default function Wallet() {
                 <span className="pay-badge">扫码支付</span>
               </div>
               <div className="pay-qr-note">完成支付后系统会自动更新订单状态。</div>
+              {wechatQrHint && <div className="pay-qr-note">{wechatQrHint}</div>}
+              {payInfo?.qrCodeLink && !wechatQrSrc && (
+                <div className="mt-2">
+                  <a className="pay-submit" href={payInfo.qrCodeLink} rel="noreferrer">
+                    打开支付指引页
+                  </a>
+                </div>
+              )}
             </div>
           </div>
         )}

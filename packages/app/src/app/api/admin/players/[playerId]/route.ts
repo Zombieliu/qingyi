@@ -31,10 +31,24 @@ export async function PATCH(
   if (typeof body.name === "string") patch.name = body.name;
   if (typeof body.role === "string") patch.role = body.role;
   if (typeof body.contact === "string") patch.contact = body.contact;
+  if (typeof body.address === "string") patch.address = body.address;
   if (typeof body.wechatQr === "string") patch.wechatQr = body.wechatQr;
   if (typeof body.alipayQr === "string") patch.alipayQr = body.alipayQr;
+  if (typeof body.depositBase === "number") patch.depositBase = body.depositBase;
+  if (typeof body.depositLocked === "number") patch.depositLocked = body.depositLocked;
+  if (typeof body.creditMultiplier === "number") patch.creditMultiplier = body.creditMultiplier;
   if (typeof body.notes === "string") patch.notes = body.notes;
   if (typeof body.status === "string") patch.status = body.status as PlayerStatus;
+
+  if (patch.depositBase !== undefined && patch.depositBase < 0) {
+    return NextResponse.json({ error: "depositBase must be >= 0" }, { status: 400 });
+  }
+  if (patch.depositLocked !== undefined && patch.depositLocked < 0) {
+    return NextResponse.json({ error: "depositLocked must be >= 0" }, { status: 400 });
+  }
+  if (patch.creditMultiplier !== undefined) {
+    patch.creditMultiplier = Math.min(5, Math.max(1, Math.round(patch.creditMultiplier)));
+  }
 
   const updated = await updatePlayer(playerId, patch);
   if (!updated) {

@@ -73,8 +73,15 @@ export interface AdminPlayer {
   name: string;
   role?: string;
   contact?: string;
+  address?: string;
   wechatQr?: string;
   alipayQr?: string;
+  depositBase?: number;
+  depositLocked?: number;
+  creditMultiplier?: number;
+  creditLimit?: number;
+  usedCredit?: number;
+  availableCredit?: number;
   status: PlayerStatus;
   notes?: string;
   createdAt: number;

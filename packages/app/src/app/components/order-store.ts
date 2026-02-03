@@ -24,6 +24,7 @@ export type LocalOrder = {
     wechatQr?: string;
     alipayQr?: string;
   };
+  meta?: Record<string, unknown>;
 };
 
 const KEY = "dl_orders";

@@ -32,12 +32,27 @@ export async function POST(req: Request) {
     name: body.name,
     role: body.role,
     contact: body.contact,
+    address: body.address,
     wechatQr: body.wechatQr,
     alipayQr: body.alipayQr,
+    depositBase: typeof body.depositBase === "number" ? body.depositBase : undefined,
+    depositLocked: typeof body.depositLocked === "number" ? body.depositLocked : undefined,
+    creditMultiplier: typeof body.creditMultiplier === "number" ? body.creditMultiplier : undefined,
     status: (body.status as PlayerStatus) || "可接单",
     notes: body.notes,
     createdAt: Date.now(),
   };
+
+  if (player.depositBase !== undefined && player.depositBase < 0) {
+    return NextResponse.json({ error: "depositBase must be >= 0" }, { status: 400 });
+  }
+  if (player.depositLocked !== undefined && player.depositLocked < 0) {
+    return NextResponse.json({ error: "depositLocked must be >= 0" }, { status: 400 });
+  }
+  if (player.creditMultiplier !== undefined) {
+    const clamped = Math.min(5, Math.max(1, Math.round(player.creditMultiplier)));
+    player.creditMultiplier = clamped;
+  }
 
   await addPlayer(player);
   await recordAudit(req, auth, "players.create", "player", player.id, {

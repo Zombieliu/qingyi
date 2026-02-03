@@ -128,7 +128,13 @@ function getRuleSetId(): string {
 }
 
 function getDefaultCompanion(): string {
-  const addr = process.env.NEXT_PUBLIC_QY_DEFAULT_COMPANION || "";
+  let addr = process.env.NEXT_PUBLIC_QY_DEFAULT_COMPANION || "";
+  if (typeof window !== "undefined") {
+    const override = (window as { __QY_COMPANION_OVERRIDE__?: string }).__QY_COMPANION_OVERRIDE__;
+    if (override) {
+      addr = override;
+    }
+  }
   if (!addr) {
     throw new Error("未配置默认陪玩地址（NEXT_PUBLIC_QY_DEFAULT_COMPANION）");
   }

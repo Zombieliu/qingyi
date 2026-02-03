@@ -1,8 +1,8 @@
 "use client";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Clock3, ShieldCheck, QrCode, Loader2, CheckCircle2 } from "lucide-react";
 import { type LocalOrder } from "@/app/components/order-store";
-import { createOrder, deleteOrder, fetchOrders, patchOrder } from "@/app/components/order-service";
+import { createOrder, deleteOrder, fetchOrders, patchOrder, syncChainOrder } from "@/app/components/order-service";
 import {
   type ChainOrder,
   cancelOrderOnChain,
@@ -17,6 +17,7 @@ import {
   payServiceFeeOnChain,
   raiseDisputeOnChain,
 } from "@/lib/qy-chain";
+import { resolveDisputePolicy } from "@/lib/risk-policy";
 
 type RideItem = {
   name: string;
@@ -38,6 +39,15 @@ type RideSection = {
 };
 
 type Mode = "select" | "notifying" | "await-user-pay" | "enroute";
+
+type PublicPlayer = {
+  id: string;
+  name: string;
+  role?: string;
+  status: "可接单" | "忙碌" | "停用";
+  wechatQr?: string;
+  alipayQr?: string;
+};
 
 const sections: RideSection[] = [
   {
@@ -89,6 +99,8 @@ const sections: RideSection[] = [
   },
 ];
 
+const PLAYER_SECTION_TITLE = "可接打手";
+
 export default function Schedule() {
   const [checked, setChecked] = useState<Record<string, boolean>>(() => ({}));
   const [active, setActive] = useState("推荐");
@@ -101,6 +113,9 @@ export default function Schedule() {
   const [feeChecked, setFeeChecked] = useState(false);
   const [diamondBalance, setDiamondBalance] = useState<string>("0");
   const [balanceLoading, setBalanceLoading] = useState(false);
+  const [balanceReady, setBalanceReady] = useState(false);
+  const [vipTier, setVipTier] = useState<{ level?: number; name?: string } | null>(null);
+  const [vipLoading, setVipLoading] = useState(false);
   const [locked, setLocked] = useState<{ total: number; service: number; player: number; items: string[] }>({
     total: 0,
     service: 0,
@@ -108,30 +123,61 @@ export default function Schedule() {
     items: [],
   });
   const [calling, setCalling] = useState(false);
-  const [playerPaidTick, setPlayerPaidTick] = useState(false);
   const [chainOrders, setChainOrders] = useState<ChainOrder[]>([]);
   const [chainLoading, setChainLoading] = useState(false);
   const [chainError, setChainError] = useState<string | null>(null);
   const [chainToast, setChainToast] = useState<string | null>(null);
   const [chainAction, setChainAction] = useState<string | null>(null);
   const [chainAddress, setChainAddress] = useState("");
+  const [chainUpdatedAt, setChainUpdatedAt] = useState<number | null>(null);
   const redirectRef = useRef(false);
+  const [players, setPlayers] = useState<PublicPlayer[]>([]);
+  const [playersLoading, setPlayersLoading] = useState(false);
+  const [playersError, setPlayersError] = useState<string | null>(null);
+  const [selectedPlayerId, setSelectedPlayerId] = useState<string>("");
 
-  const playerQr = process.env.NEXT_PUBLIC_QR_PLAYER_FEE || "/qr/player-fee-qr.svg";
   const MATCH_RATE = 0.15;
 
   const refreshOrders = async () => {
     const list = await fetchOrders();
     setOrders(list);
     setMode(deriveMode(list));
-    setPlayerPaidTick(false);
   };
 
   useEffect(() => {
     refreshOrders();
   }, []);
 
-  const loadChain = async () => {
+  const refreshVip = async () => {
+    const addr = getCurrentAddress();
+    if (!addr) {
+      setVipTier(null);
+      return;
+    }
+    setVipLoading(true);
+    try {
+      const res = await fetch(`/api/vip/status?userAddress=${addr}`);
+      const data = await res.json();
+      if (data?.tier) {
+        setVipTier({ level: data.tier.level, name: data.tier.name });
+      } else {
+        setVipTier(null);
+      }
+    } catch {
+      // ignore vip errors
+    } finally {
+      setVipLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    refreshVip();
+    const handle = () => refreshVip();
+    window.addEventListener("passkey-updated", handle);
+    return () => window.removeEventListener("passkey-updated", handle);
+  }, []);
+
+  const loadChain = useCallback(async () => {
     if (!isChainOrdersEnabled()) return;
     const visualTest = isVisualTestMode();
     try {
@@ -142,6 +188,7 @@ export default function Schedule() {
       setChainAddress(getCurrentAddress());
       const list = await fetchChainOrders();
       setChainOrders(list);
+      setChainUpdatedAt(Date.now());
     } catch (e) {
       setChainError((e as Error).message || "链上订单加载失败");
     } finally {
@@ -149,11 +196,38 @@ export default function Schedule() {
         setChainLoading(false);
       }
     }
-  };
+  }, []);
 
   useEffect(() => {
     if (!isChainOrdersEnabled()) return;
     loadChain();
+    const timer = window.setInterval(() => {
+      if (!chainLoading) {
+        loadChain();
+      }
+    }, 30_000);
+    return () => window.clearInterval(timer);
+  }, [chainLoading, loadChain]);
+
+  const loadPlayers = async () => {
+    setPlayersLoading(true);
+    setPlayersError(null);
+    try {
+      const res = await fetch("/api/players");
+      if (!res.ok) {
+        throw new Error("加载失败");
+      }
+      const data = await res.json();
+      setPlayers(Array.isArray(data) ? data : []);
+    } catch (e) {
+      setPlayersError((e as Error).message || "加载打手失败");
+    } finally {
+      setPlayersLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadPlayers();
   }, []);
 
   const toggle = (name: string) => setChecked((p) => ({ ...p, [name]: !p[name] }));
@@ -168,14 +242,23 @@ export default function Schedule() {
       return sum + (Number.isFinite(parsed) ? parsed : 0);
     }, 0);
 
-  const currentOrder = useMemo(() => orders.find((o) => o.status !== "取消") || null, [orders]);
+  const currentOrder = useMemo(
+    () => orders.find((o) => !o.status.includes("取消") && !o.status.includes("完成")) || null,
+    [orders]
+  );
   const chainCurrentOrder = useMemo(() => {
     const addr = chainAddress;
     const list = addr
       ? chainOrders.filter((o) => o.user === addr)
       : chainOrders;
-    return list.length > 0 ? list[0] : null;
+    const active = list.filter((o) => o.status !== 6);
+    return active.length > 0 ? active[0] : null;
   }, [chainOrders, chainAddress]);
+
+  const selectedPlayer = useMemo(
+    () => players.find((player) => player.id === selectedPlayerId) || null,
+    [players, selectedPlayerId]
+  );
 
   const playerDue = useMemo(() => {
     if (!currentOrder) return 0;
@@ -183,15 +266,29 @@ export default function Schedule() {
     const fee = currentOrder.serviceFee ?? Number((currentOrder.amount * MATCH_RATE).toFixed(2));
     return Math.max(Number((currentOrder.amount - fee).toFixed(2)), 0);
   }, [currentOrder]);
-  const serviceFeeDisplay =
-    currentOrder && typeof currentOrder.serviceFee === "number"
-      ? currentOrder.serviceFee
-      : currentOrder
-        ? Number((currentOrder.amount * MATCH_RATE).toFixed(2))
-        : locked.service;
+  const escrowFeeDisplay = currentOrder ? currentOrder.amount : locked.total;
 
   const cancelOrder = async () => {
     if (!currentOrder) return;
+    const isChainOrder = isChainOrdersEnabled() && /^[0-9]+$/.test(currentOrder.id);
+    if (isChainOrder) {
+      const chainOrder =
+        chainCurrentOrder && chainCurrentOrder.orderId === currentOrder.id ? chainCurrentOrder : null;
+      if (chainOrder && chainOrder.status >= 2) {
+        setToast("押金已锁定，无法取消，请走争议/客服处理");
+        setTimeout(() => setToast(null), 3000);
+        return;
+      }
+      const ok = await runChainAction(
+        `cancel-${currentOrder.id}`,
+        () => cancelOrderOnChain(currentOrder.id),
+        "订单已取消，托管费已退回",
+        currentOrder.id
+      );
+      if (!ok) return;
+      setMode("select");
+      return;
+    }
     await deleteOrder(currentOrder.id, getCurrentAddress());
     await refreshOrders();
     setMode("select");
@@ -202,7 +299,7 @@ export default function Schedule() {
       case 0:
         return "已创建";
       case 1:
-        return "已支付撮合费";
+        return "已托管费用";
       case 2:
         return "押金已锁定";
       case 3:
@@ -230,14 +327,30 @@ export default function Schedule() {
     return new Date(num).toLocaleString();
   };
 
-  const runChainAction = async (key: string, action: () => Promise<{ digest: string }>, success: string) => {
+  const runChainAction = async (
+    key: string,
+    action: () => Promise<{ digest: string }>,
+    success: string,
+    syncOrderId?: string
+  ) => {
     try {
       setChainAction(key);
       await action();
       setChainToast(success);
       await loadChain();
+      if (syncOrderId) {
+        try {
+          await syncChainOrder(syncOrderId, getCurrentAddress());
+          await refreshOrders();
+        } catch (e) {
+          setChainToast(`链上已完成，但同步失败：${(e as Error).message || "未知错误"}`);
+          return false;
+        }
+      }
+      return true;
     } catch (e) {
       setChainToast((e as Error).message || "链上操作失败");
+      return false;
     } finally {
       setChainAction(null);
       setTimeout(() => setChainToast(null), 3000);
@@ -256,18 +369,75 @@ export default function Schedule() {
     }
   }, [chainCurrentOrder, currentOrder]);
 
-  if (mode === "await-user-pay" && currentOrder?.driver) {
-    const qrOptions = [
-      { key: "wechat", label: "微信收款码", url: currentOrder.driver.wechatQr || "" },
-      { key: "alipay", label: "支付宝收款码", url: currentOrder.driver.alipayQr || "" },
-    ].filter((item) => item.url);
-    if (qrOptions.length === 0) {
-      qrOptions.push({ key: "default", label: "打手收款码", url: playerQr });
+  const submit = () => {
+    if (pickedNames.length === 0) {
+      setToast("请先选择服务");
+      return;
     }
+    const total = pickedPrice || Math.max(pickedNames.length * 10, 10);
+    const service = Number((total * MATCH_RATE).toFixed(2));
+    const player = Math.max(Number((total - service).toFixed(2)), 0);
+    setLocked({ total, service, player, items: pickedNames });
+    setFeeOpen(true);
+    setFeeChecked(false);
+  };
+
+  const diamondRate = 10;
+  const requiredDiamonds = Math.ceil(locked.total * diamondRate);
+  const hasEnoughDiamonds = Number(diamondBalance) >= requiredDiamonds;
+  const disputePolicy = useMemo(() => resolveDisputePolicy(vipTier?.level), [vipTier]);
+
+  const refreshBalance = async () => {
+    const addr = getCurrentAddress();
+    if (!addr) return;
+    setBalanceLoading(true);
+    setBalanceReady(false);
+    try {
+      const res = await fetch(`/api/ledger/balance?address=${addr}`);
+      const data = await res.json();
+      if (data?.balance !== undefined) {
+        setDiamondBalance(String(data.balance));
+        setBalanceReady(true);
+      }
+    } catch {
+      // ignore balance errors
+    } finally {
+      setBalanceLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (feeOpen) {
+      redirectRef.current = false;
+      setBalanceReady(false);
+      refreshBalance();
+      refreshVip();
+    }
+  }, [feeOpen]);
+
+  useEffect(() => {
+    if (!feeOpen) return;
+    if (balanceLoading) return;
+    if (!balanceReady) return;
+    const addr = getCurrentAddress();
+    if (!addr) {
+      setToast("请先登录 Passkey 钱包以便扣减钻石");
+      return;
+    }
+    if (!hasEnoughDiamonds && !redirectRef.current) {
+      redirectRef.current = true;
+      setToast("钻石余额不足，正在跳转充值...");
+      setTimeout(() => {
+        window.location.href = "/wallet";
+      }, 1200);
+    }
+  }, [feeOpen, balanceLoading, balanceReady, hasEnoughDiamonds]);
+
+  if (mode === "await-user-pay" && currentOrder?.driver) {
     return (
       <div className="ride-shell">
         <div className="ride-tip" style={{ marginTop: 0 }}>
-          打手已支付押金，请完成打手费用支付后开始服务
+          打手已支付押金，平台将使用钻石托管打手费用
         </div>
 
         <div className="ride-driver-card dl-card">
@@ -295,35 +465,10 @@ export default function Schedule() {
         <div className="ride-pay-box">
           <div className="ride-pay-head">
             <div>
-              <div className="ride-pay-title">支付打手费用</div>
-              <div className="ride-pay-sub">司机已付押金，付款后开始护航</div>
+              <div className="ride-pay-title">托管打手费用</div>
+              <div className="ride-pay-sub">无需扫码，平台将从钻石托管后结算</div>
             </div>
             <div className="ride-pay-amount">¥{playerDue.toFixed(2)}</div>
-          </div>
-          <div className="ride-qr-inline" style={{ gap: 16, flexWrap: "wrap" }}>
-            {qrOptions.map((opt) => (
-              <div key={opt.key} style={{ display: "flex", gap: 12, alignItems: "center" }}>
-                <div className="ride-qr-img">
-                  <img src={opt.url} alt={opt.label} />
-                </div>
-                <div className="ride-qr-text">
-                  <div className="text-sm font-semibold text-gray-900">{opt.label}</div>
-                  <div className="text-xs text-gray-500">老板扫码付款，打手确认到账后开始服务</div>
-                </div>
-              </div>
-            ))}
-            <div className="ride-qr-text" style={{ minWidth: 220 }}>
-              <label className="ride-status-toggle" style={{ marginTop: 8 }}>
-                <input
-                  type="checkbox"
-                  checked={playerPaidTick}
-                  onChange={(e) => setPlayerPaidTick(e.target.checked)}
-                  aria-label="已支付打手费用"
-                />
-                <span>我已支付</span>
-                {playerPaidTick && <CheckCircle2 size={16} color="#22c55e" />}
-              </label>
-            </div>
           </div>
           <div className="ride-pay-actions">
             <button className="dl-tab-btn" onClick={cancelOrder}>取消</button>
@@ -332,17 +477,12 @@ export default function Schedule() {
               style={{ background: "#0f172a", color: "#fff" }}
               onClick={async () => {
                 if (!currentOrder) return;
-                if (!playerPaidTick) {
-                  setToast("请先完成打手费用支付");
-                  setTimeout(() => setToast(null), 2000);
-                  return;
-                }
-                await patchOrder(currentOrder.id, { playerPaid: true, status: "打手费已付", userAddress: getCurrentAddress() });
+                await patchOrder(currentOrder.id, { playerPaid: true, status: "打手费已托管", userAddress: getCurrentAddress() });
                 await refreshOrders();
                 setMode("enroute");
               }}
             >
-              确认已支付
+              进入服务
             </button>
           </div>
         </div>
@@ -388,7 +528,7 @@ export default function Schedule() {
           正在通知护航，需打手支付押金后才能接单
         </div>
         <div className="ride-stepper">
-          <Step label={`撮合费 ¥${serviceFeeDisplay.toFixed(2)} 已收`} done={!!currentOrder.serviceFeePaid} />
+          <Step label={`托管费 ¥${escrowFeeDisplay.toFixed(2)} 已收`} done={!!currentOrder.serviceFeePaid} />
           <Step label="打手支付押金" done={!!currentOrder.depositPaid} />
           <Step label="派单匹配" done={!!currentOrder.driver} />
         </div>
@@ -400,73 +540,15 @@ export default function Schedule() {
             <span className="text-amber-600 font-bold">¥{currentOrder.amount}</span>
           </div>
           <div className="text-xs text-gray-500 mt-2">{new Date(currentOrder.time).toLocaleString()}</div>
-          <div className="text-xs text-gray-500 mt-3">押金未付前不会提示用户支付打手费。</div>
+          <div className="text-xs text-gray-500 mt-3">押金未付前不会进入服务阶段，费用已由钻石托管。</div>
         </div>
       </div>
     );
   }
 
-  const submit = () => {
-    if (pickedNames.length === 0) {
-      setToast("请先选择服务");
-      return;
-    }
-    const total = pickedPrice || Math.max(pickedNames.length * 10, 10);
-    const service = Number((total * MATCH_RATE).toFixed(2));
-    const player = Math.max(Number((total - service).toFixed(2)), 0);
-    setLocked({ total, service, player, items: pickedNames });
-    setFeeOpen(true);
-    setFeeChecked(false);
-  };
-
-  const diamondRate = 10;
-  const requiredDiamonds = Math.ceil(locked.service * diamondRate);
-  const hasEnoughDiamonds = Number(diamondBalance) >= requiredDiamonds;
-
-  const refreshBalance = async () => {
-    const addr = getCurrentAddress();
-    if (!addr) return;
-    setBalanceLoading(true);
-    try {
-      const res = await fetch(`/api/ledger/balance?address=${addr}`);
-      const data = await res.json();
-      if (data?.balance !== undefined) {
-        setDiamondBalance(String(data.balance));
-      }
-    } catch {
-      // ignore balance errors
-    } finally {
-      setBalanceLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (feeOpen) {
-      redirectRef.current = false;
-      refreshBalance();
-    }
-  }, [feeOpen]);
-
-  useEffect(() => {
-    if (!feeOpen) return;
-    if (balanceLoading) return;
-    const addr = getCurrentAddress();
-    if (!addr) {
-      setToast("请先登录 Passkey 钱包以便扣减钻石");
-      return;
-    }
-    if (!hasEnoughDiamonds && !redirectRef.current) {
-      redirectRef.current = true;
-      setToast("钻石余额不足，正在跳转充值...");
-      setTimeout(() => {
-        window.location.href = "/wallet";
-      }, 1200);
-    }
-  }, [feeOpen, balanceLoading, hasEnoughDiamonds]);
-
   const callOrder = async () => {
     if (!feeChecked) {
-      setToast("请先确认使用钻石支付撮合费");
+      setToast("请先确认使用钻石托管费用");
       setTimeout(() => setToast(null), 2000);
       return;
     }
@@ -476,6 +558,7 @@ export default function Schedule() {
     }
     setCalling(true);
     try {
+      const requestedNote = selectedPlayer ? `指定打手：${selectedPlayer.name}` : "";
       let chainOrderId: string | null = null;
       let chainDigest: string | null = null;
       if (isChainOrdersEnabled()) {
@@ -491,6 +574,7 @@ export default function Schedule() {
           orderId: chainOrderId,
           serviceFee: requiredDiamonds,
           deposit: 0,
+          ruleSetId: disputePolicy.ruleSetId,
           autoPay: true,
           rawAmount: true,
         });
@@ -509,8 +593,25 @@ export default function Schedule() {
         serviceFeePaid: true,
         playerDue: locked.player,
         depositPaid: false,
-        playerPaid: false,
-        note: `来源：安排页呼叫服务。撮合费使用钻石支付(${requiredDiamonds}钻石)`,
+        playerPaid: true,
+        note: [
+          `来源：安排页呼叫服务。托管费用使用钻石支付(${requiredDiamonds}钻石)`,
+          requestedNote,
+        ]
+          .filter(Boolean)
+          .join("；"),
+        meta: {
+          disputeWindowHours: disputePolicy.hours,
+          ruleSetId: disputePolicy.ruleSetId,
+          vipTier: vipTier?.name || null,
+          vipLevel: vipTier?.level ?? null,
+          paymentMode: "diamond_escrow",
+          diamondCharge: requiredDiamonds,
+          diamondChargeCny: locked.total,
+          requestedPlayerId: selectedPlayer?.id || null,
+          requestedPlayerName: selectedPlayer?.name || null,
+          requestedPlayerRole: selectedPlayer?.role || null,
+        },
       });
       await refreshOrders();
       setMode("notifying");
@@ -518,7 +619,7 @@ export default function Schedule() {
       if (result.sent === false) {
         setToast(result.error || "订单已创建，通知失败");
       } else {
-        setToast(chainDigest ? "已上链并派单" : "撮合费已记录，正在派单");
+        setToast(chainDigest ? "已上链并派单" : "托管费用已记录，正在派单");
       }
     } catch (e) {
       setToast((e as Error).message);
@@ -534,12 +635,20 @@ export default function Schedule() {
         <div className="dl-card" style={{ marginBottom: 12 }}>
           <div className="flex items-center justify-between">
             <div className="text-sm font-semibold text-gray-900">链上订单状态</div>
-            <button className="dl-tab-btn" style={{ padding: "6px 10px" }} onClick={loadChain}>
+            <button
+              className="dl-tab-btn"
+              style={{ padding: "6px 10px" }}
+              onClick={loadChain}
+              disabled={chainLoading}
+            >
               {chainLoading ? "刷新中..." : "刷新"}
             </button>
           </div>
           <div className="text-xs text-gray-500 mt-2">
             当前地址：{chainAddress ? `${chainAddress.slice(0, 6)}...${chainAddress.slice(-4)}` : "未登录"}
+          </div>
+          <div className="text-xs text-gray-500 mt-1">
+            上次刷新：{chainUpdatedAt ? new Date(chainUpdatedAt).toLocaleTimeString() : "-"}
           </div>
           {chainError && <div className="mt-2 text-xs text-rose-500">{chainError}</div>}
           {chainToast && <div className="mt-2 text-xs text-emerald-600">{chainToast}</div>}
@@ -549,7 +658,7 @@ export default function Schedule() {
             <div className="mt-3 text-xs text-gray-600">
               <div>订单号：{chainCurrentOrder.orderId}</div>
               <div>状态：{statusLabel(chainCurrentOrder.status)}</div>
-              <div>撮合费：¥{formatAmount(chainCurrentOrder.serviceFee)}</div>
+              <div>托管费：¥{formatAmount(chainCurrentOrder.serviceFee)}</div>
               <div>押金：¥{formatAmount(chainCurrentOrder.deposit)}</div>
               <div>争议截止：{formatTime(chainCurrentOrder.disputeDeadline)}</div>
               <div className="mt-2 flex gap-2 flex-wrap">
@@ -562,11 +671,12 @@ export default function Schedule() {
                       runChainAction(
                         `pay-${chainCurrentOrder.orderId}`,
                         () => payServiceFeeOnChain(chainCurrentOrder.orderId),
-                        "撮合费已上链"
+                        "托管费已上链",
+                        chainCurrentOrder.orderId
                       )
                     }
                   >
-                    支付撮合费
+                    支付托管费
                   </button>
                 )}
                 {(chainCurrentOrder.status === 0 || chainCurrentOrder.status === 1) && (
@@ -578,7 +688,8 @@ export default function Schedule() {
                       runChainAction(
                         `cancel-${chainCurrentOrder.orderId}`,
                         () => cancelOrderOnChain(chainCurrentOrder.orderId),
-                        "订单已取消"
+                        "订单已取消",
+                        chainCurrentOrder.orderId
                       )
                     }
                   >
@@ -594,7 +705,8 @@ export default function Schedule() {
                       runChainAction(
                         `complete-${chainCurrentOrder.orderId}`,
                         () => markCompletedOnChain(chainCurrentOrder.orderId),
-                        "已确认完成"
+                        "已确认完成",
+                        chainCurrentOrder.orderId
                       )
                     }
                   >
@@ -612,7 +724,8 @@ export default function Schedule() {
                         runChainAction(
                           `dispute-${chainCurrentOrder.orderId}`,
                           () => raiseDisputeOnChain(chainCurrentOrder.orderId, evidence),
-                          "已提交争议"
+                          "已提交争议",
+                          chainCurrentOrder.orderId
                         );
                       }}
                     >
@@ -626,7 +739,8 @@ export default function Schedule() {
                         runChainAction(
                           `finalize-${chainCurrentOrder.orderId}`,
                           () => finalizeNoDisputeOnChain(chainCurrentOrder.orderId),
-                          "订单已结算"
+                          "订单已结算",
+                          chainCurrentOrder.orderId
                         )
                       }
                     >
@@ -645,22 +759,34 @@ export default function Schedule() {
           <div className="ride-modal">
             <div className="ride-modal-head">
               <div>
-                <div className="ride-modal-title">使用钻石支付撮合费</div>
-                <div className="ride-modal-sub">按订单金额 15% 计算，1元=10钻石</div>
+                <div className="ride-modal-title">使用钻石托管费用</div>
+                <div className="ride-modal-sub">按订单金额计算，1元=10钻石</div>
               </div>
               <div className="ride-modal-amount">{requiredDiamonds} 钻石</div>
             </div>
             <div className="ride-qr-inline">
               <div className="ride-qr-text">
-                <div className="text-sm font-semibold text-gray-900">平台撮合费（钻石）</div>
+                <div className="text-sm font-semibold text-gray-900">托管费用（钻石）</div>
                 <div className="text-xs text-gray-500">
-                  订单 ¥{locked.total.toFixed(2)} × 15% = ¥{locked.service.toFixed(2)} ≈ {requiredDiamonds} 钻石
+                  订单 ¥{locked.total.toFixed(2)} × {diamondRate} = {requiredDiamonds} 钻石
                 </div>
-                <div className="ride-chip">撮合费不抵扣打手费用</div>
+                <div className="text-xs text-gray-500" style={{ marginTop: 4 }}>
+                  撮合费 ¥{locked.service.toFixed(2)} / 打手费用 ¥{locked.player.toFixed(2)}
+                </div>
+                <div className="ride-chip">打手费用由平台托管，服务完成后结算</div>
+                <div className="text-xs text-gray-500" style={{ marginTop: 4 }}>
+                  仲裁时效：{vipLoading ? "查询中..." : `${disputePolicy.hours}小时`}
+                  {vipTier?.name ? `（会员：${vipTier.name}）` : ""}
+                </div>
+                <div className="text-xs text-gray-500" style={{ marginTop: 4 }}>
+                  已选打手：
+                  {selectedPlayer ? `${selectedPlayer.name}${selectedPlayer.role ? `（${selectedPlayer.role}）` : ""}` : "系统匹配"}
+                </div>
                 <div className="text-xs text-gray-500" style={{ marginTop: 6 }}>
-                  当前余额：{balanceLoading ? "查询中..." : `${diamondBalance} 钻石`}
+                  当前余额：
+                  {balanceLoading ? "查询中..." : balanceReady ? `${diamondBalance} 钻石` : "查询失败，请刷新"}
                 </div>
-                {!hasEnoughDiamonds && (
+                {balanceReady && !hasEnoughDiamonds && (
                   <div className="text-xs text-rose-500" style={{ marginTop: 4 }}>
                     钻石余额不足，请先充值
                   </div>
@@ -673,9 +799,9 @@ export default function Schedule() {
                     type="checkbox"
                     checked={feeChecked}
                     onChange={(e) => setFeeChecked(e.target.checked)}
-                    aria-label="已支付撮合费"
+                    aria-label="已确认托管费用"
                   />
-                  <span>使用钻石支付撮合费</span>
+                  <span>使用钻石托管费用</span>
                   {feeChecked && <CheckCircle2 size={16} color="#22c55e" />}
                 </label>
               </div>
@@ -704,6 +830,15 @@ export default function Schedule() {
 
       <div className="ride-content">
         <div className="ride-side">
+          <button
+            className={`ride-side-tab ${active === PLAYER_SECTION_TITLE ? "is-active" : ""}`}
+            onClick={() => {
+              setActive(PLAYER_SECTION_TITLE);
+              sectionRefs.current[PLAYER_SECTION_TITLE]?.scrollIntoView({ behavior: "smooth", block: "start" });
+            }}
+          >
+            可接打手
+          </button>
           {sections.map((s) => (
             <button
               key={s.title}
@@ -720,6 +855,70 @@ export default function Schedule() {
 
         <div className="ride-main">
           <div className="ride-sections">
+            <div
+              ref={(el) => {
+                sectionRefs.current[PLAYER_SECTION_TITLE] = el;
+              }}
+              className="ride-block"
+            >
+              <div className="ride-block-title">
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <span>可接打手</span>
+                  <button
+                    className="dl-tab-btn"
+                    style={{ padding: "4px 8px" }}
+                    onClick={loadPlayers}
+                    type="button"
+                  >
+                    {playersLoading ? "加载中..." : "刷新"}
+                  </button>
+                </div>
+              </div>
+              <div className="ride-items">
+                {playersLoading ? (
+                  <div className="px-4 pb-2 text-xs text-slate-500">加载打手列表中...</div>
+                ) : players.length === 0 ? (
+                  <div className="px-4 pb-2 text-xs text-slate-500">暂无可接打手</div>
+                ) : (
+                  players.map((player) => (
+                    <div
+                      key={player.id}
+                      className="ride-row"
+                      onClick={() => setSelectedPlayerId(player.id)}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" || event.key === " ") {
+                          setSelectedPlayerId(player.id);
+                        }
+                      }}
+                    >
+                      <div className="ride-row-main">
+                        <div className="ride-row-title">{player.name}</div>
+                        <div className="ride-row-desc">{player.role || "擅长位置待完善"}</div>
+                      </div>
+                      <div className="ride-row-side">
+                        <label className="ride-checkbox" onClick={(event) => event.stopPropagation()}>
+                          <input
+                            type="radio"
+                            name="selected-player"
+                            checked={selectedPlayerId === player.id}
+                            onChange={() => setSelectedPlayerId(player.id)}
+                          />
+                          <span className="ride-checkbox-box" />
+                        </label>
+                      </div>
+                    </div>
+                  ))
+                )}
+                {playersError && (
+                  <div className="px-4 pb-2 text-xs text-rose-500">打手列表加载失败：{playersError}</div>
+                )}
+              </div>
+              <div className="px-4 pb-2 text-[11px] text-slate-400">
+                未选择将由系统匹配打手
+              </div>
+            </div>
             {sections.map((section) => (
               <div
                 key={section.title}
@@ -787,7 +986,7 @@ export default function Schedule() {
         </div>
         <button className="ride-call" onClick={submit}>
           <QrCode size={16} style={{ marginRight: 6 }} />
-          先付撮合费再呼叫
+          先托管再呼叫
         </button>
       </footer>
       {toast && <div className="ride-toast">{toast}</div>}
@@ -796,7 +995,7 @@ export default function Schedule() {
 }
 
 function deriveMode(list: LocalOrder[]): Mode {
-  const latest = list.find((o) => o.status !== "取消") || null;
+  const latest = list.find((o) => !o.status.includes("取消") && !o.status.includes("完成")) || null;
   if (!latest) return "select";
   if (latest.driver) {
     return latest.playerPaid ? "enroute" : "await-user-pay";

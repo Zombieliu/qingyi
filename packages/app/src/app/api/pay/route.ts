@@ -62,7 +62,7 @@ export async function POST(req: Request) {
   }
 
   try {
-    const intent = await stripe.paymentIntents.create({
+    let intent = await stripe.paymentIntents.create({
       amount: Math.round(amount * 100),
       currency: "cny",
       description: body,
@@ -86,6 +86,37 @@ export async function POST(req: Request) {
       return_url: resolvedReturnUrl || undefined,
     });
 
+    if (intent.next_action?.type === "wechat_pay_display_qr_code") {
+      const wechat = (intent.next_action as {
+        wechat_pay_display_qr_code?: {
+          image_url?: string;
+          image_data?: string;
+          qr_code_url?: string;
+          image_url_png?: string;
+          image_url_svg?: string;
+          image_data_url?: string;
+          hosted_instructions_url?: string;
+          data?: string;
+        };
+      }).wechat_pay_display_qr_code;
+      if (
+        !wechat?.image_url &&
+        !wechat?.image_data &&
+        !wechat?.qr_code_url &&
+        !wechat?.image_url_png &&
+        !wechat?.image_url_svg &&
+        !wechat?.image_data_url &&
+        !wechat?.hosted_instructions_url &&
+        !wechat?.data
+      ) {
+        try {
+          intent = await stripe.paymentIntents.retrieve(intent.id);
+        } catch {
+          // ignore refresh errors
+        }
+      }
+    }
+
     const nextAction = intent.next_action || undefined;
     const nextActionType = (nextAction as { type?: string } | undefined)?.type || null;
     const redirectUrl =
@@ -93,8 +124,18 @@ export async function POST(req: Request) {
       (nextAction as { alipay_handle_redirect?: { url?: string } } | undefined)?.alipay_handle_redirect?.url ||
       null;
     const wechatQr =
-      (nextAction as { wechat_pay_display_qr_code?: { image_url?: string; image_data?: string; qr_code_url?: string } } | undefined)
-        ?.wechat_pay_display_qr_code || null;
+      (nextAction as {
+        wechat_pay_display_qr_code?: {
+          image_url?: string;
+          image_data?: string;
+          qr_code_url?: string;
+          image_url_png?: string;
+          image_url_svg?: string;
+          image_data_url?: string;
+          hosted_instructions_url?: string;
+          data?: string;
+        };
+      } | undefined)?.wechat_pay_display_qr_code || null;
 
     return NextResponse.json({
       paymentIntentId: intent.id,
@@ -103,8 +144,10 @@ export async function POST(req: Request) {
       nextAction,
       nextActionType,
       redirectUrl,
-      qrCodeUrl: wechatQr?.image_url || wechatQr?.qr_code_url || null,
-      qrCodeData: wechatQr?.image_data || null,
+      qrCodeUrl: wechatQr?.image_url_png || wechatQr?.image_url_svg || wechatQr?.image_url || wechatQr?.qr_code_url || null,
+      qrCodeData: wechatQr?.image_data_url || wechatQr?.image_data || null,
+      qrCodeLink: wechatQr?.hosted_instructions_url || null,
+      qrCodeText: wechatQr?.data || null,
     });
   } catch (e) {
     const message = (e as Error).message || "stripe request failed";

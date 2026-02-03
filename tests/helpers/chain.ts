@@ -397,12 +397,28 @@ export async function fetchOrderById(orderId: string): Promise<ChainOrder | null
   let cursor: string | null = null;
   let remaining = Number.isFinite(EVENT_LIMIT) ? EVENT_LIMIT : 200;
   while (remaining > 0) {
-    const page = await client.queryEvents({
-      query: { MoveEventType: eventType },
-      limit: Math.min(50, remaining),
-      order: "descending",
-      cursor,
-    });
+    let page: Awaited<ReturnType<typeof client.queryEvents>>;
+    let attempt = 0;
+    while (true) {
+      try {
+        page = await client.queryEvents({
+          query: { MoveEventType: eventType },
+          limit: Math.min(50, remaining),
+          order: "descending",
+          cursor,
+        });
+        break;
+      } catch (err) {
+        const message = (err as Error).message || "";
+        if (message.includes("429") || message.toLowerCase().includes("too many requests")) {
+          attempt += 1;
+          if (attempt > 5) throw err;
+          await new Promise((resolve) => setTimeout(resolve, 1_000 * attempt));
+          continue;
+        }
+        throw err;
+      }
+    }
     for (const event of page.data) {
       const parsed = event.parsedJson as {
         dapp_key?: string;

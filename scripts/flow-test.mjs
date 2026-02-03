@@ -136,7 +136,7 @@ try {
                 : [];
             const targetOrder = orderId || list?.[0]?.id;
             if (targetOrder) {
-              const patch = await patchJson(`/api/admin/orders/${targetOrder}`, { stage: "已完成" }, cookie);
+              const patch = await patchJson(`/api/admin/orders/${targetOrder}`, { stage: "进行中" }, cookie);
               if (patch.ok) ok("admin order patched");
               else warn(`order patch failed: ${patch.status} ${patch.text}`);
             } else {

@@ -30,7 +30,11 @@ type ServerOrder = {
 
 function normalizeOrder(order: ServerOrder): LocalOrder {
   const meta = (order.meta || {}) as Record<string, unknown>;
-  const status = typeof meta.status === "string" ? meta.status : order.stage || order.paymentStatus;
+  const metaStatus = typeof meta.status === "string" ? meta.status : undefined;
+  const chainMeta = meta.chain as { status?: number } | undefined;
+  const hasChainStatus = order.chainStatus !== undefined && order.chainStatus !== null;
+  const isChain = Boolean(order.chainDigest) || hasChainStatus || chainMeta?.status !== undefined;
+  const status = isChain ? order.stage || order.paymentStatus : metaStatus || order.stage || order.paymentStatus;
   const time =
     typeof meta.time === "string" ? meta.time : new Date(order.createdAt).toISOString();
   return {
@@ -61,6 +65,7 @@ function buildMeta(order: Partial<LocalOrder>) {
   if (order.driver) meta.driver = order.driver;
   if (order.chainDigest) meta.chainDigest = order.chainDigest;
   if (order.serviceFee !== undefined) meta.serviceFee = order.serviceFee;
+  if (order.meta) Object.assign(meta, order.meta);
   return meta;
 }
 
@@ -147,6 +152,22 @@ export async function deleteOrder(orderId: string, userAddress?: string) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ userAddress, status: "取消" }),
   });
+}
+
+export async function syncChainOrder(orderId: string, userAddress?: string) {
+  if (ORDER_SOURCE !== "server") {
+    return;
+  }
+  const res = await fetch(`/api/orders/${orderId}/chain-sync`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ userAddress }),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data?.error || "chain sync failed");
+  }
+  return res.json();
 }
 
 export function isServerOrderEnabled() {

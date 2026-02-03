@@ -1,28 +1,28 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 import PasskeyWallet, { PASSKEY_STORAGE_KEY } from "./passkey-wallet";
 
 type GateState = "checking" | "allowed" | "blocked";
 
 export default function PasskeyGate({ children }: { children: React.ReactNode }) {
-  const [state, setState] = useState<GateState>("checking");
-
-  const check = () => {
-    if (typeof window === "undefined") return;
-    const ok = !!localStorage.getItem(PASSKEY_STORAGE_KEY);
-    setState(ok ? "allowed" : "blocked");
-  };
-
-  useEffect(() => {
-    check();
-    const handler = () => check();
-    window.addEventListener("storage", handler);
-    window.addEventListener("passkey-updated", handler);
-    return () => {
-      window.removeEventListener("storage", handler);
-      window.removeEventListener("passkey-updated", handler);
-    };
-  }, []);
+  const state = useSyncExternalStore<GateState>(
+    (callback) => {
+      if (typeof window === "undefined") return () => {};
+      const handler = () => callback();
+      window.addEventListener("storage", handler);
+      window.addEventListener("passkey-updated", handler);
+      return () => {
+        window.removeEventListener("storage", handler);
+        window.removeEventListener("passkey-updated", handler);
+      };
+    },
+    () => {
+      if (typeof window === "undefined") return "checking";
+      const ok = !!localStorage.getItem(PASSKEY_STORAGE_KEY);
+      return ok ? "allowed" : "blocked";
+    },
+    () => "checking"
+  );
 
   if (state === "allowed") return <>{children}</>;
 

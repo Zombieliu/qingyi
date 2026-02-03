@@ -197,8 +197,8 @@ export default defineConfig({
     locale: "zh-CN",
     colorScheme: "light",
     trace: "retain-on-failure",
-    screenshot: "only-on-failure",
-    video: "retain-on-failure",
+    screenshot: process.env.PW_SCREENSHOT === "1" ? "on" : "only-on-failure",
+    video: process.env.PW_VIDEO === "1" ? "on" : "retain-on-failure",
   },
   webServer: {
     command: "npm run dev --workspace app -- --hostname 127.0.0.1 --port 3000",

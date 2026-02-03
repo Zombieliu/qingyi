@@ -41,8 +41,12 @@ model AdminPlayer {
   name      String
   role      String?
   contact   String?
+  address   String?
   wechatQr  String?
   alipayQr  String?
+  depositBase Int?
+  depositLocked Int?
+  creditMultiplier Int?
   status    String
   notes     String?
   createdAt DateTime
@@ -50,6 +54,7 @@ model AdminPlayer {
 
   @@index([createdAt])
   @@index([status])
+  @@index([address])
 }
 
 model AdminAnnouncement {

@@ -11,6 +11,7 @@ const grid = [
   { label: "联系客服", icon: Phone, color: "#6366f1", href: "/me/support" },
   { label: "优惠卡券", icon: Diamond, color: "#f97316", href: "/me/coupons" },
   { label: "全部订单", icon: Gamepad2, color: "#0ea5e9", href: "/me/orders" },
+  { label: "游戏设置", icon: Gamepad2, color: "#10b981", href: "/me/game-settings" },
   { label: "待开始", icon: Gamepad2, color: "#6366f1", href: "/me/orders?filter=pending-start" },
   { label: "待确认", icon: ShieldCheck, color: "#f59e0b", href: "/me/orders?filter=pending-confirm" },
   { label: "开发票", icon: Phone, color: "#22c55e", href: "/me/invoice" },

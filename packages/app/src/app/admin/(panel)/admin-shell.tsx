@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import type { ElementType } from "react";
 import {
   LayoutGrid,
@@ -23,6 +23,57 @@ import {
 } from "lucide-react";
 
 type AdminRole = "admin" | "ops" | "finance" | "viewer";
+
+type AdminSessionSnapshot = {
+  role: AdminRole;
+  needsLogin: boolean;
+};
+
+const SERVER_SNAPSHOT: AdminSessionSnapshot = { role: "viewer", needsLogin: false };
+let sessionSnapshot: AdminSessionSnapshot = { role: "viewer", needsLogin: false };
+let sessionLoading: Promise<void> | null = null;
+const sessionSubscribers = new Set<() => void>();
+
+function notifySession() {
+  sessionSubscribers.forEach((callback) => callback());
+}
+
+async function refreshSession() {
+  try {
+    const res = await fetch("/api/admin/me");
+    if (res.ok) {
+      const data = await res.json().catch(() => ({}));
+      sessionSnapshot = {
+        role: (data?.role as AdminRole) || sessionSnapshot.role,
+        needsLogin: false,
+      };
+      const expiresAt = Number(data?.expiresAt || 0);
+      if (expiresAt && expiresAt - Date.now() < 30 * 60 * 1000) {
+        await fetch("/api/admin/refresh", { method: "POST" });
+      }
+    } else if (res.status === 401) {
+      sessionSnapshot = { role: "viewer", needsLogin: true };
+    }
+  } catch {
+    // Ignore transient session errors.
+  } finally {
+    notifySession();
+  }
+}
+
+function ensureSession() {
+  if (!sessionLoading) {
+    sessionLoading = refreshSession().finally(() => {
+      sessionLoading = null;
+    });
+  }
+}
+
+function subscribeSession(callback: () => void) {
+  sessionSubscribers.add(callback);
+  ensureSession();
+  return () => sessionSubscribers.delete(callback);
+}
 
 const navItems: Array<{ href: string; label: string; icon: ElementType; minRole: AdminRole }> = [
   { href: "/admin", label: "运营概览", icon: LayoutGrid, minRole: "viewer" },
@@ -73,7 +124,12 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
   const pathname = usePathname();
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [role, setRole] = useState<AdminRole>("viewer");
+  const session = useSyncExternalStore(
+    subscribeSession,
+    () => sessionSnapshot,
+    () => SERVER_SNAPSHOT
+  );
+  const role = session.role;
 
   const visibleNav = useMemo(
     () => navItems.filter((item) => roleRank(role) >= roleRank(item.minRole)),
@@ -85,21 +141,10 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
   );
 
   useEffect(() => {
-    const loadRole = async () => {
-      const res = await fetch("/api/admin/me");
-      if (res.ok) {
-        const data = await res.json().catch(() => ({}));
-        if (data?.role) setRole(data.role as AdminRole);
-        const expiresAt = Number(data?.expiresAt || 0);
-        if (expiresAt && expiresAt - Date.now() < 30 * 60 * 1000) {
-          await fetch("/api/admin/refresh", { method: "POST" });
-        }
-      } else if (res.status === 401) {
-        router.push("/admin/login");
-      }
-    };
-    loadRole();
-  }, []);
+    if (session.needsLogin) {
+      router.push("/admin/login");
+    }
+  }, [router, session.needsLogin]);
 
   const handleLogout = async () => {
     await fetch("/api/admin/logout", { method: "POST" });

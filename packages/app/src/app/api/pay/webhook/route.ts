@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
-import { addPaymentEvent, updateOrder } from "@/lib/admin-store";
+import { addPaymentEvent, getOrderById, updateOrder } from "@/lib/admin-store";
 import { recordAudit } from "@/lib/admin-audit";
 
 const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
@@ -40,6 +40,7 @@ export async function POST(req: Request) {
   let diamondAmount: string | undefined;
   let amountRaw: number | undefined;
   let status: string | undefined;
+  let paymentIntentId: string | undefined;
 
   if (object && "metadata" in object) {
     orderId = object.metadata?.orderId || object.metadata?.order_id;
@@ -52,29 +53,44 @@ export async function POST(req: Request) {
   if (object && "status" in object) {
     status = object.status || undefined;
   }
+  if (object) {
+    if ("object" in object && object.object === "payment_intent") {
+      paymentIntentId = object.id;
+    } else if ("payment_intent" in object) {
+      const pi = object.payment_intent;
+      paymentIntentId = typeof pi === "string" ? pi : pi?.id;
+    }
+  }
 
-  await addPaymentEvent({
-    id: `pay_${Date.now()}_${Math.floor(Math.random() * 9000 + 1000)}`,
-    provider: "stripe",
-    event: eventType,
-    orderNo: orderId,
-    amount: amountRaw,
-    status,
-    verified,
-    createdAt: Date.now(),
-    raw: event as unknown as Record<string, unknown>,
-  });
+  try {
+    await addPaymentEvent({
+      id: event?.id || `pay_${Date.now()}_${Math.floor(Math.random() * 9000 + 1000)}`,
+      provider: "stripe",
+      event: eventType,
+      orderNo: orderId,
+      amount: amountRaw,
+      status,
+      verified,
+      createdAt: Date.now(),
+      raw: event as unknown as Record<string, unknown>,
+    });
+  } catch {
+    // ignore duplicate event insertions
+  }
 
-  const isPaid = eventType === "payment_intent.succeeded" || eventType === "charge.succeeded";
+  const isPaid = eventType === "payment_intent.succeeded";
   if (orderId && isPaid) {
     try {
-      await updateOrder(orderId, { paymentStatus: "已支付" });
+      const exists = await getOrderById(orderId);
+      if (exists) {
+        await updateOrder(orderId, { paymentStatus: "已支付" });
+      }
     } catch {
       // ignore missing orders
     }
   }
 
-  if (isPaid && userAddress && diamondAmount && process.env.LEDGER_ADMIN_TOKEN) {
+  if (isPaid && userAddress && diamondAmount && process.env.LEDGER_ADMIN_TOKEN && paymentIntentId) {
     try {
       const url = new URL("/api/ledger/credit", req.url);
       await fetch(url, {
@@ -86,7 +102,7 @@ export async function POST(req: Request) {
         body: JSON.stringify({
           user: userAddress,
           amount: diamondAmount,
-          receiptId: `stripe_${event?.id || orderId || Date.now()}`,
+          receiptId: `stripe_pi_${paymentIntentId}`,
           note: "stripe webhook credit",
         }),
       });

@@ -3,31 +3,38 @@ import Image from "next/image";
 import Link from "next/link";
 import { ShieldCheck, AlertTriangle } from "lucide-react";
 import PasskeyLoginButton from "./components/passkey-login-button";
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 import { PASSKEY_STORAGE_KEY } from "./components/passkey-wallet";
 
 export default function RootPage() {
-  const [showHttpsTip, setShowHttpsTip] = useState(false);
-  const [hasWallet, setHasWallet] = useState(false);
+  const showHttpsTip = useSyncExternalStore(
+    () => () => {},
+    () => {
+      if (typeof window === "undefined") return false;
+      const isLocal = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+      const secure = window.isSecureContext || window.location.protocol === "https:";
+      return !(secure || isLocal);
+    },
+    () => false
+  );
 
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const isLocal = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
-    const secure = window.isSecureContext || window.location.protocol === "https:";
-    setShowHttpsTip(!(secure || isLocal));
-  }, []);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const update = () => setHasWallet(!!localStorage.getItem(PASSKEY_STORAGE_KEY));
-    update();
-    window.addEventListener("passkey-updated", update);
-    window.addEventListener("storage", update);
-    return () => {
-      window.removeEventListener("passkey-updated", update);
-      window.removeEventListener("storage", update);
-    };
-  }, []);
+  const hasWallet = useSyncExternalStore(
+    (callback) => {
+      if (typeof window === "undefined") return () => {};
+      const handler = () => callback();
+      window.addEventListener("passkey-updated", handler);
+      window.addEventListener("storage", handler);
+      return () => {
+        window.removeEventListener("passkey-updated", handler);
+        window.removeEventListener("storage", handler);
+      };
+    },
+    () => {
+      if (typeof window === "undefined") return false;
+      return !!localStorage.getItem(PASSKEY_STORAGE_KEY);
+    },
+    () => false
+  );
 
   return (
     <div className="login-shell">

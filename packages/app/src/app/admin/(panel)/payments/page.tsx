@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { RefreshCw } from "lucide-react";
 
 type PaymentEvent = {
@@ -20,7 +20,7 @@ export default function PaymentsPage() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
-  const load = async (nextPage = page) => {
+  const load = useCallback(async (nextPage: number) => {
     setLoading(true);
     try {
       const res = await fetch(`/api/admin/payments?page=${nextPage}`);
@@ -33,11 +33,11 @@ export default function PaymentsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     load(1);
-  }, []);
+  }, [load]);
 
   return (
     <div className="admin-section">

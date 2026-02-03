@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { RefreshCw, Search } from "lucide-react";
 import Link from "next/link";
-import type { AdminOrder, OrderStage } from "@/lib/admin-types";
+import type { AdminOrder, AdminPlayer, OrderStage } from "@/lib/admin-types";
 import { ORDER_STAGE_OPTIONS } from "@/lib/admin-types";
 
 function formatTime(ts: number) {
@@ -18,6 +18,8 @@ function formatTime(ts: number) {
 export default function OrdersPage() {
   const [orders, setOrders] = useState<AdminOrder[]>([]);
   const [loading, setLoading] = useState(true);
+  const [players, setPlayers] = useState<AdminPlayer[]>([]);
+  const [playersLoading, setPlayersLoading] = useState(true);
   const [query, setQuery] = useState("");
   const [stageFilter, setStageFilter] = useState("全部");
   const [saving, setSaving] = useState<Record<string, boolean>>({});
@@ -25,7 +27,7 @@ export default function OrdersPage() {
   const [totalPages, setTotalPages] = useState(1);
   const pageSize = 20;
 
-  const loadOrders = async (nextPage = page) => {
+  const loadOrders = useCallback(async (nextPage: number) => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
@@ -43,18 +45,44 @@ export default function OrdersPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [pageSize, query, stageFilter]);
+
+  const loadPlayers = useCallback(async () => {
+    setPlayersLoading(true);
+    try {
+      const res = await fetch("/api/admin/players");
+      if (res.ok) {
+        const data = await res.json();
+        setPlayers(Array.isArray(data) ? data : []);
+      }
+    } finally {
+      setPlayersLoading(false);
+    }
+  }, []);
+
+  const playerLookup = useMemo(() => {
+    const map = new Map<string, AdminPlayer>();
+    players.forEach((player) => {
+      map.set(player.id, player);
+      map.set(player.name, player);
+    });
+    return map;
+  }, [players]);
 
   useEffect(() => {
     const handle = setTimeout(() => {
       loadOrders(1);
     }, 300);
     return () => clearTimeout(handle);
-  }, [query, stageFilter]);
+  }, [loadOrders]);
 
   useEffect(() => {
     loadOrders(page);
-  }, [page]);
+  }, [loadOrders, page]);
+
+  useEffect(() => {
+    loadPlayers();
+  }, [loadPlayers]);
 
   const updateOrder = async (orderId: string, patch: Partial<AdminOrder>) => {
     setSaving((prev) => ({ ...prev, [orderId]: true }));
@@ -69,6 +97,12 @@ export default function OrdersPage() {
         setOrders((prev) =>
           prev.map((order) => (order.id === orderId ? data : order))
         );
+        if (patch.assignedTo !== undefined || patch.stage !== undefined) {
+          await loadPlayers();
+        }
+      } else {
+        const data = await res.json().catch(() => ({}));
+        alert(data?.error || "更新失败");
       }
     } finally {
       setSaving((prev) => ({ ...prev, [orderId]: false }));
@@ -147,8 +181,19 @@ export default function OrdersPage() {
                 </tr>
               </thead>
               <tbody>
-                {orders.map((order) => (
-                  <tr key={order.id}>
+                {orders.map((order) => {
+                  const assignedKey = (order.assignedTo || "").trim();
+                  const matchedPlayer = assignedKey ? playerLookup.get(assignedKey) : undefined;
+                  const selectValue = matchedPlayer ? matchedPlayer.id : assignedKey;
+                  const available = matchedPlayer?.availableCredit ?? 0;
+                  const used = matchedPlayer?.usedCredit ?? 0;
+                  const limit = matchedPlayer?.creditLimit ?? 0;
+                  const insufficient = matchedPlayer ? order.amount > available : false;
+                  const isChainOrder =
+                    Boolean(order.chainDigest) || (order.chainStatus !== undefined && order.chainStatus !== null);
+
+                  return (
+                    <tr key={order.id}>
                     <td>
                       <div style={{ fontWeight: 600 }}>{order.user}</div>
                       <div style={{ fontSize: 12, color: "#64748b" }}>
@@ -157,6 +202,11 @@ export default function OrdersPage() {
                       <div style={{ fontSize: 11, color: "#94a3b8" }}>
                         {order.id}
                       </div>
+                      {isChainOrder ? (
+                        <div style={{ marginTop: 6 }}>
+                          <span className="admin-badge warm">链上订单</span>
+                        </div>
+                      ) : null}
                       <div style={{ fontSize: 11, color: "#94a3b8" }}>
                         {formatTime(order.createdAt)}
                       </div>
@@ -167,28 +217,41 @@ export default function OrdersPage() {
                       </div>
                     </td>
                     <td>
-                      <input
-                        className="admin-input"
-                        value={order.paymentStatus || ""}
-                        onChange={(event) =>
-                          setOrders((prev) =>
-                            prev.map((item) =>
-                              item.id === order.id
-                                ? { ...item, paymentStatus: event.target.value }
-                                : item
+                      {isChainOrder ? (
+                        <input
+                          className="admin-input"
+                          readOnly
+                          value={order.paymentStatus || ""}
+                          title="链上订单状态由链上同步"
+                        />
+                      ) : (
+                        <input
+                          className="admin-input"
+                          value={order.paymentStatus || ""}
+                          onChange={(event) =>
+                            setOrders((prev) =>
+                              prev.map((item) =>
+                                item.id === order.id
+                                  ? { ...item, paymentStatus: event.target.value }
+                                  : item
+                              )
                             )
-                          )
-                        }
-                        onBlur={(event) =>
-                          updateOrder(order.id, { paymentStatus: event.target.value })
-                        }
-                      />
+                          }
+                          onBlur={(event) =>
+                            updateOrder(order.id, { paymentStatus: event.target.value })
+                          }
+                        />
+                      )}
                     </td>
                     <td>
                       <select
                         className="admin-select"
                         value={order.stage}
+                        aria-label="订单阶段"
+                        disabled={isChainOrder}
+                        title={isChainOrder ? "链上订单阶段由链上同步" : ""}
                         onChange={(event) => {
+                          if (isChainOrder) return;
                           const nextStage = event.target.value as OrderStage;
                           setOrders((prev) =>
                             prev.map((item) =>
@@ -206,23 +269,48 @@ export default function OrdersPage() {
                       </select>
                     </td>
                     <td>
-                      <input
-                        className="admin-input"
-                        placeholder="打手/客服"
-                        value={order.assignedTo || ""}
-                        onChange={(event) =>
-                          setOrders((prev) =>
-                            prev.map((item) =>
-                              item.id === order.id
-                                ? { ...item, assignedTo: event.target.value }
-                                : item
-                            )
-                          )
-                        }
-                        onBlur={(event) =>
-                          updateOrder(order.id, { assignedTo: event.target.value })
-                        }
-                      />
+                      <div style={{ display: "grid", gap: 6 }}>
+                        <select
+                          className="admin-select"
+                          value={selectValue}
+                          aria-label="打手/客服"
+                          onChange={(event) => {
+                            const nextValue = event.target.value;
+                            const selectedPlayer = players.find((player) => player.id === nextValue);
+                            const assignedTo = selectedPlayer ? selectedPlayer.name : nextValue;
+                            setOrders((prev) =>
+                              prev.map((item) =>
+                                item.id === order.id ? { ...item, assignedTo } : item
+                              )
+                            );
+                            updateOrder(order.id, { assignedTo });
+                          }}
+                        >
+                          <option value="">未派单</option>
+                          {assignedKey && !matchedPlayer ? (
+                            <option value={assignedKey}>当前：{assignedKey}</option>
+                          ) : null}
+                          {players.map((player) => (
+                            <option key={player.id} value={player.id}>
+                              {player.name}
+                              {player.status !== "可接单" ? `（${player.status}）` : ""}
+                            </option>
+                          ))}
+                        </select>
+                        <div
+                          style={{
+                            fontSize: 11,
+                            color: insufficient ? "#dc2626" : "#94a3b8",
+                          }}
+                        >
+                          {playersLoading
+                            ? "额度加载中..."
+                            : matchedPlayer
+                              ? `可用 ${available} 元 / 占用 ${used} 元 / 总额度 ${limit} 元`
+                              : "未选择打手"}
+                          {insufficient ? "（余额不足）" : ""}
+                        </div>
+                      </div>
                     </td>
                     <td>
                       <input
@@ -254,7 +342,8 @@ export default function OrdersPage() {
                       </Link>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>

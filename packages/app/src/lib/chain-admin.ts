@@ -120,7 +120,7 @@ function getAdminSigner() {
 }
 
 export async function fetchChainOrdersAdmin(): Promise<ChainOrder[]> {
-  const { pkg, hubId } = ensureChainEnv();
+  const { pkg } = ensureChainEnv();
   const client = new SuiClient({ url: getRpcUrl() });
   const dubhePackageId = await getDubhePackageId(client);
   const eventType = `${dubhePackageId}::dubhe_events::Dubhe_Store_SetRecord`;

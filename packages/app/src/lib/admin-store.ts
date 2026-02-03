@@ -69,8 +69,12 @@ function mapPlayer(row: {
   name: string;
   role: string | null;
   contact: string | null;
+  address: string | null;
   wechatQr: string | null;
   alipayQr: string | null;
+  depositBase: number | null;
+  depositLocked: number | null;
+  creditMultiplier: number | null;
   status: string;
   notes: string | null;
   createdAt: Date;
@@ -81,8 +85,12 @@ function mapPlayer(row: {
     name: row.name,
     role: row.role || undefined,
     contact: row.contact || undefined,
+    address: row.address || undefined,
     wechatQr: row.wechatQr || undefined,
     alipayQr: row.alipayQr || undefined,
+    depositBase: row.depositBase ?? undefined,
+    depositLocked: row.depositLocked ?? undefined,
+    creditMultiplier: row.creditMultiplier ?? undefined,
     status: row.status as AdminPlayer["status"],
     notes: row.notes || undefined,
     createdAt: row.createdAt.getTime(),
@@ -568,7 +576,34 @@ export async function upsertOrder(order: AdminOrder) {
 
 export async function listPlayers() {
   const rows = await prisma.adminPlayer.findMany({ orderBy: { createdAt: "desc" } });
-  return rows.map(mapPlayer);
+  const players = rows.map(mapPlayer);
+  const activeOrders = await prisma.adminOrder.findMany({
+    where: { stage: { notIn: ["已完成", "已取消"] } },
+    select: { assignedTo: true, amount: true, id: true },
+  });
+  const exposure = new Map<string, number>();
+  for (const order of activeOrders) {
+    const key = (order.assignedTo || "").trim();
+    if (!key) continue;
+    exposure.set(key, (exposure.get(key) || 0) + (order.amount || 0));
+  }
+
+  const DIAMOND_RATE = 10;
+  return players.map((player) => {
+    const keys = [player.id, player.name].filter(Boolean) as string[];
+    const used = keys.reduce((sum, key) => sum + (exposure.get(key) || 0), 0);
+    const depositBase = player.depositBase ?? 0;
+    const multiplier = Math.min(5, Math.max(1, player.creditMultiplier ?? 1));
+    const creditLimit = Number(((depositBase / DIAMOND_RATE) * multiplier).toFixed(2));
+    const available = Number(Math.max(creditLimit - used, 0).toFixed(2));
+    return {
+      ...player,
+      creditMultiplier: multiplier,
+      creditLimit,
+      usedCredit: Number(used.toFixed(2)),
+      availableCredit: available,
+    };
+  });
 }
 
 export async function addPlayer(player: AdminPlayer) {
@@ -578,8 +613,12 @@ export async function addPlayer(player: AdminPlayer) {
       name: player.name,
       role: player.role ?? null,
       contact: player.contact ?? null,
+      address: player.address ?? null,
       wechatQr: player.wechatQr ?? null,
       alipayQr: player.alipayQr ?? null,
+      depositBase: player.depositBase ?? null,
+      depositLocked: player.depositLocked ?? null,
+      creditMultiplier: player.creditMultiplier ?? null,
       status: player.status,
       notes: player.notes ?? null,
       createdAt: new Date(player.createdAt),
@@ -597,8 +636,12 @@ export async function updatePlayer(playerId: string, patch: Partial<AdminPlayer>
         name: patch.name,
         role: patch.role ?? undefined,
         contact: patch.contact ?? undefined,
+        address: patch.address ?? undefined,
         wechatQr: patch.wechatQr ?? undefined,
         alipayQr: patch.alipayQr ?? undefined,
+        depositBase: patch.depositBase ?? undefined,
+        depositLocked: patch.depositLocked ?? undefined,
+        creditMultiplier: patch.creditMultiplier ?? undefined,
         notes: patch.notes ?? undefined,
         status: patch.status,
         updatedAt: new Date(),

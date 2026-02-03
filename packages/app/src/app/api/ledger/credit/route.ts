@@ -13,6 +13,16 @@ const REQUIRED_ENVS = [
   "LEDGER_ADMIN_TOKEN",
 ] as const;
 
+type DubheTx = {
+  ledger_system?: {
+    credit_balance_with_receipt?: (args: {
+      tx: Transaction;
+      params: unknown[];
+      isRaw: boolean;
+    }) => void;
+  };
+};
+
 function getEnv() {
   const missing = REQUIRED_ENVS.filter((key) => !process.env[key]);
   if (missing.length) {
@@ -95,7 +105,7 @@ export async function POST(req: Request) {
         tx.object("0x6"),
       ];
 
-      const entry = (dubhe.tx as Record<string, any>)?.ledger_system?.credit_balance_with_receipt;
+      const entry = (dubhe.tx as DubheTx).ledger_system?.credit_balance_with_receipt;
       if (hasMetadata && entry) {
         entry({ tx, params: args, isRaw: true });
       } else {

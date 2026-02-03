@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { PlusCircle, RefreshCw, Search } from "lucide-react";
 import type {
   AdminMember,
@@ -63,7 +63,6 @@ export default function VipAdminPage() {
   const [statusFilter, setStatusFilter] = useState("全部");
   const [saving, setSaving] = useState<Record<string, boolean>>({});
   const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
   const pageSize = 20;
 
   const [form, setForm] = useState({
@@ -78,7 +77,7 @@ export default function VipAdminPage() {
 
   const [perksDraft, setPerksDraft] = useState<Record<string, string>>({});
 
-  const loadTiers = async () => {
+  const loadTiers = useCallback(async () => {
     const res = await fetch(`/api/admin/vip/tiers?page=1&pageSize=200`);
     if (res.ok) {
       const data = await res.json();
@@ -92,9 +91,9 @@ export default function VipAdminPage() {
         return next;
       });
     }
-  };
+  }, []);
 
-  const loadRequests = async (nextPage = page) => {
+  const loadRequests = useCallback(async (nextPage: number) => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
@@ -107,34 +106,33 @@ export default function VipAdminPage() {
         const data = await res.json();
         setRequests(Array.isArray(data?.items) ? data.items : []);
         setPage(data?.page || nextPage);
-        setTotalPages(data?.totalPages || 1);
       }
     } finally {
       setLoading(false);
     }
-  };
+  }, [pageSize, query, statusFilter]);
 
-  const loadMembers = async () => {
+  const loadMembers = useCallback(async () => {
     const res = await fetch(`/api/admin/vip/members?page=1&pageSize=200`);
     if (res.ok) {
       const data = await res.json();
       setMembers(Array.isArray(data?.items) ? data.items : []);
     }
-  };
+  }, []);
 
   useEffect(() => {
     loadTiers();
     loadMembers();
-  }, []);
+  }, [loadMembers, loadTiers]);
 
   useEffect(() => {
     const handle = setTimeout(() => loadRequests(1), 300);
     return () => clearTimeout(handle);
-  }, [query, statusFilter]);
+  }, [loadRequests]);
 
   useEffect(() => {
     loadRequests(page);
-  }, [page]);
+  }, [loadRequests, page]);
 
   const createTier = async () => {
     if (!form.name.trim() || !form.level) return;

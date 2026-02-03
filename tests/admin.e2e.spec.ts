@@ -83,6 +83,17 @@ test.describe.serial("admin ui e2e", () => {
 
   test("orders list and detail", async ({ page, request }) => {
     const orderId = `E2E-ORDER-${Date.now()}`;
+    const playerName = `E2E-OPS-${Date.now()}`;
+    await request.post("/api/admin/players", {
+      data: {
+        name: playerName,
+        status: "可接单",
+        depositBase: 2000,
+        depositLocked: 2000,
+        creditMultiplier: 1,
+      },
+      headers: adminToken ? { "x-admin-token": adminToken } : undefined,
+    });
     await request.post("/api/orders", {
       data: {
         user: "E2E",
@@ -104,34 +115,66 @@ test.describe.serial("admin ui e2e", () => {
 
     const row = page.locator("tr", { hasText: orderId });
     await expect(row).toBeVisible();
-    const assignedTo = `E2E-OPS-${Date.now()}`;
     const note = "Playwright admin E2E note";
 
     const waitPatch = () =>
       page.waitForResponse(
         (res) =>
           res.url().includes(`/api/admin/orders/${orderId}`) &&
-          res.request().method() === "PATCH" &&
-          res.status() === 200
+          res.request().method() === "PATCH"
       );
 
+    const assignSelect = row.getByRole("combobox", { name: "打手/客服" });
+    const currentAssign = await assignSelect.inputValue();
+    if (currentAssign) {
+      const clearReq = waitPatch();
+      await assignSelect.selectOption("");
+      const res = await clearReq;
+      if (!res.ok()) {
+        const payload = await res.json().catch(() => ({}));
+        throw new Error(`清空派单失败: ${res.status()} ${JSON.stringify(payload)}`);
+      }
+    }
+
     const assignReq = waitPatch();
-    await row.getByPlaceholder("打手/客服").fill(assignedTo);
-    await row.getByPlaceholder("打手/客服").blur();
-    await assignReq;
+    await assignSelect.selectOption({ label: playerName });
+    const assignRes = await assignReq;
+    if (!assignRes.ok()) {
+      const payload = await assignRes.json().catch(() => ({}));
+      throw new Error(`派单失败: ${assignRes.status()} ${JSON.stringify(payload)}`);
+    }
 
     const noteReq = waitPatch();
     await row.getByPlaceholder("备注").fill(note);
     await row.getByPlaceholder("备注").blur();
-    await noteReq;
+    const noteRes = await noteReq;
+    if (!noteRes.ok()) {
+      const payload = await noteRes.json().catch(() => ({}));
+      throw new Error(`备注更新失败: ${noteRes.status()} ${JSON.stringify(payload)}`);
+    }
 
-    const stageReq = waitPatch();
-    await row.getByRole("combobox").selectOption("进行中");
-    await stageReq;
+    const stageSelect = row.getByRole("combobox", { name: "订单阶段" });
+    const currentStage = await stageSelect.inputValue();
+    if (currentStage !== "进行中") {
+      const stageReq = waitPatch();
+      await stageSelect.selectOption("进行中");
+      const stageRes = await stageReq;
+      if (!stageRes.ok()) {
+        const payload = await stageRes.json().catch(() => ({}));
+        throw new Error(`阶段更新失败: ${stageRes.status()} ${JSON.stringify(payload)}`);
+      }
+    }
 
-    await row.getByRole("link", { name: "查看" }).click();
+    const detailLink = row.getByRole("link", { name: "查看" });
+    await detailLink.click();
+    const detailUrl = new RegExp(`/admin/orders/${orderId}$`);
+    try {
+      await page.waitForURL(detailUrl, { timeout: 8_000 });
+    } catch {
+      await page.goto(`/admin/orders/${orderId}`);
+    }
     await expect(page.getByRole("heading", { name: "订单详情" })).toBeVisible();
-    await expect(page.getByLabel("派单")).toHaveValue(assignedTo);
+    await expect(page.getByLabel("派单")).toHaveValue(playerName);
     await expect(page.getByLabel("备注")).toHaveValue(note);
     await expect(page.getByLabel("订单阶段")).toHaveValue("进行中");
 

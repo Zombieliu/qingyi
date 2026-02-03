@@ -1,7 +1,7 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { type LocalOrder } from "@/app/components/order-store";
-import { deleteOrder, fetchOrders, patchOrder } from "@/app/components/order-service";
+import { deleteOrder, fetchOrders, patchOrder, syncChainOrder } from "@/app/components/order-service";
 import { Activity, Clock3, Car, MapPin } from "lucide-react";
 import {
   type ChainOrder,
@@ -25,6 +25,8 @@ export default function Showcase() {
   const [chainToast, setChainToast] = useState<string | null>(null);
   const [chainAction, setChainAction] = useState<string | null>(null);
   const [chainAddress, setChainAddress] = useState("");
+  const [chainUpdatedAt, setChainUpdatedAt] = useState<number | null>(null);
+  const [disputeOpen, setDisputeOpen] = useState<{ orderId: string; evidence: string } | null>(null);
 
   const refreshOrders = async () => {
     const list = await fetchOrders();
@@ -35,7 +37,7 @@ export default function Showcase() {
     refreshOrders();
   }, []);
 
-  const loadChain = async () => {
+  const loadChain = useCallback(async () => {
     if (!isChainOrdersEnabled()) return;
     const visualTest = isVisualTestMode();
     try {
@@ -46,6 +48,7 @@ export default function Showcase() {
       setChainAddress(getCurrentAddress());
       const list = await fetchChainOrders();
       setChainOrders(list);
+      setChainUpdatedAt(Date.now());
     } catch (e) {
       setChainError((e as Error).message || "链上订单加载失败");
     } finally {
@@ -53,12 +56,18 @@ export default function Showcase() {
         setChainLoading(false);
       }
     }
-  };
+  }, []);
 
   useEffect(() => {
     if (!isChainOrdersEnabled()) return;
     loadChain();
-  }, []);
+    const timer = window.setInterval(() => {
+      if (!chainLoading) {
+        loadChain();
+      }
+    }, 30_000);
+    return () => window.clearInterval(timer);
+  }, [chainLoading, loadChain]);
 
   const accept = async (id: string) => {
     await patchOrder(id, {
@@ -79,6 +88,23 @@ export default function Showcase() {
   };
 
   const cancel = async (id: string) => {
+    const isChainOrder = isChainOrdersEnabled() && /^[0-9]+$/.test(id);
+    if (isChainOrder) {
+      const chainOrder = chainOrders.find((order) => order.orderId === id) || null;
+      if (chainOrder && chainOrder.status >= 2) {
+        setChainToast("押金已锁定，无法取消，请走争议/客服处理");
+        setTimeout(() => setChainToast(null), 3000);
+        return;
+      }
+      const ok = await runChainAction(
+        `cancel-${id}`,
+        () => cancelOrderOnChain(id),
+        "订单已取消，托管费已退回",
+        id
+      );
+      if (!ok) return;
+      return;
+    }
     await patchOrder(id, {
       status: "取消",
       driver: undefined,
@@ -102,6 +128,7 @@ export default function Showcase() {
   const clearAll = async () => {
     if (!orders.length) return;
     for (const order of orders) {
+      if (order.chainDigest) continue;
       await deleteOrder(order.id, getCurrentAddress());
     }
     await refreshOrders();
@@ -112,7 +139,7 @@ export default function Showcase() {
       case 0:
         return "已创建";
       case 1:
-        return "已支付撮合费";
+        return "已托管费用";
       case 2:
         return "押金已锁定";
       case 3:
@@ -140,29 +167,65 @@ export default function Showcase() {
     return new Date(num).toLocaleString();
   };
 
+  const formatRemaining = (value: string) => {
+    const num = Number(value);
+    if (!Number.isFinite(num) || num <= 0) return "-";
+    const diff = num - Date.now();
+    if (diff <= 0) return "已到期";
+    const mins = Math.ceil(diff / 60000);
+    if (mins < 60) return `${mins} 分钟`;
+    const hours = Math.floor(mins / 60);
+    const remain = mins % 60;
+    return remain ? `${hours} 小时 ${remain} 分钟` : `${hours} 小时`;
+  };
+
+  const disputeOrderId = disputeOpen?.orderId || "";
+  const disputeEvidence = disputeOpen?.evidence || "";
+  const disputeOrder = useMemo(
+    () => chainOrders.find((o) => o.orderId === disputeOrderId) || null,
+    [chainOrders, disputeOrderId]
+  );
+
   const shortAddr = (addr: string) => {
     if (!addr) return "-";
     return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
   };
 
-  const runChainAction = async (key: string, action: () => Promise<{ digest: string }>, success: string) => {
+  const runChainAction = async (
+    key: string,
+    action: () => Promise<{ digest: string }>,
+    success: string,
+    syncOrderId?: string
+  ) => {
     try {
       setChainAction(key);
       await action();
       setChainToast(success);
       await loadChain();
+      if (syncOrderId) {
+        try {
+          await syncChainOrder(syncOrderId, getCurrentAddress());
+          await refreshOrders();
+        } catch (e) {
+          setChainToast(`链上已完成，但同步失败：${(e as Error).message || "未知错误"}`);
+          return false;
+        }
+      }
+      return true;
     } catch (e) {
       setChainToast((e as Error).message || "链上操作失败");
+      return false;
     } finally {
       setChainAction(null);
       setTimeout(() => setChainToast(null), 3000);
     }
   };
 
-  const visibleChainOrders =
+  const visibleChainOrders = (
     chainAddress && chainAddress.length > 0
       ? chainOrders.filter((o) => o.user === chainAddress || o.companion === chainAddress)
-      : chainOrders;
+      : chainOrders
+  ).filter((o) => o.status !== 6);
 
   const visibleOrders = orders.filter((o) => !o.status.includes("完成") && !o.status.includes("取消"));
 
@@ -178,7 +241,13 @@ export default function Showcase() {
             <Activity size={16} />
           </span>
           {isChainOrdersEnabled() && (
-            <button className="dl-icon-circle" onClick={loadChain} aria-label="刷新链上订单">
+            <button
+              className="dl-icon-circle"
+              onClick={loadChain}
+              aria-label="刷新链上订单"
+              disabled={chainLoading}
+              title={chainLoading ? "刷新中..." : "刷新链上订单"}
+            >
               <span style={{ fontSize: 12 }}>链</span>
             </button>
           )}
@@ -192,6 +261,7 @@ export default function Showcase() {
         <div className="space-y-3 mb-6">
           <div className="dl-card text-xs text-gray-500">
             <div>链上订单（Passkey 地址：{chainAddress ? shortAddr(chainAddress) : "未登录"}）</div>
+            <div className="mt-1">上次刷新：{chainUpdatedAt ? new Date(chainUpdatedAt).toLocaleTimeString() : "-"}</div>
             {chainLoading && <div className="mt-1 text-amber-600">加载中…</div>}
             {chainError && <div className="mt-1 text-rose-500">{chainError}</div>}
             {chainToast && <div className="mt-1 text-emerald-600">{chainToast}</div>}
@@ -222,6 +292,11 @@ export default function Showcase() {
                     <div className="mt-2 text-xs text-gray-500">
                       创建时间：{formatTime(o.createdAt)} · 争议截止：{formatTime(o.disputeDeadline)}
                     </div>
+                    {o.status === 3 && (
+                      <div className="mt-1 text-xs text-amber-700">
+                        争议剩余：{formatRemaining(o.disputeDeadline)}
+                      </div>
+                    )}
                     <div className="mt-3 flex gap-2 flex-wrap">
                       {isUser && o.status === 0 && (
                         <button
@@ -229,7 +304,12 @@ export default function Showcase() {
                           style={{ padding: "8px 10px" }}
                           disabled={chainAction === `pay-${o.orderId}`}
                           onClick={() =>
-                            runChainAction(`pay-${o.orderId}`, () => payServiceFeeOnChain(o.orderId), "撮合费已上链")
+                            runChainAction(
+                              `pay-${o.orderId}`,
+                              () => payServiceFeeOnChain(o.orderId),
+                              "撮合费已上链",
+                              o.orderId
+                            )
                           }
                         >
                           支付撮合费
@@ -241,7 +321,12 @@ export default function Showcase() {
                           style={{ padding: "8px 10px" }}
                           disabled={chainAction === `cancel-${o.orderId}`}
                           onClick={() =>
-                            runChainAction(`cancel-${o.orderId}`, () => cancelOrderOnChain(o.orderId), "订单已取消")
+                            runChainAction(
+                              `cancel-${o.orderId}`,
+                              () => cancelOrderOnChain(o.orderId),
+                              "订单已取消",
+                              o.orderId
+                            )
                           }
                         >
                           取消订单
@@ -252,9 +337,17 @@ export default function Showcase() {
                           className="dl-tab-btn"
                           style={{ padding: "8px 10px" }}
                           disabled={chainAction === `deposit-${o.orderId}`}
-                          onClick={() =>
-                            runChainAction(`deposit-${o.orderId}`, () => lockDepositOnChain(o.orderId), "押金已锁定")
-                          }
+                          onClick={() => {
+                            if (!window.confirm("确认付押金并接单？押金锁定后如需取消请走争议/客服流程。")) {
+                              return;
+                            }
+                            runChainAction(
+                              `deposit-${o.orderId}`,
+                              () => lockDepositOnChain(o.orderId),
+                              "押金已锁定",
+                              o.orderId
+                            );
+                          }}
                         >
                           付押金接单
                         </button>
@@ -264,9 +357,17 @@ export default function Showcase() {
                           className="dl-tab-btn"
                           style={{ padding: "8px 10px" }}
                           disabled={chainAction === `complete-${o.orderId}`}
-                          onClick={() =>
-                            runChainAction(`complete-${o.orderId}`, () => markCompletedOnChain(o.orderId), "已确认完成")
-                          }
+                          onClick={() => {
+                            if (!window.confirm("确认服务已完成？确认后将进入结算/争议期。")) {
+                              return;
+                            }
+                            runChainAction(
+                              `complete-${o.orderId}`,
+                              () => markCompletedOnChain(o.orderId),
+                              "已确认完成",
+                              o.orderId
+                            );
+                          }}
                         >
                           确认完成
                         </button>
@@ -276,14 +377,7 @@ export default function Showcase() {
                           className="dl-tab-btn"
                           style={{ padding: "8px 10px" }}
                           disabled={chainAction === `dispute-${o.orderId}`}
-                          onClick={() => {
-                            const evidence = window.prompt("请输入争议说明或证据哈希（可留空）") || "";
-                            runChainAction(
-                              `dispute-${o.orderId}`,
-                              () => raiseDisputeOnChain(o.orderId, evidence),
-                              "已提交争议"
-                            );
-                          }}
+                          onClick={() => setDisputeOpen({ orderId: o.orderId, evidence: "" })}
                         >
                           发起争议
                         </button>
@@ -297,7 +391,8 @@ export default function Showcase() {
                             runChainAction(
                               `finalize-${o.orderId}`,
                               () => finalizeNoDisputeOnChain(o.orderId),
-                              "订单已结算"
+                              "订单已结算",
+                              o.orderId
                             )
                           }
                         >
@@ -391,6 +486,55 @@ export default function Showcase() {
               </div>
             )
           )}
+        </div>
+      )}
+      {disputeOpen && (
+        <div className="ride-modal-mask" role="dialog" aria-modal="true" aria-label="发起争议">
+          <div className="ride-modal">
+            <div className="ride-modal-head">
+              <div>
+                <div className="ride-modal-title">发起争议</div>
+                <div className="ride-modal-sub">请填写争议说明或证据哈希（可留空）</div>
+              </div>
+              <div className="ride-modal-amount">#{disputeOpen.orderId}</div>
+            </div>
+            <div className="ride-qr-inline">
+              <textarea
+                className="admin-input"
+                style={{ width: "100%", minHeight: 120 }}
+                placeholder="请输入争议说明或证据哈希"
+                value={disputeEvidence}
+                onChange={(e) => setDisputeOpen({ orderId: disputeOpen.orderId, evidence: e.target.value })}
+              />
+              {disputeOrder?.disputeDeadline ? (
+                <div className="text-xs text-gray-500 mt-2">
+                  争议截止：{formatTime(disputeOrder.disputeDeadline)}（剩余 {formatRemaining(disputeOrder.disputeDeadline)}）
+                </div>
+              ) : null}
+            </div>
+            <div className="ride-modal-actions">
+              <button className="dl-tab-btn" onClick={() => setDisputeOpen(null)}>
+                取消
+              </button>
+              <button
+                className="dl-tab-btn"
+                style={{ background: "#0f172a", color: "#fff" }}
+                onClick={() => {
+                  const orderId = disputeOpen.orderId;
+                  const evidence = disputeOpen.evidence.trim();
+                  setDisputeOpen(null);
+                  runChainAction(
+                    `dispute-${orderId}`,
+                    () => raiseDisputeOnChain(orderId, evidence),
+                    "已提交争议",
+                    orderId
+                  );
+                }}
+              >
+                提交争议
+              </button>
+            </div>
+          </div>
         </div>
       )}
       <div className="text-xs text-gray-500 mt-6">

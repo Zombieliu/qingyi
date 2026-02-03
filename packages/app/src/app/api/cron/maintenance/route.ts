@@ -1,6 +1,17 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 
+type PrunableModel = {
+  count: () => Promise<number>;
+  findMany: (args: {
+    orderBy: { createdAt: "asc" | "desc" };
+    skip: number;
+    take: number;
+    select: { id: true };
+  }) => Promise<Array<{ id: string }>>;
+  deleteMany: (args: { where: { id: { in: string[] } } }) => Promise<unknown>;
+};
+
 function isAuthorized(req: Request) {
   const secret = process.env.CRON_SECRET;
   const vercelCron = req.headers.get("x-vercel-cron") === "1";
@@ -13,7 +24,7 @@ function isAuthorized(req: Request) {
   return token === secret;
 }
 
-async function prune(model: { count: () => Promise<number>; findMany: any; deleteMany: any }, max: number) {
+async function prune(model: PrunableModel, max: number) {
   if (!Number.isFinite(max) || max <= 0) return 0;
   const total = await model.count();
   const excess = total - max;
@@ -25,7 +36,7 @@ async function prune(model: { count: () => Promise<number>; findMany: any; delet
     select: { id: true },
   });
   if (!old.length) return 0;
-  await model.deleteMany({ where: { id: { in: old.map((item: { id: string }) => item.id) } } });
+  await model.deleteMany({ where: { id: { in: old.map((item) => item.id) } } });
   return old.length;
 }
 

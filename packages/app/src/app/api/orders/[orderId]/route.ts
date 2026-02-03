@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin-auth";
 import { getOrderById, updateOrder } from "@/lib/admin-store";
 import { isValidSuiAddress, normalizeSuiAddress } from "@mysten/sui/utils";
+import { canTransitionStage, isChainOrder } from "@/lib/order-guard";
 import type { AdminOrder } from "@/lib/admin-types";
 
 type RouteContext = {
@@ -54,6 +55,7 @@ export async function PATCH(req: Request, { params }: RouteContext) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
+  const chainOrder = isChainOrder(order);
   const admin = await requireAdmin(req, { role: "viewer", requireOrigin: false, allowToken: true });
   if (admin.ok) {
     const patch: Partial<AdminOrder> = {};
@@ -69,6 +71,13 @@ export async function PATCH(req: Request, { params }: RouteContext) {
     if (typeof body.serviceFee === "number") patch.serviceFee = body.serviceFee;
     if (typeof body.deposit === "number") patch.deposit = body.deposit;
     if (body.meta && typeof body.meta === "object") patch.meta = body.meta;
+
+    if (chainOrder && (patch.stage || patch.paymentStatus || patch.chainStatus)) {
+      return NextResponse.json({ error: "链上订单状态由链上同步，禁止手动修改" }, { status: 409 });
+    }
+    if (patch.stage && !canTransitionStage(order.stage, patch.stage)) {
+      return NextResponse.json({ error: "订单阶段不允许回退或跨越" }, { status: 409 });
+    }
 
     const updated = await updateOrder(orderId, patch);
     if (!updated) return NextResponse.json({ error: "not found" }, { status: 404 });
@@ -89,9 +98,16 @@ export async function PATCH(req: Request, { params }: RouteContext) {
 
   const patch: Partial<AdminOrder> = { meta: body.meta || {} };
   if (typeof body.status === "string") {
-    (patch.meta as Record<string, unknown>).status = body.status;
     const stage = mapStatusToStage(body.status);
-    if (stage) patch.stage = stage as AdminOrder["stage"];
+    if (chainOrder && stage) {
+      return NextResponse.json({ error: "链上订单状态由链上同步，禁止手动修改" }, { status: 409 });
+    }
+    (patch.meta as Record<string, unknown>).status = body.status;
+    if (!chainOrder && stage) patch.stage = stage as AdminOrder["stage"];
+  }
+
+  if (patch.stage && !canTransitionStage(order.stage, patch.stage)) {
+    return NextResponse.json({ error: "订单阶段不允许回退或跨越" }, { status: 409 });
   }
 
   const updated = await updateOrder(orderId, patch);
@@ -103,6 +119,11 @@ export async function DELETE(req: Request, { params }: RouteContext) {
   const admin = await requireAdmin(req, { role: "ops", requireOrigin: false });
   if (!admin.ok) return admin.response;
   const { orderId } = await params;
+  const order = await getOrderById(orderId);
+  if (!order) return NextResponse.json({ error: "not found" }, { status: 404 });
+  if (isChainOrder(order)) {
+    return NextResponse.json({ error: "链上订单状态由链上同步，禁止手动修改" }, { status: 409 });
+  }
   const updated = await updateOrder(orderId, { stage: "已取消" });
   if (!updated) return NextResponse.json({ error: "not found" }, { status: 404 });
   return NextResponse.json({ ok: true });

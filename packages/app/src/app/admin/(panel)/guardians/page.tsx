@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { RefreshCw, Search } from "lucide-react";
 import type { AdminGuardianApplication, GuardianStatus } from "@/lib/admin-types";
 import { GUARDIAN_STATUS_OPTIONS } from "@/lib/admin-types";
@@ -24,7 +24,7 @@ export default function GuardiansPage() {
   const [totalPages, setTotalPages] = useState(1);
   const pageSize = 20;
 
-  const load = async (nextPage = page) => {
+  const load = useCallback(async (nextPage: number) => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
@@ -42,16 +42,16 @@ export default function GuardiansPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [pageSize, query, statusFilter]);
 
   useEffect(() => {
     const handle = setTimeout(() => load(1), 300);
     return () => clearTimeout(handle);
-  }, [query, statusFilter]);
+  }, [load]);
 
   useEffect(() => {
     load(page);
-  }, [page]);
+  }, [load, page]);
 
   const updateApplication = async (applicationId: string, patch: Partial<AdminGuardianApplication>) => {
     setSaving((prev) => ({ ...prev, [applicationId]: true }));

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { RefreshCw, Search } from "lucide-react";
 
 type AuditLog = {
@@ -20,7 +20,7 @@ export default function AuditPage() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
-  const load = async (nextPage = page) => {
+  const load = useCallback(async (nextPage: number) => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
@@ -36,16 +36,16 @@ export default function AuditPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [query]);
 
   useEffect(() => {
     const handle = setTimeout(() => load(1), 300);
     return () => clearTimeout(handle);
-  }, [query]);
+  }, [load]);
 
   useEffect(() => {
     load(page);
-  }, [page]);
+  }, [load, page]);
 
   return (
     <div className="admin-section">
