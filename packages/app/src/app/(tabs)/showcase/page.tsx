@@ -27,6 +27,7 @@ export default function Showcase() {
   const [chainAddress, setChainAddress] = useState("");
   const [chainUpdatedAt, setChainUpdatedAt] = useState<number | null>(null);
   const [disputeOpen, setDisputeOpen] = useState<{ orderId: string; evidence: string } | null>(null);
+  const [copiedOrderId, setCopiedOrderId] = useState<string | null>(null);
 
   const refreshOrders = async () => {
     const list = await fetchOrders();
@@ -196,7 +197,7 @@ export default function Showcase() {
     return map;
   }, [orders]);
 
-  const copyGameProfile = async (profile: { gameName?: string; gameId?: string }) => {
+  const copyGameProfile = async (orderId: string, profile: { gameName?: string; gameId?: string }) => {
     const text = [profile.gameName ? `游戏名 ${profile.gameName}` : "", profile.gameId ? `ID ${profile.gameId}` : ""]
       .filter(Boolean)
       .join(" · ");
@@ -204,6 +205,7 @@ export default function Showcase() {
     try {
       await navigator.clipboard.writeText(text);
       setChainToast("已复制游戏名/ID");
+      setCopiedOrderId(orderId);
     } catch {
       const input = document.createElement("textarea");
       input.value = text;
@@ -215,6 +217,7 @@ export default function Showcase() {
       try {
         document.execCommand("copy");
         setChainToast("已复制游戏名/ID");
+        setCopiedOrderId(orderId);
       } catch {
         setChainToast("复制失败，请手动复制");
       } finally {
@@ -222,6 +225,7 @@ export default function Showcase() {
       }
     } finally {
       setTimeout(() => setChainToast(null), 3000);
+      setTimeout(() => setCopiedOrderId(null), 2000);
     }
   };
 
@@ -336,14 +340,26 @@ export default function Showcase() {
                             : "用户未填写游戏名/ID"}
                         </span>
                         {gameProfile?.gameName && gameProfile?.gameId && (
-                          <button
-                            type="button"
-                            className="dl-tab-btn"
-                            style={{ padding: "4px 8px" }}
-                            onClick={() => copyGameProfile(gameProfile)}
-                          >
-                            复制
-                          </button>
+                          <div className="flex items-center gap-2">
+                            {copiedOrderId === o.orderId && (
+                              <span className="text-[11px] text-emerald-600" aria-live="polite">
+                                已复制
+                              </span>
+                            )}
+                            <button
+                              type="button"
+                              className="dl-tab-btn"
+                              style={{
+                                padding: "4px 10px",
+                                borderColor: "#34d399",
+                                background: "#ecfdf5",
+                                color: "#059669",
+                              }}
+                              onClick={() => copyGameProfile(o.orderId, gameProfile)}
+                            >
+                              复制
+                            </button>
+                          </div>
                         )}
                       </div>
                     )}
