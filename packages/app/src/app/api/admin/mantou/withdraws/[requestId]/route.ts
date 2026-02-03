@@ -10,9 +10,9 @@ export async function PATCH(req: Request, { params }: RouteContext) {
   const auth = await requireAdmin(req, { role: "finance" });
   if (!auth.ok) return auth.response;
   const { requestId } = await params;
-  let payload: { status?: "已通过" | "已拒绝"; note?: string } = {};
+  let payload: { status?: "已通过" | "已打款" | "已拒绝" | "已退回"; note?: string } = {};
   try {
-    payload = (await req.json()) as { status?: "已通过" | "已拒绝"; note?: string };
+    payload = (await req.json()) as { status?: "已通过" | "已打款" | "已拒绝" | "已退回"; note?: string };
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }

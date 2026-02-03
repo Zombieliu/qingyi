@@ -8,8 +8,14 @@ export type GuardianStatus = "待审核" | "面试中" | "已通过" | "已拒�
 export type MembershipTierStatus = "上架" | "下架";
 export type MemberStatus = "有效" | "已过期" | "待开通";
 export type MembershipRequestStatus = "待审核" | "已通过" | "已拒绝";
-export type MantouWithdrawStatus = "待审核" | "已通过" | "已拒绝";
-export const MANTOU_WITHDRAW_STATUS_OPTIONS: MantouWithdrawStatus[] = ["待审核", "已通过", "已拒绝"];
+export type MantouWithdrawStatus = "待审核" | "已通过" | "已打款" | "已拒绝" | "已退回";
+export const MANTOU_WITHDRAW_STATUS_OPTIONS: MantouWithdrawStatus[] = [
+  "待审核",
+  "已通过",
+  "已打款",
+  "已拒绝",
+  "已退回",
+];
 export type AdminRole = "admin" | "ops" | "finance" | "viewer";
 
 export interface AdminSession {

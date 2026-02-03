@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { isValidSuiAddress, normalizeSuiAddress } from "@mysten/sui/utils";
-import { requestMantouWithdraw } from "@/lib/admin-store";
+import { queryMantouWithdraws, requestMantouWithdraw } from "@/lib/admin-store";
 
 export async function POST(req: Request) {
   let payload: { address?: string; amount?: number; account?: string; note?: string } = {};
@@ -34,4 +34,16 @@ export async function POST(req: Request) {
   } catch (error) {
     return NextResponse.json({ error: (error as Error).message || "withdraw failed" }, { status: 500 });
   }
+}
+
+export async function GET(req: Request) {
+  const { searchParams } = new URL(req.url);
+  const address = normalizeSuiAddress(searchParams.get("address") || "");
+  if (!address || !isValidSuiAddress(address)) {
+    return NextResponse.json({ error: "invalid address" }, { status: 400 });
+  }
+  const page = Math.max(1, Number(searchParams.get("page") || "1"));
+  const pageSize = Math.min(50, Math.max(5, Number(searchParams.get("pageSize") || "20")));
+  const result = await queryMantouWithdraws({ page, pageSize, address });
+  return NextResponse.json(result);
 }

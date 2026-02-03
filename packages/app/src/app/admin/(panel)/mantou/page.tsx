@@ -49,13 +49,13 @@ export default function MantouWithdrawPage() {
     load(1);
   }, [load]);
 
-  const updateRequest = async (requestId: string, status: MantouWithdrawStatus) => {
+  const updateRequest = async (requestId: string, status: MantouWithdrawStatus, note?: string) => {
     setSaving((prev) => ({ ...prev, [requestId]: true }));
     try {
       const res = await fetch(`/api/admin/mantou/withdraws/${requestId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status }),
+        body: JSON.stringify({ status, note }),
       });
       if (res.ok) {
         const data = await res.json();
@@ -120,35 +120,38 @@ export default function MantouWithdrawPage() {
                       <div style={{ fontSize: 12, color: "#64748b" }}>{item.account || "-"}</div>
                     </td>
                     <td>
-                      <span className={`admin-badge ${item.status === "待审核" ? "warning" : "neutral"}`}>
-                        {item.status}
-                      </span>
+                      <select
+                        className="admin-select"
+                        value={item.status}
+                        onChange={(event) => {
+                          const next = event.target.value as MantouWithdrawStatus;
+                          setRequests((prev) => prev.map((r) => (r.id === item.id ? { ...r, status: next } : r)));
+                          updateRequest(item.id, next, item.note);
+                        }}
+                      >
+                        {MANTOU_WITHDRAW_STATUS_OPTIONS.map((status) => (
+                          <option key={status} value={status}>
+                            {status}
+                          </option>
+                        ))}
+                      </select>
                     </td>
                     <td>
-                      <div style={{ fontSize: 12, color: "#64748b" }}>{item.note || "-"}</div>
+                      <input
+                        className="admin-input"
+                        placeholder="财务备注"
+                        value={item.note || ""}
+                        onChange={(event) =>
+                          setRequests((prev) =>
+                            prev.map((r) => (r.id === item.id ? { ...r, note: event.target.value } : r))
+                          )
+                        }
+                        onBlur={(event) => updateRequest(item.id, item.status, event.target.value)}
+                      />
                     </td>
                     <td>{formatTime(item.createdAt)}</td>
                     <td>
-                      {item.status === "待审核" ? (
-                        <div style={{ display: "flex", gap: 8 }}>
-                          <button
-                            className="admin-btn"
-                            disabled={saving[item.id]}
-                            onClick={() => updateRequest(item.id, "已通过")}
-                          >
-                            通过
-                          </button>
-                          <button
-                            className="admin-btn ghost"
-                            disabled={saving[item.id]}
-                            onClick={() => updateRequest(item.id, "已拒绝")}
-                          >
-                            拒绝
-                          </button>
-                        </div>
-                      ) : (
-                        <span className="admin-badge neutral">已处理</span>
-                      )}
+                      <span className="admin-badge neutral">{saving[item.id] ? "保存中" : "已同步"}</span>
                     </td>
                   </tr>
                 ))}

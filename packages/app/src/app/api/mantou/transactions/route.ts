@@ -1,0 +1,15 @@
+import { NextResponse } from "next/server";
+import { isValidSuiAddress, normalizeSuiAddress } from "@mysten/sui/utils";
+import { queryMantouTransactions } from "@/lib/admin-store";
+
+export async function GET(req: Request) {
+  const { searchParams } = new URL(req.url);
+  const address = normalizeSuiAddress(searchParams.get("address") || "");
+  if (!address || !isValidSuiAddress(address)) {
+    return NextResponse.json({ error: "invalid address" }, { status: 400 });
+  }
+  const page = Math.max(1, Number(searchParams.get("page") || "1"));
+  const pageSize = Math.min(50, Math.max(5, Number(searchParams.get("pageSize") || "20")));
+  const result = await queryMantouTransactions({ address, page, pageSize });
+  return NextResponse.json(result);
+}

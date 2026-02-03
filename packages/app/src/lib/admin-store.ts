@@ -1710,13 +1710,13 @@ export async function queryMantouWithdraws(params: {
 
 export async function updateMantouWithdrawStatus(params: {
   id: string;
-  status: "已通过" | "已拒绝";
+  status: "已通过" | "已打款" | "已拒绝" | "已退回";
   note?: string;
 }) {
   return prisma.$transaction(async (tx) => {
     const request = await tx.mantouWithdrawRequest.findUnique({ where: { id: params.id } });
     if (!request) return null;
-    if (request.status !== "待审核") {
+    if (request.status === params.status) {
       return mapMantouWithdraw(request);
     }
     const now = new Date();
@@ -1726,6 +1726,19 @@ export async function updateMantouWithdrawStatus(params: {
       throw new Error("冻结余额不足");
     }
     if (params.status === "已通过") {
+      await tx.mantouTransaction.create({
+        data: {
+          id: `MT-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
+          address: request.address,
+          type: "withdraw_approved",
+          amount: request.amount,
+          orderId: null,
+          note: params.note ?? null,
+          createdAt: now,
+        },
+      });
+    }
+    if (params.status === "已打款") {
       await tx.mantouWallet.upsert({
         where: { address: request.address },
         create: {
@@ -1740,14 +1753,15 @@ export async function updateMantouWithdrawStatus(params: {
         data: {
           id: `MT-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
           address: request.address,
-          type: "withdraw_approved",
+          type: "withdraw_paid",
           amount: request.amount,
           orderId: null,
           note: params.note ?? null,
           createdAt: now,
         },
       });
-    } else {
+    }
+    if (params.status === "已拒绝" || params.status === "已退回") {
       await tx.mantouWallet.upsert({
         where: { address: request.address },
         create: {
@@ -1766,7 +1780,7 @@ export async function updateMantouWithdrawStatus(params: {
         data: {
           id: `MT-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
           address: request.address,
-          type: "withdraw_rejected",
+          type: params.status === "已拒绝" ? "withdraw_rejected" : "withdraw_returned",
           amount: request.amount,
           orderId: null,
           note: params.note ?? null,
@@ -1780,4 +1794,24 @@ export async function updateMantouWithdrawStatus(params: {
     });
     return mapMantouWithdraw(updated);
   });
+}
+
+export async function queryMantouTransactions(params: { page: number; pageSize: number; address: string }) {
+  const { page, pageSize, address } = params;
+  const total = await prisma.mantouTransaction.count({ where: { address } });
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const clampedPage = Math.min(Math.max(page, 1), totalPages);
+  const rows = await prisma.mantouTransaction.findMany({
+    where: { address },
+    orderBy: { createdAt: "desc" },
+    skip: (clampedPage - 1) * pageSize,
+    take: pageSize,
+  });
+  return {
+    items: rows.map(mapMantouTransaction),
+    total,
+    page: clampedPage,
+    pageSize,
+    totalPages,
+  };
 }
