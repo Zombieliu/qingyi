@@ -27,10 +27,11 @@ const envFromFile = { ...envFromRepo, ...envFromApp };
 const defaultAdminToken =
   process.env.ADMIN_DASH_TOKEN || envFromFile.ADMIN_DASH_TOKEN || process.env.LEDGER_ADMIN_TOKEN || "playwright-admin";
 
-const baseURL = process.env.PLAYWRIGHT_BASE_URL || "http://127.0.0.1:3000";
 const profile = process.env.PW_PROFILE || "full";
 const isVisualProfile = profile === "core" || profile === "full" || profile === "compat";
 const isChainProfile = profile === "chain";
+const webHost = isChainProfile ? "localhost" : "127.0.0.1";
+const baseURL = process.env.PLAYWRIGHT_BASE_URL || `http://${webHost}:3000`;
 
 if (isChainProfile) {
   process.env.E2E_RPC_LOG = process.env.E2E_RPC_LOG || "1";
@@ -201,7 +202,7 @@ export default defineConfig({
     video: process.env.PW_VIDEO === "1" ? "on" : "retain-on-failure",
   },
   webServer: {
-    command: "npm run dev --workspace app -- --hostname 127.0.0.1 --port 3000",
+    command: `npm run dev --workspace app -- --hostname ${webHost} --port 3000`,
     url: baseURL,
     env: {
       ...envFromFile,

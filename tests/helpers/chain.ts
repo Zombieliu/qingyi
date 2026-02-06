@@ -40,6 +40,14 @@ let envLoaded = false;
 let cachedEnv: ChainEnv | null = null;
 let cachedDubhePackageId: string | null = null;
 const rpcLogs: string[] = [];
+const RETRYABLE_RPC_PATTERNS = [
+  "429",
+  "too many requests",
+  "timeout",
+  "fetch failed",
+  "socket",
+  "connect timeout",
+];
 
 function logRpc(message: string) {
   if (process.env.E2E_RPC_LOG !== "1") return;
@@ -54,6 +62,35 @@ export function getRpcLogs() {
 
 export function resetRpcLogs() {
   rpcLogs.length = 0;
+}
+
+function isRetryableRpcError(message: string) {
+  const lower = message.toLowerCase();
+  return RETRYABLE_RPC_PATTERNS.some((pattern) => lower.includes(pattern));
+}
+
+async function retryRpc<T>(
+  fn: () => Promise<T>,
+  options: { attempts?: number; baseDelayMs?: number; maxDelayMs?: number } = {}
+): Promise<T> {
+  const attempts = options.attempts ?? 5;
+  const baseDelayMs = options.baseDelayMs ?? 800;
+  const maxDelayMs = options.maxDelayMs ?? 8_000;
+  let lastError: Error | null = null;
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error as Error;
+      if (attempt >= attempts - 1) break;
+      const message = lastError.message || "";
+      if (!isRetryableRpcError(message)) break;
+      const delay = Math.min(baseDelayMs * (attempt + 1), maxDelayMs);
+      const jitter = Math.floor(Math.random() * 250);
+      await new Promise((resolve) => setTimeout(resolve, delay + jitter));
+    }
+  }
+  throw lastError || new Error("rpc failed");
 }
 
 function loadEnvFile() {
@@ -313,15 +350,17 @@ export async function createOrderOnChain(params: {
     });
   }
 
-  const result = await client.signAndExecuteTransaction({
-    signer: keypair,
-    transaction: tx,
-    options: { showEffects: true },
-  });
+  const result = await retryRpc(() =>
+    client.signAndExecuteTransaction({
+      signer: keypair,
+      transaction: tx,
+      options: { showEffects: true },
+    })
+  );
   if (result.effects?.status?.status !== "success") {
     throw new Error(result.effects?.status?.error || "credit balance failed");
   }
-  await client.waitForTransaction({ digest: result.digest });
+  await retryRpc(() => client.waitForTransaction({ digest: result.digest }));
   return { digest: result.digest };
 }
 
@@ -334,12 +373,14 @@ export async function payServiceFeeOnChain(orderId: string) {
     target: `${PACKAGE_ID}::order_system::pay_service_fee`,
     arguments: [tx.object(dappHub), tx.pure.u64(orderId)],
   });
-  const result = await client.signAndExecuteTransaction({
-    signer: keypair,
-    transaction: tx,
-    options: { showEffects: true },
-  });
-  await client.waitForTransaction({ digest: result.digest });
+  const result = await retryRpc(() =>
+    client.signAndExecuteTransaction({
+      signer: keypair,
+      transaction: tx,
+      options: { showEffects: true },
+    })
+  );
+  await retryRpc(() => client.waitForTransaction({ digest: result.digest }));
   return { digest: result.digest };
 }
 
@@ -352,12 +393,14 @@ export async function cancelOrderOnChain(orderId: string) {
     target: `${PACKAGE_ID}::order_system::cancel_order`,
     arguments: [tx.object(dappHub), tx.pure.u64(orderId)],
   });
-  const result = await client.signAndExecuteTransaction({
-    signer: keypair,
-    transaction: tx,
-    options: { showEffects: true },
-  });
-  await client.waitForTransaction({ digest: result.digest });
+  const result = await retryRpc(() =>
+    client.signAndExecuteTransaction({
+      signer: keypair,
+      transaction: tx,
+      options: { showEffects: true },
+    })
+  );
+  await retryRpc(() => client.waitForTransaction({ digest: result.digest }));
   return { digest: result.digest };
 }
 
@@ -378,12 +421,17 @@ export async function creditBalanceOnChain(params: { user: string; amount: numbe
       tx.object("0x6"),
     ],
   });
-  const result = await client.signAndExecuteTransaction({
-    signer: keypair,
-    transaction: tx,
-    options: { showEffects: true },
-  });
-  await client.waitForTransaction({ digest: result.digest });
+  const result = await retryRpc(() =>
+    client.signAndExecuteTransaction({
+      signer: keypair,
+      transaction: tx,
+      options: { showEffects: true },
+    })
+  );
+  if (result.effects?.status?.status !== "success") {
+    throw new Error(result.effects?.status?.error || "credit balance failed");
+  }
+  await retryRpc(() => client.waitForTransaction({ digest: result.digest }));
   return { digest: result.digest };
 }
 
@@ -410,7 +458,13 @@ export async function fetchOrderById(orderId: string): Promise<ChainOrder | null
         break;
       } catch (err) {
         const message = (err as Error).message || "";
-        if (message.includes("429") || message.toLowerCase().includes("too many requests")) {
+        if (
+          message.includes("429") ||
+          message.toLowerCase().includes("too many requests") ||
+          message.toLowerCase().includes("fetch failed") ||
+          message.toLowerCase().includes("timeout") ||
+          message.toLowerCase().includes("socket")
+        ) {
           attempt += 1;
           if (attempt > 5) throw err;
           await new Promise((resolve) => setTimeout(resolve, 1_000 * attempt));
@@ -451,9 +505,13 @@ export async function waitForOrderStatus(
   const pollMs = options.pollMs ?? 2_000;
   const start = Date.now();
   while (Date.now() - start < timeoutMs) {
-    const order = await fetchOrderById(orderId);
-    if (order && order.status === status) {
-      return order;
+    try {
+      const order = await fetchOrderById(orderId);
+      if (order && order.status === status) {
+        return order;
+      }
+    } catch {
+      // ignore transient network errors and keep polling
     }
     await new Promise((resolve) => setTimeout(resolve, pollMs));
   }

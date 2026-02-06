@@ -251,7 +251,6 @@ export default function Showcase() {
           await refreshOrders();
         } catch (e) {
           setChainToast(`链上已完成，但同步失败：${(e as Error).message || "未知错误"}`);
-          return false;
         }
       }
       return true;

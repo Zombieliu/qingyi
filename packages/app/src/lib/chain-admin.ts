@@ -28,6 +28,14 @@ export type ChainOrder = {
 };
 
 const EVENT_LIMIT = Number(process.env.ADMIN_CHAIN_EVENT_LIMIT || process.env.NEXT_PUBLIC_QY_EVENT_LIMIT || "200");
+const RETRYABLE_RPC_PATTERNS = [
+  "429",
+  "too many requests",
+  "fetch failed",
+  "timeout",
+  "socket",
+  "connect timeout",
+];
 
 function strip0x(value: string) {
   return value.startsWith("0x") ? value.slice(2) : value;
@@ -35,6 +43,35 @@ function strip0x(value: string) {
 
 function normalizeDappKey(value: string) {
   return strip0x(value.trim().toLowerCase());
+}
+
+function isRetryableRpcError(message: string) {
+  const lower = message.toLowerCase();
+  return RETRYABLE_RPC_PATTERNS.some((pattern) => lower.includes(pattern));
+}
+
+async function retryRpc<T>(
+  fn: () => Promise<T>,
+  options: { attempts?: number; baseDelayMs?: number; maxDelayMs?: number } = {}
+): Promise<T> {
+  const attempts = options.attempts ?? 5;
+  const baseDelayMs = options.baseDelayMs ?? 800;
+  const maxDelayMs = options.maxDelayMs ?? 8_000;
+  let lastError: Error | null = null;
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error as Error;
+      if (attempt >= attempts - 1) break;
+      const message = lastError.message || "";
+      if (!isRetryableRpcError(message)) break;
+      const delay = Math.min(baseDelayMs * (attempt + 1), maxDelayMs);
+      const jitter = Math.floor(Math.random() * 250);
+      await new Promise((resolve) => setTimeout(resolve, delay + jitter));
+    }
+  }
+  throw lastError || new Error("rpc failed");
 }
 
 function decodeU64(bytes: number[]): string {
@@ -105,7 +142,7 @@ function getRpcUrl(): string {
 
 async function getDubhePackageId(client: SuiClient): Promise<string> {
   const { hubId } = ensureChainEnv();
-  const obj = await client.getObject({ id: hubId, options: { showType: true } });
+  const obj = await retryRpc(() => client.getObject({ id: hubId, options: { showType: true } }));
   const type = obj.data?.type;
   if (!type) throw new Error("无法读取 DappHub 类型");
   return type.split("::")[0];
@@ -125,18 +162,29 @@ export async function fetchChainOrdersAdmin(): Promise<ChainOrder[]> {
   const dubhePackageId = await getDubhePackageId(client);
   const eventType = `${dubhePackageId}::dubhe_events::Dubhe_Store_SetRecord`;
   const targetKey = normalizeDappKey(`${strip0x(pkg)}::dapp_key::DappKey`);
-
   const orders = new Map<string, ChainOrder>();
   let cursor: EventId | null = null;
   let remaining = Number.isFinite(EVENT_LIMIT) ? EVENT_LIMIT : 200;
 
   while (remaining > 0) {
-    const page = await client.queryEvents({
-      query: { MoveEventType: eventType },
-      limit: Math.min(50, remaining),
-      order: "descending",
-      cursor,
-    });
+    let page: Awaited<ReturnType<typeof client.queryEvents>>;
+    let attempt = 0;
+    while (true) {
+      try {
+        page = await retryRpc(() =>
+          client.queryEvents({
+            query: { MoveEventType: eventType },
+            limit: Math.min(50, remaining),
+            order: "descending",
+            cursor,
+          })
+        );
+        break;
+      } catch (err) {
+        attempt += 1;
+        if (attempt > 5) throw err;
+      }
+    }
     for (const event of page.data) {
       const parsed = event.parsedJson as {
         dapp_key?: string;
@@ -196,11 +244,13 @@ export async function resolveDisputeAdmin(params: {
     ],
   });
 
-  const result = await client.signAndExecuteTransaction({
-    signer,
-    transaction: tx,
-    options: { showEffects: true },
-  });
+  const result = await retryRpc(() =>
+    client.signAndExecuteTransaction({
+      signer,
+      transaction: tx,
+      options: { showEffects: true },
+    })
+  );
 
   return { digest: result.digest, effects: result.effects };
 }

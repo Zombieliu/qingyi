@@ -73,17 +73,93 @@ async function waitForChainOrderId(userAddress: string, timeoutMs = 120_000) {
   const deadline = Date.now() + timeoutMs;
   const target = normalizeSuiAddress(userAddress);
   while (Date.now() < deadline) {
-    const orders = await fetchChainOrders();
-    const hit = orders.find((order) => order.user === target);
-    if (hit) return hit.orderId;
+    try {
+      const orders = await fetchChainOrders();
+      const hit = orders.find((order) => order.user === target);
+      if (hit) return hit.orderId;
+    } catch {
+      // transient chain RPC errors are handled by retrying
+    }
     await new Promise((resolve) => setTimeout(resolve, 2_000));
   }
   return null;
 }
 
+async function waitForStatusWithRetry(
+  orderId: string,
+  status: number,
+  action: () => Promise<void>,
+  options: { attempts?: number; timeoutMs?: number; pollMs?: number } = {}
+) {
+  const attempts = options.attempts ?? 2;
+  const timeoutMs = options.timeoutMs ?? 240_000;
+  const pollMs = options.pollMs ?? 5_000;
+  let lastError: Error | null = null;
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    await action();
+    try {
+      return await waitForOrderStatus(orderId, status, { timeoutMs, pollMs });
+    } catch (error) {
+      lastError = error as Error;
+    }
+  }
+  throw lastError || new Error(`Timed out waiting for order ${orderId} to reach status ${status}`);
+}
+
+async function submitPayAndWaitForOrderId(
+  page: any,
+  address: string,
+  payBtn: any,
+  refreshBalanceBtn: any
+): Promise<string | null> {
+  const attempts = Number(process.env.E2E_PAY_RETRY_ATTEMPTS || "3");
+  const orderTimeoutMs = Number(process.env.E2E_PAY_ORDER_TIMEOUT_MS || "120000");
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    if (await payBtn.isEnabled().catch(() => false)) {
+      await payBtn.click({ force: true });
+    }
+    const orderId = await waitForChainOrderId(address, orderTimeoutMs);
+    if (orderId) return orderId;
+    const toastText = (await page.locator(".ride-toast").textContent().catch(() => ""))?.trim();
+    if (toastText) {
+      log(`pay attempt ${attempt} toast: ${toastText}`);
+    }
+    if (await refreshBalanceBtn.isVisible().catch(() => false)) {
+      await refreshBalanceBtn.click();
+    }
+    await page.waitForTimeout(2_000 + attempt * 2_000);
+  }
+  return null;
+}
+
+async function retryRpc<T>(fn: () => Promise<T>, attempts = 4) {
+  let lastError: Error | null = null;
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error as Error;
+      const message = lastError.message || "";
+      const shouldRetry =
+        message.includes("429") ||
+        message.toLowerCase().includes("too many requests") ||
+        message.toLowerCase().includes("timeout") ||
+        message.toLowerCase().includes("fetch failed") ||
+        message.toLowerCase().includes("socket") ||
+        message.toLowerCase().includes("connect timeout");
+      if (attempt < attempts - 1 && shouldRetry) {
+        await new Promise((resolve) => setTimeout(resolve, 800 + attempt * 800));
+        continue;
+      }
+      throw lastError;
+    }
+  }
+  throw lastError || new Error("rpc failed");
+}
+
 async function ensureGas(address: string) {
   const client = new SuiClient({ url: getRpcUrl() });
-  const balance = await client.getBalance({ owner: address });
+  const balance = await retryRpc(() => client.getBalance({ owner: address }));
   const total = BigInt(balance.totalBalance || "0");
   log(`passkey address ${address} balance: ${total}`);
   if (total >= MIN_GAS) return;
@@ -105,9 +181,11 @@ async function ensureGas(address: string) {
     try {
       const keypair = Ed25519Keypair.fromSecretKey(funderKey);
       const funderAddress = keypair.getPublicKey().toSuiAddress();
-      const funderBalance = await client.getBalance({ owner: funderAddress });
+      const funderBalance = await retryRpc(() => client.getBalance({ owner: funderAddress }));
       const funderTotal = BigInt(funderBalance.totalBalance || "0");
-      const maxFund = BigInt(process.env.E2E_FUND_MAX || "200000000"); // default 0.2 SUI
+      const envMax = BigInt(process.env.E2E_FUND_MAX || "200000000");
+      const hardCap = BigInt("200000000"); // 0.2 SUI
+      const maxFund = envMax > hardCap ? hardCap : envMax;
       const half = funderTotal / 2n;
       const amount = maxFund > half ? half : maxFund;
       if (amount < MIN_GAS) {
@@ -117,19 +195,21 @@ async function ensureGas(address: string) {
       const tx = new Transaction();
       const [coin] = tx.splitCoins(tx.gas, [tx.pure.u64(amount.toString())]);
       tx.transferObjects([coin], tx.pure.address(address));
-      const result = await client.signAndExecuteTransaction({
-        signer: keypair,
-        transaction: tx,
-        options: { showEffects: true },
-      });
+      const result = await retryRpc(() =>
+        client.signAndExecuteTransaction({
+          signer: keypair,
+          transaction: tx,
+          options: { showEffects: true },
+        })
+      );
       if (result.effects?.status?.status !== "success") {
         throw new Error(result.effects?.status?.error || "Funder transfer failed.");
       }
       log(`funding digest ${result.digest}`);
-      await client.waitForTransaction({ digest: result.digest });
+      await retryRpc(() => client.waitForTransaction({ digest: result.digest }));
       const deadline = Date.now() + 60_000;
       while (Date.now() < deadline) {
-        const next = await client.getBalance({ owner: address });
+        const next = await retryRpc(() => client.getBalance({ owner: address }));
         const nextTotal = BigInt(next.totalBalance || "0");
         if (nextTotal >= MIN_GAS) return;
         await new Promise((resolve) => setTimeout(resolve, 2_000));
@@ -145,11 +225,11 @@ async function ensureGas(address: string) {
 
   const host = getFaucetHost(getNetwork() as "testnet" | "devnet" | "localnet");
   log(`faucet funding via ${host}`);
-  await requestSuiFromFaucetV1({ host, recipient: address });
+  await retryRpc(() => requestSuiFromFaucetV1({ host, recipient: address }));
 
   const deadline = Date.now() + 60_000;
   while (Date.now() < deadline) {
-    const next = await client.getBalance({ owner: address });
+    const next = await retryRpc(() => client.getBalance({ owner: address }));
     const nextTotal = BigInt(next.totalBalance || "0");
     if (nextTotal >= MIN_GAS) return;
     await new Promise((resolve) => setTimeout(resolve, 2_000));
@@ -170,7 +250,9 @@ test.describe("chain e2e passkey", () => {
   const shouldRun = hasChainFlag && hasCompanion && isChainProfile;
 
   test.skip(!shouldRun, "Chain E2E requires PW_PROFILE=chain and NEXT_PUBLIC_CHAIN_ORDERS=1");
-  test.setTimeout(process.env.E2E_MANUAL_FUNDING === "1" ? 600_000 : 300_000);
+  const defaultTimeout = process.env.E2E_MANUAL_FUNDING === "1" ? 720_000 : 600_000;
+  const timeoutMs = Number(process.env.E2E_TEST_TIMEOUT_MS || defaultTimeout);
+  test.setTimeout(timeoutMs);
 
   test("passkey creates, disputes, and resolves order on chain", async ({ page, context, browserName }) => {
     test.skip(browserName !== "chromium", "WebAuthn virtual authenticator only works in Chromium");
@@ -244,8 +326,11 @@ test.describe("chain e2e passkey", () => {
     await page.goto("/schedule", { waitUntil: "domcontentloaded" });
 
     const derBase64 = await page.evaluate(async () => {
+      const hostname = location.hostname;
+      const rpId =
+        hostname === "127.0.0.1" || hostname === "[::1]" || hostname === "::1" ? "localhost" : hostname;
       const publicKey = {
-        rp: { name: "情谊电竞", id: location.hostname },
+        rp: { name: "情谊电竞", id: rpId },
         user: { id: new Uint8Array(10), name: "playwright", displayName: "playwright" },
         challenge: new Uint8Array(16),
         pubKeyCredParams: [{ type: "public-key", alg: -7 }],
@@ -328,15 +413,33 @@ test.describe("chain e2e passkey", () => {
     await paidCheckbox.check();
 
     const payBtn = page.getByRole("button", { name: "扣减钻石并派单" });
-    await payBtn.click();
-    await expect(page.locator(".ride-modal-mask")).toBeHidden({ timeout: 120_000 });
+    const refreshBalanceBtn = page.getByRole("button", { name: "刷新余额" });
+    const waitPayEnabled = async () => {
+      const deadline = Date.now() + 90_000;
+      while (Date.now() < deadline) {
+        if (await payBtn.isEnabled()) return true;
+        if (await refreshBalanceBtn.isVisible().catch(() => false)) {
+          await refreshBalanceBtn.click();
+        }
+        await new Promise((resolve) => setTimeout(resolve, 2_000));
+      }
+      return false;
+    };
+    const payReady = await waitPayEnabled();
+    if (!payReady) {
+      throw new Error("钻石余额未就绪，无法派单");
+    }
+    const orderId = await submitPayAndWaitForOrderId(page, address, payBtn, refreshBalanceBtn);
+    if (!orderId) {
+      const toastText = (await page.locator(".ride-toast").textContent().catch(() => ""))?.trim();
+      throw new Error(toastText ? `派单仍未完成: ${toastText}` : "派单弹窗未完成");
+    }
+    if (await page.locator(".ride-modal-mask").isVisible().catch(() => false)) {
+      await page.getByRole("button", { name: "取消" }).click().catch(() => {});
+      await page.locator(".ride-modal-mask").waitFor({ state: "hidden", timeout: 10_000 }).catch(() => {});
+    }
     await saveGuideShot(page, "05-order-created.png");
 
-    const orderId = await waitForChainOrderId(address, 120_000);
-    if (!orderId || typeof orderId !== "string") {
-      const lastToast = (await page.locator(".ride-toast").textContent().catch(() => ""))?.trim() || "";
-      throw new Error(lastToast ? `Failed to create order: ${lastToast}` : "Failed to read chain order id.");
-    }
     log(`order id ${orderId}`);
 
     await waitForOrderStatus(orderId, 1, { timeoutMs: 120_000, pollMs: 2_000 });
@@ -351,20 +454,107 @@ test.describe("chain e2e passkey", () => {
     await saveGuideShot(page, "06-chain-order.png");
 
     const depositBtn = orderCard.getByRole("button", { name: "付押金接单" });
-    await expect(depositBtn).toBeVisible();
-    page.once("dialog", (dialog) => dialog.accept());
-    await depositBtn.click();
-    await waitForOrderStatus(orderId, 2, { timeoutMs: 120_000, pollMs: 2_000 });
+    const depositAction = async () => {
+      await expect(depositBtn).toBeVisible();
+      page.once("dialog", (dialog) => dialog.accept());
+      await depositBtn.click();
+    };
+    await waitForStatusWithRetry(orderId, 2, depositAction, { attempts: 2, timeoutMs: 240_000, pollMs: 2_000 });
     log(`order ${orderId} status -> 押金已锁定`);
     await page.getByRole("button", { name: "刷新链上订单" }).click();
     await expect(orderCard.getByText("状态：押金已锁定")).toBeVisible({ timeout: 90_000 });
+    await expect(orderCard.getByText(/游戏名/)).toBeVisible({ timeout: 90_000 });
+    await expect(orderCard.getByRole("button", { name: "复制" })).toBeVisible({ timeout: 90_000 });
     await saveGuideShot(page, "07-deposit-locked.png");
 
+    if (!adminToken) {
+      throw new Error("ADMIN_DASH_TOKEN/LEDGER_ADMIN_TOKEN 缺失，无法注入馒头");
+    }
+    const seedRes = await page.request.post("/api/mantou/seed", {
+      data: { address, amount: 1, note: `e2e seed ${orderId}` },
+      headers: { "x-admin-token": adminToken },
+    });
+    if (!seedRes.ok()) {
+      const payload = await seedRes.json().catch(() => ({}));
+      throw new Error(`馒头注入失败: ${seedRes.status()} ${JSON.stringify(payload)}`);
+    }
+
+    await page.goto("/me/mantou", { waitUntil: "domcontentloaded" });
+    await page.evaluate(
+      ({ addr, publicKey }) => {
+        localStorage.setItem("qy_passkey_wallet_v3", JSON.stringify({ address: addr, publicKey }));
+        window.dispatchEvent(new Event("passkey-updated"));
+      },
+      { addr: address, publicKey: publicKeyBase64 }
+    );
+    await expect(page.getByText("我的馒头")).toBeVisible({ timeout: 10_000 });
+    const waitMantouBalance = async () => {
+      const deadline = Date.now() + 30_000;
+      while (Date.now() < deadline) {
+        const res = await page.request.get(`/api/mantou/balance?address=${address}`);
+        if (res.ok()) {
+          const data = await res.json();
+          const balance = Number(data?.balance || 0);
+          if (balance > 0) return true;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 1_000));
+      }
+      return false;
+    };
+    await waitMantouBalance();
+    const amountInput = page.locator("input[type=number]").first();
+    const accountInput = page.getByPlaceholder("微信/支付宝账号");
+    await amountInput.fill("");
+    await amountInput.type("1", { delay: 50 });
+    await accountInput.fill("");
+    await accountInput.type("test-account", { delay: 20 });
+    await accountInput.press("Tab");
+    await expect(amountInput).toHaveValue("1");
+    await expect(accountInput).toHaveValue("test-account");
+    const submitWithdraw = page.getByRole("button", { name: "提交提现" });
+    await expect(submitWithdraw).toBeEnabled({ timeout: 15_000 });
+    await submitWithdraw.scrollIntoViewIfNeeded();
+    await submitWithdraw.click({ force: true });
+    const waitMantouWithdraw = async () => {
+      const deadline = Date.now() + 30_000;
+      while (Date.now() < deadline) {
+        const errorText =
+          (await page
+            .locator("text=/请先登录 Passkey 钱包|提交失败|请输入正确的提现数量|请填写收款账号/")
+            .first()
+            .textContent()
+            .catch(() => "")) || "";
+        if (errorText.trim()) {
+          throw new Error(errorText.trim());
+        }
+        const okTip = await page.getByText("已提交提现申请").isVisible().catch(() => false);
+        if (okTip) return true;
+        const emptyStateVisible = await page.getByText("暂无提现记录").isVisible().catch(() => false);
+        if (!emptyStateVisible) return true;
+        const statusVisible = await page.getByText("状态：").first().isVisible().catch(() => false);
+        if (statusVisible) return true;
+        await new Promise((resolve) => setTimeout(resolve, 1_000));
+      }
+      return false;
+    };
+    const withdrawOk = await waitMantouWithdraw();
+    if (!withdrawOk) {
+      const msgText = (await page.locator("text=/已提交提现申请|余额不足|提交失败/").textContent().catch(() => ""))
+        ?.trim();
+      throw new Error(msgText || "提现申请未创建");
+    }
+    await saveGuideShot(page, "12-mantou-withdraw.png");
+
+    await page.goto("/showcase", { waitUntil: "domcontentloaded" });
+    await page.getByRole("button", { name: "刷新链上订单" }).click();
+
     const completeBtn = orderCard.getByRole("button", { name: "确认完成" });
-    await expect(completeBtn).toBeVisible();
-    page.once("dialog", (dialog) => dialog.accept());
-    await completeBtn.click();
-    await waitForOrderStatus(orderId, 3, { timeoutMs: 240_000, pollMs: 5_000 });
+    const completeAction = async () => {
+      await expect(completeBtn).toBeVisible();
+      page.once("dialog", (dialog) => dialog.accept());
+      await completeBtn.click();
+    };
+    await waitForStatusWithRetry(orderId, 3, completeAction, { attempts: 2, timeoutMs: 240_000, pollMs: 5_000 });
     log(`order ${orderId} status -> 已完成待结算`);
     await page.getByRole("button", { name: "刷新链上订单" }).click();
     await expect(orderCard.getByText("状态：已完成待结算")).toBeVisible({ timeout: 90_000 });
@@ -417,6 +607,11 @@ test.describe("chain e2e passkey", () => {
     await expect(disputeCard).toBeVisible({ timeout: 90_000 });
     await saveGuideShot(page, "10-admin-dispute.png");
     await disputeCard.getByRole("button", { name: "提交裁决" }).first().click();
+
+    await page.goto("/admin/mantou", { waitUntil: "domcontentloaded" });
+    await page.getByRole("button", { name: "刷新" }).click();
+    await expect(page.getByText(address.slice(0, 10))).toBeVisible({ timeout: 15_000 });
+    await saveGuideShot(page, "13-admin-mantou.png");
 
     await waitForOrderStatus(orderId, 5, { timeoutMs: 240_000, pollMs: 5_000 });
     log(`order ${orderId} status -> 已结算`);

@@ -295,6 +295,31 @@ async function executeSponsoredTransaction(tx: Transaction) {
 }
 
 async function executeTransaction(tx: Transaction) {
+  const shouldRetry = (message: string) =>
+    message.includes("429") ||
+    message.toLowerCase().includes("too many requests") ||
+    message.toLowerCase().includes("timeout") ||
+    message.toLowerCase().includes("fetch failed") ||
+    message.toLowerCase().includes("socket");
+
+  const withRetry = async <T,>(fn: () => Promise<T>, attempts = 3): Promise<T> => {
+    let lastError: Error | null = null;
+    for (let attempt = 0; attempt < attempts; attempt += 1) {
+      try {
+        return await fn();
+      } catch (error) {
+        lastError = error as Error;
+        const message = lastError.message || "";
+        if (attempt < attempts - 1 && shouldRetry(message)) {
+          await new Promise((resolve) => setTimeout(resolve, 800 + attempt * 800));
+          continue;
+        }
+        throw lastError;
+      }
+    }
+    throw lastError || new Error("chain transaction failed");
+  };
+
   const directExecute = async () => {
     const { signer, client } = getSignerAndClient();
     const result = await client.signAndExecuteTransaction({
@@ -306,16 +331,16 @@ async function executeTransaction(tx: Transaction) {
   };
 
   if (!isSponsorEnabled()) {
-    return directExecute();
+    return withRetry(directExecute);
   }
 
   try {
-    return await executeSponsoredTransaction(tx);
+    return await withRetry(() => executeSponsoredTransaction(tx));
   } catch (error) {
     if (isSponsorStrict()) {
       throw error;
     }
-    return directExecute();
+    return withRetry(directExecute);
   }
 }
 
@@ -467,12 +492,34 @@ export async function fetchChainOrders(): Promise<ChainOrder[]> {
   let cursor: EventId | null = null;
   let remaining = Number.isFinite(EVENT_LIMIT) ? EVENT_LIMIT : 200;
   while (remaining > 0) {
-    const page = await client.queryEvents({
-      query: { MoveEventType: eventType },
-      limit: Math.min(50, remaining),
-      order: "descending",
-      cursor,
-    });
+    let page: Awaited<ReturnType<typeof client.queryEvents>>;
+    let attempt = 0;
+    while (true) {
+      try {
+        page = await client.queryEvents({
+          query: { MoveEventType: eventType },
+          limit: Math.min(50, remaining),
+          order: "descending",
+          cursor,
+        });
+        break;
+      } catch (error) {
+        const message = (error as Error).message || "";
+        if (
+          message.includes("429") ||
+          message.toLowerCase().includes("too many requests") ||
+          message.toLowerCase().includes("timeout") ||
+          message.toLowerCase().includes("fetch failed") ||
+          message.toLowerCase().includes("socket")
+        ) {
+          attempt += 1;
+          if (attempt > 5) throw error;
+          await new Promise((resolve) => setTimeout(resolve, 800 * attempt));
+          continue;
+        }
+        throw error;
+      }
+    }
     for (const event of page.data) {
       const parsed = event.parsedJson as {
         dapp_key?: string;
