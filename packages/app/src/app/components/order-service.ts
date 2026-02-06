@@ -41,6 +41,8 @@ function normalizeOrder(order: ServerOrder): LocalOrder {
   return {
     id: order.id,
     user: order.user,
+    userAddress: order.userAddress ?? undefined,
+    companionAddress: order.companionAddress ?? undefined,
     item: order.item,
     amount: order.amount,
     status: status || "待处理",
@@ -98,6 +100,28 @@ export async function fetchOrders(): Promise<LocalOrder[]> {
   return normalized;
 }
 
+export async function fetchPublicOrders(): Promise<LocalOrder[]> {
+  if (ORDER_SOURCE !== "server") {
+    return loadOrders();
+  }
+  const cacheKey = "cache:orders:public";
+  const cached = readCache<LocalOrder[]>(cacheKey, 30_000, true);
+  if (cached?.fresh) {
+    return cached.value;
+  }
+  const params = new URLSearchParams();
+  params.set("page", "1");
+  params.set("pageSize", "50");
+  params.set("public", "1");
+  const res = await fetch(`/api/orders?${params.toString()}`);
+  if (!res.ok) return cached?.value ?? [];
+  const data = await res.json();
+  const items = Array.isArray(data?.items) ? data.items : [];
+  const normalized = items.map((item: ServerOrder) => normalizeOrder(item));
+  writeCache(cacheKey, normalized);
+  return normalized;
+}
+
 export async function createOrder(
   payload: LocalOrder & { userAddress?: string; companionAddress?: string; note?: string }
 ): Promise<{ orderId: string; sent?: boolean; error?: string }> {
@@ -134,7 +158,10 @@ export async function createOrder(
   };
 }
 
-export async function patchOrder(orderId: string, patch: Partial<LocalOrder> & { userAddress?: string }) {
+export async function patchOrder(
+  orderId: string,
+  patch: Partial<LocalOrder> & { userAddress?: string; companionAddress?: string }
+) {
   if (ORDER_SOURCE !== "server") {
     updateOrder(orderId, patch);
     return;
@@ -145,6 +172,7 @@ export async function patchOrder(orderId: string, patch: Partial<LocalOrder> & {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       userAddress: patch.userAddress,
+      companionAddress: patch.companionAddress,
       status: patch.status,
       meta,
     }),

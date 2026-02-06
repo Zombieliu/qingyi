@@ -1,7 +1,7 @@
 "use client";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { type LocalOrder } from "@/app/components/order-store";
-import { deleteOrder, fetchOrders, patchOrder, syncChainOrder } from "@/app/components/order-service";
+import { deleteOrder, fetchPublicOrders, patchOrder, syncChainOrder } from "@/app/components/order-service";
 import { Activity, Clock3, Car, MapPin } from "lucide-react";
 import {
   type ChainOrder,
@@ -30,7 +30,7 @@ export default function Showcase() {
   const [copiedOrderId, setCopiedOrderId] = useState<string | null>(null);
 
   const refreshOrders = async () => {
-    const list = await fetchOrders();
+    const list = await fetchPublicOrders();
     setOrders(list);
   };
 
@@ -71,6 +71,7 @@ export default function Showcase() {
   }, [chainLoading, loadChain]);
 
   const accept = async (id: string) => {
+    const address = getCurrentAddress();
     await patchOrder(id, {
       status: "待用户支付打手费",
       depositPaid: true,
@@ -83,7 +84,8 @@ export default function Showcase() {
         phone: "138****0000",
         price: 63,
       },
-      userAddress: getCurrentAddress(),
+      userAddress: address,
+      companionAddress: address,
     });
     await refreshOrders();
   };
@@ -570,9 +572,19 @@ export default function Showcase() {
                 <div className="mt-2 text-xs text-gray-500">
                   状态：{o.status} · 撮合费{typeof o.serviceFee === "number" ? ` ¥${o.serviceFee.toFixed(2)}` : "已付"}
                 </div>
-                <div className="mt-2 text-xs text-orange-600">需先付押金再接单</div>
+                {o.userAddress && o.userAddress === chainAddress ? (
+                  <div className="mt-2 text-xs text-rose-500">不能接自己发的单</div>
+                ) : (
+                  <div className="mt-2 text-xs text-orange-600">需先付押金再接单</div>
+                )}
                 <div className="mt-3 flex gap-2">
-                  <button className="dl-tab-btn" style={{ padding: "8px 10px" }} onClick={() => accept(o.id)}>
+                  <button
+                    className="dl-tab-btn"
+                    style={{ padding: "8px 10px" }}
+                    onClick={() => accept(o.id)}
+                    disabled={Boolean(o.userAddress && o.userAddress === chainAddress)}
+                    title={o.userAddress && o.userAddress === chainAddress ? "不能接自己发的单" : undefined}
+                  >
                     付押金并接单
                   </button>
                   <button className="dl-tab-btn" style={{ padding: "8px 10px" }} onClick={() => cancel(o.id)}>

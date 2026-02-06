@@ -471,19 +471,28 @@ export async function queryOrders(params: {
   assignedTo?: string;
   userAddress?: string;
   address?: string;
+  companionMissing?: boolean;
+  excludeStages?: string[];
 }) {
-  const { page, pageSize, stage, q, paymentStatus, assignedTo, userAddress, address } = params;
+  const { page, pageSize, stage, q, paymentStatus, assignedTo, userAddress, address, companionMissing, excludeStages } =
+    params;
   const keyword = (q || "").trim();
   const where: Prisma.AdminOrderWhereInput = {};
 
   if (stage && stage !== "全部") {
     where.stage = stage;
   }
+  if (excludeStages && excludeStages.length > 0) {
+    where.stage = { notIn: excludeStages };
+  }
   if (paymentStatus) {
     where.paymentStatus = paymentStatus;
   }
   if (assignedTo) {
     where.assignedTo = assignedTo;
+  }
+  if (companionMissing) {
+    where.companionAddress = null;
   }
   if (address) {
     where.OR = [{ userAddress: address }, { companionAddress: address }];

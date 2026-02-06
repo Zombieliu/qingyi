@@ -3,6 +3,8 @@
 export type LocalOrder = {
   id: string;
   user: string;
+  userAddress?: string;
+  companionAddress?: string;
   item: string;
   amount: number;
   status: string;

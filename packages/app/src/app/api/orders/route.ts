@@ -27,6 +27,7 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const page = Math.max(1, Number(searchParams.get("page") || "1"));
   const pageSize = Math.min(200, Math.max(5, Number(searchParams.get("pageSize") || "20")));
+  const isPublicPool = searchParams.get("public") === "1";
   const userAddressRaw = searchParams.get("address") || searchParams.get("userAddress") || "";
   const userAddress = userAddressRaw ? normalizeSuiAddress(userAddressRaw) : "";
   if (userAddress && !isValidSuiAddress(userAddress)) {
@@ -35,7 +36,7 @@ export async function GET(req: Request) {
   const user = (searchParams.get("user") || "").trim();
   const q = (searchParams.get("q") || "").trim();
 
-  if (!userAddress && !user && !q) {
+  if (!isPublicPool && !userAddress && !user && !q) {
     const admin = await requireAdmin(req, { role: "viewer", requireOrigin: false });
     if (!admin.ok) return admin.response;
   }
@@ -43,8 +44,10 @@ export async function GET(req: Request) {
   const result = await queryOrders({
     page,
     pageSize,
-    address: userAddress || undefined,
+    address: isPublicPool ? undefined : userAddress || undefined,
     q: user || q || undefined,
+    companionMissing: isPublicPool ? true : undefined,
+    excludeStages: isPublicPool ? ["已完成", "已取消"] : undefined,
   });
   return NextResponse.json(result);
 }

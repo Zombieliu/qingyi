@@ -48,7 +48,14 @@ export async function PATCH(req: Request, { params }: RouteContext) {
     return NextResponse.json({ error: "not found" }, { status: 404 });
   }
 
-  let body: Partial<AdminOrder> & { userAddress?: string; status?: string; meta?: Record<string, unknown> } = {};
+  let body:
+    | (Partial<AdminOrder> & {
+        userAddress?: string;
+        companionAddress?: string;
+        status?: string;
+        meta?: Record<string, unknown>;
+      })
+    | {};
   try {
     body = (await req.json()) as Partial<AdminOrder> & { userAddress?: string; status?: string };
   } catch {
@@ -84,19 +91,43 @@ export async function PATCH(req: Request, { params }: RouteContext) {
     return NextResponse.json(updated);
   }
 
-  const userAddressRaw = typeof body.userAddress === "string" ? body.userAddress : "";
-  if (!userAddressRaw) {
+  const actorRaw =
+    typeof body.userAddress === "string"
+      ? body.userAddress
+      : typeof body.companionAddress === "string"
+        ? body.companionAddress
+        : "";
+  if (!actorRaw) {
     return NextResponse.json({ error: "userAddress required" }, { status: 401 });
   }
-  const normalized = normalizeSuiAddress(userAddressRaw);
-  if (!isValidSuiAddress(normalized)) {
+  const actor = normalizeSuiAddress(actorRaw);
+  if (!isValidSuiAddress(actor)) {
     return NextResponse.json({ error: "invalid userAddress" }, { status: 400 });
   }
-  if (order.userAddress && order.userAddress !== normalized) {
+
+  const companionRaw = typeof body.companionAddress === "string" ? body.companionAddress : "";
+  if (companionRaw) {
+    const companion = normalizeSuiAddress(companionRaw);
+    if (!isValidSuiAddress(companion)) {
+      return NextResponse.json({ error: "invalid companionAddress" }, { status: 400 });
+    }
+    if (order.userAddress && order.userAddress === companion) {
+      return NextResponse.json({ error: "cannot accept own order" }, { status: 403 });
+    }
+    if (companion !== actor) {
+      return NextResponse.json({ error: "companionAddress must match userAddress" }, { status: 400 });
+    }
+    if (order.companionAddress && order.companionAddress !== companion) {
+      return NextResponse.json({ error: "order already accepted" }, { status: 409 });
+    }
+  } else if (order.userAddress && order.userAddress !== actor) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
 
   const patch: Partial<AdminOrder> = { meta: body.meta || {} };
+  if (companionRaw) {
+    patch.companionAddress = normalizeSuiAddress(companionRaw);
+  }
   if (typeof body.status === "string") {
     const stage = mapStatusToStage(body.status);
     if (chainOrder && stage) {
