@@ -1,11 +1,14 @@
 import { NextResponse } from "next/server";
 import { isValidSuiAddress, normalizeSuiAddress } from "@mysten/sui/utils";
 import { creditMantou, getOrderById } from "@/lib/admin-store";
+import { requireUserSignature } from "@/lib/user-auth";
 
 export async function POST(req: Request) {
+  let rawBody = "";
   let payload: { address?: string; orderId?: string } = {};
   try {
-    payload = (await req.json()) as { address?: string; orderId?: string };
+    rawBody = await req.text();
+    payload = rawBody ? (JSON.parse(rawBody) as { address?: string; orderId?: string }) : {};
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
@@ -18,6 +21,13 @@ export async function POST(req: Request) {
   if (!orderId) {
     return NextResponse.json({ error: "orderId required" }, { status: 400 });
   }
+
+  const auth = await requireUserSignature(req, {
+    intent: `mantou:credit:${orderId}`,
+    address,
+    body: rawBody,
+  });
+  if (!auth.ok) return auth.response;
 
   const order = await getOrderById(orderId);
   if (!order) {

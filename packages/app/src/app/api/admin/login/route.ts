@@ -8,7 +8,7 @@ import {
 import { recordAudit } from "@/lib/admin-audit";
 
 export async function POST(req: Request) {
-  if (!enforceLoginRateLimit(req)) {
+  if (!(await enforceLoginRateLimit(req))) {
     return NextResponse.json({ error: "登录过于频繁" }, { status: 429 });
   }
 

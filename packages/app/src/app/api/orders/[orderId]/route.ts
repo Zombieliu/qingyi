@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin-auth";
-import { getOrderById, updateOrder } from "@/lib/admin-store";
+import { getOrderById, updateOrder, updateOrderIfUnassigned } from "@/lib/admin-store";
 import { isValidSuiAddress, normalizeSuiAddress } from "@mysten/sui/utils";
 import { canTransitionStage, isChainOrder } from "@/lib/order-guard";
 import type { AdminOrder } from "@/lib/admin-types";
+import { requireUserSignature } from "@/lib/user-auth";
 
 type RouteContext = {
   params: Promise<{ orderId: string }>;
@@ -30,6 +31,8 @@ export async function GET(req: Request, { params }: RouteContext) {
     if (!isValidSuiAddress(normalized)) {
       return NextResponse.json({ error: "invalid userAddress" }, { status: 400 });
     }
+    const auth = await requireUserSignature(req, { intent: `orders:read:${orderId}`, address: normalized });
+    if (!auth.ok) return auth.response;
     if (order.userAddress && order.userAddress !== normalized && order.companionAddress !== normalized) {
       return NextResponse.json({ error: "forbidden" }, { status: 403 });
     }
@@ -48,6 +51,7 @@ export async function PATCH(req: Request, { params }: RouteContext) {
     return NextResponse.json({ error: "not found" }, { status: 404 });
   }
 
+  let rawBody = "";
   let body:
     | (Partial<AdminOrder> & {
         userAddress?: string;
@@ -55,9 +59,10 @@ export async function PATCH(req: Request, { params }: RouteContext) {
         status?: string;
         meta?: Record<string, unknown>;
       })
-    | {};
+    | {} = {};
   try {
-    body = (await req.json()) as Partial<AdminOrder> & { userAddress?: string; status?: string };
+    rawBody = await req.text();
+    body = rawBody ? (JSON.parse(rawBody) as Partial<AdminOrder> & { userAddress?: string; status?: string }) : {};
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
@@ -124,6 +129,13 @@ export async function PATCH(req: Request, { params }: RouteContext) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
 
+  const auth = await requireUserSignature(req, {
+    intent: `orders:patch:${orderId}`,
+    address: actor,
+    body: rawBody,
+  });
+  if (!auth.ok) return auth.response;
+
   const patch: Partial<AdminOrder> = { meta: body.meta || {} };
   if (companionRaw) {
     patch.companionAddress = normalizeSuiAddress(companionRaw);
@@ -141,8 +153,13 @@ export async function PATCH(req: Request, { params }: RouteContext) {
     return NextResponse.json({ error: "订单阶段不允许回退或跨越" }, { status: 409 });
   }
 
-  const updated = await updateOrder(orderId, patch);
-  if (!updated) return NextResponse.json({ error: "not found" }, { status: 404 });
+  const updated = companionRaw ? await updateOrderIfUnassigned(orderId, patch) : await updateOrder(orderId, patch);
+  if (!updated) {
+    if (companionRaw) {
+      return NextResponse.json({ error: "order already accepted" }, { status: 409 });
+    }
+    return NextResponse.json({ error: "not found" }, { status: 404 });
+  }
   return NextResponse.json(updated);
 }
 

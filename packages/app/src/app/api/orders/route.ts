@@ -1,8 +1,25 @@
 import { NextResponse } from "next/server";
 import crypto from "crypto";
-import { addOrder, queryOrders } from "@/lib/admin-store";
+import { addOrder, queryOrders, queryPublicOrdersCursor } from "@/lib/admin-store";
 import { requireAdmin } from "@/lib/admin-auth";
 import { isValidSuiAddress, normalizeSuiAddress } from "@mysten/sui/utils";
+import { requireUserSignature } from "@/lib/user-auth";
+import { rateLimit } from "@/lib/rate-limit";
+
+const ORDER_RATE_LIMIT_WINDOW_MS = Number(process.env.ORDER_RATE_LIMIT_WINDOW_MS || "60000");
+const ORDER_RATE_LIMIT_MAX = Number(process.env.ORDER_RATE_LIMIT_MAX || "30");
+const PUBLIC_ORDER_RATE_LIMIT_MAX = Number(process.env.PUBLIC_ORDER_RATE_LIMIT_MAX || "120");
+
+function getClientIp(req: Request): string {
+  const forwarded = req.headers.get("x-forwarded-for");
+  if (forwarded) return forwarded.split(",")[0].trim();
+  return req.headers.get("x-real-ip") || "unknown";
+}
+
+async function enforceRateLimit(req: Request, limit: number, windowMs: number) {
+  const key = `orders:${req.method}:${getClientIp(req)}`;
+  return rateLimit(key, limit, windowMs);
+}
 
 interface OrderPayload {
   user: string;
@@ -26,8 +43,11 @@ interface OrderPayload {
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const page = Math.max(1, Number(searchParams.get("page") || "1"));
-  const pageSize = Math.min(200, Math.max(5, Number(searchParams.get("pageSize") || "20")));
+  const pageSize = Math.min(100, Math.max(5, Number(searchParams.get("pageSize") || "20")));
   const isPublicPool = searchParams.get("public") === "1";
+  if (isPublicPool && !(await enforceRateLimit(req, PUBLIC_ORDER_RATE_LIMIT_MAX, ORDER_RATE_LIMIT_WINDOW_MS))) {
+    return NextResponse.json({ error: "rate_limited" }, { status: 429 });
+  }
   const userAddressRaw = searchParams.get("address") || searchParams.get("userAddress") || "";
   const userAddress = userAddressRaw ? normalizeSuiAddress(userAddressRaw) : "";
   if (userAddress && !isValidSuiAddress(userAddress)) {
@@ -41,21 +61,76 @@ export async function GET(req: Request) {
     if (!admin.ok) return admin.response;
   }
 
+  if (isPublicPool) {
+    const cursorRaw = searchParams.get("cursor") || "";
+    let cursor: { createdAt: number; id: string } | undefined;
+    if (cursorRaw) {
+      try {
+        const decoded = Buffer.from(cursorRaw, "base64url").toString("utf8");
+        const parsed = JSON.parse(decoded) as { createdAt?: number; id?: string };
+        if (typeof parsed.createdAt === "number" && typeof parsed.id === "string") {
+          cursor = { createdAt: parsed.createdAt, id: parsed.id };
+        } else {
+          return NextResponse.json({ error: "invalid_cursor" }, { status: 400 });
+        }
+      } catch {
+        return NextResponse.json({ error: "invalid_cursor" }, { status: 400 });
+      }
+    }
+
+    const publicPageSize = Math.min(30, Math.max(5, Number(searchParams.get("pageSize") || "20")));
+    const result = await queryPublicOrdersCursor({
+      pageSize: publicPageSize,
+      excludeStages: ["已完成", "已取消"],
+      cursor,
+    });
+    const nextCursor = result.nextCursor
+      ? Buffer.from(
+          JSON.stringify({ createdAt: result.nextCursor.createdAt, id: result.nextCursor.id }),
+          "utf8"
+        ).toString("base64url")
+      : null;
+    return NextResponse.json({
+      items: result.items.map((item) => ({
+        id: item.id,
+        user: "匿名用户",
+        item: item.item,
+        amount: item.amount,
+        currency: item.currency,
+        paymentStatus: undefined,
+        stage: item.stage,
+        serviceFee: undefined,
+        deposit: undefined,
+        createdAt: item.createdAt,
+        updatedAt: item.updatedAt,
+      })),
+      nextCursor,
+    });
+  }
+
   const result = await queryOrders({
     page,
     pageSize,
-    address: isPublicPool ? undefined : userAddress || undefined,
+    address: userAddress || undefined,
     q: user || q || undefined,
-    companionMissing: isPublicPool ? true : undefined,
-    excludeStages: isPublicPool ? ["已完成", "已取消"] : undefined,
   });
+  if (userAddress) {
+    const auth = await requireUserSignature(req, { intent: "orders:read", address: userAddress });
+    if (!auth.ok) return auth.response;
+  }
   return NextResponse.json(result);
 }
 
 export async function POST(req: Request) {
+  if (!(await enforceRateLimit(req, ORDER_RATE_LIMIT_MAX, ORDER_RATE_LIMIT_WINDOW_MS))) {
+    return NextResponse.json({ error: "rate_limited" }, { status: 429 });
+  }
+
+  let rawBody = "";
   let payload: OrderPayload;
   try {
-    payload = (await req.json()) as OrderPayload;
+    rawBody = await req.text();
+    payload = rawBody ? (JSON.parse(rawBody) as OrderPayload) : ({} as OrderPayload);
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
@@ -74,6 +149,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "invalid userAddress" }, { status: 400 });
     }
     userAddress = normalized;
+  } else {
+    return NextResponse.json({ error: "userAddress required" }, { status: 401 });
   }
   let companionAddress: string | undefined;
   if (payload.companionAddress) {
@@ -90,6 +167,9 @@ export async function POST(req: Request) {
   } else {
     meta.time = new Date(createdAt).toISOString();
   }
+
+  const auth = await requireUserSignature(req, { intent: "orders:create", address: userAddress, body: rawBody });
+  if (!auth.ok) return auth.response;
 
   try {
     await addOrder({
@@ -113,6 +193,7 @@ export async function POST(req: Request) {
     });
   } catch (error) {
     console.error("Failed to persist order:", error);
+    return NextResponse.json({ error: "persist_failed" }, { status: 500 });
   }
   if (process.env.E2E_SKIP_WEBHOOK === "1") {
     return NextResponse.json({ orderId, sent: true, error: null });

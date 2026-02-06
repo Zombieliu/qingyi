@@ -28,6 +28,7 @@
     "@serwist/precaching": "^9.5.0",
     "@serwist/strategies": "^9.5.0",
     "@serwist/sw": "^9.5.0",
+    "@upstash/redis": "^1.34.3",
     "contracts": "file:../contracts",
     "lucide-react": "^0.563.0",
     "next": "16.1.5",

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin-auth";
 import { findChainOrder, upsertChainOrder } from "@/lib/chain-sync";
 import { isValidSuiAddress, normalizeSuiAddress } from "@mysten/sui/utils";
+import { requireUserSignature } from "@/lib/user-auth";
 
 type RouteContext = {
   params: Promise<{ orderId: string }>;
@@ -19,9 +20,11 @@ export async function POST(req: Request, { params }: RouteContext) {
     return NextResponse.json({ error: "chain order not found" }, { status: 404 });
   }
   if (!admin.ok) {
+    let rawBody = "";
     let body: { userAddress?: string } = {};
     try {
-      body = (await req.json()) as { userAddress?: string };
+      rawBody = await req.text();
+      body = rawBody ? (JSON.parse(rawBody) as { userAddress?: string }) : {};
     } catch {
       return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
     }
@@ -37,6 +40,13 @@ export async function POST(req: Request, { params }: RouteContext) {
     if (chain.user !== normalized) {
       return NextResponse.json({ error: "forbidden" }, { status: 403 });
     }
+
+    const auth = await requireUserSignature(req, {
+      intent: `orders:chain-sync:${orderId}`,
+      address: normalized,
+      body: rawBody,
+    });
+    if (!auth.ok) return auth.response;
   }
 
   const synced = await upsertChainOrder(chain);

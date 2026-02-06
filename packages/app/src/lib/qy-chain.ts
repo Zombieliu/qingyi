@@ -11,6 +11,7 @@ import {
 } from "@mysten/sui/keypairs/passkey";
 import { PASSKEY_STORAGE_KEY } from "@/app/components/passkey-wallet";
 import { DAPP_HUB_ID, DAPP_HUB_INITIAL_SHARED_VERSION, PACKAGE_ID } from "contracts/deployment";
+import { buildAuthMessage } from "./auth-message";
 
 type StoredWallet = {
   address: string;
@@ -96,6 +97,37 @@ export function getCurrentAddress(): string {
   } catch {
     return "";
   }
+}
+
+async function sha256Base64(value: string) {
+  if (typeof crypto === "undefined" || !crypto.subtle) {
+    throw new Error("浏览器不支持安全签名");
+  }
+  const bytes = new TextEncoder().encode(value);
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  return toBase64(new Uint8Array(digest));
+}
+
+export async function signAuthIntent(intent: string, body?: string) {
+  const wallet = getStoredWallet();
+  const timestamp = Date.now();
+  const nonceBytes = new Uint8Array(16);
+  crypto.getRandomValues(nonceBytes);
+  const nonce = toBase64(nonceBytes);
+  const bodyHash = body ? await sha256Base64(body) : "";
+  const message = buildAuthMessage({
+    intent,
+    address: wallet.address,
+    timestamp,
+    nonce,
+    bodyHash,
+  });
+
+  const provider = new BrowserPasskeyProvider(RP_NAME, getProviderOptions());
+  const keypair = new PasskeyKeypair(fromBase64(wallet.publicKey), provider);
+  const signature = await keypair.signPersonalMessage(new TextEncoder().encode(message));
+
+  return { address: wallet.address, signature, timestamp, nonce, bodyHash };
 }
 
 function getRpcUrl(): string {

@@ -16,11 +16,31 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+
 export const metadata: Metadata = {
   title: "情谊电竞 | 三角洲行动陪玩",
   description: "情谊电竞：跨平台陪玩调度，匹配高素质队友与教练。",
   applicationName: "情谊电竞",
   manifest: "/manifest.json",
+  metadataBase: new URL(siteUrl),
+  alternates: { canonical: "/" },
+  openGraph: {
+    title: "情谊电竞 | 三角洲行动陪玩",
+    description: "跨平台陪玩调度，匹配高素质队友与教练。",
+    url: "/",
+    siteName: "情谊电竞",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "情谊电竞 | 三角洲行动陪玩",
+    description: "跨平台陪玩调度，匹配高素质队友与教练。",
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
 };
 
 export const viewport = {
@@ -36,7 +56,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="zh-CN">
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >

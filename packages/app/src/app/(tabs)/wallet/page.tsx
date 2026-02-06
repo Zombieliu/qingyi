@@ -35,6 +35,8 @@ const qrImageLoader: ImageLoader = ({ src }) => src;
 
 export default function Wallet() {
   const [selected, setSelected] = useState<Option>(options[0]);
+  const [customAmount, setCustomAmount] = useState("");
+  const [customTouched, setCustomTouched] = useState(false);
   const [agree, setAgree] = useState(false);
   const [channel, setChannel] = useState<PayChannel>("alipay");
   const [payInfo, setPayInfo] = useState<PayResponse | null>(null);
@@ -44,6 +46,36 @@ export default function Wallet() {
   const [polling, setPolling] = useState(false);
   const [pollCount, setPollCount] = useState(0);
   const { balance, refresh } = useBalance();
+
+  const unitPrice = useMemo(() => options[0].price / options[0].amount, []);
+  const customOption = useMemo<Option | null>(() => {
+    const raw = Number(customAmount);
+    if (!Number.isFinite(raw)) return null;
+    const amount = Math.floor(raw);
+    if (amount <= 0) return null;
+    const price = Number((amount * unitPrice).toFixed(2));
+    return { amount, price };
+  }, [customAmount, unitPrice]);
+  const isCustomSelected =
+    !!customOption &&
+    selected.amount === customOption.amount &&
+    selected.price === customOption.price;
+
+  useEffect(() => {
+    if (isCustomSelected && customOption) {
+      setSelected(customOption);
+    }
+  }, [customOption, isCustomSelected]);
+
+  const customError = useMemo(() => {
+    if (!customTouched && !customAmount) return null;
+    if (!customAmount) return "请输入数量";
+    const raw = Number(customAmount);
+    if (!Number.isFinite(raw)) return "请输入整数";
+    if (!Number.isInteger(raw)) return "请输入整数";
+    if (raw <= 0) return "至少 1";
+    return null;
+  }, [customAmount, customTouched]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -194,6 +226,44 @@ export default function Wallet() {
               <div className="pay-option-price">¥{opt.price.toFixed(2)}</div>
             </button>
           ))}
+          <div className={`pay-option ${isCustomSelected ? "is-active" : ""}`} style={{ textAlign: "left" }}>
+            <div className="pay-option-amt">自定义数量</div>
+            <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 8 }}>
+              <input
+                className="admin-input"
+                type="number"
+                min={1}
+                step={1}
+                placeholder="输入钻石数"
+                value={customAmount}
+                onChange={(event) => {
+                  setCustomTouched(true);
+                  setCustomAmount(event.target.value);
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" && customOption) {
+                    setSelected(customOption);
+                  }
+                }}
+                style={{ flex: 1, padding: "6px 10px" }}
+              />
+              <button
+                type="button"
+                className="dl-tab-btn"
+                style={{ padding: "6px 10px" }}
+                disabled={!customOption}
+                onClick={() => {
+                  if (customOption) setSelected(customOption);
+                }}
+              >
+                使用
+              </button>
+            </div>
+            <div className="pay-option-price" style={{ marginTop: 6 }}>
+              预计 ¥{customOption ? customOption.price.toFixed(2) : "--"}（1 钻石 ≈ ¥{unitPrice.toFixed(2)}）
+            </div>
+            {customError ? <div style={{ marginTop: 6, fontSize: 12, color: "#ef4444" }}>{customError}</div> : null}
+          </div>
         </div>
       </div>
 

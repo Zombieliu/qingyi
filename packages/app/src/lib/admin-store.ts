@@ -478,6 +478,7 @@ export async function queryOrders(params: {
     params;
   const keyword = (q || "").trim();
   const where: Prisma.AdminOrderWhereInput = {};
+  const andConditions: Prisma.AdminOrderWhereInput[] = [];
 
   if (stage && stage !== "全部") {
     where.stage = stage;
@@ -495,16 +496,21 @@ export async function queryOrders(params: {
     where.companionAddress = null;
   }
   if (address) {
-    where.OR = [{ userAddress: address }, { companionAddress: address }];
+    andConditions.push({ OR: [{ userAddress: address }, { companionAddress: address }] });
   } else if (userAddress) {
     where.userAddress = userAddress;
   }
   if (keyword) {
-    where.OR = [
+    andConditions.push({
+      OR: [
       { user: { contains: keyword } },
       { item: { contains: keyword } },
       { id: { contains: keyword } },
-    ];
+      ],
+    });
+  }
+  if (andConditions.length > 0) {
+    where.AND = andConditions;
   }
 
   const total = await prisma.adminOrder.count({ where });
@@ -529,6 +535,41 @@ export async function queryOrders(params: {
 export async function getOrderById(orderId: string) {
   const row = await prisma.adminOrder.findUnique({ where: { id: orderId } });
   return row ? mapOrder(row) : null;
+}
+
+export async function queryPublicOrdersCursor(params: {
+  pageSize: number;
+  excludeStages?: string[];
+  cursor?: { createdAt: number; id: string };
+}) {
+  const { pageSize, excludeStages, cursor } = params;
+  const where: Prisma.AdminOrderWhereInput = { companionAddress: null };
+  if (excludeStages && excludeStages.length > 0) {
+    where.stage = { notIn: excludeStages };
+  }
+  if (cursor) {
+    const cursorDate = new Date(cursor.createdAt);
+    where.AND = [
+      {
+        OR: [
+          { createdAt: { lt: cursorDate } },
+          { createdAt: cursorDate, id: { lt: cursor.id } },
+        ],
+      },
+    ];
+  }
+
+  const rows = await prisma.adminOrder.findMany({
+    where,
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    take: pageSize + 1,
+  });
+  const hasMore = rows.length > pageSize;
+  const sliced = hasMore ? rows.slice(0, pageSize) : rows;
+  return {
+    items: sliced.map(mapOrder),
+    nextCursor: hasMore ? sliced[sliced.length - 1] : null,
+  };
 }
 
 export async function removeOrders(orderIds: string[]) {
@@ -602,6 +643,40 @@ export async function updateOrder(orderId: string, patch: Partial<AdminOrder>) {
       data,
     });
     return mapOrder(row);
+  } catch {
+    return null;
+  }
+}
+
+export async function updateOrderIfUnassigned(orderId: string, patch: Partial<AdminOrder>) {
+  try {
+    const current = await prisma.adminOrder.findUnique({
+      where: { id: orderId },
+      select: { meta: true, companionAddress: true },
+    });
+    if (!current || current.companionAddress) return null;
+
+    const data: Prisma.AdminOrderUpdateManyMutationInput = {
+      updatedAt: new Date(),
+    };
+    if (patch.stage !== undefined) data.stage = patch.stage;
+    if (patch.companionAddress !== undefined) data.companionAddress = patch.companionAddress;
+    if (patch.meta !== undefined) {
+      const merged = {
+        ...(current.meta ? (current.meta as Record<string, unknown>) : {}),
+        ...(patch.meta || {}),
+      };
+      data.meta = Object.keys(merged).length ? (merged as Prisma.InputJsonValue) : Prisma.DbNull;
+    }
+
+    const result = await prisma.adminOrder.updateMany({
+      where: { id: orderId, companionAddress: null },
+      data,
+    });
+    if (result.count === 0) return null;
+
+    const row = await prisma.adminOrder.findUnique({ where: { id: orderId } });
+    return row ? mapOrder(row) : null;
   } catch {
     return null;
   }

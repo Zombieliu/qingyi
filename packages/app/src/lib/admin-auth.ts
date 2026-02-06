@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import type { AdminRole } from "./admin-types";
 import { createSession, getSessionByHash, removeSessionByHash, updateSessionByHash } from "./admin-store";
+import { rateLimit } from "./rate-limit";
 
 export const ADMIN_SESSION_COOKIE = "admin_session";
 export const LEGACY_ADMIN_COOKIE = "admin_token";
@@ -30,7 +31,6 @@ type RequireResult =
     }
   | { ok: false; response: NextResponse };
 
-const rateBuckets = new Map<string, { count: number; resetAt: number }>();
 
 function hashToken(token: string): string {
   return crypto.createHash("sha256").update(token).digest("hex");
@@ -126,16 +126,8 @@ function getClientIp(req: Request): string {
 }
 
 function enforceRateLimit(req: Request, limit: number, windowMs: number) {
-  const key = `${getClientIp(req)}:${req.method}`;
-  const now = Date.now();
-  const existing = rateBuckets.get(key);
-  if (!existing || existing.resetAt <= now) {
-    rateBuckets.set(key, { count: 1, resetAt: now + windowMs });
-    return true;
-  }
-  existing.count += 1;
-  if (existing.count > limit) return false;
-  return true;
+  const key = `admin:${req.method}:${getClientIp(req)}`;
+  return rateLimit(key, limit, windowMs);
 }
 
 export function ensureSameOrigin(req: Request) {
@@ -230,7 +222,7 @@ export async function getAdminSession() {
 export async function requireAdmin(req: Request, options: RequireOptions = {}): Promise<RequireResult> {
   const { role = "viewer", allowToken = true, requireOrigin = req.method !== "GET" } = options;
 
-  if (!enforceRateLimit(req, RATE_LIMIT_MAX, RATE_LIMIT_WINDOW_MS)) {
+  if (!(await enforceRateLimit(req, RATE_LIMIT_MAX, RATE_LIMIT_WINDOW_MS))) {
     return {
       ok: false,
       response: NextResponse.json({ error: "rate_limited" }, { status: 429 }),
@@ -290,7 +282,7 @@ export async function requireAdmin(req: Request, options: RequireOptions = {}): 
   };
 }
 
-export function enforceLoginRateLimit(req: Request) {
+export async function enforceLoginRateLimit(req: Request) {
   return enforceRateLimit(req, LOGIN_RATE_LIMIT_MAX, RATE_LIMIT_WINDOW_MS);
 }
 

@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import { type LocalOrder } from "@/app/components/order-store";
 import { deleteOrder, fetchPublicOrders, patchOrder, syncChainOrder } from "@/app/components/order-service";
 import { Activity, Clock3, Car, MapPin } from "lucide-react";
@@ -15,6 +15,7 @@ import {
   markCompletedOnChain,
   payServiceFeeOnChain,
   raiseDisputeOnChain,
+  signAuthIntent,
 } from "@/lib/qy-chain";
 
 export default function Showcase() {
@@ -28,15 +29,53 @@ export default function Showcase() {
   const [chainUpdatedAt, setChainUpdatedAt] = useState<number | null>(null);
   const [disputeOpen, setDisputeOpen] = useState<{ orderId: string; evidence: string } | null>(null);
   const [copiedOrderId, setCopiedOrderId] = useState<string | null>(null);
+  const [publicCursor, setPublicCursor] = useState<string | null>(null);
+  const [publicLoading, setPublicLoading] = useState(false);
+  const loadMoreRef = useRef<HTMLDivElement | null>(null);
 
   const refreshOrders = async () => {
-    const list = await fetchPublicOrders();
-    setOrders(list);
+    setPublicLoading(true);
+    try {
+      const result = await fetchPublicOrders();
+      setOrders(result.items);
+      setPublicCursor(result.nextCursor || null);
+    } finally {
+      setPublicLoading(false);
+    }
+  };
+
+  const loadMoreOrders = async () => {
+    if (!publicCursor || publicLoading) return;
+    setPublicLoading(true);
+    try {
+      const result = await fetchPublicOrders(publicCursor);
+      setOrders((prev) => [...prev, ...result.items]);
+      setPublicCursor(result.nextCursor || null);
+    } finally {
+      setPublicLoading(false);
+    }
   };
 
   useEffect(() => {
     refreshOrders();
   }, []);
+
+  useEffect(() => {
+    if (!loadMoreRef.current) return;
+    if (!publicCursor) return;
+    const target = loadMoreRef.current;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const first = entries[0];
+        if (first && first.isIntersecting) {
+          loadMoreOrders();
+        }
+      },
+      { rootMargin: "200px" }
+    );
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, [publicCursor, publicLoading]);
 
   const loadChain = useCallback(async () => {
     if (!isChainOrdersEnabled()) return;
@@ -427,10 +466,19 @@ export default function Showcase() {
                             );
                             if (!ok) return;
                             try {
+                              const creditBody = JSON.stringify({ orderId: o.orderId, address: chainAddress });
+                              const auth = await signAuthIntent(`mantou:credit:${o.orderId}`, creditBody);
                               const res = await fetch("/api/mantou/credit", {
                                 method: "POST",
-                                headers: { "Content-Type": "application/json" },
-                                body: JSON.stringify({ orderId: o.orderId, address: chainAddress }),
+                                headers: {
+                                  "Content-Type": "application/json",
+                                  "x-auth-address": auth.address,
+                                  "x-auth-signature": auth.signature,
+                                  "x-auth-timestamp": String(auth.timestamp),
+                                  "x-auth-nonce": auth.nonce,
+                                  "x-auth-body-sha256": auth.bodyHash,
+                                },
+                                body: creditBody,
                               });
                               const data = await res.json().catch(() => ({}));
                               if (res.ok) {
@@ -596,6 +644,20 @@ export default function Showcase() {
           )}
         </div>
       )}
+      <div className="mt-4 flex justify-center" ref={loadMoreRef}>
+        {publicCursor ? (
+          <button
+            className="dl-tab-btn"
+            style={{ padding: "8px 12px" }}
+            onClick={loadMoreOrders}
+            disabled={publicLoading}
+          >
+            {publicLoading ? "加载中..." : "加载更多"}
+          </button>
+        ) : (
+          <div className="text-xs text-gray-400">没有更多了</div>
+        )}
+      </div>
       {disputeOpen && (
         <div className="ride-modal-mask" role="dialog" aria-modal="true" aria-label="发起争议">
           <div className="ride-modal">

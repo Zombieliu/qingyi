@@ -2,7 +2,7 @@
 
 import { addOrder, loadOrders, removeOrder, updateOrder, type LocalOrder } from "./order-store";
 import { readCache, writeCache } from "./client-cache";
-import { getCurrentAddress, isChainOrdersEnabled } from "@/lib/qy-chain";
+import { getCurrentAddress, isChainOrdersEnabled, signAuthIntent } from "@/lib/qy-chain";
 
 const ORDER_SOURCE =
   process.env.NEXT_PUBLIC_ORDER_SOURCE || (process.env.NEXT_PUBLIC_CHAIN_ORDERS === "1" ? "server" : "local");
@@ -82,6 +82,7 @@ export async function fetchOrders(): Promise<LocalOrder[]> {
     return loadOrders();
   }
   const userAddress = resolveUserAddress();
+  if (!userAddress) return [];
   const cacheKey = `cache:orders:${userAddress || "local"}`;
   const cached = readCache<LocalOrder[]>(cacheKey, 60_000, true);
   if (cached?.fresh) {
@@ -91,7 +92,8 @@ export async function fetchOrders(): Promise<LocalOrder[]> {
   params.set("page", "1");
   params.set("pageSize", "50");
   if (userAddress) params.set("address", userAddress);
-  const res = await fetch(`/api/orders?${params.toString()}`);
+  const { headers } = await buildAuthHeaders("orders:read");
+  const res = await fetch(`/api/orders?${params.toString()}`, { headers });
   if (!res.ok) return cached?.value ?? [];
   const data = await res.json();
   const items = Array.isArray(data?.items) ? data.items : [];
@@ -100,26 +102,46 @@ export async function fetchOrders(): Promise<LocalOrder[]> {
   return normalized;
 }
 
-export async function fetchPublicOrders(): Promise<LocalOrder[]> {
-  if (ORDER_SOURCE !== "server") {
-    return loadOrders();
+async function buildAuthHeaders(intent: string, body?: string, addressOverride?: string) {
+  const auth = await signAuthIntent(intent, body);
+  if (addressOverride && addressOverride !== auth.address) {
+    throw new Error("auth address mismatch");
   }
-  const cacheKey = "cache:orders:public";
-  const cached = readCache<LocalOrder[]>(cacheKey, 30_000, true);
+  return {
+    auth,
+    headers: {
+      "x-auth-address": auth.address,
+      "x-auth-signature": auth.signature,
+      "x-auth-timestamp": String(auth.timestamp),
+      "x-auth-nonce": auth.nonce,
+      "x-auth-body-sha256": auth.bodyHash,
+    } as Record<string, string>,
+  };
+}
+
+export async function fetchPublicOrders(
+  cursor?: string
+): Promise<{ items: LocalOrder[]; nextCursor?: string | null }> {
+  if (ORDER_SOURCE !== "server") {
+    return { items: loadOrders(), nextCursor: null };
+  }
+  const cacheKey = cursor ? `cache:orders:public:${cursor}` : "cache:orders:public:first";
+  const cached = readCache<{ items: LocalOrder[]; nextCursor?: string | null }>(cacheKey, 15_000, true);
   if (cached?.fresh) {
     return cached.value;
   }
   const params = new URLSearchParams();
-  params.set("page", "1");
-  params.set("pageSize", "50");
+  params.set("pageSize", "30");
   params.set("public", "1");
+  if (cursor) params.set("cursor", cursor);
   const res = await fetch(`/api/orders?${params.toString()}`);
-  if (!res.ok) return cached?.value ?? [];
+  if (!res.ok) return cached?.value ?? { items: [], nextCursor: null };
   const data = await res.json();
   const items = Array.isArray(data?.items) ? data.items : [];
   const normalized = items.map((item: ServerOrder) => normalizeOrder(item));
-  writeCache(cacheKey, normalized);
-  return normalized;
+  const result = { items: normalized, nextCursor: data?.nextCursor ?? null };
+  writeCache(cacheKey, result);
+  return result;
 }
 
 export async function createOrder(
@@ -129,23 +151,29 @@ export async function createOrder(
     addOrder(payload);
     return { orderId: payload.id, sent: true };
   }
-  const meta = buildMeta(payload);
+  const address = getCurrentAddress();
+  const requestBody = {
+    user: payload.user,
+    userAddress: payload.userAddress || address,
+    companionAddress: payload.companionAddress,
+    item: payload.item,
+    amount: payload.amount,
+    status: payload.status,
+    note: "note" in payload ? (payload as { note?: string }).note : undefined,
+    orderId: payload.id,
+    chainDigest: payload.chainDigest,
+    serviceFee: payload.serviceFee,
+    meta: buildMeta(payload),
+  };
+  const body = JSON.stringify(requestBody);
+  const { auth, headers } = await buildAuthHeaders("orders:create", body);
+  if (requestBody.userAddress && requestBody.userAddress !== auth.address) {
+    throw new Error("userAddress mismatch");
+  }
   const res = await fetch("/api/orders", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      user: payload.user,
-      userAddress: payload.userAddress,
-      companionAddress: payload.companionAddress,
-      item: payload.item,
-      amount: payload.amount,
-      status: payload.status,
-      note: "note" in payload ? (payload as { note?: string }).note : undefined,
-      orderId: payload.id,
-      chainDigest: payload.chainDigest,
-      serviceFee: payload.serviceFee,
-      meta,
-    }),
+    headers: { "Content-Type": "application/json", ...headers },
+    body,
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
@@ -166,16 +194,26 @@ export async function patchOrder(
     updateOrder(orderId, patch);
     return;
   }
+  const address = getCurrentAddress();
   const meta = buildMeta(patch);
+  const requestBody = {
+    userAddress: patch.userAddress || address,
+    companionAddress: patch.companionAddress,
+    status: patch.status,
+    meta,
+  };
+  const body = JSON.stringify(requestBody);
+  const { auth, headers } = await buildAuthHeaders(`orders:patch:${orderId}`, body);
+  if (requestBody.userAddress && requestBody.userAddress !== auth.address) {
+    throw new Error("userAddress mismatch");
+  }
+  if (patch.companionAddress && patch.companionAddress !== auth.address) {
+    throw new Error("companionAddress mismatch");
+  }
   await fetch(`/api/orders/${orderId}`, {
     method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      userAddress: patch.userAddress,
-      companionAddress: patch.companionAddress,
-      status: patch.status,
-      meta,
-    }),
+    headers: { "Content-Type": "application/json", ...headers },
+    body,
   });
 }
 
@@ -184,10 +222,16 @@ export async function deleteOrder(orderId: string, userAddress?: string) {
     removeOrder(orderId);
     return;
   }
+  const address = getCurrentAddress();
+  const body = JSON.stringify({ userAddress: userAddress || address, status: "取消" });
+  const { auth, headers } = await buildAuthHeaders(`orders:patch:${orderId}`, body);
+  if (userAddress && userAddress !== auth.address) {
+    throw new Error("userAddress mismatch");
+  }
   await fetch(`/api/orders/${orderId}`, {
     method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ userAddress, status: "取消" }),
+    headers: { "Content-Type": "application/json", ...headers },
+    body: JSON.stringify({ userAddress: userAddress || auth.address, status: "取消" }),
   });
 }
 
@@ -195,10 +239,16 @@ export async function syncChainOrder(orderId: string, userAddress?: string) {
   if (ORDER_SOURCE !== "server") {
     return;
   }
+  const address = getCurrentAddress();
+  const body = JSON.stringify({ userAddress: userAddress || address });
+  const { auth, headers } = await buildAuthHeaders(`orders:chain-sync:${orderId}`, body);
+  if (userAddress && userAddress !== auth.address) {
+    throw new Error("userAddress mismatch");
+  }
   const res = await fetch(`/api/orders/${orderId}/chain-sync`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ userAddress }),
+    headers: { "Content-Type": "application/json", ...headers },
+    body: JSON.stringify({ userAddress: userAddress || auth.address }),
   });
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
