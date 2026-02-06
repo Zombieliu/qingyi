@@ -531,6 +531,13 @@ export async function getOrderById(orderId: string) {
   return row ? mapOrder(row) : null;
 }
 
+export async function removeOrders(orderIds: string[]) {
+  const ids = orderIds.filter(Boolean);
+  if (ids.length === 0) return 0;
+  const result = await prisma.adminOrder.deleteMany({ where: { id: { in: ids } } });
+  return result.count;
+}
+
 export async function addOrder(order: AdminOrder) {
   const row = await prisma.adminOrder.create({
     data: {
@@ -735,6 +742,13 @@ export async function removePlayer(playerId: string) {
   }
 }
 
+export async function removePlayers(playerIds: string[]) {
+  const ids = playerIds.filter(Boolean);
+  if (ids.length === 0) return 0;
+  const result = await prisma.adminPlayer.deleteMany({ where: { id: { in: ids } } });
+  return result.count;
+}
+
 export async function listAnnouncements() {
   const rows = await prisma.adminAnnouncement.findMany({ orderBy: { createdAt: "desc" } });
   return rows.map(mapAnnouncement);
@@ -780,6 +794,13 @@ export async function removeAnnouncement(announcementId: string) {
   } catch {
     return false;
   }
+}
+
+export async function removeAnnouncements(announcementIds: string[]) {
+  const ids = announcementIds.filter(Boolean);
+  if (ids.length === 0) return 0;
+  const result = await prisma.adminAnnouncement.deleteMany({ where: { id: { in: ids } } });
+  return result.count;
 }
 
 export async function listPublicAnnouncements() {

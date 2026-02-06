@@ -24,6 +24,7 @@ export default function OrdersPage() {
   const [query, setQuery] = useState("");
   const [stageFilter, setStageFilter] = useState("全部");
   const [saving, setSaving] = useState<Record<string, boolean>>({});
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const pageSize = 20;
@@ -50,6 +51,7 @@ export default function OrdersPage() {
         setOrders(Array.isArray(data?.items) ? data.items : []);
         setPage(data?.page || nextPage);
         setTotalPages(data?.totalPages || 1);
+        setSelectedIds([]);
         writeCache(cacheKey, {
           items: Array.isArray(data?.items) ? data.items : [],
           page: data?.page || nextPage,
@@ -141,6 +143,31 @@ export default function OrdersPage() {
     }
   };
 
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => (prev.includes(id) ? prev.filter((itemId) => itemId !== id) : [...prev, id]));
+  };
+
+  const toggleSelectAll = (checked: boolean) => {
+    setSelectedIds(checked ? orders.map((item) => item.id) : []);
+  };
+
+  const bulkDelete = async () => {
+    if (selectedIds.length === 0) return;
+    if (!confirm(`确定要删除选中的 ${selectedIds.length} 条订单吗？`)) return;
+    const res = await fetch("/api/admin/orders/bulk-delete", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids: selectedIds }),
+    });
+    if (res.ok) {
+      setSelectedIds([]);
+      await loadOrders(page);
+    } else {
+      const data = await res.json().catch(() => ({}));
+      alert(data?.error || "批量删除失败");
+    }
+  };
+
   return (
     <div className="admin-section">
       <div className="admin-card">
@@ -176,6 +203,9 @@ export default function OrdersPage() {
             <RefreshCw size={16} style={{ marginRight: 6 }} />
             刷新
           </button>
+          <button className="admin-btn ghost" disabled={selectedIds.length === 0} onClick={bulkDelete}>
+            删除选中{selectedIds.length > 0 ? `（${selectedIds.length}）` : ""}
+          </button>
           <a
             className="admin-btn ghost"
             href={`/api/admin/orders/export?format=csv&stage=${encodeURIComponent(stageFilter)}&q=${encodeURIComponent(
@@ -197,6 +227,17 @@ export default function OrdersPage() {
             <table className="admin-table">
               <thead>
                 <tr>
+                  <th>
+                    <label style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      <input
+                        type="checkbox"
+                        checked={orders.length > 0 && selectedIds.length === orders.length}
+                        onChange={(event) => toggleSelectAll(event.target.checked)}
+                        disabled={orders.length === 0}
+                      />
+                      选择
+                    </label>
+                  </th>
                   <th>订单信息</th>
                   <th>金额</th>
                   <th>付款状态</th>
@@ -221,6 +262,13 @@ export default function OrdersPage() {
 
                   return (
                     <tr key={order.id}>
+                    <td data-label="选择">
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.includes(order.id)}
+                        onChange={() => toggleSelect(order.id)}
+                      />
+                    </td>
                     <td data-label="订单信息">
                       <div style={{ fontWeight: 600 }}>{order.user}</div>
                       <div style={{ fontSize: 12, color: "#64748b" }}>

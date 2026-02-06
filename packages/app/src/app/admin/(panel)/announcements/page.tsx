@@ -10,6 +10,7 @@ export default function AnnouncementsPage() {
   const [announcements, setAnnouncements] = useState<AdminAnnouncement[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [form, setForm] = useState({
     title: "",
     tag: "公告",
@@ -31,6 +32,7 @@ export default function AnnouncementsPage() {
         const data = await res.json();
         const next = Array.isArray(data) ? data : [];
         setAnnouncements(next);
+        setSelectedIds([]);
         writeCache(cacheKey, next);
       }
     } finally {
@@ -123,6 +125,33 @@ export default function AnnouncementsPage() {
         writeCache("cache:admin:announcements", next);
         return next;
       });
+      setSelectedIds((prev) => prev.filter((itemId) => itemId !== id));
+    }
+  };
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => (prev.includes(id) ? prev.filter((itemId) => itemId !== id) : [...prev, id]));
+  };
+
+  const toggleSelectAll = (checked: boolean) => {
+    setSelectedIds(checked ? announcements.map((item) => item.id) : []);
+  };
+
+  const bulkDelete = async () => {
+    if (selectedIds.length === 0) return;
+    if (!confirm(`确定要删除选中的 ${selectedIds.length} 条公告吗？`)) return;
+    const res = await fetch("/api/admin/announcements/bulk-delete", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids: selectedIds }),
+    });
+    if (res.ok) {
+      setAnnouncements((prev) => {
+        const next = prev.filter((item) => !selectedIds.includes(item.id));
+        writeCache("cache:admin:announcements", next);
+        return next;
+      });
+      setSelectedIds([]);
     }
   };
 
@@ -189,7 +218,24 @@ export default function AnnouncementsPage() {
       </div>
 
       <div className="admin-card">
-        <h3>公告列表</h3>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+          <h3>公告列表</h3>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "#475569" }}>
+              <input
+                type="checkbox"
+                checked={announcements.length > 0 && selectedIds.length === announcements.length}
+                onChange={(event) => toggleSelectAll(event.target.checked)}
+                disabled={announcements.length === 0}
+              />
+              全选
+            </label>
+            <button className="admin-btn ghost" disabled={selectedIds.length === 0} onClick={bulkDelete}>
+              <Trash2 size={14} style={{ marginRight: 4 }} />
+              批量删除{selectedIds.length > 0 ? `（${selectedIds.length}）` : ""}
+            </button>
+          </div>
+        </div>
         {loading ? (
           <p>加载中...</p>
         ) : announcements.length === 0 ? (
@@ -201,6 +247,11 @@ export default function AnnouncementsPage() {
                 <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
                   <div>
                     <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.includes(item.id)}
+                        onChange={() => toggleSelect(item.id)}
+                      />
                       <Megaphone size={16} />
                       <strong>{item.title}</strong>
                       <span className={`admin-badge ${item.status === "published" ? "" : "neutral"}`}>

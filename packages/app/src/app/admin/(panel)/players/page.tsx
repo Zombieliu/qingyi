@@ -10,6 +10,7 @@ export default function PlayersPage() {
   const [players, setPlayers] = useState<AdminPlayer[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<Record<string, boolean>>({});
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [form, setForm] = useState({
     name: "",
     role: "",
@@ -36,6 +37,7 @@ export default function PlayersPage() {
         const data = await res.json();
         const next = Array.isArray(data) ? data : [];
         setPlayers(next);
+        setSelectedIds([]);
         writeCache(cacheKey, next);
       }
     } finally {
@@ -115,6 +117,35 @@ export default function PlayersPage() {
       }
     } finally {
       setSaving((prev) => ({ ...prev, [playerId]: false }));
+    }
+  };
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => (prev.includes(id) ? prev.filter((itemId) => itemId !== id) : [...prev, id]));
+  };
+
+  const toggleSelectAll = (checked: boolean) => {
+    setSelectedIds(checked ? players.map((item) => item.id) : []);
+  };
+
+  const bulkDelete = async () => {
+    if (selectedIds.length === 0) return;
+    if (!confirm(`确定要删除选中的 ${selectedIds.length} 位打手吗？`)) return;
+    const res = await fetch("/api/admin/players/bulk-delete", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids: selectedIds }),
+    });
+    if (res.ok) {
+      setPlayers((prev) => {
+        const next = prev.filter((item) => !selectedIds.includes(item.id));
+        writeCache("cache:admin:players", next);
+        return next;
+      });
+      setSelectedIds([]);
+    } else {
+      const data = await res.json().catch(() => ({}));
+      alert(data?.error || "批量删除失败");
     }
   };
 
@@ -232,7 +263,24 @@ export default function PlayersPage() {
       </div>
 
       <div className="admin-card">
-        <h3>打手列表</h3>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+          <h3>打手列表</h3>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "#475569" }}>
+              <input
+                type="checkbox"
+                checked={players.length > 0 && selectedIds.length === players.length}
+                onChange={(event) => toggleSelectAll(event.target.checked)}
+                disabled={players.length === 0}
+              />
+              全选
+            </label>
+            <button className="admin-btn ghost" disabled={selectedIds.length === 0} onClick={bulkDelete}>
+              <Trash2 size={14} style={{ marginRight: 4 }} />
+              批量删除{selectedIds.length > 0 ? `（${selectedIds.length}）` : ""}
+            </button>
+          </div>
+        </div>
         {loading ? (
           <p>加载中...</p>
         ) : players.length === 0 ? (
@@ -242,6 +290,7 @@ export default function PlayersPage() {
             <table className="admin-table">
               <thead>
                 <tr>
+                  <th>选择</th>
                   <th>名称</th>
                   <th>位置</th>
                   <th>联系方式</th>
@@ -260,6 +309,13 @@ export default function PlayersPage() {
               <tbody>
                 {players.map((player) => (
                   <tr key={player.id}>
+                    <td data-label="选择">
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.includes(player.id)}
+                        onChange={() => toggleSelect(player.id)}
+                      />
+                    </td>
                     <td data-label="名称" style={{ fontWeight: 600 }}>
                       {player.name}
                     </td>
