@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { RefreshCw, Search } from "lucide-react";
 import type { AdminGuardianApplication, GuardianStatus } from "@/lib/admin-types";
 import { GUARDIAN_STATUS_OPTIONS } from "@/lib/admin-types";
+import { readCache, writeCache } from "@/app/components/client-cache";
 
 function formatTime(ts: number) {
   return new Date(ts).toLocaleString("zh-CN", {
@@ -23,6 +24,7 @@ export default function GuardiansPage() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const pageSize = 20;
+  const cacheTtlMs = 60_000;
 
   const load = useCallback(async (nextPage: number) => {
     setLoading(true);
@@ -32,17 +34,30 @@ export default function GuardiansPage() {
       params.set("pageSize", String(pageSize));
       if (statusFilter && statusFilter !== "全部") params.set("status", statusFilter);
       if (query.trim()) params.set("q", query.trim());
+      const cacheKey = `cache:admin:guardians:${params.toString()}`;
+      const cached = readCache<{ items: AdminGuardianApplication[]; page?: number; totalPages?: number }>(
+        cacheKey,
+        cacheTtlMs,
+        true
+      );
+      if (cached) {
+        setApplications(Array.isArray(cached.value?.items) ? cached.value.items : []);
+        setPage(cached.value?.page || nextPage);
+        setTotalPages(cached.value?.totalPages || 1);
+      }
       const res = await fetch(`/api/admin/guardians?${params.toString()}`);
       if (res.ok) {
         const data = await res.json();
-        setApplications(Array.isArray(data?.items) ? data.items : []);
+        const next = Array.isArray(data?.items) ? data.items : [];
+        setApplications(next);
         setPage(data?.page || nextPage);
         setTotalPages(data?.totalPages || 1);
+        writeCache(cacheKey, { items: next, page: data?.page || nextPage, totalPages: data?.totalPages || 1 });
       }
     } finally {
       setLoading(false);
     }
-  }, [pageSize, query, statusFilter]);
+  }, [cacheTtlMs, pageSize, query, statusFilter]);
 
   useEffect(() => {
     const handle = setTimeout(() => load(1), 300);
@@ -63,7 +78,16 @@ export default function GuardiansPage() {
       });
       if (res.ok) {
         const data = await res.json();
-        setApplications((prev) => prev.map((r) => (r.id === applicationId ? data : r)));
+        setApplications((prev) => {
+          const next = prev.map((r) => (r.id === applicationId ? data : r));
+          const params = new URLSearchParams();
+          params.set("page", String(page));
+          params.set("pageSize", String(pageSize));
+          if (statusFilter && statusFilter !== "全部") params.set("status", statusFilter);
+          if (query.trim()) params.set("q", query.trim());
+          writeCache(`cache:admin:guardians:${params.toString()}`, { items: next, page, totalPages });
+          return next;
+        });
       }
     } finally {
       setSaving((prev) => ({ ...prev, [applicationId]: false }));
@@ -73,8 +97,8 @@ export default function GuardiansPage() {
   return (
     <div className="admin-section">
       <div className="admin-card">
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center" }}>
-          <div style={{ flex: 1, minWidth: 220, position: "relative" }}>
+        <div className="admin-toolbar">
+          <div className="admin-toolbar-grow" style={{ position: "relative" }}>
             <Search
               size={16}
               style={{
@@ -93,12 +117,7 @@ export default function GuardiansPage() {
               onChange={(event) => setQuery(event.target.value)}
             />
           </div>
-          <select
-            className="admin-select"
-            style={{ minWidth: 160 }}
-            value={statusFilter}
-            onChange={(event) => setStatusFilter(event.target.value)}
-          >
+          <select className="admin-select" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
             <option value="全部">全部状态</option>
             {GUARDIAN_STATUS_OPTIONS.map((status) => (
               <option key={status} value={status}>
@@ -119,7 +138,7 @@ export default function GuardiansPage() {
         ) : applications.length === 0 ? (
           <p>暂无护航申请</p>
         ) : (
-          <div style={{ overflowX: "auto" }}>
+          <div className="admin-table-wrap">
             <table className="admin-table">
               <thead>
                 <tr>
@@ -136,14 +155,18 @@ export default function GuardiansPage() {
               <tbody>
                 {applications.map((item) => (
                   <tr key={item.id}>
-                    <td>
+                    <td data-label="申请人">
                       <div style={{ fontWeight: 600 }}>{item.user || "-"}</div>
                       <div style={{ fontSize: 12, color: "#64748b" }}>{item.contact || "-"}</div>
                     </td>
-                    <td>{item.games || "-"}</td>
-                    <td style={{ fontSize: 12, color: "#475569" }}>{item.experience || "-"}</td>
-                    <td style={{ fontSize: 12, color: "#475569" }}>{item.availability || "-"}</td>
-                    <td>
+                    <td data-label="擅长游戏">{item.games || "-"}</td>
+                    <td data-label="经验" style={{ fontSize: 12, color: "#475569" }}>
+                      {item.experience || "-"}
+                    </td>
+                    <td data-label="可接单时段" style={{ fontSize: 12, color: "#475569" }}>
+                      {item.availability || "-"}
+                    </td>
+                    <td data-label="状态">
                       <select
                         className="admin-select"
                         value={item.status}
@@ -162,7 +185,7 @@ export default function GuardiansPage() {
                         ))}
                       </select>
                     </td>
-                    <td>
+                    <td data-label="备注">
                       <input
                         className="admin-input"
                         placeholder="审核备注"
@@ -175,8 +198,8 @@ export default function GuardiansPage() {
                         onBlur={(event) => updateApplication(item.id, { note: event.target.value })}
                       />
                     </td>
-                    <td>{formatTime(item.createdAt)}</td>
-                    <td>
+                    <td data-label="时间">{formatTime(item.createdAt)}</td>
+                    <td data-label="更新">
                       <span className="admin-badge neutral">{saving[item.id] ? "保存中" : "已同步"}</span>
                     </td>
                   </tr>
@@ -185,7 +208,7 @@ export default function GuardiansPage() {
             </table>
           </div>
         )}
-        <div style={{ display: "flex", justifyContent: "space-between", marginTop: 16, alignItems: "center" }}>
+        <div className="admin-pagination">
           <button
             className="admin-btn ghost"
             disabled={page <= 1}

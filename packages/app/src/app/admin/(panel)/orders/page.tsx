@@ -5,6 +5,7 @@ import { RefreshCw, Search } from "lucide-react";
 import Link from "next/link";
 import type { AdminOrder, AdminPlayer, OrderStage } from "@/lib/admin-types";
 import { ORDER_STAGE_OPTIONS } from "@/lib/admin-types";
+import { readCache, writeCache } from "@/app/components/client-cache";
 
 function formatTime(ts: number) {
   return new Date(ts).toLocaleString("zh-CN", {
@@ -26,6 +27,7 @@ export default function OrdersPage() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const pageSize = 20;
+  const cacheTtlMs = 60_000;
 
   const loadOrders = useCallback(async (nextPage: number) => {
     setLoading(true);
@@ -35,30 +37,49 @@ export default function OrdersPage() {
       params.set("pageSize", String(pageSize));
       if (stageFilter && stageFilter !== "全部") params.set("stage", stageFilter);
       if (query.trim()) params.set("q", query.trim());
+      const cacheKey = `cache:admin:orders:${params.toString()}`;
+      const cached = readCache<{ items: AdminOrder[]; page?: number; totalPages?: number }>(cacheKey, cacheTtlMs, true);
+      if (cached) {
+        setOrders(Array.isArray(cached.value?.items) ? cached.value.items : []);
+        setPage(cached.value?.page || nextPage);
+        setTotalPages(cached.value?.totalPages || 1);
+      }
       const res = await fetch(`/api/admin/orders?${params.toString()}`);
       if (res.ok) {
         const data = await res.json();
         setOrders(Array.isArray(data?.items) ? data.items : []);
         setPage(data?.page || nextPage);
         setTotalPages(data?.totalPages || 1);
+        writeCache(cacheKey, {
+          items: Array.isArray(data?.items) ? data.items : [],
+          page: data?.page || nextPage,
+          totalPages: data?.totalPages || 1,
+        });
       }
     } finally {
       setLoading(false);
     }
-  }, [pageSize, query, stageFilter]);
+  }, [cacheTtlMs, pageSize, query, stageFilter]);
 
   const loadPlayers = useCallback(async () => {
     setPlayersLoading(true);
     try {
+      const cacheKey = "cache:admin:players";
+      const cached = readCache<AdminPlayer[]>(cacheKey, cacheTtlMs, true);
+      if (cached) {
+        setPlayers(Array.isArray(cached.value) ? cached.value : []);
+      }
       const res = await fetch("/api/admin/players");
       if (res.ok) {
         const data = await res.json();
-        setPlayers(Array.isArray(data) ? data : []);
+        const next = Array.isArray(data) ? data : [];
+        setPlayers(next);
+        writeCache(cacheKey, next);
       }
     } finally {
       setPlayersLoading(false);
     }
-  }, []);
+  }, [cacheTtlMs]);
 
   const playerLookup = useMemo(() => {
     const map = new Map<string, AdminPlayer>();
@@ -94,9 +115,20 @@ export default function OrdersPage() {
       });
       if (res.ok) {
         const data = await res.json();
-        setOrders((prev) =>
-          prev.map((order) => (order.id === orderId ? data : order))
-        );
+        setOrders((prev) => {
+          const next = prev.map((order) => (order.id === orderId ? data : order));
+          const params = new URLSearchParams();
+          params.set("page", String(page));
+          params.set("pageSize", String(pageSize));
+          if (stageFilter && stageFilter !== "全部") params.set("stage", stageFilter);
+          if (query.trim()) params.set("q", query.trim());
+          writeCache(`cache:admin:orders:${params.toString()}`, {
+            items: next,
+            page,
+            totalPages,
+          });
+          return next;
+        });
         if (patch.assignedTo !== undefined || patch.stage !== undefined) {
           await loadPlayers();
         }
@@ -112,8 +144,8 @@ export default function OrdersPage() {
   return (
     <div className="admin-section">
       <div className="admin-card">
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center" }}>
-          <div style={{ flex: 1, minWidth: 220, position: "relative" }}>
+        <div className="admin-toolbar">
+          <div className="admin-toolbar-grow" style={{ position: "relative" }}>
             <Search
               size={16}
               style={{
@@ -132,12 +164,7 @@ export default function OrdersPage() {
               onChange={(event) => setQuery(event.target.value)}
             />
           </div>
-          <select
-            className="admin-select"
-            style={{ minWidth: 160 }}
-            value={stageFilter}
-            onChange={(event) => setStageFilter(event.target.value)}
-          >
+          <select className="admin-select" value={stageFilter} onChange={(event) => setStageFilter(event.target.value)}>
             <option value="全部">全部状态</option>
             {ORDER_STAGE_OPTIONS.map((stage) => (
               <option key={stage} value={stage}>
@@ -166,7 +193,7 @@ export default function OrdersPage() {
         ) : orders.length === 0 ? (
           <p>没有符合条件的订单</p>
         ) : (
-          <div style={{ overflowX: "auto" }}>
+          <div className="admin-table-wrap">
             <table className="admin-table">
               <thead>
                 <tr>
@@ -194,7 +221,7 @@ export default function OrdersPage() {
 
                   return (
                     <tr key={order.id}>
-                    <td>
+                    <td data-label="订单信息">
                       <div style={{ fontWeight: 600 }}>{order.user}</div>
                       <div style={{ fontSize: 12, color: "#64748b" }}>
                         {order.item}
@@ -204,25 +231,25 @@ export default function OrdersPage() {
                       </div>
                       {isChainOrder ? (
                         <div style={{ marginTop: 6 }}>
-                          <span className="admin-badge warm">链上订单</span>
+                          <span className="admin-badge warm">系统订单</span>
                         </div>
                       ) : null}
                       <div style={{ fontSize: 11, color: "#94a3b8" }}>
                         {formatTime(order.createdAt)}
                       </div>
                     </td>
-                    <td>
+                    <td data-label="金额">
                       <div style={{ fontWeight: 600 }}>
                         {order.currency === "CNY" ? "¥" : order.currency} {order.amount}
                       </div>
                     </td>
-                    <td>
+                    <td data-label="付款状态">
                       {isChainOrder ? (
                         <input
                           className="admin-input"
                           readOnly
                           value={order.paymentStatus || ""}
-                          title="链上订单状态由链上同步"
+                          title="订单状态由系统同步"
                         />
                       ) : (
                         <input
@@ -243,13 +270,13 @@ export default function OrdersPage() {
                         />
                       )}
                     </td>
-                    <td>
+                    <td data-label="流程状态">
                       <select
                         className="admin-select"
                         value={order.stage}
                         aria-label="订单阶段"
                         disabled={isChainOrder}
-                        title={isChainOrder ? "链上订单阶段由链上同步" : ""}
+                        title={isChainOrder ? "订单阶段由系统同步" : ""}
                         onChange={(event) => {
                           if (isChainOrder) return;
                           const nextStage = event.target.value as OrderStage;
@@ -268,7 +295,7 @@ export default function OrdersPage() {
                         ))}
                       </select>
                     </td>
-                    <td>
+                    <td data-label="派单">
                       <div style={{ display: "grid", gap: 6 }}>
                         <select
                           className="admin-select"
@@ -312,7 +339,7 @@ export default function OrdersPage() {
                         </div>
                       </div>
                     </td>
-                    <td>
+                    <td data-label="备注">
                       <input
                         className="admin-input"
                         placeholder="备注"
@@ -331,12 +358,12 @@ export default function OrdersPage() {
                         }
                       />
                     </td>
-                    <td>
+                    <td data-label="更新">
                       <span className="admin-badge neutral">
                         {saving[order.id] ? "保存中" : "已同步"}
                       </span>
                     </td>
-                    <td>
+                    <td data-label="详情">
                       <Link className="admin-btn ghost" href={`/admin/orders/${order.id}`}>
                         查看
                       </Link>
@@ -348,7 +375,7 @@ export default function OrdersPage() {
             </table>
           </div>
         )}
-        <div style={{ display: "flex", justifyContent: "space-between", marginTop: 16, alignItems: "center" }}>
+        <div className="admin-pagination">
           <button
             className="admin-btn ghost"
             disabled={page <= 1}

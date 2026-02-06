@@ -42,7 +42,7 @@ export default function RootPage() {
         <div className="dl-card" style={{ padding: 12, marginBottom: 14, border: "1px solid #fecdd3", background: "#fff1f2" }}>
           <div className="flex items-center gap-2 text-sm text-rose-600">
             <AlertTriangle size={16} />
-            <span>Passkey 仅在 HTTPS 或 localhost 下可用，请切换到安全域名再登录。</span>
+            <span>登录仅在 HTTPS 或 localhost 下可用，请切换到安全域名再登录。</span>
           </div>
         </div>
       )}
@@ -56,7 +56,7 @@ export default function RootPage() {
 
       <div className="login-passkey">
         <ShieldCheck size={16} style={{ verticalAlign: "middle", marginRight: 6 }} />
-        没账号？用 Passkey 一键注册/登录
+        没账号？一键注册/登录
       </div>
       <PasskeyLoginButton />
       <div style={{ textAlign: "center", marginTop: 18, fontSize: 13 }}>
@@ -65,7 +65,7 @@ export default function RootPage() {
             已完成验证？进入主页
           </Link>
         ) : (
-          <span style={{ color: "#6b7280" }}>请先完成 Passkey 登录</span>
+          <span style={{ color: "#6b7280" }}>请先完成登录</span>
         )}
       </div>
     </div>

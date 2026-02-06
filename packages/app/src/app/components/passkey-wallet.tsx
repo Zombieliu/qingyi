@@ -74,7 +74,7 @@ export default function PasskeyWallet() {
       const publicKey = keypair.getPublicKey();
       const address = publicKey.toSuiAddress();
       const stored: StoredWallet = { address, publicKey: toBase64(publicKey.toRawBytes()) };
-      persist(stored, "Passkey 钱包已创建");
+      persist(stored, "账号已创建");
     } catch (e) {
       setError((e as Error).message || "创建失败");
     } finally {
@@ -117,7 +117,7 @@ export default function PasskeyWallet() {
         address: pk.toSuiAddress(),
         publicKey: toBase64(pk.toRawBytes()),
       };
-      persist(stored, "已找回 Passkey 钱包");
+      persist(stored, "已找回账号");
     } catch (e) {
       setError((e as Error).message || "找回失败");
     } finally {
@@ -137,16 +137,15 @@ export default function PasskeyWallet() {
       <div className="flex items-center gap-3">
         <KeyRound className="text-amber-500" />
         <div>
-          <div className="text-sm font-semibold text-gray-900">Passkey 钱包</div>
-          <div className="text-xs text-gray-500">WebAuthn + Sui 地址（测试网）</div>
+          <div className="text-sm font-semibold text-gray-900">账号验证</div>
+          <div className="text-xs text-gray-500">用于安全登录与身份识别</div>
         </div>
       </div>
       {wallet ? (
         <div className="mt-3 space-y-2 text-xs text-gray-600">
-          <div>地址：{wallet.address}</div>
           <div className="flex gap-2 mt-2">
             <button onClick={login} disabled={busy} className="lc-tab-btn" style={{ padding: "6px 10px" }}>
-              {busy ? "校验中..." : "使用此钱包"}
+              {busy ? "校验中..." : "使用此账号"}
             </button>
             <button onClick={reset} className="lc-tab-btn" style={{ padding: "6px 10px" }}>
               清除本地缓存
@@ -160,7 +159,7 @@ export default function PasskeyWallet() {
           className="lc-tab-btn"
           style={{ marginTop: 8, padding: "10px 12px" }}
         >
-          {busy ? "创建中..." : "创建 Passkey 钱包"}
+          {busy ? "创建中..." : "创建账号"}
         </button>
       )}
       {!wallet && (
@@ -170,14 +169,14 @@ export default function PasskeyWallet() {
           className="lc-tab-btn"
           style={{ marginTop: 6, padding: "10px 12px", backgroundColor: "#f3f4f6", color: "#111827" }}
         >
-          {busy ? "恢复中..." : "找回已有钱包"}
+          {busy ? "恢复中..." : "找回已有账号"}
         </button>
       )}
       {msg && <div className="mt-2 text-xs text-emerald-600">{msg}</div>}
       {error && <div className="mt-2 text-xs text-rose-500">{error}</div>}
       {busy && (
         <div className="auth-overlay">
-          <div className="auth-overlay-box">Passkey 操作进行中，请完成系统弹窗…</div>
+          <div className="auth-overlay-box">账号验证进行中，请完成系统弹窗…</div>
         </div>
       )}
     </div>

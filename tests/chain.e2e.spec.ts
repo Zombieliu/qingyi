@@ -446,9 +446,9 @@ test.describe("chain e2e passkey", () => {
     log(`order ${orderId} status -> 已托管费用`);
 
     await page.goto("/showcase", { waitUntil: "domcontentloaded" });
-    await page.getByRole("button", { name: "刷新链上订单" }).click();
+    await page.getByRole("button", { name: "刷新订单" }).click();
 
-    const orderCard = page.locator(".dl-card", { hasText: `链上订单 #${orderId}` });
+    const orderCard = page.locator(".dl-card", { hasText: `订单 #${orderId}` });
     await expect(orderCard).toBeVisible({ timeout: 90_000 });
     await expect(orderCard.getByText(/状态：已(托管费用|支付撮合费)/)).toBeVisible({ timeout: 90_000 });
     await saveGuideShot(page, "06-chain-order.png");
@@ -461,7 +461,7 @@ test.describe("chain e2e passkey", () => {
     };
     await waitForStatusWithRetry(orderId, 2, depositAction, { attempts: 2, timeoutMs: 240_000, pollMs: 2_000 });
     log(`order ${orderId} status -> 押金已锁定`);
-    await page.getByRole("button", { name: "刷新链上订单" }).click();
+    await page.getByRole("button", { name: "刷新订单" }).click();
     await expect(orderCard.getByText("状态：押金已锁定")).toBeVisible({ timeout: 90_000 });
     await expect(orderCard.getByText(/游戏名/)).toBeVisible({ timeout: 90_000 });
     await expect(orderCard.getByRole("button", { name: "复制" })).toBeVisible({ timeout: 90_000 });
@@ -520,7 +520,7 @@ test.describe("chain e2e passkey", () => {
       while (Date.now() < deadline) {
         const errorText =
           (await page
-            .locator("text=/请先登录 Passkey 钱包|提交失败|请输入正确的提现数量|请填写收款账号/")
+            .locator("text=/请先登录账号|提交失败|请输入正确的提现数量|请填写收款账号/")
             .first()
             .textContent()
             .catch(() => "")) || "";
@@ -546,7 +546,7 @@ test.describe("chain e2e passkey", () => {
     await saveGuideShot(page, "12-mantou-withdraw.png");
 
     await page.goto("/showcase", { waitUntil: "domcontentloaded" });
-    await page.getByRole("button", { name: "刷新链上订单" }).click();
+    await page.getByRole("button", { name: "刷新订单" }).click();
 
     const completeBtn = orderCard.getByRole("button", { name: "确认完成" });
     const completeAction = async () => {
@@ -556,7 +556,7 @@ test.describe("chain e2e passkey", () => {
     };
     await waitForStatusWithRetry(orderId, 3, completeAction, { attempts: 2, timeoutMs: 240_000, pollMs: 5_000 });
     log(`order ${orderId} status -> 已完成待结算`);
-    await page.getByRole("button", { name: "刷新链上订单" }).click();
+    await page.getByRole("button", { name: "刷新订单" }).click();
     await expect(orderCard.getByText("状态：已完成待结算")).toBeVisible({ timeout: 90_000 });
     await saveGuideShot(page, "08-user-confirmed.png");
 
@@ -569,7 +569,7 @@ test.describe("chain e2e passkey", () => {
     await disputeModal.getByRole("button", { name: "提交争议" }).click();
     await waitForOrderStatus(orderId, 4, { timeoutMs: 240_000, pollMs: 5_000 });
     log(`order ${orderId} status -> 争议中`);
-    await page.getByRole("button", { name: "刷新链上订单" }).click();
+    await page.getByRole("button", { name: "刷新订单" }).click();
     await expect(orderCard.getByText("状态：争议中")).toBeVisible({ timeout: 90_000 });
     await saveGuideShot(page, "09-dispute-raised.png");
 
@@ -617,8 +617,8 @@ test.describe("chain e2e passkey", () => {
     log(`order ${orderId} status -> 已结算`);
 
     await page.goto("/showcase", { waitUntil: "domcontentloaded" });
-    await page.getByRole("button", { name: "刷新链上订单" }).click();
-    const settledCard = page.locator(".dl-card", { hasText: `链上订单 #${orderId}` });
+    await page.getByRole("button", { name: "刷新订单" }).click();
+    const settledCard = page.locator(".dl-card", { hasText: `订单 #${orderId}` });
     await expect(settledCard.getByText("状态：已结算")).toBeVisible({ timeout: 90_000 });
     await saveGuideShot(page, "11-settled.png");
     } finally {

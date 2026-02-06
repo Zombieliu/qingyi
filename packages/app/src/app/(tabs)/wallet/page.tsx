@@ -110,7 +110,7 @@ export default function Wallet() {
     setPayInfo(null);
     const address = getCurrentAddress();
     if (!address) {
-      setMsg("请先登录 Passkey 钱包以便入账");
+      setMsg("请先登录账号以便入账");
       setLoading(false);
       return;
     }

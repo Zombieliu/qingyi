@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { RefreshCw } from "lucide-react";
 import type { MantouWithdrawRequest, MantouWithdrawStatus } from "@/lib/admin-types";
 import { MANTOU_WITHDRAW_STATUS_OPTIONS } from "@/lib/admin-types";
+import { readCache, writeCache } from "@/app/components/client-cache";
 
 function formatTime(ts: number) {
   return new Date(ts).toLocaleString("zh-CN", {
@@ -22,6 +23,7 @@ export default function MantouWithdrawPage() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const pageSize = 20;
+  const cacheTtlMs = 60_000;
 
   const load = useCallback(
     async (nextPage: number) => {
@@ -31,18 +33,31 @@ export default function MantouWithdrawPage() {
         params.set("page", String(nextPage));
         params.set("pageSize", String(pageSize));
         if (statusFilter && statusFilter !== "全部") params.set("status", statusFilter);
+        const cacheKey = `cache:admin:mantou:withdraws:${params.toString()}`;
+        const cached = readCache<{ items: MantouWithdrawRequest[]; page?: number; totalPages?: number }>(
+          cacheKey,
+          cacheTtlMs,
+          true
+        );
+        if (cached) {
+          setRequests(Array.isArray(cached.value?.items) ? cached.value.items : []);
+          setPage(cached.value?.page || nextPage);
+          setTotalPages(cached.value?.totalPages || 1);
+        }
         const res = await fetch(`/api/admin/mantou/withdraws?${params.toString()}`);
         if (res.ok) {
           const data = await res.json();
-          setRequests(Array.isArray(data?.items) ? data.items : []);
+          const next = Array.isArray(data?.items) ? data.items : [];
+          setRequests(next);
           setPage(data?.page || nextPage);
           setTotalPages(data?.totalPages || 1);
+          writeCache(cacheKey, { items: next, page: data?.page || nextPage, totalPages: data?.totalPages || 1 });
         }
       } finally {
         setLoading(false);
       }
     },
-    [pageSize, statusFilter]
+    [cacheTtlMs, pageSize, statusFilter]
   );
 
   useEffect(() => {
@@ -59,7 +74,19 @@ export default function MantouWithdrawPage() {
       });
       if (res.ok) {
         const data = await res.json();
-        setRequests((prev) => prev.map((r) => (r.id === requestId ? data : r)));
+        setRequests((prev) => {
+          const next = prev.map((r) => (r.id === requestId ? data : r));
+          const params = new URLSearchParams();
+          params.set("page", String(page));
+          params.set("pageSize", String(pageSize));
+          if (statusFilter && statusFilter !== "全部") params.set("status", statusFilter);
+          writeCache(`cache:admin:mantou:withdraws:${params.toString()}`, {
+            items: next,
+            page,
+            totalPages,
+          });
+          return next;
+        });
       }
     } finally {
       setSaving((prev) => ({ ...prev, [requestId]: false }));
@@ -69,13 +96,8 @@ export default function MantouWithdrawPage() {
   return (
     <div className="admin-section">
       <div className="admin-card">
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center" }}>
-          <select
-            className="admin-select"
-            style={{ minWidth: 160 }}
-            value={statusFilter}
-            onChange={(event) => setStatusFilter(event.target.value)}
-          >
+        <div className="admin-toolbar">
+          <select className="admin-select" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
             <option value="全部">全部状态</option>
             {MANTOU_WITHDRAW_STATUS_OPTIONS.map((status) => (
               <option key={status} value={status}>
@@ -96,11 +118,11 @@ export default function MantouWithdrawPage() {
         ) : requests.length === 0 ? (
           <p>暂无提现申请</p>
         ) : (
-          <div style={{ overflowX: "auto" }}>
+          <div className="admin-table-wrap">
             <table className="admin-table">
               <thead>
                 <tr>
-                  <th>打手地址</th>
+                  <th>打手账号</th>
                   <th>数量</th>
                   <th>收款账号</th>
                   <th>状态</th>
@@ -112,14 +134,14 @@ export default function MantouWithdrawPage() {
               <tbody>
                 {requests.map((item) => (
                   <tr key={item.id}>
-                    <td>
+                    <td data-label="打手账号">
                       <div style={{ fontSize: 12, color: "#64748b" }}>{item.address}</div>
                     </td>
-                    <td>{item.amount}</td>
-                    <td>
+                    <td data-label="数量">{item.amount}</td>
+                    <td data-label="收款账号">
                       <div style={{ fontSize: 12, color: "#64748b" }}>{item.account || "-"}</div>
                     </td>
-                    <td>
+                    <td data-label="状态">
                       <select
                         className="admin-select"
                         value={item.status}
@@ -136,7 +158,7 @@ export default function MantouWithdrawPage() {
                         ))}
                       </select>
                     </td>
-                    <td>
+                    <td data-label="备注">
                       <input
                         className="admin-input"
                         placeholder="财务备注"
@@ -149,8 +171,8 @@ export default function MantouWithdrawPage() {
                         onBlur={(event) => updateRequest(item.id, item.status, event.target.value)}
                       />
                     </td>
-                    <td>{formatTime(item.createdAt)}</td>
-                    <td>
+                    <td data-label="时间">{formatTime(item.createdAt)}</td>
+                    <td data-label="操作">
                       <span className="admin-badge neutral">{saving[item.id] ? "保存中" : "已同步"}</span>
                     </td>
                   </tr>
@@ -159,7 +181,7 @@ export default function MantouWithdrawPage() {
             </table>
           </div>
         )}
-        <div style={{ display: "flex", justifyContent: "space-between", marginTop: 16, alignItems: "center" }}>
+        <div className="admin-pagination">
           <button
             className="admin-btn ghost"
             disabled={page <= 1}

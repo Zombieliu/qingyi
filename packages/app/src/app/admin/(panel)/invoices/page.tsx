@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { RefreshCw, Search } from "lucide-react";
 import type { AdminInvoiceRequest, InvoiceStatus } from "@/lib/admin-types";
 import { INVOICE_STATUS_OPTIONS } from "@/lib/admin-types";
+import { readCache, writeCache } from "@/app/components/client-cache";
 
 function formatTime(ts: number) {
   return new Date(ts).toLocaleString("zh-CN", {
@@ -23,6 +24,7 @@ export default function InvoicesPage() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const pageSize = 20;
+  const cacheTtlMs = 60_000;
 
   const load = useCallback(async (nextPage: number) => {
     setLoading(true);
@@ -32,17 +34,30 @@ export default function InvoicesPage() {
       params.set("pageSize", String(pageSize));
       if (statusFilter && statusFilter !== "全部") params.set("status", statusFilter);
       if (query.trim()) params.set("q", query.trim());
+      const cacheKey = `cache:admin:invoices:${params.toString()}`;
+      const cached = readCache<{ items: AdminInvoiceRequest[]; page?: number; totalPages?: number }>(
+        cacheKey,
+        cacheTtlMs,
+        true
+      );
+      if (cached) {
+        setRequests(Array.isArray(cached.value?.items) ? cached.value.items : []);
+        setPage(cached.value?.page || nextPage);
+        setTotalPages(cached.value?.totalPages || 1);
+      }
       const res = await fetch(`/api/admin/invoices?${params.toString()}`);
       if (res.ok) {
         const data = await res.json();
-        setRequests(Array.isArray(data?.items) ? data.items : []);
+        const next = Array.isArray(data?.items) ? data.items : [];
+        setRequests(next);
         setPage(data?.page || nextPage);
         setTotalPages(data?.totalPages || 1);
+        writeCache(cacheKey, { items: next, page: data?.page || nextPage, totalPages: data?.totalPages || 1 });
       }
     } finally {
       setLoading(false);
     }
-  }, [pageSize, query, statusFilter]);
+  }, [cacheTtlMs, pageSize, query, statusFilter]);
 
   useEffect(() => {
     const handle = setTimeout(() => load(1), 300);
@@ -63,7 +78,16 @@ export default function InvoicesPage() {
       });
       if (res.ok) {
         const data = await res.json();
-        setRequests((prev) => prev.map((r) => (r.id === requestId ? data : r)));
+        setRequests((prev) => {
+          const next = prev.map((r) => (r.id === requestId ? data : r));
+          const params = new URLSearchParams();
+          params.set("page", String(page));
+          params.set("pageSize", String(pageSize));
+          if (statusFilter && statusFilter !== "全部") params.set("status", statusFilter);
+          if (query.trim()) params.set("q", query.trim());
+          writeCache(`cache:admin:invoices:${params.toString()}`, { items: next, page, totalPages });
+          return next;
+        });
       }
     } finally {
       setSaving((prev) => ({ ...prev, [requestId]: false }));
@@ -73,8 +97,8 @@ export default function InvoicesPage() {
   return (
     <div className="admin-section">
       <div className="admin-card">
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center" }}>
-          <div style={{ flex: 1, minWidth: 220, position: "relative" }}>
+        <div className="admin-toolbar">
+          <div className="admin-toolbar-grow" style={{ position: "relative" }}>
             <Search
               size={16}
               style={{
@@ -93,12 +117,7 @@ export default function InvoicesPage() {
               onChange={(event) => setQuery(event.target.value)}
             />
           </div>
-          <select
-            className="admin-select"
-            style={{ minWidth: 160 }}
-            value={statusFilter}
-            onChange={(event) => setStatusFilter(event.target.value)}
-          >
+          <select className="admin-select" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
             <option value="全部">全部状态</option>
             {INVOICE_STATUS_OPTIONS.map((status) => (
               <option key={status} value={status}>
@@ -119,7 +138,7 @@ export default function InvoicesPage() {
         ) : requests.length === 0 ? (
           <p>暂无发票申请</p>
         ) : (
-          <div style={{ overflowX: "auto" }}>
+          <div className="admin-table-wrap">
             <table className="admin-table">
               <thead>
                 <tr>
@@ -136,19 +155,19 @@ export default function InvoicesPage() {
               <tbody>
                 {requests.map((item) => (
                   <tr key={item.id}>
-                    <td>
+                    <td data-label="抬头 / 税号">
                       <div style={{ fontWeight: 600 }}>{item.title || "-"}</div>
                       <div style={{ fontSize: 12, color: "#64748b" }}>{item.taxId || "-"}</div>
                     </td>
-                    <td>{typeof item.amount === "number" ? `¥${item.amount}` : "-"}</td>
-                    <td>
+                    <td data-label="金额">{typeof item.amount === "number" ? `¥${item.amount}` : "-"}</td>
+                    <td data-label="订单号">
                       <div style={{ fontSize: 12, color: "#64748b" }}>{item.orderId || "-"}</div>
                     </td>
-                    <td>
+                    <td data-label="联系方式">
                       <div style={{ fontSize: 12, color: "#64748b" }}>{item.email || "-"}</div>
                       <div style={{ fontSize: 12, color: "#64748b" }}>{item.contact || "-"}</div>
                     </td>
-                    <td>
+                    <td data-label="状态">
                       <select
                         className="admin-select"
                         value={item.status}
@@ -167,7 +186,7 @@ export default function InvoicesPage() {
                         ))}
                       </select>
                     </td>
-                    <td>
+                    <td data-label="备注">
                       <input
                         className="admin-input"
                         placeholder="财务备注"
@@ -180,8 +199,8 @@ export default function InvoicesPage() {
                         onBlur={(event) => updateRequest(item.id, { note: event.target.value })}
                       />
                     </td>
-                    <td>{formatTime(item.createdAt)}</td>
-                    <td>
+                    <td data-label="时间">{formatTime(item.createdAt)}</td>
+                    <td data-label="更新">
                       <span className="admin-badge neutral">{saving[item.id] ? "保存中" : "已同步"}</span>
                     </td>
                   </tr>
@@ -190,7 +209,7 @@ export default function InvoicesPage() {
             </table>
           </div>
         )}
-        <div style={{ display: "flex", justifyContent: "space-between", marginTop: 16, alignItems: "center" }}>
+        <div className="admin-pagination">
           <button
             className="admin-btn ghost"
             disabled={page <= 1}

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Megaphone, Pencil, PlusCircle, Trash2, Archive } from "lucide-react";
 import type { AdminAnnouncement, AnnouncementStatus } from "@/lib/admin-types";
 import { ANNOUNCEMENT_STATUS_OPTIONS } from "@/lib/admin-types";
+import { readCache, writeCache } from "@/app/components/client-cache";
 
 export default function AnnouncementsPage() {
   const [announcements, setAnnouncements] = useState<AdminAnnouncement[]>([]);
@@ -15,14 +16,22 @@ export default function AnnouncementsPage() {
     content: "",
     status: "draft" as AnnouncementStatus,
   });
+  const cacheTtlMs = 60_000;
 
   const loadAnnouncements = async () => {
     setLoading(true);
     try {
+      const cacheKey = "cache:admin:announcements";
+      const cached = readCache<AdminAnnouncement[]>(cacheKey, cacheTtlMs, true);
+      if (cached) {
+        setAnnouncements(Array.isArray(cached.value) ? cached.value : []);
+      }
       const res = await fetch("/api/admin/announcements");
       if (res.ok) {
         const data = await res.json();
-        setAnnouncements(Array.isArray(data) ? data : []);
+        const next = Array.isArray(data) ? data : [];
+        setAnnouncements(next);
+        writeCache(cacheKey, next);
       }
     } finally {
       setLoading(false);
@@ -54,7 +63,11 @@ export default function AnnouncementsPage() {
       });
       if (res.ok) {
         const data = await res.json();
-        setAnnouncements((prev) => prev.map((item) => (item.id === editingId ? data : item)));
+        setAnnouncements((prev) => {
+          const next = prev.map((item) => (item.id === editingId ? data : item));
+          writeCache("cache:admin:announcements", next);
+          return next;
+        });
         resetForm();
       }
     } else {
@@ -65,7 +78,11 @@ export default function AnnouncementsPage() {
       });
       if (res.ok) {
         const data = await res.json();
-        setAnnouncements((prev) => [data, ...prev]);
+        setAnnouncements((prev) => {
+          const next = [data, ...prev];
+          writeCache("cache:admin:announcements", next);
+          return next;
+        });
         resetForm();
       }
     }
@@ -89,7 +106,11 @@ export default function AnnouncementsPage() {
     });
     if (res.ok) {
       const data = await res.json();
-      setAnnouncements((prev) => prev.map((item) => (item.id === id ? data : item)));
+      setAnnouncements((prev) => {
+        const next = prev.map((item) => (item.id === id ? data : item));
+        writeCache("cache:admin:announcements", next);
+        return next;
+      });
     }
   };
 
@@ -97,7 +118,11 @@ export default function AnnouncementsPage() {
     if (!confirm("确定要删除该公告吗？")) return;
     const res = await fetch(`/api/admin/announcements/${id}`, { method: "DELETE" });
     if (res.ok) {
-      setAnnouncements((prev) => prev.filter((item) => item.id !== id));
+      setAnnouncements((prev) => {
+        const next = prev.filter((item) => item.id !== id);
+        writeCache("cache:admin:announcements", next);
+        return next;
+      });
     }
   };
 

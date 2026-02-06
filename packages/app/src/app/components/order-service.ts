@@ -1,6 +1,7 @@
 "use client";
 
 import { addOrder, loadOrders, removeOrder, updateOrder, type LocalOrder } from "./order-store";
+import { readCache, writeCache } from "./client-cache";
 import { getCurrentAddress, isChainOrdersEnabled } from "@/lib/qy-chain";
 
 const ORDER_SOURCE =
@@ -79,15 +80,22 @@ export async function fetchOrders(): Promise<LocalOrder[]> {
     return loadOrders();
   }
   const userAddress = resolveUserAddress();
+  const cacheKey = `cache:orders:${userAddress || "local"}`;
+  const cached = readCache<LocalOrder[]>(cacheKey, 60_000, true);
+  if (cached?.fresh) {
+    return cached.value;
+  }
   const params = new URLSearchParams();
   params.set("page", "1");
   params.set("pageSize", "50");
   if (userAddress) params.set("address", userAddress);
   const res = await fetch(`/api/orders?${params.toString()}`);
-  if (!res.ok) return [];
+  if (!res.ok) return cached?.value ?? [];
   const data = await res.json();
   const items = Array.isArray(data?.items) ? data.items : [];
-  return items.map((item: ServerOrder) => normalizeOrder(item));
+  const normalized = items.map((item: ServerOrder) => normalizeOrder(item));
+  writeCache(cacheKey, normalized);
+  return normalized;
 }
 
 export async function createOrder(

@@ -37,7 +37,7 @@ export default function LedgerPage() {
       if (!res.ok) {
         setError(data?.error || "写入失败");
       } else {
-        setResult(`已写入链上，digest: ${data?.digest || ""}`.trim());
+        setResult("已完成记账");
         setForm({ user: "", amount: "", receiptId: "", note: "" });
       }
     } catch {
@@ -50,11 +50,11 @@ export default function LedgerPage() {
   return (
     <div className="admin-section">
       <div className="admin-card">
-        <h3>链上记账（Dubhe）</h3>
-        <p>用于人工补记余额或对账后的链上记录写入。</p>
+        <h3>记账登记</h3>
+        <p>用于人工补记余额或对账后的记录写入。</p>
         <div className="admin-form" style={{ marginTop: 12 }}>
           <label className="admin-field">
-            用户地址
+            用户账号
             <input
               className="admin-input"
               placeholder="0x..."
@@ -92,7 +92,7 @@ export default function LedgerPage() {
         </div>
         <button className="admin-btn primary" style={{ marginTop: 16 }} onClick={submit} disabled={loading}>
           <Send size={16} style={{ marginRight: 6 }} />
-          {loading ? "提交中..." : "写入链上"}
+          {loading ? "提交中..." : "提交记账"}
         </button>
         {result ? (
           <div className="admin-badge" style={{ marginTop: 14 }}>

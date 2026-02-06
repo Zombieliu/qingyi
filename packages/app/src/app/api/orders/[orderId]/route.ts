@@ -73,7 +73,7 @@ export async function PATCH(req: Request, { params }: RouteContext) {
     if (body.meta && typeof body.meta === "object") patch.meta = body.meta;
 
     if (chainOrder && (patch.stage || patch.paymentStatus || patch.chainStatus)) {
-      return NextResponse.json({ error: "链上订单状态由链上同步，禁止手动修改" }, { status: 409 });
+      return NextResponse.json({ error: "订单状态由系统同步，禁止手动修改" }, { status: 409 });
     }
     if (patch.stage && !canTransitionStage(order.stage, patch.stage)) {
       return NextResponse.json({ error: "订单阶段不允许回退或跨越" }, { status: 409 });
@@ -100,7 +100,7 @@ export async function PATCH(req: Request, { params }: RouteContext) {
   if (typeof body.status === "string") {
     const stage = mapStatusToStage(body.status);
     if (chainOrder && stage) {
-      return NextResponse.json({ error: "链上订单状态由链上同步，禁止手动修改" }, { status: 409 });
+      return NextResponse.json({ error: "订单状态由系统同步，禁止手动修改" }, { status: 409 });
     }
     (patch.meta as Record<string, unknown>).status = body.status;
     if (!chainOrder && stage) patch.stage = stage as AdminOrder["stage"];
@@ -122,7 +122,7 @@ export async function DELETE(req: Request, { params }: RouteContext) {
   const order = await getOrderById(orderId);
   if (!order) return NextResponse.json({ error: "not found" }, { status: 404 });
   if (isChainOrder(order)) {
-    return NextResponse.json({ error: "链上订单状态由链上同步，禁止手动修改" }, { status: 409 });
+    return NextResponse.json({ error: "订单状态由系统同步，禁止手动修改" }, { status: 409 });
   }
   const updated = await updateOrder(orderId, { stage: "已取消" });
   if (!updated) return NextResponse.json({ error: "not found" }, { status: 404 });

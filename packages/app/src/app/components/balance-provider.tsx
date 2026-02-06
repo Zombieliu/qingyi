@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { getCurrentAddress } from "@/lib/qy-chain";
+import { readCache, writeCache } from "./client-cache";
 
 type BalanceContextValue = {
   balance: string;
@@ -18,12 +19,18 @@ const BalanceContext = createContext<BalanceContextValue>({
 export function BalanceProvider({ children }: { children: React.ReactNode }) {
   const [balance, setBalance] = useState("0");
   const [loading, setLoading] = useState(false);
+  const cacheTtlMs = 60_000;
 
   const refresh = useCallback(async () => {
     const address = getCurrentAddress();
     if (!address) {
       setBalance("0");
       return null;
+    }
+    const cacheKey = `cache:balance:${address}`;
+    const cached = readCache<string>(cacheKey, cacheTtlMs, true);
+    if (cached) {
+      setBalance(cached.value);
     }
     setLoading(true);
     try {
@@ -32,15 +39,17 @@ export function BalanceProvider({ children }: { children: React.ReactNode }) {
       if (data?.balance !== undefined) {
         const next = String(data.balance);
         setBalance(next);
+        writeCache(cacheKey, next);
         return next;
       }
       return null;
     } catch {
+      if (cached) return cached.value;
       return null;
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [cacheTtlMs]);
 
   useEffect(() => {
     refresh();

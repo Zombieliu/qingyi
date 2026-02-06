@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { getCurrentAddress } from "@/lib/qy-chain";
+import { readCache, writeCache } from "./client-cache";
 
 type MantouContextValue = {
   balance: string;
@@ -21,6 +22,7 @@ export function MantouProvider({ children }: { children: React.ReactNode }) {
   const [balance, setBalance] = useState("0");
   const [frozen, setFrozen] = useState("0");
   const [loading, setLoading] = useState(false);
+  const cacheTtlMs = 60_000;
 
   const refresh = useCallback(async () => {
     const address = getCurrentAddress();
@@ -28,6 +30,12 @@ export function MantouProvider({ children }: { children: React.ReactNode }) {
       setBalance("0");
       setFrozen("0");
       return null;
+    }
+    const cacheKey = `cache:mantou:${address}`;
+    const cached = readCache<{ balance: string; frozen: string }>(cacheKey, cacheTtlMs, true);
+    if (cached) {
+      setBalance(cached.value.balance);
+      setFrozen(cached.value.frozen);
     }
     setLoading(true);
     try {
@@ -38,15 +46,17 @@ export function MantouProvider({ children }: { children: React.ReactNode }) {
         const nextFrozen = String(data.frozen ?? "0");
         setBalance(nextBalance);
         setFrozen(nextFrozen);
+        writeCache(cacheKey, { balance: nextBalance, frozen: nextFrozen });
         return { balance: nextBalance, frozen: nextFrozen };
       }
       return null;
     } catch {
+      if (cached) return cached.value;
       return null;
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [cacheTtlMs]);
 
   useEffect(() => {
     refresh();

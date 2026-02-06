@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { RefreshCw, Search } from "lucide-react";
+import { readCache, writeCache } from "@/app/components/client-cache";
 
 type AuditLog = {
   id: string;
@@ -19,6 +20,7 @@ export default function AuditPage() {
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const cacheTtlMs = 60_000;
 
   const load = useCallback(async (nextPage: number) => {
     setLoading(true);
@@ -26,17 +28,26 @@ export default function AuditPage() {
       const params = new URLSearchParams();
       params.set("page", String(nextPage));
       if (query.trim()) params.set("q", query.trim());
+      const cacheKey = `cache:admin:audit:${params.toString()}`;
+      const cached = readCache<{ items: AuditLog[]; page?: number; totalPages?: number }>(cacheKey, cacheTtlMs, true);
+      if (cached) {
+        setLogs(Array.isArray(cached.value?.items) ? cached.value.items : []);
+        setPage(cached.value?.page || nextPage);
+        setTotalPages(cached.value?.totalPages || 1);
+      }
       const res = await fetch(`/api/admin/audit?${params.toString()}`);
       if (res.ok) {
         const data = await res.json();
-        setLogs(Array.isArray(data?.items) ? data.items : []);
+        const next = Array.isArray(data?.items) ? data.items : [];
+        setLogs(next);
         setPage(data?.page || nextPage);
         setTotalPages(data?.totalPages || 1);
+        writeCache(cacheKey, { items: next, page: data?.page || nextPage, totalPages: data?.totalPages || 1 });
       }
     } finally {
       setLoading(false);
     }
-  }, [query]);
+  }, [cacheTtlMs, query]);
 
   useEffect(() => {
     const handle = setTimeout(() => load(1), 300);
@@ -50,8 +61,8 @@ export default function AuditPage() {
   return (
     <div className="admin-section">
       <div className="admin-card">
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center" }}>
-          <div style={{ flex: 1, minWidth: 240, position: "relative" }}>
+        <div className="admin-toolbar">
+          <div className="admin-toolbar-grow" style={{ position: "relative" }}>
             <Search
               size={16}
               style={{
@@ -83,7 +94,7 @@ export default function AuditPage() {
         ) : logs.length === 0 ? (
           <p>暂无审计记录</p>
         ) : (
-          <div style={{ overflowX: "auto" }}>
+          <div className="admin-table-wrap">
             <table className="admin-table">
               <thead>
                 <tr>
@@ -97,18 +108,18 @@ export default function AuditPage() {
               <tbody>
                 {logs.map((log) => (
                   <tr key={log.id}>
-                    <td>{new Date(log.createdAt).toLocaleString()}</td>
-                    <td>{log.actorRole}</td>
-                    <td>{log.action}</td>
-                    <td>{log.targetType ? `${log.targetType}:${log.targetId || "-"}` : "-"}</td>
-                    <td>{log.ip || "-"}</td>
+                    <td data-label="时间">{new Date(log.createdAt).toLocaleString()}</td>
+                    <td data-label="角色">{log.actorRole}</td>
+                    <td data-label="操作">{log.action}</td>
+                    <td data-label="目标">{log.targetType ? `${log.targetType}:${log.targetId || "-"}` : "-"}</td>
+                    <td data-label="IP">{log.ip || "-"}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
         )}
-        <div style={{ display: "flex", justifyContent: "space-between", marginTop: 16, alignItems: "center" }}>
+        <div className="admin-pagination">
           <button className="admin-btn ghost" disabled={page <= 1} onClick={() => setPage((prev) => prev - 1)}>
             上一页
           </button>

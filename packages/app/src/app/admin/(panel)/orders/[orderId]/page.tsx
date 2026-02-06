@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import type { AdminOrder } from "@/lib/admin-types";
+import { readCache, writeCache } from "@/app/components/client-cache";
 
 export default function OrderDetailPage() {
   const params = useParams();
@@ -13,6 +14,7 @@ export default function OrderDetailPage() {
   const [order, setOrder] = useState<AdminOrder | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const cacheTtlMs = 60_000;
 
   useEffect(() => {
     if (!orderId) {
@@ -23,6 +25,11 @@ export default function OrderDetailPage() {
     const load = async () => {
       setLoading(true);
       try {
+        const cacheKey = `cache:admin:orders:${orderId}`;
+        const cached = readCache<AdminOrder>(cacheKey, cacheTtlMs, true);
+        if (cached) {
+          setOrder(cached.value);
+        }
         const res = await fetch(`/api/admin/orders/${orderId}`);
         if (!res.ok) {
           const data = await res.json().catch(() => ({}));
@@ -32,6 +39,7 @@ export default function OrderDetailPage() {
         }
         const data = (await res.json()) as AdminOrder;
         setOrder(data);
+        writeCache(cacheKey, data);
       } catch {
         setError("加载失败，请稍后重试");
       } finally {

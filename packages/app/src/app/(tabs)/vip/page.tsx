@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ArrowLeft, Crown, Shield } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { PASSKEY_STORAGE_KEY } from "@/app/components/passkey-wallet";
+import { readCache, writeCache } from "@/app/components/client-cache";
 import type { AdminMember, AdminMembershipTier } from "@/lib/admin-types";
 import { isVisualTestMode } from "@/lib/qy-chain";
 
@@ -34,6 +35,7 @@ export default function Vip() {
   const [contact, setContact] = useState("");
   const [hint, setHint] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const cacheTtlMs = 60_000;
 
   const walletAddress = useMemo(() => {
     if (typeof window === "undefined") return "";
@@ -53,17 +55,32 @@ export default function Vip() {
         return;
       }
       try {
+        const tiersCacheKey = "cache:vip:tiers";
+        const memberCacheKey = walletAddress ? `cache:vip:member:${walletAddress}` : "";
+        const cachedTiers = readCache<AdminMembershipTier[]>(tiersCacheKey, cacheTtlMs, true);
+        if (cachedTiers) {
+          setTiers(Array.isArray(cachedTiers.value) ? cachedTiers.value : []);
+        }
+        const cachedMember =
+          memberCacheKey && walletAddress ? readCache<AdminMember | null>(memberCacheKey, cacheTtlMs, true) : null;
+        if (cachedMember) {
+          setMember(cachedMember.value || null);
+        }
         const [tiersRes, memberRes] = await Promise.all([
           fetch("/api/vip/tiers"),
           walletAddress ? fetch(`/api/vip/status?userAddress=${walletAddress}`) : Promise.resolve(null),
         ]);
         if (tiersRes.ok) {
           const data = await tiersRes.json();
-          setTiers(Array.isArray(data) ? data : []);
+          const next = Array.isArray(data) ? data : [];
+          setTiers(next);
+          writeCache(tiersCacheKey, next);
         }
         if (memberRes && memberRes.ok) {
           const data = await memberRes.json();
-          setMember(data?.member || null);
+          const next = data?.member || null;
+          setMember(next);
+          if (memberCacheKey) writeCache(memberCacheKey, next);
         }
       } catch {
         // ignore
@@ -99,7 +116,7 @@ export default function Vip() {
 
   const handleRequest = async () => {
     if (!walletAddress) {
-      setHint("请先创建 Passkey 钱包后再申请会员");
+      setHint("请先完成登录后再申请会员");
       return;
     }
     if (!selectedTier) {

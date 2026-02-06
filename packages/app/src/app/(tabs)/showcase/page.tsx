@@ -51,7 +51,7 @@ export default function Showcase() {
       setChainOrders(list);
       setChainUpdatedAt(Date.now());
     } catch (e) {
-      setChainError((e as Error).message || "链上订单加载失败");
+      setChainError((e as Error).message || "订单加载失败");
     } finally {
       if (!visualTest) {
         setChainLoading(false);
@@ -66,7 +66,7 @@ export default function Showcase() {
       if (!chainLoading) {
         loadChain();
       }
-    }, 30_000);
+    }, 60_000);
     return () => window.clearInterval(timer);
   }, [chainLoading, loadChain]);
 
@@ -250,12 +250,12 @@ export default function Showcase() {
           await syncChainOrder(syncOrderId, getCurrentAddress());
           await refreshOrders();
         } catch (e) {
-          setChainToast(`链上已完成，但同步失败：${(e as Error).message || "未知错误"}`);
+          setChainToast(`订单已完成，但同步失败：${(e as Error).message || "未知错误"}`);
         }
       }
       return true;
     } catch (e) {
-      setChainToast((e as Error).message || "链上操作失败");
+      setChainToast((e as Error).message || "操作失败");
       return false;
     } finally {
       setChainAction(null);
@@ -276,7 +276,7 @@ export default function Showcase() {
       <header className="dl-topbar">
         <div className="dl-time">
           <span className="dl-time-text">接单大厅</span>
-          {isChainOrdersEnabled() ? <span className="dl-chip">链上 + 客户端</span> : <span className="dl-chip">客户端缓存</span>}
+          {isChainOrdersEnabled() ? <span className="dl-chip">系统 + 客户端</span> : <span className="dl-chip">客户端缓存</span>}
         </div>
         <div className="dl-actions">
           <span className="dl-icon-circle">
@@ -286,9 +286,9 @@ export default function Showcase() {
             <button
               className="dl-icon-circle"
               onClick={loadChain}
-              aria-label="刷新链上订单"
+              aria-label="刷新订单"
               disabled={chainLoading}
-              title={chainLoading ? "刷新中..." : "刷新链上订单"}
+              title={chainLoading ? "刷新中..." : "刷新订单"}
             >
               <span style={{ fontSize: 12 }}>链</span>
             </button>
@@ -302,14 +302,14 @@ export default function Showcase() {
       {isChainOrdersEnabled() && (
         <div className="space-y-3 mb-6">
           <div className="dl-card text-xs text-gray-500">
-            <div>链上订单（Passkey 地址：{chainAddress ? shortAddr(chainAddress) : "未登录"}）</div>
+            <div>订单（{chainAddress ? "已登录" : "未登录"}）</div>
             <div className="mt-1">上次刷新：{chainUpdatedAt ? new Date(chainUpdatedAt).toLocaleTimeString() : "-"}</div>
             {chainLoading && <div className="mt-1 text-amber-600">加载中…</div>}
             {chainError && <div className="mt-1 text-rose-500">{chainError}</div>}
             {chainToast && <div className="mt-1 text-emerald-600">{chainToast}</div>}
           </div>
           {visibleChainOrders.length === 0 && !chainLoading ? (
-            <div className="dl-card text-sm text-slate-500">暂无链上订单。</div>
+            <div className="dl-card text-sm text-slate-500">暂无订单。</div>
           ) : (
             <div className="space-y-3">
               {visibleChainOrders.map((o) => {
@@ -325,7 +325,7 @@ export default function Showcase() {
                 return (
                   <div key={`chain-${o.orderId}`} className="dl-card" style={{ padding: 14 }}>
                     <div className="flex items-center justify-between">
-                      <div className="text-sm font-semibold text-gray-900">链上订单 #{o.orderId}</div>
+                      <div className="text-sm font-semibold text-gray-900">订单 #{o.orderId}</div>
                       <div className="text-sm font-bold text-amber-600">¥{formatAmount(o.serviceFee)}</div>
                     </div>
                     <div className="mt-2 text-xs text-gray-500">
@@ -383,7 +383,7 @@ export default function Showcase() {
                             runChainAction(
                               `pay-${o.orderId}`,
                               () => payServiceFeeOnChain(o.orderId),
-                              "撮合费已上链",
+                              "撮合费已提交",
                               o.orderId
                             )
                           }
@@ -634,7 +634,7 @@ export default function Showcase() {
         </div>
       )}
       <div className="text-xs text-gray-500 mt-6">
-        订单来自服务端；链上订单以 Passkey 地址过滤展示并可执行押金/结算流程。
+        订单来自服务端；可执行押金/结算流程。
       </div>
     </div>
   );

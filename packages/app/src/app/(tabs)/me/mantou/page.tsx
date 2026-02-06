@@ -5,6 +5,7 @@ import { ArrowLeft, Wallet } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { getCurrentAddress } from "@/lib/qy-chain";
 import { useMantouBalance } from "@/app/components/mantou-provider";
+import { readCache, writeCache } from "@/app/components/client-cache";
 
 type WithdrawItem = {
   id: string;
@@ -32,6 +33,7 @@ export default function MantouPage() {
   const [msg, setMsg] = useState<string | null>(null);
   const [withdraws, setWithdraws] = useState<WithdrawItem[]>([]);
   const [transactions, setTransactions] = useState<TxItem[]>([]);
+  const cacheTtlMs = 60_000;
 
   const available = useMemo(() => Number(balance || 0), [balance]);
 
@@ -39,17 +41,31 @@ export default function MantouPage() {
     const load = async () => {
       const address = getCurrentAddress();
       if (!address) return;
+      const withdrawCacheKey = `cache:mantou:withdraw:${address}:page1`;
+      const txCacheKey = `cache:mantou:transactions:${address}:page1`;
+      const cachedWithdraw = readCache<WithdrawItem[]>(withdrawCacheKey, cacheTtlMs, true);
+      if (cachedWithdraw) {
+        setWithdraws(Array.isArray(cachedWithdraw.value) ? cachedWithdraw.value : []);
+      }
+      const cachedTx = readCache<TxItem[]>(txCacheKey, cacheTtlMs, true);
+      if (cachedTx) {
+        setTransactions(Array.isArray(cachedTx.value) ? cachedTx.value : []);
+      }
       const [withdrawRes, txRes] = await Promise.all([
         fetch(`/api/mantou/withdraw?address=${address}&page=1&pageSize=10`),
         fetch(`/api/mantou/transactions?address=${address}&page=1&pageSize=10`),
       ]);
       if (withdrawRes.ok) {
         const data = await withdrawRes.json();
-        setWithdraws(Array.isArray(data?.items) ? data.items : []);
+        const next = Array.isArray(data?.items) ? data.items : [];
+        setWithdraws(next);
+        writeCache(withdrawCacheKey, next);
       }
       if (txRes.ok) {
         const data = await txRes.json();
-        setTransactions(Array.isArray(data?.items) ? data.items : []);
+        const next = Array.isArray(data?.items) ? data.items : [];
+        setTransactions(next);
+        writeCache(txCacheKey, next);
       }
     };
     load();
@@ -59,7 +75,7 @@ export default function MantouPage() {
     if (submitting) return;
     const address = getCurrentAddress();
     if (!address) {
-      setMsg("请先登录 Passkey 钱包");
+      setMsg("请先登录账号");
       return;
     }
     if (!Number.isFinite(amount) || amount <= 0) {
@@ -89,7 +105,9 @@ export default function MantouPage() {
         const res = await fetch(`/api/mantou/withdraw?address=${address}&page=1&pageSize=10`);
         if (res.ok) {
           const data = await res.json();
-          setWithdraws(Array.isArray(data?.items) ? data.items : []);
+          const next = Array.isArray(data?.items) ? data.items : [];
+          setWithdraws(next);
+          writeCache(`cache:mantou:withdraw:${address}:page1`, next);
         }
       }
       setAmount(0);

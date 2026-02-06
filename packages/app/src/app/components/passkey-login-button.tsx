@@ -58,7 +58,7 @@ export default function PasskeyLoginButton() {
     const keypair = await PasskeyKeypair.getPasskeyInstance(new BrowserPasskeyProvider("情谊电竞", providerOpts));
     const publicKey = keypair.getPublicKey();
     const address = publicKey.toSuiAddress();
-    persist({ address, publicKey: toBase64(publicKey.toRawBytes()) }, "Passkey 已创建并登录");
+    persist({ address, publicKey: toBase64(publicKey.toRawBytes()) }, "账号已创建并登录");
     setHasWallet(true);
   };
 
@@ -71,7 +71,7 @@ export default function PasskeyLoginButton() {
 
       if (hasWallet) {
         const raw = localStorage.getItem(PASSKEY_STORAGE_KEY);
-        if (!raw) throw new Error("本地未找到 Passkey");
+        if (!raw) throw new Error("本地未找到账号信息");
         const stored = JSON.parse(raw) as StoredWallet;
         try {
           const keypair = new PasskeyKeypair(fromBase64(stored.publicKey), provider);
@@ -98,7 +98,7 @@ export default function PasskeyLoginButton() {
 
       await createPasskey();
     } catch (e) {
-      setToast((e as Error).message || "Passkey 登录失败");
+      setToast((e as Error).message || "登录失败");
     } finally {
       setLoading(false);
       setOverlay(false);
@@ -108,12 +108,12 @@ export default function PasskeyLoginButton() {
   return (
     <div style={{ textAlign: "center", marginTop: 12 }}>
       <button className="login-btn" onClick={handle} disabled={loading}>
-        {loading ? "处理中..." : hasWallet ? "使用 Passkey 一键登录" : "用 Passkey 注册并登录"}
+        {loading ? "处理中..." : hasWallet ? "一键登录" : "一键注册并登录"}
       </button>
       {toast && <div className="mt-2 text-sm text-emerald-600">{toast}</div>}
       {overlay && (
         <div className="auth-overlay">
-          <div className="auth-overlay-box">Passkey 调用中，请在系统弹窗中完成验证…</div>
+          <div className="auth-overlay-box">验证中，请在系统弹窗中完成操作…</div>
         </div>
       )}
     </div>

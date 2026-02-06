@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { ClipboardList, Megaphone, Users, Zap } from "lucide-react";
 import type { AdminOrder, AdminPlayer } from "@/lib/admin-types";
+import { readCache, writeCache } from "@/app/components/client-cache";
 
 interface AdminStats {
   totalOrders: number;
@@ -31,9 +32,25 @@ export default function AdminDashboard() {
   const [orders, setOrders] = useState<AdminOrder[]>([]);
   const [players, setPlayers] = useState<AdminPlayer[]>([]);
   const [loading, setLoading] = useState(true);
+  const cacheTtlMs = 60_000;
 
   useEffect(() => {
     const load = async () => {
+      const statsCacheKey = "cache:admin:stats";
+      const ordersCacheKey = "cache:admin:orders:recent";
+      const playersCacheKey = "cache:admin:players:recent";
+      const cachedStats = readCache<AdminStats>(statsCacheKey, cacheTtlMs, true);
+      if (cachedStats) {
+        setStats(cachedStats.value);
+      }
+      const cachedOrders = readCache<AdminOrder[]>(ordersCacheKey, cacheTtlMs, true);
+      if (cachedOrders) {
+        setOrders(Array.isArray(cachedOrders.value) ? cachedOrders.value : []);
+      }
+      const cachedPlayers = readCache<AdminPlayer[]>(playersCacheKey, cacheTtlMs, true);
+      if (cachedPlayers) {
+        setPlayers(Array.isArray(cachedPlayers.value) ? cachedPlayers.value : []);
+      }
       try {
         const [statsRes, ordersRes, playersRes] = await Promise.all([
           fetch("/api/admin/stats"),
@@ -43,14 +60,19 @@ export default function AdminDashboard() {
         if (statsRes.ok) {
           const data = await statsRes.json();
           setStats(data);
+          writeCache(statsCacheKey, data);
         }
         if (ordersRes.ok) {
           const data = await ordersRes.json();
-          setOrders(Array.isArray(data?.items) ? data.items : Array.isArray(data) ? data : []);
+          const next = Array.isArray(data?.items) ? data.items : Array.isArray(data) ? data : [];
+          setOrders(next);
+          writeCache(ordersCacheKey, next);
         }
         if (playersRes.ok) {
           const data = await playersRes.json();
-          setPlayers(Array.isArray(data) ? data : []);
+          const next = Array.isArray(data) ? data : [];
+          setPlayers(next);
+          writeCache(playersCacheKey, next);
         }
       } finally {
         setLoading(false);
@@ -95,31 +117,33 @@ export default function AdminDashboard() {
           ) : recentOrders.length === 0 ? (
             <p>暂无订单记录</p>
           ) : (
-            <table className="admin-table">
-              <thead>
-                <tr>
-                  <th>订单</th>
-                  <th>状态</th>
-                  <th>时间</th>
-                </tr>
-              </thead>
-              <tbody>
-                {recentOrders.map((order) => (
-                  <tr key={order.id}>
-                    <td>
-                      <div style={{ fontWeight: 600 }}>{order.user}</div>
-                      <div style={{ fontSize: 12, color: "#64748b" }}>{order.item}</div>
-                    </td>
-                    <td>
-                      <span className="admin-badge">
-                        {order.stage}
-                      </span>
-                    </td>
-                    <td style={{ fontSize: 12 }}>{formatTime(order.createdAt)}</td>
+            <div className="admin-table-wrap">
+              <table className="admin-table">
+                <thead>
+                  <tr>
+                    <th>订单</th>
+                    <th>状态</th>
+                    <th>时间</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {recentOrders.map((order) => (
+                    <tr key={order.id}>
+                      <td data-label="订单">
+                        <div style={{ fontWeight: 600 }}>{order.user}</div>
+                        <div style={{ fontSize: 12, color: "#64748b" }}>{order.item}</div>
+                      </td>
+                      <td data-label="状态">
+                        <span className="admin-badge">{order.stage}</span>
+                      </td>
+                      <td data-label="时间" style={{ fontSize: 12 }}>
+                        {formatTime(order.createdAt)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
           <Link href="/admin/orders" className="admin-btn ghost" style={{ marginTop: 12, display: "inline-flex" }}>
             <ClipboardList size={16} style={{ marginRight: 6 }} />
@@ -134,24 +158,26 @@ export default function AdminDashboard() {
           ) : activePlayers.length === 0 ? (
             <p>暂无打手档案</p>
           ) : (
-            <table className="admin-table">
-              <thead>
-                <tr>
-                  <th>名字</th>
-                  <th>状态</th>
-                </tr>
-              </thead>
-              <tbody>
-                {activePlayers.map((player) => (
-                  <tr key={player.id}>
-                    <td>{player.name}</td>
-                    <td>
-                      <span className="admin-badge neutral">{player.status}</span>
-                    </td>
+            <div className="admin-table-wrap">
+              <table className="admin-table">
+                <thead>
+                  <tr>
+                    <th>名字</th>
+                    <th>状态</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {activePlayers.map((player) => (
+                    <tr key={player.id}>
+                      <td data-label="名字">{player.name}</td>
+                      <td data-label="状态">
+                        <span className="admin-badge neutral">{player.status}</span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
           <Link href="/admin/players" className="admin-btn ghost" style={{ marginTop: 12, display: "inline-flex" }}>
             <Users size={16} style={{ marginRight: 6 }} />
@@ -172,7 +198,7 @@ export default function AdminDashboard() {
             </Link>
             <Link href="/admin/ledger" className="admin-chip">
               <ClipboardList size={14} />
-              链上记账登记
+              记账登记
             </Link>
           </div>
         </div>

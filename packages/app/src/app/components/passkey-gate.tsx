@@ -29,10 +29,10 @@ export default function PasskeyGate({ children }: { children: React.ReactNode })
   return (
     <div className="dl-main" style={{ padding: 16 }}>
       <div className="dl-card" style={{ padding: 18, marginBottom: 16 }}>
-        <div className="text-base font-semibold text-gray-900">需要 Passkey 登录</div>
+        <div className="text-base font-semibold text-gray-900">需要登录</div>
         <div className="text-sm text-gray-600 mt-2 leading-relaxed">
-          首次打开视为注册：创建 Passkey 即生成您的身份与钱包；更换设备请使用“找回已有钱包”。完成后自动解锁全站页面。
-          （Passkey 仅在 HTTPS 或 localhost 可用）
+          首次打开视为注册：创建账号即可完成身份验证；更换设备请使用“找回已有账号”。完成后自动解锁全站页面。
+          （登录仅在 HTTPS 或 localhost 可用）
         </div>
       </div>
       <PasskeyWallet />

@@ -3,7 +3,7 @@ import { Diamond, Gamepad2, Phone, ShieldCheck, User, Settings } from "lucide-re
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { PASSKEY_STORAGE_KEY } from "@/app/components/passkey-wallet";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import SettingsPanel from "@/app/components/settings-panel";
 import { useBalance } from "@/app/components/balance-provider";
 import { useMantouBalance } from "@/app/components/mantou-provider";
@@ -26,15 +26,16 @@ export default function Me() {
   const searchParams = useSearchParams();
   const { balance } = useBalance();
   const { balance: mantouBalance } = useMantouBalance();
-  const [wallet] = useState(() => {
-    if (typeof window === "undefined") return null;
+  const [walletAddress, setWalletAddress] = useState(() => {
+    if (typeof window === "undefined") return "";
     try {
       const raw = localStorage.getItem(PASSKEY_STORAGE_KEY);
-      return raw ? (JSON.parse(raw) as { address: string }) : null;
+      return raw ? (JSON.parse(raw) as { address?: string }).address || "" : "";
     } catch {
-      return null;
+      return "";
     }
   });
+  const [gameProfile, setGameProfile] = useState<{ gameName: string; gameId: string } | null>(null);
 
   const goWallet = () => router.push("/wallet");
   const goSettings = () => router.push("/me?settings=1");
@@ -47,6 +48,58 @@ export default function Me() {
   };
 
   const showSettings = searchParams?.get("settings") === "1";
+  const profileKey = walletAddress || "local";
+
+  useEffect(() => {
+    const loadProfile = () => {
+      if (typeof window === "undefined") return;
+      try {
+        const raw = localStorage.getItem("qy_game_profile_v1");
+        if (!raw) {
+          setGameProfile(null);
+          return;
+        }
+        const parsed = JSON.parse(raw) as Record<string, { gameName: string; gameId: string }>;
+        const profile = parsed[profileKey] || null;
+        setGameProfile(profile && profile.gameName && profile.gameId ? profile : null);
+      } catch {
+        setGameProfile(null);
+      }
+    };
+
+    const loadWallet = () => {
+      if (typeof window === "undefined") return;
+      try {
+        const raw = localStorage.getItem(PASSKEY_STORAGE_KEY);
+        setWalletAddress(raw ? (JSON.parse(raw) as { address?: string }).address || "" : "");
+      } catch {
+        setWalletAddress("");
+      }
+    };
+
+    loadWallet();
+    loadProfile();
+
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === PASSKEY_STORAGE_KEY) {
+        loadWallet();
+      }
+      if (event.key === "qy_game_profile_v1") {
+        loadProfile();
+      }
+    };
+    const handlePasskey = () => {
+      loadWallet();
+      loadProfile();
+    };
+
+    window.addEventListener("storage", handleStorage);
+    window.addEventListener("passkey-updated", handlePasskey);
+    return () => {
+      window.removeEventListener("storage", handleStorage);
+      window.removeEventListener("passkey-updated", handlePasskey);
+    };
+  }, [profileKey]);
 
   if (showSettings) {
     return <SettingsPanel onBack={closeSettings} onLogout={logout} />;
@@ -73,10 +126,12 @@ export default function Me() {
         <div className="dl-avatar" />
         <div className="dl-profile-info">
           <div className="dl-name-row">
-            <div className="dl-name">糕手玩玩</div>
+            <div className="dl-name">{gameProfile?.gameName || "未设置游戏名"}</div>
             <span className="dl-chip">个人主页</span>
           </div>
-          <div className="dl-id">{wallet ? `ID ${wallet.address}` : "请先用 Passkey 登录"}</div>
+          <div className="dl-id">
+            {gameProfile?.gameId ? `ID ${gameProfile.gameId}` : "请先在游戏设置填写"}
+          </div>
         </div>
         <button className="dl-edit">编辑</button>
         <div className="dl-stats">

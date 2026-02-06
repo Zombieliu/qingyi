@@ -41,7 +41,7 @@ export async function PATCH(
 
   const chainOrder = isChainOrder(current);
   if (chainOrder && (patch.stage || patch.paymentStatus)) {
-    return NextResponse.json({ error: "链上订单状态由链上同步，禁止手动修改" }, { status: 409 });
+    return NextResponse.json({ error: "订单状态由系统同步，禁止手动修改" }, { status: 409 });
   }
   if (patch.stage && !canTransitionStage(current.stage, patch.stage)) {
     return NextResponse.json({ error: "订单阶段不允许回退或跨越" }, { status: 409 });

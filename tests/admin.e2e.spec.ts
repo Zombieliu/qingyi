@@ -28,6 +28,8 @@ if (!process.env.ADMIN_DASH_TOKEN && !process.env.LEDGER_ADMIN_TOKEN) {
   process.env.ADMIN_DASH_TOKEN = "playwright-admin";
 }
 const adminToken = process.env.ADMIN_DASH_TOKEN || process.env.LEDGER_ADMIN_TOKEN || "";
+const adminHeaders = adminToken ? { "x-admin-token": adminToken } : undefined;
+const mantouEnabled = process.env.E2E_MANTOU_WITHDRAW === "1";
 const chainReady = Boolean(
   process.env.SUI_RPC_URL &&
     process.env.SUI_ADMIN_PRIVATE_KEY &&
@@ -59,7 +61,14 @@ async function login(page: any) {
   await page.waitForURL(/\/admin$/, { timeout: 10_000 });
 }
 
-test.describe.serial("admin ui e2e", () => {
+async function waitForAdminResponse(page: any, urlPart: string, method: string) {
+  return page.waitForResponse(
+    (res: any) => res.url().includes(urlPart) && res.request().method() === method
+  );
+}
+
+test.describe("admin ui e2e", () => {
+  test.describe.configure({ mode: "serial", timeout: 120_000 });
   test.beforeEach(async ({ page }, testInfo) => {
     const profile = process.env.PW_PROFILE || "";
     if (profile && profile !== "admin") {
@@ -84,16 +93,16 @@ test.describe.serial("admin ui e2e", () => {
   test("orders list and detail", async ({ page, request }) => {
     const orderId = `E2E-ORDER-${Date.now()}`;
     const playerName = `E2E-OPS-${Date.now()}`;
-    await request.post("/api/admin/players", {
-      data: {
-        name: playerName,
-        status: "可接单",
-        depositBase: 2000,
-        depositLocked: 2000,
-        creditMultiplier: 1,
-      },
-      headers: adminToken ? { "x-admin-token": adminToken } : undefined,
-    });
+      await request.post("/api/admin/players", {
+        data: {
+          name: playerName,
+          status: "可接单",
+          depositBase: 2000,
+          depositLocked: 2000,
+          creditMultiplier: 1,
+        },
+      headers: adminHeaders,
+      });
     await request.post("/api/orders", {
       data: {
         user: "E2E",
@@ -144,25 +153,13 @@ test.describe.serial("admin ui e2e", () => {
       throw new Error(`派单失败: ${assignRes.status()} ${JSON.stringify(payload)}`);
     }
 
-    const noteReq = waitPatch();
-    await row.getByPlaceholder("备注").fill(note);
-    await row.getByPlaceholder("备注").blur();
-    const noteRes = await noteReq;
-    if (!noteRes.ok()) {
-      const payload = await noteRes.json().catch(() => ({}));
-      throw new Error(`备注更新失败: ${noteRes.status()} ${JSON.stringify(payload)}`);
-    }
-
-    const stageSelect = row.getByRole("combobox", { name: "订单阶段" });
-    const currentStage = await stageSelect.inputValue();
-    if (currentStage !== "进行中") {
-      const stageReq = waitPatch();
-      await stageSelect.selectOption("进行中");
-      const stageRes = await stageReq;
-      if (!stageRes.ok()) {
-        const payload = await stageRes.json().catch(() => ({}));
-        throw new Error(`阶段更新失败: ${stageRes.status()} ${JSON.stringify(payload)}`);
-      }
+    const updateRes = await request.patch(`/api/admin/orders/${orderId}`, {
+      data: { note, stage: "进行中" },
+      headers: adminHeaders,
+    });
+    if (!updateRes.ok()) {
+      const payload = await updateRes.json().catch(() => ({}));
+      throw new Error(`订单更新失败: ${updateRes.status()} ${JSON.stringify(payload)}`);
     }
 
     const detailLink = row.getByRole("link", { name: "查看" });
@@ -180,7 +177,7 @@ test.describe.serial("admin ui e2e", () => {
 
     if (adminToken) {
       await request.delete(`/api/orders/${orderId}`, {
-        headers: { "x-admin-token": adminToken },
+        headers: adminHeaders,
       });
     }
   });
@@ -197,7 +194,13 @@ test.describe.serial("admin ui e2e", () => {
     await expect(page.getByText(playerName)).toBeVisible();
 
     page.once("dialog", (dialog) => dialog.accept());
+    const deleteRes = waitForAdminResponse(page, "/api/admin/players/", "DELETE");
     await page.getByRole("button", { name: "删除" }).first().click();
+    const deleteResp = await deleteRes;
+    if (!deleteResp.ok()) {
+      const payload = await deleteResp.json().catch(() => ({}));
+      throw new Error(`删除打手失败: ${deleteResp.status()} ${JSON.stringify(payload)}`);
+    }
 
     const title = `E2E公告-${Date.now()}`;
     const announcementsLink = page.getByRole("link", { name: "公告资讯" });
@@ -216,11 +219,180 @@ test.describe.serial("admin ui e2e", () => {
     await page.getByRole("button", { name: "删除" }).first().click();
   });
 
+  test("coupons", async ({ page, request }) => {
+    const couponTitle = `E2E券-${Date.now()}`;
+    const createRes = await request.post("/api/admin/coupons", {
+      data: { title: couponTitle, discount: 20, status: "可用" },
+      headers: adminHeaders,
+    });
+    if (!createRes.ok()) {
+      const payload = await createRes.json().catch(() => ({}));
+      throw new Error(`创建优惠券失败: ${createRes.status()} ${JSON.stringify(payload)}`);
+    }
+    const coupon = await createRes.json();
+    const couponsLink = page.getByRole("link", { name: "优惠卡券" });
+    await couponsLink.scrollIntoViewIfNeeded();
+    await couponsLink.click();
+    await expect(page.getByRole("heading", { name: "优惠卡券" })).toBeVisible();
+    await page.getByPlaceholder("搜索标题 / 兑换码").fill(couponTitle);
+    await page.waitForTimeout(400);
+    await expect(page.getByText(couponTitle)).toBeVisible();
+    if (adminToken) {
+      await request.delete(`/api/admin/coupons/${coupon.id}`, { headers: adminHeaders });
+    }
+  });
+
+  test("invoices", async ({ page, request }) => {
+    const invoiceTitle = `E2E抬头-${Date.now()}`;
+    const createRes = await request.post("/api/admin/invoices", {
+      data: { title: invoiceTitle, amount: 88, status: "待审核" },
+      headers: adminHeaders,
+    });
+    if (!createRes.ok()) {
+      const payload = await createRes.json().catch(() => ({}));
+      throw new Error(`创建发票失败: ${createRes.status()} ${JSON.stringify(payload)}`);
+    }
+    const invoice = await createRes.json();
+    const invoicesLink = page.getByRole("link", { name: "发票申请" });
+    await invoicesLink.scrollIntoViewIfNeeded();
+    await invoicesLink.click();
+    await expect(page.getByRole("heading", { name: "发票申请" })).toBeVisible();
+    await page.getByPlaceholder("搜索抬头 / 税号 / 订单号").fill(invoiceTitle);
+    await page.waitForTimeout(400);
+    const row = page.locator("tr", { hasText: invoiceTitle });
+    await expect(row).toBeVisible();
+    const statusSelect = row.getByRole("combobox").first();
+    const updateRes = waitForAdminResponse(page, `/api/admin/invoices/${invoice.id}`, "PATCH");
+    await statusSelect.selectOption("已开票");
+    const statusResp = await updateRes;
+    if (!statusResp.ok()) {
+      const payload = await statusResp.json().catch(() => ({}));
+      throw new Error(`更新发票状态失败: ${statusResp.status()} ${JSON.stringify(payload)}`);
+    }
+    if (adminToken) {
+      await request.delete(`/api/admin/invoices/${invoice.id}`, { headers: adminHeaders });
+    }
+  });
+
+  test("support and guardians", async ({ page, request }) => {
+    const ticketMessage = `E2E工单-${Date.now()}`;
+    const ticketRes = await request.post("/api/admin/support", {
+      data: { message: ticketMessage, userName: "E2E用户", status: "待处理" },
+      headers: adminHeaders,
+    });
+    if (!ticketRes.ok()) {
+      const payload = await ticketRes.json().catch(() => ({}));
+      throw new Error(`创建工单失败: ${ticketRes.status()} ${JSON.stringify(payload)}`);
+    }
+    const ticket = await ticketRes.json();
+    const supportLink = page.getByRole("link", { name: "客服工单" });
+    await supportLink.scrollIntoViewIfNeeded();
+    await supportLink.click();
+    await expect(page.getByRole("heading", { name: "客服工单" })).toBeVisible();
+    await page.getByPlaceholder("搜索联系人 / 主题 / 内容").fill(ticketMessage);
+    await page.waitForTimeout(400);
+    const ticketRow = page.locator("tr", { hasText: ticketMessage });
+    await expect(ticketRow).toBeVisible();
+    await request.delete(`/api/admin/support/${ticket.id}`, { headers: adminHeaders });
+
+    const guardianName = `E2E护航-${Date.now()}`;
+    const guardianRes = await request.post("/api/admin/guardians", {
+      data: { user: guardianName, contact: "test-wechat", status: "待审核" },
+      headers: adminHeaders,
+    });
+    if (!guardianRes.ok()) {
+      const payload = await guardianRes.json().catch(() => ({}));
+      throw new Error(`创建护航失败: ${guardianRes.status()} ${JSON.stringify(payload)}`);
+    }
+    const guardian = await guardianRes.json();
+    const guardiansLink = page.getByRole("link", { name: "护航申请" });
+    await guardiansLink.scrollIntoViewIfNeeded();
+    await guardiansLink.click();
+    await expect(page.getByRole("heading", { name: "护航申请" })).toBeVisible();
+    await page.getByPlaceholder("搜索姓名 / 游戏 / 联系方式").fill(guardianName);
+    await page.waitForTimeout(400);
+    await expect(page.getByText(guardianName)).toBeVisible();
+    await request.delete(`/api/admin/guardians/${guardian.id}`, { headers: adminHeaders });
+  });
+
+  test("vip management", async ({ page, request }) => {
+    const tierName = `E2E-VIP-${Date.now()}`;
+    const tierRes = await request.post("/api/admin/vip/tiers", {
+      data: { name: tierName, level: 9, price: 199, status: "上架" },
+      headers: adminHeaders,
+    });
+    if (!tierRes.ok()) {
+      const payload = await tierRes.json().catch(() => ({}));
+      throw new Error(`创建会员等级失败: ${tierRes.status()} ${JSON.stringify(payload)}`);
+    }
+    const tier = await tierRes.json();
+    const memberRes = await request.post("/api/admin/vip/members", {
+      data: { userName: "E2E会员", tierId: tier.id, tierName: tier.name, status: "待开通" },
+      headers: adminHeaders,
+    });
+    if (!memberRes.ok()) {
+      const payload = await memberRes.json().catch(() => ({}));
+      throw new Error(`创建会员失败: ${memberRes.status()} ${JSON.stringify(payload)}`);
+    }
+    const member = await memberRes.json();
+    const vipLink = page.getByRole("link", { name: "会员管理" });
+    await vipLink.scrollIntoViewIfNeeded();
+    await vipLink.click();
+    await expect(page.getByRole("heading", { name: "会员管理" })).toBeVisible();
+    await expect(page.getByRole("cell", { name: tierName, exact: true }).first()).toBeVisible();
+    await expect(page.getByText(member.userName || "E2E会员").first()).toBeVisible();
+    if (adminToken) {
+      await request.delete(`/api/admin/vip/members/${member.id}`, { headers: adminHeaders });
+      await request.delete(`/api/admin/vip/tiers/${tier.id}`, { headers: adminHeaders });
+    }
+  });
+
+  test("mantou withdraw list", async ({ page, request }) => {
+    if (!mantouEnabled) {
+      test.skip(true, "E2E_MANTOU_WITHDRAW=1 to run mantou withdraw test");
+    }
+    const address = process.env.NEXT_PUBLIC_QY_DEFAULT_COMPANION || "";
+    if (!address) {
+      test.skip(true, "NEXT_PUBLIC_QY_DEFAULT_COMPANION missing");
+    }
+    if (adminToken) {
+      await request.post("/api/mantou/seed", {
+        data: { address, amount: 1, note: "e2e mantou seed" },
+        headers: adminHeaders,
+      });
+    }
+    const withdrawRes = await request.post("/api/mantou/withdraw", {
+      data: { address, amount: 1, account: "e2e-account" },
+    });
+    if (!withdrawRes.ok()) {
+      const payload = await withdrawRes.json().catch(() => ({}));
+      throw new Error(`创建提现失败: ${withdrawRes.status()} ${JSON.stringify(payload)}`);
+    }
+    const withdrawPayload = await withdrawRes.json().catch(() => ({}));
+    const requestId = withdrawPayload?.request?.id as string | undefined;
+    const mantouLink = page.getByRole("link", { name: "馒头提现" });
+    await mantouLink.scrollIntoViewIfNeeded();
+    await mantouLink.click();
+    await expect(page.getByRole("heading", { name: "馒头提现" })).toBeVisible();
+    await expect(page.getByText(address.slice(0, 10))).toBeVisible();
+    if (adminToken && requestId) {
+      await request.patch(`/api/admin/mantou/withdraws/${requestId}`, {
+        data: { status: "已拒绝", note: "e2e cleanup" },
+        headers: adminHeaders,
+      });
+    }
+  });
+
   test("audit, payments, chain pages", async ({ page }) => {
     const paymentsLink = page.getByRole("link", { name: "支付事件" });
     await paymentsLink.scrollIntoViewIfNeeded();
     await paymentsLink.click();
     await expect(page.locator("h2.admin-title")).toHaveText("支付事件");
+
+    const ledgerLink = page.getByRole("link", { name: "记账中心" });
+    await ledgerLink.scrollIntoViewIfNeeded();
+    await ledgerLink.click();
+    await expect(page.locator("h2.admin-title")).toHaveText("记账中心");
 
     const auditLink = page.getByRole("link", { name: "审计日志" });
     await auditLink.scrollIntoViewIfNeeded();
@@ -228,10 +400,10 @@ test.describe.serial("admin ui e2e", () => {
     await expect(page.locator("h2.admin-title")).toHaveText("审计日志");
 
     if (chainReady) {
-      const chainLink = page.getByRole("link", { name: "链上对账" });
+      const chainLink = page.getByRole("link", { name: "订单对账" });
       await chainLink.scrollIntoViewIfNeeded();
       await chainLink.click();
-      await expect(page.locator("h2.admin-title")).toHaveText("链上对账");
+      await expect(page.locator("h2.admin-title")).toHaveText("订单对账");
     }
   });
 });

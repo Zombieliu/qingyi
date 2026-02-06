@@ -15,6 +15,7 @@ import {
   MEMBERSHIP_REQUEST_STATUS_OPTIONS,
   MEMBERSHIP_TIER_STATUS_OPTIONS,
 } from "@/lib/admin-types";
+import { readCache, writeCache } from "@/app/components/client-cache";
 
 function formatTime(ts: number) {
   return new Date(ts).toLocaleString("zh-CN", {
@@ -64,6 +65,7 @@ export default function VipAdminPage() {
   const [saving, setSaving] = useState<Record<string, boolean>>({});
   const [page, setPage] = useState(1);
   const pageSize = 20;
+  const cacheTtlMs = 60_000;
 
   const [form, setForm] = useState({
     name: "",
@@ -78,6 +80,19 @@ export default function VipAdminPage() {
   const [perksDraft, setPerksDraft] = useState<Record<string, string>>({});
 
   const loadTiers = useCallback(async () => {
+    const cacheKey = "cache:admin:vip:tiers";
+    const cached = readCache<AdminMembershipTier[]>(cacheKey, cacheTtlMs, true);
+    if (cached) {
+      const items = Array.isArray(cached.value) ? cached.value : [];
+      setTiers(items);
+      setPerksDraft((prev) => {
+        const next = { ...prev };
+        for (const item of items) {
+          next[item.id] = formatPerks(item.perks);
+        }
+        return next;
+      });
+    }
     const res = await fetch(`/api/admin/vip/tiers?page=1&pageSize=200`);
     if (res.ok) {
       const data = await res.json();
@@ -90,8 +105,9 @@ export default function VipAdminPage() {
         }
         return next;
       });
+      writeCache(cacheKey, items);
     }
-  }, []);
+  }, [cacheTtlMs]);
 
   const loadRequests = useCallback(async (nextPage: number) => {
     setLoading(true);
@@ -101,24 +117,39 @@ export default function VipAdminPage() {
       params.set("pageSize", String(pageSize));
       if (statusFilter && statusFilter !== "全部") params.set("status", statusFilter);
       if (query.trim()) params.set("q", query.trim());
+      const cacheKey = `cache:admin:vip:requests:${params.toString()}`;
+      const cached = readCache<{ items: AdminMembershipRequest[]; page?: number }>(cacheKey, cacheTtlMs, true);
+      if (cached) {
+        setRequests(Array.isArray(cached.value?.items) ? cached.value.items : []);
+        setPage(cached.value?.page || nextPage);
+      }
       const res = await fetch(`/api/admin/vip/requests?${params.toString()}`);
       if (res.ok) {
         const data = await res.json();
-        setRequests(Array.isArray(data?.items) ? data.items : []);
+        const next = Array.isArray(data?.items) ? data.items : [];
+        setRequests(next);
         setPage(data?.page || nextPage);
+        writeCache(cacheKey, { items: next, page: data?.page || nextPage });
       }
     } finally {
       setLoading(false);
     }
-  }, [pageSize, query, statusFilter]);
+  }, [cacheTtlMs, pageSize, query, statusFilter]);
 
   const loadMembers = useCallback(async () => {
+    const cacheKey = "cache:admin:vip:members";
+    const cached = readCache<AdminMember[]>(cacheKey, cacheTtlMs, true);
+    if (cached) {
+      setMembers(Array.isArray(cached.value) ? cached.value : []);
+    }
     const res = await fetch(`/api/admin/vip/members?page=1&pageSize=200`);
     if (res.ok) {
       const data = await res.json();
-      setMembers(Array.isArray(data?.items) ? data.items : []);
+      const next = Array.isArray(data?.items) ? data.items : [];
+      setMembers(next);
+      writeCache(cacheKey, next);
     }
-  }, []);
+  }, [cacheTtlMs]);
 
   useEffect(() => {
     loadTiers();
@@ -173,7 +204,11 @@ export default function VipAdminPage() {
       });
       if (res.ok) {
         const data = await res.json();
-        setTiers((prev) => prev.map((t) => (t.id === tierId ? data : t)));
+        setTiers((prev) => {
+          const next = prev.map((t) => (t.id === tierId ? data : t));
+          writeCache("cache:admin:vip:tiers", next);
+          return next;
+        });
       }
     } finally {
       setSaving((prev) => ({ ...prev, [tierId]: false }));
@@ -190,7 +225,16 @@ export default function VipAdminPage() {
       });
       if (res.ok) {
         const data = await res.json();
-        setRequests((prev) => prev.map((r) => (r.id === requestId ? data : r)));
+        setRequests((prev) => {
+          const next = prev.map((r) => (r.id === requestId ? data : r));
+          const params = new URLSearchParams();
+          params.set("page", String(page));
+          params.set("pageSize", String(pageSize));
+          if (statusFilter && statusFilter !== "全部") params.set("status", statusFilter);
+          if (query.trim()) params.set("q", query.trim());
+          writeCache(`cache:admin:vip:requests:${params.toString()}`, { items: next, page });
+          return next;
+        });
         await loadMembers();
       }
     } finally {
@@ -208,7 +252,11 @@ export default function VipAdminPage() {
       });
       if (res.ok) {
         const data = await res.json();
-        setMembers((prev) => prev.map((m) => (m.id === memberId ? data : m)));
+        setMembers((prev) => {
+          const next = prev.map((m) => (m.id === memberId ? data : m));
+          writeCache("cache:admin:vip:members", next);
+          return next;
+        });
       }
     } finally {
       setSaving((prev) => ({ ...prev, [memberId]: false }));
@@ -298,8 +346,8 @@ export default function VipAdminPage() {
       </div>
 
       <div className="admin-card">
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center" }}>
-          <div style={{ flex: 1, minWidth: 220, position: "relative" }}>
+        <div className="admin-toolbar">
+          <div className="admin-toolbar-grow" style={{ position: "relative" }}>
             <Search
               size={16}
               style={{
@@ -318,12 +366,7 @@ export default function VipAdminPage() {
               onChange={(event) => setQuery(event.target.value)}
             />
           </div>
-          <select
-            className="admin-select"
-            style={{ minWidth: 160 }}
-            value={statusFilter}
-            onChange={(event) => setStatusFilter(event.target.value)}
-          >
+          <select className="admin-select" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
             <option value="全部">全部申请状态</option>
             {MEMBERSHIP_REQUEST_STATUS_OPTIONS.map((status) => (
               <option key={status} value={status}>
@@ -343,7 +386,7 @@ export default function VipAdminPage() {
         {tiers.length === 0 ? (
           <p>暂无会员等级</p>
         ) : (
-          <div style={{ overflowX: "auto" }}>
+          <div className="admin-table-wrap">
             <table className="admin-table">
               <thead>
                 <tr>
@@ -359,11 +402,11 @@ export default function VipAdminPage() {
               <tbody>
                 {tiers.map((tier) => (
                   <tr key={tier.id}>
-                    <td>
+                    <td data-label="等级">
                       <div style={{ fontWeight: 600 }}>{tier.name}</div>
                       <div style={{ fontSize: 12, color: "#64748b" }}>Lv.{tier.level}</div>
                     </td>
-                    <td>
+                    <td data-label="价格">
                       <input
                         className="admin-input"
                         value={tier.price ?? ""}
@@ -383,7 +426,7 @@ export default function VipAdminPage() {
                         }
                       />
                     </td>
-                    <td>
+                    <td data-label="有效期">
                       <input
                         className="admin-input"
                         value={tier.durationDays ?? ""}
@@ -403,7 +446,7 @@ export default function VipAdminPage() {
                         }
                       />
                     </td>
-                    <td>
+                    <td data-label="成长值">
                       <input
                         className="admin-input"
                         value={tier.minPoints ?? ""}
@@ -423,7 +466,7 @@ export default function VipAdminPage() {
                         }
                       />
                     </td>
-                    <td>
+                    <td data-label="状态">
                       <select
                         className="admin-select"
                         value={tier.status}
@@ -442,7 +485,7 @@ export default function VipAdminPage() {
                         ))}
                       </select>
                     </td>
-                    <td>
+                    <td data-label="特权">
                       <textarea
                         className="admin-textarea"
                         value={perksDraft[tier.id] ?? ""}
@@ -452,7 +495,7 @@ export default function VipAdminPage() {
                         onBlur={(event) => updateTier(tier.id, { perks: parsePerks(event.target.value) })}
                       />
                     </td>
-                    <td>
+                    <td data-label="更新">
                       <span className="admin-badge neutral">{saving[tier.id] ? "保存中" : "已同步"}</span>
                     </td>
                   </tr>
@@ -470,7 +513,7 @@ export default function VipAdminPage() {
         ) : requests.length === 0 ? (
           <p>暂无会员申请</p>
         ) : (
-          <div style={{ overflowX: "auto" }}>
+          <div className="admin-table-wrap">
             <table className="admin-table">
               <thead>
                 <tr>
@@ -486,14 +529,16 @@ export default function VipAdminPage() {
               <tbody>
                 {requests.map((req) => (
                   <tr key={req.id}>
-                    <td>
+                    <td data-label="用户">
                       <div style={{ fontWeight: 600 }}>{req.userName || "访客"}</div>
                       <div style={{ fontSize: 12, color: "#64748b" }}>{req.userAddress || "-"}</div>
                       <div style={{ fontSize: 11, color: "#94a3b8" }}>{req.id}</div>
                     </td>
-                    <td>{req.tierName || "-"}</td>
-                    <td style={{ fontSize: 12, color: "#64748b" }}>{req.contact || "-"}</td>
-                    <td>
+                    <td data-label="等级">{req.tierName || "-"}</td>
+                    <td data-label="联系方式" style={{ fontSize: 12, color: "#64748b" }}>
+                      {req.contact || "-"}
+                    </td>
+                    <td data-label="状态">
                       <select
                         className="admin-select"
                         value={req.status}
@@ -512,7 +557,7 @@ export default function VipAdminPage() {
                         ))}
                       </select>
                     </td>
-                    <td>
+                    <td data-label="备注">
                       <input
                         className="admin-input"
                         placeholder="审核备注"
@@ -527,8 +572,8 @@ export default function VipAdminPage() {
                         onBlur={(event) => updateRequest(req.id, { note: event.target.value })}
                       />
                     </td>
-                    <td>{formatTime(req.createdAt)}</td>
-                    <td>
+                    <td data-label="时间">{formatTime(req.createdAt)}</td>
+                    <td data-label="更新">
                       <span className="admin-badge neutral">{saving[req.id] ? "保存中" : "已同步"}</span>
                     </td>
                   </tr>
@@ -544,7 +589,7 @@ export default function VipAdminPage() {
         {members.length === 0 ? (
           <p>暂无会员记录</p>
         ) : (
-          <div style={{ overflowX: "auto" }}>
+          <div className="admin-table-wrap">
             <table className="admin-table">
               <thead>
                 <tr>
@@ -560,12 +605,12 @@ export default function VipAdminPage() {
               <tbody>
                 {members.map((member) => (
                   <tr key={member.id}>
-                    <td>
+                    <td data-label="用户">
                       <div style={{ fontWeight: 600 }}>{member.userName || "-"}</div>
                       <div style={{ fontSize: 12, color: "#64748b" }}>{member.userAddress || "-"}</div>
                     </td>
-                    <td>{member.tierName || "-"}</td>
-                    <td>
+                    <td data-label="等级">{member.tierName || "-"}</td>
+                    <td data-label="成长值">
                       <input
                         className="admin-input"
                         value={member.points ?? ""}
@@ -585,7 +630,7 @@ export default function VipAdminPage() {
                         }
                       />
                     </td>
-                    <td>
+                    <td data-label="有效期">
                       <input
                         className="admin-input"
                         type="date"
@@ -606,7 +651,7 @@ export default function VipAdminPage() {
                         }
                       />
                     </td>
-                    <td>
+                    <td data-label="状态">
                       <select
                         className="admin-select"
                         value={member.status}
@@ -625,7 +670,7 @@ export default function VipAdminPage() {
                         ))}
                       </select>
                     </td>
-                    <td>
+                    <td data-label="备注">
                       <input
                         className="admin-input"
                         placeholder="备注"
@@ -640,7 +685,7 @@ export default function VipAdminPage() {
                         onBlur={(event) => updateMember(member.id, { note: event.target.value })}
                       />
                     </td>
-                    <td>
+                    <td data-label="更新">
                       <span className="admin-badge neutral">{saving[member.id] ? "保存中" : "已同步"}</span>
                     </td>
                   </tr>

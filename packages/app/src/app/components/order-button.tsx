@@ -82,7 +82,7 @@ export default function OrderButton({ user, item, amount, note }: Props) {
       if (result.sent === false) {
         setMsg(result.error || "订单已创建，通知失败");
       } else {
-        setMsg(chainDigest ? "已上链并同步到微信群" : "已同步到微信群");
+        setMsg(chainDigest ? "已提交并同步到微信群" : "已同步到微信群");
       }
     } catch (e) {
       setMsg((e as Error).message || "下单失败");

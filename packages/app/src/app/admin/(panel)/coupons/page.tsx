@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { PlusCircle, RefreshCw, Search } from "lucide-react";
 import type { AdminCoupon, CouponStatus } from "@/lib/admin-types";
 import { COUPON_STATUS_OPTIONS } from "@/lib/admin-types";
+import { readCache, writeCache } from "@/app/components/client-cache";
 
 function toDateInput(ts?: number | null) {
   if (!ts) return "";
@@ -19,6 +20,7 @@ export default function CouponsPage() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const pageSize = 20;
+  const cacheTtlMs = 60_000;
 
   const [form, setForm] = useState({
     title: "",
@@ -39,17 +41,26 @@ export default function CouponsPage() {
       params.set("pageSize", String(pageSize));
       if (statusFilter && statusFilter !== "全部") params.set("status", statusFilter);
       if (query.trim()) params.set("q", query.trim());
+      const cacheKey = `cache:admin:coupons:${params.toString()}`;
+      const cached = readCache<{ items: AdminCoupon[]; page?: number; totalPages?: number }>(cacheKey, cacheTtlMs, true);
+      if (cached) {
+        setCoupons(Array.isArray(cached.value?.items) ? cached.value.items : []);
+        setPage(cached.value?.page || nextPage);
+        setTotalPages(cached.value?.totalPages || 1);
+      }
       const res = await fetch(`/api/admin/coupons?${params.toString()}`);
       if (res.ok) {
         const data = await res.json();
-        setCoupons(Array.isArray(data?.items) ? data.items : []);
+        const next = Array.isArray(data?.items) ? data.items : [];
+        setCoupons(next);
         setPage(data?.page || nextPage);
         setTotalPages(data?.totalPages || 1);
+        writeCache(cacheKey, { items: next, page: data?.page || nextPage, totalPages: data?.totalPages || 1 });
       }
     } finally {
       setLoading(false);
     }
-  }, [pageSize, query, statusFilter]);
+  }, [cacheTtlMs, pageSize, query, statusFilter]);
 
   useEffect(() => {
     const handle = setTimeout(() => load(1), 300);
@@ -78,7 +89,16 @@ export default function CouponsPage() {
     });
     if (res.ok) {
       const data = await res.json();
-      setCoupons((prev) => [data, ...prev]);
+      setCoupons((prev) => {
+        const next = [data, ...prev];
+        const params = new URLSearchParams();
+        params.set("page", String(page));
+        params.set("pageSize", String(pageSize));
+        if (statusFilter && statusFilter !== "全部") params.set("status", statusFilter);
+        if (query.trim()) params.set("q", query.trim());
+        writeCache(`cache:admin:coupons:${params.toString()}`, { items: next, page, totalPages });
+        return next;
+      });
       setForm({
         title: "",
         code: "",
@@ -102,7 +122,16 @@ export default function CouponsPage() {
       });
       if (res.ok) {
         const data = await res.json();
-        setCoupons((prev) => prev.map((c) => (c.id === couponId ? data : c)));
+        setCoupons((prev) => {
+          const next = prev.map((c) => (c.id === couponId ? data : c));
+          const params = new URLSearchParams();
+          params.set("page", String(page));
+          params.set("pageSize", String(pageSize));
+          if (statusFilter && statusFilter !== "全部") params.set("status", statusFilter);
+          if (query.trim()) params.set("q", query.trim());
+          writeCache(`cache:admin:coupons:${params.toString()}`, { items: next, page, totalPages });
+          return next;
+        });
       }
     } finally {
       setSaving((prev) => ({ ...prev, [couponId]: false }));
@@ -204,8 +233,8 @@ export default function CouponsPage() {
       </div>
 
       <div className="admin-card">
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center" }}>
-          <div style={{ flex: 1, minWidth: 220, position: "relative" }}>
+        <div className="admin-toolbar">
+          <div className="admin-toolbar-grow" style={{ position: "relative" }}>
             <Search
               size={16}
               style={{
@@ -224,12 +253,7 @@ export default function CouponsPage() {
               onChange={(event) => setQuery(event.target.value)}
             />
           </div>
-          <select
-            className="admin-select"
-            style={{ minWidth: 160 }}
-            value={statusFilter}
-            onChange={(event) => setStatusFilter(event.target.value)}
-          >
+          <select className="admin-select" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
             <option value="全部">全部状态</option>
             {COUPON_STATUS_OPTIONS.map((status) => (
               <option key={status} value={status}>
@@ -251,7 +275,7 @@ export default function CouponsPage() {
         ) : coupons.length === 0 ? (
           <p>暂无优惠券</p>
         ) : (
-          <div style={{ overflowX: "auto" }}>
+          <div className="admin-table-wrap">
             <table className="admin-table">
               <thead>
                 <tr>
@@ -267,11 +291,11 @@ export default function CouponsPage() {
               <tbody>
                 {coupons.map((coupon) => (
                   <tr key={coupon.id}>
-                    <td>
+                    <td data-label="标题">
                       <div style={{ fontWeight: 600 }}>{coupon.title}</div>
                       <div style={{ fontSize: 12, color: "#64748b" }}>{coupon.code || "-"}</div>
                     </td>
-                    <td>
+                    <td data-label="金额">
                       <input
                         className="admin-input"
                         value={coupon.discount ?? ""}
@@ -291,7 +315,7 @@ export default function CouponsPage() {
                         }
                       />
                     </td>
-                    <td>
+                    <td data-label="最低消费">
                       <input
                         className="admin-input"
                         value={coupon.minSpend ?? ""}
@@ -311,7 +335,7 @@ export default function CouponsPage() {
                         }
                       />
                     </td>
-                    <td>
+                    <td data-label="状态">
                       <select
                         className="admin-select"
                         value={coupon.status}
@@ -332,7 +356,7 @@ export default function CouponsPage() {
                         ))}
                       </select>
                     </td>
-                    <td>
+                    <td data-label="有效期">
                       <input
                         className="admin-input"
                         type="date"
@@ -375,7 +399,7 @@ export default function CouponsPage() {
                         style={{ marginTop: 6 }}
                       />
                     </td>
-                    <td>
+                    <td data-label="说明">
                       <input
                         className="admin-input"
                         value={coupon.description || ""}
@@ -389,7 +413,7 @@ export default function CouponsPage() {
                         onBlur={(event) => updateCoupon(coupon.id, { description: event.target.value })}
                       />
                     </td>
-                    <td>
+                    <td data-label="更新">
                       <span className="admin-badge neutral">
                         {saving[coupon.id] ? "保存中" : "已同步"}
                       </span>
@@ -400,7 +424,7 @@ export default function CouponsPage() {
             </table>
           </div>
         )}
-        <div style={{ display: "flex", justifyContent: "space-between", marginTop: 16, alignItems: "center" }}>
+        <div className="admin-pagination">
           <button
             className="admin-btn ghost"
             disabled={page <= 1}

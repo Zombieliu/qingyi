@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Clock3, ShieldCheck, QrCode, Loader2, CheckCircle2 } from "lucide-react";
 import { type LocalOrder } from "@/app/components/order-store";
 import { createOrder, deleteOrder, fetchOrders, patchOrder, syncChainOrder } from "@/app/components/order-service";
+import { readCache, writeCache } from "@/app/components/client-cache";
 import {
   type ChainOrder,
   cancelOrderOnChain,
@@ -159,6 +160,7 @@ export default function Schedule() {
   const [playersLoading, setPlayersLoading] = useState(false);
   const [playersError, setPlayersError] = useState<string | null>(null);
   const [selectedPlayerId, setSelectedPlayerId] = useState<string>("");
+  const cacheTtlMs = 60_000;
 
   const MATCH_RATE = 0.15;
 
@@ -178,14 +180,21 @@ export default function Schedule() {
       setVipTier(null);
       return;
     }
+    const vipCacheKey = `cache:vip:status:${addr}`;
+    const cachedVip = readCache<{ tier?: { level?: number; name?: string } }>(vipCacheKey, cacheTtlMs, true);
+    if (cachedVip?.value?.tier) {
+      setVipTier({ level: cachedVip.value.tier.level, name: cachedVip.value.tier.name });
+    }
     setVipLoading(true);
     try {
       const res = await fetch(`/api/vip/status?userAddress=${addr}`);
       const data = await res.json();
       if (data?.tier) {
         setVipTier({ level: data.tier.level, name: data.tier.name });
+        writeCache(vipCacheKey, { tier: data.tier });
       } else {
         setVipTier(null);
+        writeCache(vipCacheKey, { tier: null });
       }
     } catch {
       // ignore vip errors
@@ -214,7 +223,7 @@ export default function Schedule() {
       setChainOrders(list);
       setChainUpdatedAt(Date.now());
     } catch (e) {
-      setChainError((e as Error).message || "链上订单加载失败");
+      setChainError((e as Error).message || "订单加载失败");
     } finally {
       if (!visualTest) {
         setChainLoading(false);
@@ -236,13 +245,20 @@ export default function Schedule() {
   const loadPlayers = async () => {
     setPlayersLoading(true);
     setPlayersError(null);
+    const cacheKey = "cache:players:public";
+    const cached = readCache<PublicPlayer[]>(cacheKey, cacheTtlMs, true);
+    if (cached) {
+      setPlayers(Array.isArray(cached.value) ? cached.value : []);
+    }
     try {
       const res = await fetch("/api/players");
       if (!res.ok) {
         throw new Error("加载失败");
       }
       const data = await res.json();
-      setPlayers(Array.isArray(data) ? data : []);
+      const next = Array.isArray(data) ? data : [];
+      setPlayers(next);
+      writeCache(cacheKey, next);
     } catch (e) {
       setPlayersError((e as Error).message || "加载打手失败");
     } finally {
@@ -367,12 +383,12 @@ export default function Schedule() {
           await syncChainOrder(syncOrderId, getCurrentAddress());
           await refreshOrders();
         } catch (e) {
-          setChainToast(`链上已完成，但同步失败：${(e as Error).message || "未知错误"}`);
+          setChainToast(`订单已完成，但同步失败：${(e as Error).message || "未知错误"}`);
         }
       }
       return true;
     } catch (e) {
-      setChainToast((e as Error).message || "链上操作失败");
+      setChainToast((e as Error).message || "操作失败");
       return false;
     } finally {
       setChainAction(null);
@@ -413,13 +429,20 @@ export default function Schedule() {
   const refreshBalance = async () => {
     const addr = getCurrentAddress();
     if (!addr) return;
+    const cacheKey = `cache:diamond-balance:${addr}`;
+    const cached = readCache<string>(cacheKey, cacheTtlMs, true);
+    if (cached) {
+      setDiamondBalance(cached.value);
+    }
     setBalanceLoading(true);
     setBalanceReady(false);
     try {
       const res = await fetch(`/api/ledger/balance?address=${addr}`);
       const data = await res.json();
       if (data?.balance !== undefined) {
-        setDiamondBalance(String(data.balance));
+        const next = String(data.balance);
+        setDiamondBalance(next);
+        writeCache(cacheKey, next);
         setBalanceReady(true);
       }
     } catch {
@@ -444,7 +467,7 @@ export default function Schedule() {
     if (!balanceReady) return;
     const addr = getCurrentAddress();
     if (!addr) {
-      setToast("请先登录 Passkey 钱包以便扣减钻石");
+      setToast("请先登录账号以便扣减钻石");
       return;
     }
     if (!hasEnoughDiamonds && !redirectRef.current) {
@@ -587,7 +610,7 @@ export default function Schedule() {
       if (isChainOrdersEnabled()) {
         const addr = getCurrentAddress();
         if (!addr) {
-          throw new Error("请先登录 Passkey 钱包以便扣减钻石");
+          throw new Error("请先登录账号以便扣减钻石");
         }
         if (!hasEnoughDiamonds) {
           throw new Error("钻石余额不足");
@@ -652,7 +675,7 @@ export default function Schedule() {
       if (result.sent === false) {
         setToast(result.error || "订单已创建，通知失败");
       } else {
-        setToast(chainDigest ? "已上链并派单" : "托管费用已记录，正在派单");
+        setToast(chainDigest ? "已提交并派单" : "托管费用已记录，正在派单");
       }
     } catch (e) {
       setToast((e as Error).message);
@@ -667,7 +690,7 @@ export default function Schedule() {
       {isChainOrdersEnabled() && (
         <div className="dl-card" style={{ marginBottom: 12 }}>
           <div className="flex items-center justify-between">
-            <div className="text-sm font-semibold text-gray-900">链上订单状态</div>
+            <div className="text-sm font-semibold text-gray-900">订单状态</div>
             <button
               className="dl-tab-btn"
               style={{ padding: "6px 10px" }}
@@ -678,7 +701,7 @@ export default function Schedule() {
             </button>
           </div>
           <div className="text-xs text-gray-500 mt-2">
-            当前地址：{chainAddress ? `${chainAddress.slice(0, 6)}...${chainAddress.slice(-4)}` : "未登录"}
+            当前账号：{chainAddress ? "已登录" : "未登录"}
           </div>
           <div className="text-xs text-gray-500 mt-1">
             上次刷新：{chainUpdatedAt ? new Date(chainUpdatedAt).toLocaleTimeString() : "-"}
@@ -686,7 +709,7 @@ export default function Schedule() {
           {chainError && <div className="mt-2 text-xs text-rose-500">{chainError}</div>}
           {chainToast && <div className="mt-2 text-xs text-emerald-600">{chainToast}</div>}
           {!chainCurrentOrder ? (
-            <div className="mt-2 text-xs text-gray-500">暂无链上订单</div>
+            <div className="mt-2 text-xs text-gray-500">暂无订单</div>
           ) : (
             <div className="mt-3 text-xs text-gray-600">
               <div>订单号：{chainCurrentOrder.orderId}</div>
@@ -704,7 +727,7 @@ export default function Schedule() {
                       runChainAction(
                         `pay-${chainCurrentOrder.orderId}`,
                         () => payServiceFeeOnChain(chainCurrentOrder.orderId),
-                        "托管费已上链",
+                        "托管费已提交",
                         chainCurrentOrder.orderId
                       )
                     }

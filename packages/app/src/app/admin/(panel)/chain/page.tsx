@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { RefreshCw } from "lucide-react";
+import { readCache, writeCache } from "@/app/components/client-cache";
 
 type ChainOrder = {
   orderId: string;
@@ -22,11 +23,23 @@ export default function ChainPage() {
   const [error, setError] = useState("");
   const [action, setAction] = useState<string | null>(null);
   const [bps, setBps] = useState<Record<string, { service: string; deposit: string }>>({});
+  const cacheTtlMs = 60_000;
 
   const loadData = async () => {
     setLoading(true);
     setError("");
     try {
+      const cacheKey = "cache:admin:reconcile";
+      const cached = readCache<{
+        chainOrders: ChainOrder[];
+        missingLocal: ChainOrder[];
+        missingChain: Array<{ id: string; user: string; item: string }>;
+      }>(cacheKey, cacheTtlMs, true);
+      if (cached) {
+        setChainOrders(Array.isArray(cached.value?.chainOrders) ? cached.value.chainOrders : []);
+        setMissingLocal(Array.isArray(cached.value?.missingLocal) ? cached.value.missingLocal : []);
+        setMissingChain(Array.isArray(cached.value?.missingChain) ? cached.value.missingChain : []);
+      }
       const res = await fetch("/api/admin/chain/orders");
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
@@ -34,9 +47,17 @@ export default function ChainPage() {
         return;
       }
       const data = await res.json();
-      setChainOrders(Array.isArray(data?.chainOrders) ? data.chainOrders : []);
-      setMissingLocal(Array.isArray(data?.missingLocal) ? data.missingLocal : []);
-      setMissingChain(Array.isArray(data?.missingChain) ? data.missingChain : []);
+      const nextChain = Array.isArray(data?.chainOrders) ? data.chainOrders : [];
+      const nextMissingLocal = Array.isArray(data?.missingLocal) ? data.missingLocal : [];
+      const nextMissingChain = Array.isArray(data?.missingChain) ? data.missingChain : [];
+      setChainOrders(nextChain);
+      setMissingLocal(nextMissingLocal);
+      setMissingChain(nextMissingChain);
+      writeCache(cacheKey, {
+        chainOrders: nextChain,
+        missingLocal: nextMissingLocal,
+        missingChain: nextMissingChain,
+      });
     } catch {
       setError("网络错误，请稍后再试");
     } finally {
@@ -107,10 +128,10 @@ export default function ChainPage() {
   return (
     <div className="admin-section">
       <div className="admin-card">
-        <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+        <div className="admin-toolbar" style={{ justifyContent: "space-between" }}>
           <div>
-            <h3>链上订单对账</h3>
-            <p>对比链上订单与后台订单记录，处理争议裁决。</p>
+            <h3>订单对账</h3>
+            <p>对比订单记录与对账数据，处理争议裁决。</p>
           </div>
           <button className="admin-btn ghost" onClick={loadData} disabled={loading}>
             <RefreshCw size={16} style={{ marginRight: 6 }} />
@@ -125,7 +146,7 @@ export default function ChainPage() {
       </div>
 
       <div className="admin-card">
-        <h3>链上争议订单</h3>
+        <h3>争议订单</h3>
         {loading ? (
           <p>加载中...</p>
         ) : disputedOrders.length === 0 ? (
@@ -134,7 +155,7 @@ export default function ChainPage() {
           <div style={{ display: "grid", gap: 12 }}>
             {disputedOrders.map((order) => (
               <div key={order.orderId} className="admin-card" style={{ boxShadow: "none" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
                   <div>
                     <div style={{ fontWeight: 600 }}>订单 #{order.orderId}</div>
                     <div style={{ fontSize: 12, color: "#64748b" }}>
@@ -189,13 +210,13 @@ export default function ChainPage() {
       </div>
 
       <div className="admin-card">
-        <h3>链上订单列表</h3>
+        <h3>订单列表</h3>
         {loading ? (
           <p>加载中...</p>
         ) : chainOrders.length === 0 ? (
-          <p>暂无链上订单</p>
+          <p>暂无订单</p>
         ) : (
-          <div style={{ overflowX: "auto" }}>
+          <div className="admin-table-wrap">
             <table className="admin-table">
               <thead>
                 <tr>
@@ -209,11 +230,11 @@ export default function ChainPage() {
               <tbody>
                 {chainOrders.map((order) => (
                   <tr key={order.orderId}>
-                    <td>{order.orderId}</td>
-                    <td>{statusLabel(order.status)}</td>
-                    <td>¥{formatAmount(order.serviceFee)}</td>
-                    <td>¥{formatAmount(order.deposit)}</td>
-                    <td>
+                    <td data-label="订单号">{order.orderId}</td>
+                    <td data-label="状态">{statusLabel(order.status)}</td>
+                    <td data-label="撮合费">¥{formatAmount(order.serviceFee)}</td>
+                    <td data-label="押金">¥{formatAmount(order.deposit)}</td>
+                    <td data-label="争议截止">
                       {Number(order.disputeDeadline) > 0
                         ? new Date(Number(order.disputeDeadline)).toLocaleString()
                         : "-"}
@@ -233,7 +254,7 @@ export default function ChainPage() {
         ) : (
           <div style={{ display: "grid", gap: 12 }}>
             <div>
-              <strong>链上存在但本地缺失：</strong>
+              <strong>对账侧存在但本地缺失：</strong>
               {missingLocal.length === 0 ? (
                 <span> 无</span>
               ) : (
@@ -241,7 +262,7 @@ export default function ChainPage() {
               )}
             </div>
             <div>
-              <strong>本地存在但链上缺失：</strong>
+              <strong>本地存在但对账侧缺失：</strong>
               {missingChain.length === 0 ? (
                 <span> 无</span>
               ) : (

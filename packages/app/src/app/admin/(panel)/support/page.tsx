@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { RefreshCw, Search } from "lucide-react";
 import type { AdminSupportTicket, SupportStatus } from "@/lib/admin-types";
 import { SUPPORT_STATUS_OPTIONS } from "@/lib/admin-types";
+import { readCache, writeCache } from "@/app/components/client-cache";
 
 function formatTime(ts: number) {
   return new Date(ts).toLocaleString("zh-CN", {
@@ -23,6 +24,7 @@ export default function SupportPage() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const pageSize = 20;
+  const cacheTtlMs = 60_000;
 
   const load = useCallback(async (nextPage: number) => {
     setLoading(true);
@@ -32,17 +34,30 @@ export default function SupportPage() {
       params.set("pageSize", String(pageSize));
       if (statusFilter && statusFilter !== "全部") params.set("status", statusFilter);
       if (query.trim()) params.set("q", query.trim());
+      const cacheKey = `cache:admin:support:${params.toString()}`;
+      const cached = readCache<{ items: AdminSupportTicket[]; page?: number; totalPages?: number }>(
+        cacheKey,
+        cacheTtlMs,
+        true
+      );
+      if (cached) {
+        setTickets(Array.isArray(cached.value?.items) ? cached.value.items : []);
+        setPage(cached.value?.page || nextPage);
+        setTotalPages(cached.value?.totalPages || 1);
+      }
       const res = await fetch(`/api/admin/support?${params.toString()}`);
       if (res.ok) {
         const data = await res.json();
-        setTickets(Array.isArray(data?.items) ? data.items : []);
+        const next = Array.isArray(data?.items) ? data.items : [];
+        setTickets(next);
         setPage(data?.page || nextPage);
         setTotalPages(data?.totalPages || 1);
+        writeCache(cacheKey, { items: next, page: data?.page || nextPage, totalPages: data?.totalPages || 1 });
       }
     } finally {
       setLoading(false);
     }
-  }, [pageSize, query, statusFilter]);
+  }, [cacheTtlMs, pageSize, query, statusFilter]);
 
   useEffect(() => {
     const handle = setTimeout(() => load(1), 300);
@@ -63,7 +78,20 @@ export default function SupportPage() {
       });
       if (res.ok) {
         const data = await res.json();
-        setTickets((prev) => prev.map((t) => (t.id === ticketId ? data : t)));
+        setTickets((prev) => {
+          const next = prev.map((t) => (t.id === ticketId ? data : t));
+          const params = new URLSearchParams();
+          params.set("page", String(page));
+          params.set("pageSize", String(pageSize));
+          if (statusFilter && statusFilter !== "全部") params.set("status", statusFilter);
+          if (query.trim()) params.set("q", query.trim());
+          writeCache(`cache:admin:support:${params.toString()}`, {
+            items: next,
+            page,
+            totalPages,
+          });
+          return next;
+        });
       }
     } finally {
       setSaving((prev) => ({ ...prev, [ticketId]: false }));
@@ -73,8 +101,8 @@ export default function SupportPage() {
   return (
     <div className="admin-section">
       <div className="admin-card">
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center" }}>
-          <div style={{ flex: 1, minWidth: 220, position: "relative" }}>
+        <div className="admin-toolbar">
+          <div className="admin-toolbar-grow" style={{ position: "relative" }}>
             <Search
               size={16}
               style={{
@@ -93,12 +121,7 @@ export default function SupportPage() {
               onChange={(event) => setQuery(event.target.value)}
             />
           </div>
-          <select
-            className="admin-select"
-            style={{ minWidth: 160 }}
-            value={statusFilter}
-            onChange={(event) => setStatusFilter(event.target.value)}
-          >
+          <select className="admin-select" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
             <option value="全部">全部状态</option>
             {SUPPORT_STATUS_OPTIONS.map((status) => (
               <option key={status} value={status}>
@@ -119,7 +142,7 @@ export default function SupportPage() {
         ) : tickets.length === 0 ? (
           <p>暂无客服工单</p>
         ) : (
-          <div style={{ overflowX: "auto" }}>
+          <div className="admin-table-wrap">
             <table className="admin-table">
               <thead>
                 <tr>
@@ -135,18 +158,18 @@ export default function SupportPage() {
               <tbody>
                 {tickets.map((ticket) => (
                   <tr key={ticket.id}>
-                    <td>
+                    <td data-label="用户">
                       <div style={{ fontWeight: 600 }}>{ticket.userName || "访客"}</div>
                       <div style={{ fontSize: 12, color: "#64748b" }}>{ticket.contact || "-"}</div>
                       <div style={{ fontSize: 11, color: "#94a3b8" }}>{ticket.id}</div>
                     </td>
-                    <td>
+                    <td data-label="主题">
                       <div style={{ fontWeight: 600 }}>{ticket.topic || "其他"}</div>
                     </td>
-                    <td>
+                    <td data-label="内容">
                       <div style={{ fontSize: 12, color: "#475569" }}>{ticket.message}</div>
                     </td>
-                    <td>
+                    <td data-label="状态">
                       <select
                         className="admin-select"
                         value={ticket.status}
@@ -165,7 +188,7 @@ export default function SupportPage() {
                         ))}
                       </select>
                     </td>
-                    <td>
+                    <td data-label="备注">
                       <input
                         className="admin-input"
                         placeholder="跟进备注"
@@ -180,8 +203,8 @@ export default function SupportPage() {
                         onBlur={(event) => updateTicket(ticket.id, { note: event.target.value })}
                       />
                     </td>
-                    <td>{formatTime(ticket.createdAt)}</td>
-                    <td>
+                    <td data-label="时间">{formatTime(ticket.createdAt)}</td>
+                    <td data-label="更新">
                       <span className="admin-badge neutral">
                         {saving[ticket.id] ? "保存中" : "已同步"}
                       </span>
@@ -192,7 +215,7 @@ export default function SupportPage() {
             </table>
           </div>
         )}
-        <div style={{ display: "flex", justifyContent: "space-between", marginTop: 16, alignItems: "center" }}>
+        <div className="admin-pagination">
           <button
             className="admin-btn ghost"
             disabled={page <= 1}

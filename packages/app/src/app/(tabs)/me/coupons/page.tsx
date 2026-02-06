@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { ArrowLeft, TicketPercent, Sparkles } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { readCache, writeCache } from "@/app/components/client-cache";
 
 type Coupon = {
   id: string;
@@ -40,6 +41,7 @@ export default function CouponsPage() {
   const [loading, setLoading] = useState(true);
   const [claims, setClaims] = useState<string[]>([]);
   const [hint, setHint] = useState<string | null>(null);
+  const cacheTtlMs = 60_000;
 
   useEffect(() => {
     setClaims(loadClaims());
@@ -47,12 +49,19 @@ export default function CouponsPage() {
 
   useEffect(() => {
     const load = async () => {
+      const cacheKey = "cache:coupons";
+      const cached = readCache<Coupon[]>(cacheKey, cacheTtlMs, true);
+      if (cached) {
+        setCoupons(Array.isArray(cached.value) ? cached.value : []);
+      }
       setLoading(true);
       try {
         const res = await fetch("/api/coupons");
         if (res.ok) {
           const data = await res.json();
-          setCoupons(Array.isArray(data) ? data : []);
+          const next = Array.isArray(data) ? data : [];
+          setCoupons(next);
+          writeCache(cacheKey, next);
         }
       } finally {
         setLoading(false);

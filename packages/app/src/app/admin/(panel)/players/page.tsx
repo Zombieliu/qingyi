@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { PlusCircle, Trash2 } from "lucide-react";
 import type { AdminPlayer, PlayerStatus } from "@/lib/admin-types";
 import { PLAYER_STATUS_OPTIONS } from "@/lib/admin-types";
+import { readCache, writeCache } from "@/app/components/client-cache";
 
 export default function PlayersPage() {
   const [players, setPlayers] = useState<AdminPlayer[]>([]);
@@ -20,14 +21,22 @@ export default function PlayersPage() {
     status: "可接单" as PlayerStatus,
     notes: "",
   });
+  const cacheTtlMs = 60_000;
 
   const loadPlayers = async () => {
     setLoading(true);
     try {
+      const cacheKey = "cache:admin:players";
+      const cached = readCache<AdminPlayer[]>(cacheKey, cacheTtlMs, true);
+      if (cached) {
+        setPlayers(Array.isArray(cached.value) ? cached.value : []);
+      }
       const res = await fetch("/api/admin/players");
       if (res.ok) {
         const data = await res.json();
-        setPlayers(Array.isArray(data) ? data : []);
+        const next = Array.isArray(data) ? data : [];
+        setPlayers(next);
+        writeCache(cacheKey, next);
       }
     } finally {
       setLoading(false);
@@ -91,9 +100,21 @@ export default function PlayersPage() {
 
   const removePlayer = async (playerId: string) => {
     if (!confirm("确定要删除该打手吗？")) return;
-    const res = await fetch(`/api/admin/players/${playerId}`, { method: "DELETE" });
-    if (res.ok) {
-      setPlayers((prev) => prev.filter((p) => p.id !== playerId));
+    setSaving((prev) => ({ ...prev, [playerId]: true }));
+    try {
+      const res = await fetch(`/api/admin/players/${playerId}`, { method: "DELETE" });
+      if (res.ok) {
+        setPlayers((prev) => {
+          const next = prev.filter((p) => p.id !== playerId);
+          writeCache("cache:admin:players", next);
+          return next;
+        });
+      } else {
+        const data = await res.json().catch(() => ({}));
+        alert(data?.error || "删除失败");
+      }
+    } finally {
+      setSaving((prev) => ({ ...prev, [playerId]: false }));
     }
   };
 
@@ -130,10 +151,10 @@ export default function PlayersPage() {
             />
           </label>
           <label className="admin-field">
-            钱包地址
+            账号ID
             <input
               className="admin-input"
-              placeholder="Sui 地址"
+              placeholder="账号ID"
               value={form.address}
               onChange={(event) => setForm((prev) => ({ ...prev, address: event.target.value }))}
             />
@@ -217,14 +238,14 @@ export default function PlayersPage() {
         ) : players.length === 0 ? (
           <p>暂无打手档案</p>
         ) : (
-          <div style={{ overflowX: "auto" }}>
+          <div className="admin-table-wrap">
             <table className="admin-table">
               <thead>
                 <tr>
                   <th>名称</th>
                   <th>位置</th>
                   <th>联系方式</th>
-                  <th>钱包地址</th>
+                  <th>账号ID</th>
                   <th>基础押金(钻石)</th>
                   <th>已锁押金(钻石)</th>
                   <th>授信倍数</th>
@@ -239,8 +260,10 @@ export default function PlayersPage() {
               <tbody>
                 {players.map((player) => (
                   <tr key={player.id}>
-                    <td style={{ fontWeight: 600 }}>{player.name}</td>
-                    <td>
+                    <td data-label="名称" style={{ fontWeight: 600 }}>
+                      {player.name}
+                    </td>
+                    <td data-label="位置">
                       <input
                         className="admin-input"
                         value={player.role || ""}
@@ -254,7 +277,7 @@ export default function PlayersPage() {
                         onBlur={(event) => updatePlayer(player.id, { role: event.target.value })}
                       />
                     </td>
-                    <td>
+                    <td data-label="联系方式">
                       <input
                         className="admin-input"
                         value={player.contact || ""}
@@ -268,7 +291,7 @@ export default function PlayersPage() {
                         onBlur={(event) => updatePlayer(player.id, { contact: event.target.value })}
                       />
                     </td>
-                    <td>
+                    <td data-label="账号ID">
                       <input
                         className="admin-input"
                         value={player.address || ""}
@@ -282,7 +305,7 @@ export default function PlayersPage() {
                         onBlur={(event) => updatePlayer(player.id, { address: event.target.value })}
                       />
                     </td>
-                    <td>
+                    <td data-label="基础押金(钻石)">
                       <input
                         className="admin-input"
                         value={player.depositBase ?? ""}
@@ -298,7 +321,7 @@ export default function PlayersPage() {
                         }
                       />
                     </td>
-                    <td>
+                    <td data-label="已锁押金(钻石)">
                       <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                         <input
                           className="admin-input"
@@ -335,7 +358,7 @@ export default function PlayersPage() {
                         </button>
                       </div>
                     </td>
-                    <td>
+                    <td data-label="授信倍数">
                       <input
                         className="admin-input"
                         value={player.creditMultiplier ?? 1}
@@ -351,10 +374,10 @@ export default function PlayersPage() {
                         }
                       />
                     </td>
-                    <td>{player.creditLimit ?? 0}</td>
-                    <td>{player.usedCredit ?? 0}</td>
-                    <td>{player.availableCredit ?? 0}</td>
-                    <td>
+                    <td data-label="可接额度(元)">{player.creditLimit ?? 0}</td>
+                    <td data-label="已占用(元)">{player.usedCredit ?? 0}</td>
+                    <td data-label="可用额度(元)">{player.availableCredit ?? 0}</td>
+                    <td data-label="状态">
                       <select
                         className="admin-select"
                         value={player.status}
@@ -375,7 +398,7 @@ export default function PlayersPage() {
                         ))}
                       </select>
                     </td>
-                    <td>
+                    <td data-label="备注">
                       <input
                         className="admin-input"
                         value={player.notes || ""}
@@ -389,7 +412,7 @@ export default function PlayersPage() {
                         onBlur={(event) => updatePlayer(player.id, { notes: event.target.value })}
                       />
                     </td>
-                    <td>
+                    <td data-label="操作">
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                         <span className="admin-badge neutral">
                           {saving[player.id] ? "保存中" : "已同步"}
@@ -397,6 +420,7 @@ export default function PlayersPage() {
                         <button
                           className="admin-btn ghost"
                           onClick={() => removePlayer(player.id)}
+                          disabled={saving[player.id]}
                         >
                           <Trash2 size={14} style={{ marginRight: 4 }} />
                           删除
