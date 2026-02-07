@@ -161,7 +161,7 @@ const roleLabels: Record<AdminRole, string> = {
 };
 
 export default function AdminShell({ children }: { children: React.ReactNode }) {
-  const { locale, setLocale, tr } = useI18n();
+  const { locale, setLocale, t } = useI18n();
   const pathname = usePathname();
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -199,7 +199,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
     <div className="admin-grid">
       {sidebarOpen ? (
         <button
-          aria-label={tr("关闭侧边栏")}
+          aria-label={t("关闭侧边栏")}
           className="admin-scrim"
           onClick={() => setSidebarOpen(false)}
         />
@@ -209,7 +209,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
           <div className="admin-logo-icon">QY</div>
           <div>
             <h1>情谊电竞</h1>
-            <p>{tr("运营管理中心")}</p>
+            <p>{t("运营管理中心")}</p>
           </div>
         </div>
         <nav className="admin-nav">
@@ -223,7 +223,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
 
             return (
               <div key={section.label} className="admin-nav-section">
-                <div className="admin-nav-label">{tr(section.label)}</div>
+                <div className="admin-nav-label">{t(section.label)}</div>
                 {items.map((item) => {
                   const Icon = item.icon;
                   const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
@@ -235,7 +235,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
                       className={`admin-nav-item${isActive ? " active" : ""}`}
                     >
                       <Icon size={18} />
-                      {tr(item.label)}
+                      {t(item.label)}
                     </Link>
                   );
                 })}
@@ -245,27 +245,27 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
         </nav>
         <div className="admin-sidebar-footer">
           <div>
-            {tr("当前权限：")}
-            {tr(roleLabels[role] || role)}
+            {t("当前权限：")}
+            {t(roleLabels[role] || role)}
           </div>
           <button className="admin-btn secondary" onClick={handleLogout}>
             <LogOut size={16} style={{ marginRight: 6 }} />
-            {tr("退出登录")}
+            {t("退出登录")}
           </button>
         </div>
       </aside>
       <main className="admin-main">
         <div className="admin-topbar">
           <div className="admin-topbar-main">
-            <h2 className="admin-title">{active?.label ? tr(active.label) : tr("管理后台")}</h2>
+            <h2 className="admin-title">{active?.label ? t(active.label) : t("管理后台")}</h2>
             <p className="admin-subtitle">
-              {subtitles[active?.href || "/admin"] ? tr(subtitles[active?.href || "/admin"]) : tr("运营状态一览")}
+              {subtitles[active?.href || "/admin"] ? t(subtitles[active?.href || "/admin"]) : t("运营状态一览")}
             </p>
           </div>
           <div className="admin-actions">
             <span className="admin-pill">
-              {tr("当前权限：")}
-              {tr(roleLabels[role] || role)}
+              {t("当前权限：")}
+              {t(roleLabels[role] || role)}
             </span>
             <button
               className="admin-btn ghost"
@@ -282,7 +282,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
               onClick={() => setSidebarOpen(true)}
             >
               <Menu size={16} style={{ marginRight: 6 }} />
-              {tr("菜单")}
+              {t("菜单")}
             </button>
           </div>
         </div>

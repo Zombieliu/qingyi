@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
-import { DEFAULT_LOCALE, LOCALE_COOKIE, SUPPORTED_LOCALES, translateText, type Locale } from "./i18n-shared";
+import { DEFAULT_LOCALE, LOCALE_COOKIE, SUPPORTED_LOCALES, type Locale } from "./i18n-shared";
 import zh from "@/i18n/messages/zh.json";
 import en from "@/i18n/messages/en.json";
 
@@ -48,7 +48,6 @@ export function useI18n() {
 
   const messages = useMemo(() => MESSAGES[locale] || MESSAGES[DEFAULT_LOCALE], [locale]);
   const t = useCallback((key: string, fallback?: string) => messages[key] || fallback || key, [messages]);
-  const tr = useCallback((text: string) => translateText(locale, text), [locale]);
 
-  return { locale, setLocale, t, tr };
+  return { locale, setLocale, t };
 }

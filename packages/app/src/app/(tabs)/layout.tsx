@@ -13,14 +13,14 @@ import AutoTranslate from "../components/auto-translate";
 import { useI18n } from "@/lib/i18n-client";
 
 export default function TabsLayout({ children }: { children: React.ReactNode }) {
-  const { tr } = useI18n();
+  const { t } = useI18n();
   const pathname = usePathname();
   const items = [
-    { label: tr("首页"), href: "/home", icon: HomeIcon },
-    { label: tr("展示"), href: "/showcase", icon: Diamond },
-    { label: tr("安排"), href: "/schedule", icon: CalendarCheck },
-    { label: tr("资讯"), href: "/news", icon: MessageCircle },
-    { label: tr("我的"), href: "/me", icon: User },
+    { label: t("首页"), href: "/home", icon: HomeIcon },
+    { label: t("展示"), href: "/showcase", icon: Diamond },
+    { label: t("安排"), href: "/schedule", icon: CalendarCheck },
+    { label: t("资讯"), href: "/news", icon: MessageCircle },
+    { label: t("我的"), href: "/me", icon: User },
   ];
 
   return (
