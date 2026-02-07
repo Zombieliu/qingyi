@@ -1,12 +1,14 @@
 "use client";
 import Image from "next/image";
-import Link from "next/link";
 import { ShieldCheck, AlertTriangle } from "lucide-react";
 import PasskeyLoginButton from "../components/passkey-login-button";
 import { useSyncExternalStore } from "react";
 import { PASSKEY_STORAGE_KEY } from "../components/passkey-wallet";
+import TrackedLink from "../components/tracked-link";
+import { useI18n } from "@/lib/i18n-client";
 
 export default function LoginPage() {
+  const { t } = useI18n();
   const showHttpsTip = useSyncExternalStore(
     () => () => {},
     () => {
@@ -42,30 +44,35 @@ export default function LoginPage() {
         <div className="dl-card" style={{ padding: 12, marginBottom: 14, border: "1px solid #fecdd3", background: "#fff1f2" }}>
           <div className="flex items-center gap-2 text-sm text-rose-600">
             <AlertTriangle size={16} />
-            <span>登录仅在 HTTPS 或 localhost 下可用，请切换到安全域名再登录。</span>
+            <span>{t("login.tip")}</span>
           </div>
         </div>
       )}
       <div className="login-header">
         <div className="login-icon">
-          <Image src="/icon-192.png" alt="情谊电竞" width={76} height={76} priority />
+          <Image src="/icon-192.png" alt={t("app.name")} width={76} height={76} priority />
         </div>
-        <div className="login-title">情谊电竞</div>
-        <div className="login-sub">游戏不仅仅是游戏，陪玩可以走进生活，也能改变生活</div>
+        <div className="login-title">{t("login.title")}</div>
+        <div className="login-sub">{t("login.sub")}</div>
       </div>
 
       <div className="login-passkey">
         <ShieldCheck size={16} style={{ verticalAlign: "middle", marginRight: 6 }} />
-        没账号？一键注册/登录
+        {t("login.passkey")}
       </div>
       <PasskeyLoginButton />
       <div style={{ textAlign: "center", marginTop: 18, fontSize: 13 }}>
         {hasWallet ? (
-          <Link href="/home" style={{ textDecoration: "underline" }}>
-            已完成验证？进入主页
-          </Link>
+          <TrackedLink
+            href="/home"
+            className="text-sm underline"
+            event="cta_click"
+            meta={{ section: "login", label: "已完成验证？进入主页" }}
+          >
+            {t("login.enter")}
+          </TrackedLink>
         ) : (
-          <span style={{ color: "#6b7280" }}>请先完成登录</span>
+          <span style={{ color: "#6b7280" }}>{t("login.need")}</span>
         )}
       </div>
     </div>

@@ -1,98 +1,164 @@
-import Link from "next/link";
+import TrackedLink from "@/app/components/tracked-link";
+import { createTranslator, getMessages, getServerLocale } from "@/lib/i18n";
 
-export default function LandingPage() {
+export default async function LandingPage() {
+  const locale = await getServerLocale();
+  const t = createTranslator(getMessages(locale));
+
   return (
-    <div style={{ minHeight: "100vh", background: "linear-gradient(180deg, #f8fafc 0%, #eef2ff 100%)" }}>
-      <div style={{ maxWidth: 1100, margin: "0 auto", padding: "48px 20px 64px" }}>
-        <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16 }}>
-          <div style={{ fontSize: 20, fontWeight: 700, color: "#0f172a" }}>情谊电竞</div>
-          <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-            <Link href="/login" style={{ padding: "8px 14px", borderRadius: 999, background: "#0f172a", color: "#fff", fontSize: 14 }}>
-              立即登录
-            </Link>
-            <Link href="/updates" style={{ padding: "8px 14px", borderRadius: 999, border: "1px solid #cbd5f5", color: "#1e293b", fontSize: 14 }}>
-              公告更新
-            </Link>
-            <Link href="/faq" style={{ padding: "8px 14px", borderRadius: 999, border: "1px solid #cbd5f5", color: "#1e293b", fontSize: 14 }}>
-              常见问题
-            </Link>
-            <Link href="/pricing" style={{ padding: "8px 14px", borderRadius: 999, border: "1px solid #cbd5f5", color: "#1e293b", fontSize: 14 }}>
-              价格与服务
-            </Link>
-            <Link href="/home" style={{ padding: "8px 14px", borderRadius: 999, border: "1px solid #cbd5f5", color: "#1e293b", fontSize: 14 }}>
-              进入大厅
-            </Link>
+    <div className="public-shell">
+      <div className="public-wrap">
+        <header className="public-nav">
+          <div className="public-logo">
+            <span className="public-logo-badge">QY</span>
+            {t("app.name")}
+          </div>
+          <div className="public-nav-links">
+            <TrackedLink
+              href="/login"
+              className="public-btn primary"
+              event="cta_click"
+              meta={{ section: "nav", label: t("nav.login") }}
+            >
+              {t("nav.login")}
+            </TrackedLink>
+            <TrackedLink
+              href="/updates"
+              className="public-btn ghost"
+              event="cta_click"
+              meta={{ section: "nav", label: t("nav.updates") }}
+            >
+              {t("nav.updates")}
+            </TrackedLink>
+            <TrackedLink
+              href="/faq"
+              className="public-btn ghost"
+              event="cta_click"
+              meta={{ section: "nav", label: t("nav.faq") }}
+            >
+              {t("nav.faq")}
+            </TrackedLink>
+            <TrackedLink
+              href="/pricing"
+              className="public-btn ghost"
+              event="cta_click"
+              meta={{ section: "nav", label: t("nav.pricing") }}
+            >
+              {t("nav.pricing")}
+            </TrackedLink>
+            <TrackedLink
+              href="/home"
+              className="public-btn"
+              event="cta_click"
+              meta={{ section: "nav", label: t("nav.home") }}
+            >
+              {t("nav.home")}
+            </TrackedLink>
           </div>
         </header>
 
-        <section style={{ marginTop: 56, display: "grid", gap: 28 }}>
-          <div style={{ maxWidth: 720 }}>
-            <div style={{ fontSize: 14, color: "#6366f1", fontWeight: 600 }}>电竞陪玩调度平台</div>
-            <h1 style={{ fontSize: 40, lineHeight: 1.15, color: "#0f172a", marginTop: 12 }}>
-              更快匹配高素质队友，
+        <section className="public-hero">
+          <div>
+            <div className="public-kicker">{t("landing.kicker")}</div>
+            <h1 className="public-title">
+              {t("landing.title.line1")}
               <br />
-              更稳交付陪玩体验
+              {t("landing.title.line2")}
             </h1>
-            <p style={{ marginTop: 16, fontSize: 16, color: "#475569" }}>
-              面向三角洲行动的陪玩协作平台，支持实时撮合、押金保障、订单全程可追踪。
-            </p>
-            <div style={{ display: "flex", gap: 12, marginTop: 24, flexWrap: "wrap" }}>
-              <Link href="/login" style={{ padding: "12px 18px", borderRadius: 12, background: "#0f172a", color: "#fff", fontSize: 15 }}>
-                开始使用
-              </Link>
-              <Link href="/updates" style={{ padding: "12px 18px", borderRadius: 12, border: "1px solid #cbd5f5", color: "#1e293b", fontSize: 15 }}>
-                查看公告
-              </Link>
-              <Link href="/faq" style={{ padding: "12px 18px", borderRadius: 12, border: "1px solid #cbd5f5", color: "#1e293b", fontSize: 15 }}>
-                常见问题
-              </Link>
-              <Link href="/pricing" style={{ padding: "12px 18px", borderRadius: 12, border: "1px solid #cbd5f5", color: "#1e293b", fontSize: 15 }}>
-                价格与服务
-              </Link>
-              <a href="#features" style={{ padding: "12px 18px", borderRadius: 12, border: "1px solid #cbd5f5", color: "#1e293b", fontSize: 15 }}>
-                了解功能
+            <p className="public-subtitle">{t("landing.subtitle")}</p>
+            <div className="public-cta">
+              <TrackedLink
+                href="/login"
+                className="public-btn primary"
+                event="cta_click"
+                meta={{ section: "hero", label: t("landing.cta.start") }}
+              >
+                {t("landing.cta.start")}
+              </TrackedLink>
+              <TrackedLink
+                href="/updates"
+                className="public-btn"
+                event="cta_click"
+                meta={{ section: "hero", label: t("landing.cta.updates") }}
+              >
+                {t("landing.cta.updates")}
+              </TrackedLink>
+              <TrackedLink
+                href="/faq"
+                className="public-btn"
+                event="cta_click"
+                meta={{ section: "hero", label: t("landing.cta.faq") }}
+              >
+                {t("landing.cta.faq")}
+              </TrackedLink>
+              <TrackedLink
+                href="/pricing"
+                className="public-btn"
+                event="cta_click"
+                meta={{ section: "hero", label: t("landing.cta.pricing") }}
+              >
+                {t("landing.cta.pricing")}
+              </TrackedLink>
+              <a href="#features" className="public-btn ghost">
+                {t("landing.cta.features")}
               </a>
             </div>
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 16 }}>
+          <div className="public-grid">
             {[
-              { title: "极速撮合", desc: "按段位与偏好匹配，减少等待" },
-              { title: "押金保障", desc: "订单前置押金，保障履约" },
-              { title: "流程可视", desc: "支付、接单、交付全链路可追踪" },
+              { title: t("landing.feature.fast.title"), desc: t("landing.feature.fast.desc") },
+              { title: t("landing.feature.deposit.title"), desc: t("landing.feature.deposit.desc") },
+              { title: t("landing.feature.flow.title"), desc: t("landing.feature.flow.desc") },
             ].map((item) => (
-              <div key={item.title} style={{ padding: 16, borderRadius: 16, background: "#fff", boxShadow: "0 10px 30px rgba(15, 23, 42, 0.06)" }}>
-                <div style={{ fontSize: 16, fontWeight: 700, color: "#111827" }}>{item.title}</div>
-                <div style={{ marginTop: 6, fontSize: 14, color: "#64748b" }}>{item.desc}</div>
+              <div key={item.title} className="public-card">
+                <div className="public-card-title">{item.title}</div>
+                <div className="public-card-desc">{item.desc}</div>
               </div>
             ))}
           </div>
         </section>
 
-        <section id="features" style={{ marginTop: 64 }}>
-          <div style={{ fontSize: 18, fontWeight: 700, color: "#0f172a" }}>核心能力</div>
-          <div style={{ marginTop: 16, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 16 }}>
+        <section id="features">
+          <div className="public-section-title">{t("landing.section.core.title")}</div>
+          <div className="public-section-sub">{t("landing.section.core.sub")}</div>
+          <div className="public-grid" style={{ marginTop: 16 }}>
             {[
-              { title: "订单池运营", desc: "公开接单池，动态展示待接订单" },
-              { title: "安全登录", desc: "Passkey 登录，减少账号风险" },
-              { title: "陪玩管理", desc: "打手档案、状态与可接额度统一管理" },
-              { title: "管理后台", desc: "公告、订单、打手、风控一站式" },
+              { title: t("landing.core.pool.title"), desc: t("landing.core.pool.desc") },
+              { title: t("landing.core.secure.title"), desc: t("landing.core.secure.desc") },
+              { title: t("landing.core.manager.title"), desc: t("landing.core.manager.desc") },
+              { title: t("landing.core.admin.title"), desc: t("landing.core.admin.desc") },
             ].map((item) => (
-              <div key={item.title} style={{ padding: 16, borderRadius: 16, background: "#f8fafc", border: "1px solid #e2e8f0" }}>
-                <div style={{ fontSize: 15, fontWeight: 700, color: "#0f172a" }}>{item.title}</div>
-                <div style={{ marginTop: 6, fontSize: 14, color: "#64748b" }}>{item.desc}</div>
+              <div key={item.title} className="public-card highlight">
+                <div className="public-card-title">{item.title}</div>
+                <div className="public-card-desc">{item.desc}</div>
               </div>
             ))}
           </div>
         </section>
 
-        <section style={{ marginTop: 72, padding: 24, borderRadius: 20, background: "#0f172a", color: "#fff" }}>
-          <div style={{ fontSize: 18, fontWeight: 700 }}>准备开始？</div>
-          <div style={{ marginTop: 6, color: "#cbd5f5" }}>创建 Passkey 后即可进入大厅完成订单撮合。</div>
-          <div style={{ marginTop: 16 }}>
-            <Link href="/login" style={{ padding: "10px 16px", borderRadius: 10, background: "#22d3ee", color: "#0f172a", fontWeight: 600 }}>
-              立即登录
-            </Link>
+        <section className="public-footer">
+          <div>
+            <div className="public-footer-title">{t("landing.footer.title")}</div>
+            <div className="public-footer-sub">{t("landing.footer.sub")}</div>
+          </div>
+          <div className="public-footer-actions">
+            <TrackedLink
+              href="/login"
+              className="public-btn primary"
+              event="cta_click"
+              meta={{ section: "footer", label: t("nav.login") }}
+            >
+              {t("nav.login")}
+            </TrackedLink>
+            <TrackedLink
+              href="/home"
+              className="public-btn"
+              event="cta_click"
+              meta={{ section: "footer", label: t("nav.home") }}
+            >
+              {t("nav.home")}
+            </TrackedLink>
           </div>
         </section>
       </div>

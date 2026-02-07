@@ -1,4 +1,5 @@
-import Link from "next/link";
+import TrackedLink from "@/app/components/tracked-link";
+import { createTranslator, getMessages, getServerLocale } from "@/lib/i18n";
 
 export const metadata = {
   title: "价格与服务 | 情谊电竞",
@@ -26,7 +27,10 @@ const plans = [
   },
 ];
 
-export default function PricingPage() {
+export default async function PricingPage() {
+  const locale = await getServerLocale();
+  const t = createTranslator(getMessages(locale));
+
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "ItemList",
@@ -47,35 +51,126 @@ export default function PricingPage() {
   };
 
   return (
-    <div style={{ minHeight: "100vh", background: "#f8fafc" }}>
-      <div style={{ maxWidth: 960, margin: "0 auto", padding: "40px 20px 64px" }}>
-        <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16 }}>
-          <div>
-            <div style={{ fontSize: 22, fontWeight: 700, color: "#0f172a" }}>价格与服务</div>
-            <div style={{ marginTop: 6, color: "#64748b" }}>透明价格，清晰规则</div>
+    <div className="public-shell">
+      <div className="public-wrap">
+        <header className="public-nav">
+          <div className="public-logo">
+            <span className="public-logo-badge">QY</span>
+            {t("app.name")}
           </div>
-          <Link href="/" style={{ fontSize: 14, color: "#0f172a" }}>
-            返回首页
-          </Link>
+          <div className="public-nav-links">
+            <TrackedLink
+              href="/"
+              className="public-btn ghost"
+              event="cta_click"
+              meta={{ section: "nav", label: "返回首页", page: "pricing" }}
+            >
+              {t("nav.backHome")}
+            </TrackedLink>
+            <TrackedLink
+              href="/faq"
+              className="public-btn"
+              event="cta_click"
+              meta={{ section: "nav", label: "常见问题", page: "pricing" }}
+            >
+              {t("nav.faq")}
+            </TrackedLink>
+            <TrackedLink
+              href="/updates"
+              className="public-btn"
+              event="cta_click"
+              meta={{ section: "nav", label: "公告更新", page: "pricing" }}
+            >
+              {t("nav.updates")}
+            </TrackedLink>
+            <TrackedLink
+              href="/home"
+              className="public-btn primary"
+              event="cta_click"
+              meta={{ section: "nav", label: "进入大厅", page: "pricing" }}
+            >
+              {t("nav.home")}
+            </TrackedLink>
+          </div>
         </header>
 
-        <div style={{ marginTop: 24, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 16 }}>
-          {plans.map((plan) => (
-            <div key={plan.name} style={{ padding: 18, borderRadius: 16, background: "#fff", border: "1px solid #e2e8f0" }}>
-              <div style={{ fontSize: 16, fontWeight: 700, color: "#0f172a" }}>{plan.name}</div>
-              <div style={{ marginTop: 6, color: "#0f172a", fontSize: 20, fontWeight: 700 }}>{plan.price}</div>
-              <div style={{ marginTop: 8, color: "#64748b" }}>{plan.desc}</div>
+        <section className="public-hero">
+          <div>
+            <div className="public-kicker">{t("pricing.kicker")}</div>
+            <h1 className="public-title">{t("pricing.title")}</h1>
+            <p className="public-subtitle">{t("pricing.subtitle")}</p>
+            <div className="public-cta">
+              <TrackedLink
+                href="/home"
+                className="public-btn primary"
+                event="cta_click"
+                meta={{ section: "hero", label: "立即下单", page: "pricing" }}
+              >
+                {t("pricing.cta.order")}
+              </TrackedLink>
+              <TrackedLink
+                href="/faq"
+                className="public-btn"
+                event="cta_click"
+                meta={{ section: "hero", label: "查看规则", page: "pricing" }}
+              >
+                {t("pricing.cta.rules")}
+              </TrackedLink>
             </div>
-          ))}
-        </div>
+          </div>
+          <div className="public-card highlight">
+            <div className="public-card-title">{t("pricing.promo.title")}</div>
+            <div className="public-card-desc">{t("pricing.promo.desc1")}</div>
+            <div className="public-card-desc">{t("pricing.promo.desc2")}</div>
+          </div>
+        </section>
 
-        <section style={{ marginTop: 32, padding: 18, borderRadius: 16, background: "#eef2ff", color: "#1e293b" }}>
-          <div style={{ fontWeight: 700 }}>费用说明</div>
-          <ul style={{ marginTop: 8, paddingLeft: 18, color: "#475569", lineHeight: 1.7 }}>
-            <li>价格可能根据时段、需求波动。</li>
-            <li>接单前需完成押金步骤以保障履约。</li>
-            <li>如需退款或争议处理，请联系管理员。</li>
+        <section>
+          <div className="public-section-title">{t("pricing.section.title")}</div>
+          <div className="public-section-sub">{t("pricing.section.sub")}</div>
+          <div className="public-grid" style={{ marginTop: 16 }}>
+            {plans.map((plan) => (
+              <div key={plan.name} className="public-card">
+                <div className="public-card-title">{plan.name}</div>
+                <div className="public-price">{plan.price}</div>
+                <div className="public-card-desc">{plan.desc}</div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="public-card">
+          <div className="public-card-title">{t("pricing.note.title")}</div>
+          <ul className="public-list">
+            <li>{t("pricing.note.1")}</li>
+            <li>{t("pricing.note.2")}</li>
+            <li>{t("pricing.note.3")}</li>
           </ul>
+        </section>
+
+        <section className="public-footer">
+          <div>
+            <div className="public-footer-title">{t("pricing.footer.title")}</div>
+            <div className="public-footer-sub">{t("pricing.footer.sub")}</div>
+          </div>
+          <div className="public-footer-actions">
+            <TrackedLink
+              href="/login"
+              className="public-btn primary"
+              event="cta_click"
+              meta={{ section: "footer", label: "登录/注册", page: "pricing" }}
+            >
+              {t("pricing.footer.login")}
+            </TrackedLink>
+            <TrackedLink
+              href="/home"
+              className="public-btn"
+              event="cta_click"
+              meta={{ section: "footer", label: "直接进入大厅", page: "pricing" }}
+            >
+              {t("pricing.footer.home")}
+            </TrackedLink>
+          </div>
         </section>
 
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />

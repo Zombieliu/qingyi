@@ -1,19 +1,23 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Space_Grotesk, Space_Mono } from "next/font/google";
 import RegisterPWA from "./register-pwa";
 import PwaUpdateToast from "./components/pwa-update-toast";
 import { BalanceProvider } from "./components/balance-provider";
 import { MantouProvider } from "./components/mantou-provider";
+import AnalyticsProvider from "./components/analytics-provider";
+import { Suspense } from "react";
+import { getServerLocale } from "@/lib/i18n";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const brandSans = Space_Grotesk({
+  variable: "--font-sans",
   subsets: ["latin"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const brandMono = Space_Mono({
+  variable: "--font-mono",
   subsets: ["latin"],
+  weight: ["400", "700"],
 });
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
@@ -50,16 +54,20 @@ export const viewport = {
   viewportFit: "cover",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const locale = await getServerLocale();
+  const htmlLang = locale === "en" ? "en" : "zh-CN";
+
   return (
-    <html lang="zh-CN">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
+    <html lang={htmlLang}>
+      <body className={`${brandSans.variable} ${brandMono.variable} antialiased`}>
+        <Suspense fallback={null}>
+          <AnalyticsProvider />
+        </Suspense>
         <RegisterPWA />
         <PwaUpdateToast />
         <BalanceProvider>
