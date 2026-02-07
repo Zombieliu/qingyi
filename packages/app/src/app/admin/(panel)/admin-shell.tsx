@@ -20,7 +20,10 @@ import {
   Link2,
   FileText,
   CreditCard,
+  TrendingUp,
 } from "lucide-react";
+import { useI18n } from "@/lib/i18n-client";
+import AutoTranslate from "@/app/components/auto-translate";
 
 type AdminRole = "admin" | "ops" | "finance" | "viewer";
 
@@ -75,7 +78,9 @@ function subscribeSession(callback: () => void) {
   return () => sessionSubscribers.delete(callback);
 }
 
-const navItems: Array<{ href: string; label: string; icon: ElementType; minRole: AdminRole }> = [
+type NavItem = { href: string; label: string; icon: ElementType; minRole: AdminRole };
+
+const navItems: NavItem[] = [
   { href: "/admin", label: "运营概览", icon: LayoutGrid, minRole: "viewer" },
   { href: "/admin/orders", label: "订单调度", icon: ClipboardList, minRole: "ops" },
   { href: "/admin/support", label: "客服工单", icon: Headset, minRole: "ops" },
@@ -84,6 +89,7 @@ const navItems: Array<{ href: string; label: string; icon: ElementType; minRole:
   { href: "/admin/players", label: "打手管理", icon: Users, minRole: "ops" },
   { href: "/admin/guardians", label: "护航申请", icon: UserCheck, minRole: "ops" },
   { href: "/admin/announcements", label: "公告资讯", icon: Megaphone, minRole: "ops" },
+  { href: "/admin/analytics", label: "增长数据", icon: TrendingUp, minRole: "ops" },
   { href: "/admin/ledger", label: "记账中心", icon: Wallet, minRole: "finance" },
   { href: "/admin/mantou", label: "馒头提现", icon: Wallet, minRole: "finance" },
   { href: "/admin/invoices", label: "发票申请", icon: FileCheck, minRole: "finance" },
@@ -91,6 +97,30 @@ const navItems: Array<{ href: string; label: string; icon: ElementType; minRole:
   { href: "/admin/payments", label: "支付事件", icon: CreditCard, minRole: "finance" },
   { href: "/admin/audit", label: "审计日志", icon: FileText, minRole: "admin" },
 ];
+
+const navSections: Array<{ label: string; items: string[] }> = [
+  { label: "概览", items: ["/admin"] },
+  {
+    label: "运营中心",
+    items: [
+      "/admin/orders",
+      "/admin/support",
+      "/admin/coupons",
+      "/admin/vip",
+      "/admin/players",
+      "/admin/guardians",
+      "/admin/announcements",
+      "/admin/analytics",
+    ],
+  },
+  {
+    label: "财务结算",
+    items: ["/admin/ledger", "/admin/mantou", "/admin/invoices", "/admin/chain", "/admin/payments"],
+  },
+  { label: "系统", items: ["/admin/audit"] },
+];
+
+const navLookup = new Map(navItems.map((item) => [item.href, item]));
 
 const subtitles: Record<string, string> = {
   "/admin": "关键指标与实时调度情况",
@@ -101,6 +131,7 @@ const subtitles: Record<string, string> = {
   "/admin/players": "打手档案、状态与接单能力",
   "/admin/guardians": "护航申请审核与入库",
   "/admin/announcements": "公告与资讯统一发布",
+  "/admin/analytics": "访问与转化漏斗监控",
   "/admin/ledger": "充值记账与凭证管理",
   "/admin/mantou": "打手馒头提现审核",
   "/admin/invoices": "开票申请与处理",
@@ -122,7 +153,15 @@ function roleRank(role: AdminRole) {
   }
 }
 
+const roleLabels: Record<AdminRole, string> = {
+  admin: "超级管理员",
+  finance: "财务",
+  ops: "运营",
+  viewer: "只读",
+};
+
 export default function AdminShell({ children }: { children: React.ReactNode }) {
+  const { locale, setLocale, tr } = useI18n();
   const pathname = usePathname();
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -138,7 +177,10 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
     [role]
   );
   const active = useMemo(
-    () => visibleNav.find((item) => pathname === item.href) || visibleNav[0] || navItems[0],
+    () =>
+      visibleNav.find(
+        (item) => pathname === item.href || pathname.startsWith(`${item.href}/`)
+      ) || visibleNav[0] || navItems[0],
     [pathname, visibleNav]
   );
 
@@ -157,7 +199,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
     <div className="admin-grid">
       {sidebarOpen ? (
         <button
-          aria-label="关闭侧边栏"
+          aria-label={tr("关闭侧边栏")}
           className="admin-scrim"
           onClick={() => setSidebarOpen(false)}
         />
@@ -167,53 +209,84 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
           <div className="admin-logo-icon">QY</div>
           <div>
             <h1>情谊电竞</h1>
-            <p>运营管理中心</p>
+            <p>{tr("运营管理中心")}</p>
           </div>
         </div>
         <nav className="admin-nav">
-          {visibleNav.map((item) => {
-            const Icon = item.icon;
-            const isActive = pathname === item.href;
+          {navSections.map((section) => {
+            const items = section.items
+              .map((href) => navLookup.get(href))
+              .filter((item): item is NavItem => Boolean(item))
+              .filter((item) => roleRank(role) >= roleRank(item.minRole));
+
+            if (items.length === 0) return null;
+
             return (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={() => setSidebarOpen(false)}
-                className={`admin-nav-item${isActive ? " active" : ""}`}
-              >
-                <Icon size={18} />
-                {item.label}
-              </Link>
+              <div key={section.label} className="admin-nav-section">
+                <div className="admin-nav-label">{tr(section.label)}</div>
+                {items.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      onClick={() => setSidebarOpen(false)}
+                      className={`admin-nav-item${isActive ? " active" : ""}`}
+                    >
+                      <Icon size={18} />
+                      {tr(item.label)}
+                    </Link>
+                  );
+                })}
+              </div>
             );
           })}
         </nav>
         <div className="admin-sidebar-footer">
-          <div>当前权限：{role}</div>
+          <div>
+            {tr("当前权限：")}
+            {tr(roleLabels[role] || role)}
+          </div>
           <button className="admin-btn secondary" onClick={handleLogout}>
             <LogOut size={16} style={{ marginRight: 6 }} />
-            退出登录
+            {tr("退出登录")}
           </button>
         </div>
       </aside>
       <main className="admin-main">
         <div className="admin-topbar">
-          <div>
-            <h2 className="admin-title">{active?.label || "管理后台"}</h2>
+          <div className="admin-topbar-main">
+            <h2 className="admin-title">{active?.label ? tr(active.label) : tr("管理后台")}</h2>
             <p className="admin-subtitle">
-              {subtitles[active?.href || "/admin"] || "运营状态一览"}
+              {subtitles[active?.href || "/admin"] ? tr(subtitles[active?.href || "/admin"]) : tr("运营状态一览")}
             </p>
           </div>
           <div className="admin-actions">
+            <span className="admin-pill">
+              {tr("当前权限：")}
+              {tr(roleLabels[role] || role)}
+            </span>
+            <button
+              className="admin-btn ghost"
+              onClick={() => {
+                const next = locale === "en" ? "zh" : "en";
+                setLocale(next);
+                window.location.reload();
+              }}
+            >
+              {locale === "en" ? "中文" : "English"}
+            </button>
             <button
               className="admin-btn ghost admin-menu-toggle"
               onClick={() => setSidebarOpen(true)}
             >
               <Menu size={16} style={{ marginRight: 6 }} />
-              菜单
+              {tr("菜单")}
             </button>
           </div>
         </div>
-        {children}
+        <AutoTranslate>{children}</AutoTranslate>
       </main>
     </div>
   );

@@ -9,15 +9,18 @@ import {
   User,
 } from "lucide-react";
 import PasskeyGate from "../components/passkey-gate";
+import AutoTranslate from "../components/auto-translate";
+import { useI18n } from "@/lib/i18n-client";
 
 export default function TabsLayout({ children }: { children: React.ReactNode }) {
+  const { tr } = useI18n();
   const pathname = usePathname();
   const items = [
-    { label: "首页", href: "/home", icon: HomeIcon },
-    { label: "展示", href: "/showcase", icon: Diamond },
-    { label: "安排", href: "/schedule", icon: CalendarCheck },
-    { label: "资讯", href: "/news", icon: MessageCircle },
-    { label: "我的", href: "/me", icon: User },
+    { label: tr("首页"), href: "/home", icon: HomeIcon },
+    { label: tr("展示"), href: "/showcase", icon: Diamond },
+    { label: tr("安排"), href: "/schedule", icon: CalendarCheck },
+    { label: tr("资讯"), href: "/news", icon: MessageCircle },
+    { label: tr("我的"), href: "/me", icon: User },
   ];
 
   return (
@@ -47,7 +50,9 @@ export default function TabsLayout({ children }: { children: React.ReactNode }) 
       </nav>
 
       <main className="dl-main">
-        <PasskeyGate>{children}</PasskeyGate>
+        <PasskeyGate>
+          <AutoTranslate>{children}</AutoTranslate>
+        </PasskeyGate>
       </main>
 
       <nav className="dl-tabbar dl-tabbar-mobile">
