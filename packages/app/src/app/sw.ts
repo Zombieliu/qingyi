@@ -1,6 +1,6 @@
 /// <reference lib="webworker" />
 import { disableDevLogs, handlePrecaching, installSerwist, registerRuntimeCaching, type RuntimeCaching } from "@serwist/sw";
-import { CacheFirst, NetworkFirst, StaleWhileRevalidate } from "@serwist/strategies";
+import { CacheFirst, NetworkFirst, NetworkOnly, StaleWhileRevalidate } from "@serwist/strategies";
 
 declare const self: ServiceWorkerGlobalScope & {
   __SW_MANIFEST: Array<{
@@ -16,8 +16,25 @@ if (process.env.NODE_ENV === "production") {
 
 const runtimeCaching: RuntimeCaching[] = [
   {
+    // Admin + balance APIs must always be fresh (avoid cached 401 causing login loops)
+    matcher: ({ url }) =>
+      url.pathname.startsWith("/api/admin/") ||
+      url.pathname.startsWith("/api/ledger/") ||
+      url.pathname.startsWith("/api/mantou/"),
+    handler: new NetworkOnly(),
+  },
+  {
     // API calls to matchmaking / profiles
-    matcher: ({ url }) => url.pathname.startsWith("/api/") || url.hostname.endsWith("delta-link.app"),
+    matcher: ({ url }) => url.pathname.startsWith("/api/"),
+    handler: new NetworkFirst({
+      cacheName: "api-cache",
+      networkTimeoutSeconds: 6,
+      plugins: [],
+    }),
+  },
+  {
+    // External API calls
+    matcher: ({ url }) => url.hostname.endsWith("delta-link.app"),
     handler: new NetworkFirst({
       cacheName: "api-cache",
       networkTimeoutSeconds: 6,
