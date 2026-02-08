@@ -2,12 +2,14 @@ import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin-auth";
 import { listOrders } from "@/lib/admin-store";
 import { fetchChainOrdersAdmin } from "@/lib/chain-admin";
+import { getAutoCancelConfig } from "@/lib/chain-auto-cancel";
 
 export async function GET(req: Request) {
   const auth = await requireAdmin(req, { role: "finance" });
   if (!auth.ok) return auth.response;
   const chainOrders = await fetchChainOrdersAdmin();
   const localOrders = await listOrders();
+  const autoCancel = getAutoCancelConfig();
 
   const chainById = new Map(chainOrders.map((order) => [order.orderId, order]));
   const localById = new Map(localOrders.map((order) => [order.id, order]));
@@ -21,5 +23,10 @@ export async function GET(req: Request) {
     chainCount: chainOrders.length,
     missingLocal,
     missingChain,
+    autoCancel: {
+      enabled: autoCancel.enabled,
+      hours: autoCancel.hours,
+      max: autoCancel.max,
+    },
   });
 }

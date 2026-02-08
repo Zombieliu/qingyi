@@ -255,6 +255,37 @@ export async function resolveDisputeAdmin(params: {
   return { digest: result.digest, effects: result.effects };
 }
 
+export async function cancelOrderAdmin(orderId: string) {
+  const { pkg, hubId, hubVer } = ensureChainEnv();
+  const signer = getAdminSigner();
+  const client = new SuiClient({ url: getRpcUrl() });
+
+  if (!/^[0-9]+$/.test(orderId)) {
+    throw new Error("orderId must be numeric string");
+  }
+
+  const tx = new Transaction();
+  const dappHub = Inputs.SharedObjectRef({
+    objectId: hubId,
+    initialSharedVersion: hubVer,
+    mutable: true,
+  });
+  tx.moveCall({
+    target: `${pkg}::order_system::admin_cancel_order`,
+    arguments: [tx.object(dappHub), tx.pure.u64(orderId)],
+  });
+
+  const result = await retryRpc(() =>
+    client.signAndExecuteTransaction({
+      signer,
+      transaction: tx,
+      options: { showEffects: true },
+    })
+  );
+
+  return { digest: result.digest, effects: result.effects };
+}
+
 export function validateCompanionAddress(address: string) {
   const normalized = normalizeSuiAddress(address);
   if (!isValidSuiAddress(normalized)) {

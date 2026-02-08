@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { RefreshCw } from "lucide-react";
 import { readCache, writeCache } from "@/app/components/client-cache";
+import * as chainOrderUtils from "@/lib/chain-order-utils";
 
 type ChainOrder = {
   orderId: string;
@@ -22,6 +23,10 @@ export default function ChainPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [action, setAction] = useState<string | null>(null);
+  const [cancelingOrderId, setCancelingOrderId] = useState<string | null>(null);
+  const [autoCancelHours, setAutoCancelHours] = useState<number | null>(null);
+  const [autoCanceling, setAutoCanceling] = useState(false);
+  const [autoCancelResult, setAutoCancelResult] = useState<string | null>(null);
   const [bps, setBps] = useState<Record<string, { service: string; deposit: string }>>({});
   const cacheTtlMs = 60_000;
 
@@ -50,9 +55,12 @@ export default function ChainPage() {
       const nextChain = Array.isArray(data?.chainOrders) ? data.chainOrders : [];
       const nextMissingLocal = Array.isArray(data?.missingLocal) ? data.missingLocal : [];
       const nextMissingChain = Array.isArray(data?.missingChain) ? data.missingChain : [];
+      const nextAutoCancelHours =
+        typeof data?.autoCancel?.hours === "number" ? data.autoCancel.hours : null;
       setChainOrders(nextChain);
       setMissingLocal(nextMissingLocal);
       setMissingChain(nextMissingChain);
+      setAutoCancelHours(nextAutoCancelHours);
       writeCache(cacheKey, {
         chainOrders: nextChain,
         missingLocal: nextMissingLocal,
@@ -131,21 +139,90 @@ export default function ChainPage() {
     }
   };
 
+  const forceCancel = async (orderId: string) => {
+    if (!window.confirm("确认强制取消该订单？仅限未锁押金的链上订单。")) {
+      return;
+    }
+    setCancelingOrderId(orderId);
+    try {
+      const res = await fetch("/api/admin/chain/cancel", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderId }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(data?.error || "取消失败");
+      } else {
+        await loadData();
+      }
+    } finally {
+      setCancelingOrderId(null);
+    }
+  };
+
+  const runAutoCancel = async () => {
+    if (!window.confirm("确认执行超期自动取消？仅会处理未锁押金订单。")) {
+      return;
+    }
+    setAutoCanceling(true);
+    setAutoCancelResult(null);
+    try {
+      const res = await fetch("/api/admin/chain/auto-cancel", { method: "POST" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(data?.error || "执行失败");
+        return;
+      }
+      if (!data?.enabled) {
+        setAutoCancelResult("自动取消未启用");
+      } else {
+        setAutoCancelResult(
+          `已取消 ${data?.canceled ?? 0} / ${data?.candidates ?? 0}，失败 ${data?.failures?.length ?? 0}`
+        );
+      }
+      await loadData();
+    } finally {
+      setAutoCanceling(false);
+    }
+  };
+
+  const autoCancelMs = useMemo(() => {
+    if (!autoCancelHours || autoCancelHours <= 0) return null;
+    return autoCancelHours * 60 * 60 * 1000;
+  }, [autoCancelHours]);
+  const autoCancelDisabled = autoCancelHours === null || autoCancelHours <= 0;
+
   return (
     <div className="admin-section">
       <div className="admin-card">
         <div className="admin-card-header">
           <div>
             <h3>订单对账</h3>
-            <p>对比订单记录与对账数据，处理争议裁决。</p>
+            <p>
+              对比订单记录与对账数据，处理争议裁决。
+              {autoCancelHours ? ` 超期自动取消：${autoCancelHours} 小时。` : ""}
+            </p>
           </div>
           <div className="admin-card-actions">
+            <button
+              className="admin-btn ghost"
+              onClick={runAutoCancel}
+              disabled={autoCanceling || autoCancelDisabled}
+            >
+              {autoCanceling ? "处理中..." : "执行超期取消"}
+            </button>
             <button className="admin-btn ghost" onClick={loadData} disabled={loading}>
               <RefreshCw size={16} style={{ marginRight: 6 }} />
               刷新
             </button>
           </div>
         </div>
+        {autoCancelResult ? (
+          <div className="admin-badge" style={{ marginTop: 12 }}>
+            {autoCancelResult}
+          </div>
+        ) : null}
         {error ? (
           <div className="admin-badge warm" style={{ marginTop: 12 }}>
             {error}
@@ -242,27 +319,56 @@ export default function ChainPage() {
                   <th>状态</th>
                   <th>撮合费</th>
                   <th>押金</th>
+                  <th>创建时间</th>
                   <th>争议截止</th>
+                  <th>操作</th>
                 </tr>
               </thead>
               <tbody>
-                {chainOrders.map((order) => (
-                  <tr key={order.orderId}>
-                    <td data-label="订单号">{order.orderId}</td>
-                    <td data-label="状态">
-                      <span className={statusBadgeClass(order.status)}>
-                        {statusLabel(order.status)}
-                      </span>
-                    </td>
-                    <td data-label="撮合费">¥{formatAmount(order.serviceFee)}</td>
-                    <td data-label="押金">¥{formatAmount(order.deposit)}</td>
-                    <td data-label="争议截止">
-                      {Number(order.disputeDeadline) > 0
-                        ? new Date(Number(order.disputeDeadline)).toLocaleString()
-                        : "-"}
-                    </td>
-                  </tr>
-                ))}
+                {chainOrders.map((order) => {
+                  const createdAt = Number(order.createdAt);
+                  const canCancel = chainOrderUtils.isChainOrderCancelable(order.status);
+                  const isExpired =
+                    autoCancelMs !== null && chainOrderUtils.isChainOrderAutoCancelable(order, Date.now(), autoCancelMs);
+                  return (
+                    <tr key={order.orderId}>
+                      <td data-label="订单号">{order.orderId}</td>
+                      <td data-label="状态">
+                        <span className={statusBadgeClass(order.status)}>
+                          {statusLabel(order.status)}
+                        </span>
+                        {isExpired ? (
+                          <span className="admin-badge warm" style={{ marginLeft: 8 }}>
+                            超期
+                          </span>
+                        ) : null}
+                      </td>
+                      <td data-label="撮合费">¥{formatAmount(order.serviceFee)}</td>
+                      <td data-label="押金">¥{formatAmount(order.deposit)}</td>
+                      <td data-label="创建时间">
+                        {Number.isFinite(createdAt) && createdAt > 0 ? new Date(createdAt).toLocaleString() : "-"}
+                      </td>
+                      <td data-label="争议截止">
+                        {Number(order.disputeDeadline) > 0
+                          ? new Date(Number(order.disputeDeadline)).toLocaleString()
+                          : "-"}
+                      </td>
+                      <td data-label="操作">
+                        {canCancel ? (
+                          <button
+                            className="admin-btn ghost"
+                            onClick={() => forceCancel(order.orderId)}
+                            disabled={cancelingOrderId === order.orderId}
+                          >
+                            {cancelingOrderId === order.orderId ? "取消中..." : "强制取消"}
+                          </button>
+                        ) : (
+                          <span className="admin-text-muted">需争议/结算</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

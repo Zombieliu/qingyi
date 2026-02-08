@@ -233,4 +233,27 @@ module qy::order_system {
 
     assert!(false, E_BAD_STATUS);
   }
+
+  /// 管理员强制取消（仅 Created/Paid） / Admin cancels before deposit.
+  public fun admin_cancel_order(dapp_hub: &mut DappHub, order_id: u64, ctx: &mut TxContext) {
+    dapp_system::ensure_dapp_admin<DappKey>(dapp_hub, ctx.sender());
+    order::ensure_has(dapp_hub, order_id);
+    let mut ord = order::get_struct(dapp_hub, order_id);
+
+    if (order::status(&ord) == STATUS_CREATED) {
+      order::update_status(&mut ord, STATUS_CANCELLED);
+      order::set_struct(dapp_hub, order_id, ord);
+      return
+    };
+
+    if (order::status(&ord) == STATUS_PAID) {
+      ledger_system::add_balance(dapp_hub, order::user(&ord), order::vault_service(&ord));
+      order::update_vault_service(&mut ord, 0);
+      order::update_status(&mut ord, STATUS_CANCELLED);
+      order::set_struct(dapp_hub, order_id, ord);
+      return
+    };
+
+    assert!(false, E_BAD_STATUS);
+  }
 }
