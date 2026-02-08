@@ -102,6 +102,23 @@ export async function fetchOrders(): Promise<LocalOrder[]> {
   return normalized;
 }
 
+export async function fetchOrderDetail(orderId: string, userAddress?: string): Promise<LocalOrder | null> {
+  if (!orderId) return null;
+  if (ORDER_SOURCE !== "server") {
+    return loadOrders().find((order) => order.id === orderId) || null;
+  }
+  const address = userAddress || getCurrentAddress();
+  if (!address) return null;
+  const params = new URLSearchParams();
+  params.set("userAddress", address);
+  const { headers } = await buildAuthHeaders(`orders:read:${orderId}`);
+  const res = await fetch(`/api/orders/${orderId}?${params.toString()}`, { headers });
+  if (!res.ok) return null;
+  const data = await res.json().catch(() => null);
+  if (!data) return null;
+  return normalizeOrder(data as ServerOrder);
+}
+
 async function buildAuthHeaders(intent: string, body?: string, addressOverride?: string) {
   const auth = await signAuthIntent(intent, body);
   if (addressOverride && addressOverride !== auth.address) {

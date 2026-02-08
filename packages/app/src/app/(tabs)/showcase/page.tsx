@@ -1,7 +1,7 @@
 "use client";
 import { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import { type LocalOrder } from "@/app/components/order-store";
-import { deleteOrder, fetchPublicOrders, patchOrder, syncChainOrder } from "@/app/components/order-service";
+import { deleteOrder, fetchOrderDetail, fetchPublicOrders, patchOrder, syncChainOrder } from "@/app/components/order-service";
 import { Activity, Clock3, Car, MapPin } from "lucide-react";
 import {
   type ChainOrder,
@@ -31,6 +31,8 @@ export default function Showcase() {
   const [copiedOrderId, setCopiedOrderId] = useState<string | null>(null);
   const [publicCursor, setPublicCursor] = useState<string | null>(null);
   const [publicLoading, setPublicLoading] = useState(false);
+  const [orderMetaOverrides, setOrderMetaOverrides] = useState<Record<string, Record<string, unknown>>>({});
+  const [orderMetaLoading, setOrderMetaLoading] = useState<Record<string, boolean>>({});
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
 
   const refreshOrders = async () => {
@@ -44,7 +46,7 @@ export default function Showcase() {
     }
   };
 
-  const loadMoreOrders = async () => {
+  const loadMoreOrders = useCallback(async () => {
     if (!publicCursor || publicLoading) return;
     setPublicLoading(true);
     try {
@@ -54,7 +56,7 @@ export default function Showcase() {
     } finally {
       setPublicLoading(false);
     }
-  };
+  }, [publicCursor, publicLoading]);
 
   useEffect(() => {
     refreshOrders();
@@ -75,7 +77,7 @@ export default function Showcase() {
     );
     observer.observe(target);
     return () => observer.disconnect();
-  }, [publicCursor, publicLoading]);
+  }, [publicCursor, loadMoreOrders]);
 
   const loadChain = useCallback(async () => {
     if (!isChainOrdersEnabled()) return;
@@ -228,6 +230,33 @@ export default function Showcase() {
     [chainOrders, disputeOrderId]
   );
 
+  const hydrateOrderMeta = useCallback(
+    async (orderId: string, options: { toastOnError?: boolean } = {}) => {
+      if (!orderId || orderMetaLoading[orderId]) return;
+      setOrderMetaLoading((prev) => ({ ...prev, [orderId]: true }));
+      try {
+        const detail = await fetchOrderDetail(orderId);
+        if (detail?.meta && typeof detail.meta === "object") {
+          setOrderMetaOverrides((prev) => ({ ...prev, [orderId]: detail.meta as Record<string, unknown> }));
+        }
+        return detail;
+      } catch (error) {
+        if (options.toastOnError) {
+          setChainToast((error as Error).message || "加载用户信息失败");
+          setTimeout(() => setChainToast(null), 3000);
+        }
+      } finally {
+        setOrderMetaLoading((prev) => {
+          if (!prev[orderId]) return prev;
+          const next = { ...prev };
+          delete next[orderId];
+          return next;
+        });
+      }
+    },
+    [orderMetaLoading]
+  );
+
   const orderMetaById = useMemo(() => {
     const map = new Map<string, Record<string, unknown>>();
     for (const order of orders) {
@@ -235,8 +264,13 @@ export default function Showcase() {
         map.set(order.id, order.meta as Record<string, unknown>);
       }
     }
+    Object.entries(orderMetaOverrides).forEach(([orderId, meta]) => {
+      if (meta && typeof meta === "object") {
+        map.set(orderId, meta);
+      }
+    });
     return map;
-  }, [orders]);
+  }, [orders, orderMetaOverrides]);
 
   const copyGameProfile = async (orderId: string, profile: { gameName?: string; gameId?: string }) => {
     const text = [profile.gameName ? `游戏名 ${profile.gameName}` : "", profile.gameId ? `ID ${profile.gameId}` : ""]
@@ -360,9 +394,9 @@ export default function Showcase() {
                 const deadline = Number(o.disputeDeadline);
                 const canFinalize = o.status === 3 && Number.isFinite(deadline) && now > deadline;
                 const canDispute = o.status === 3 && Number.isFinite(deadline) && now <= deadline;
-                const gameProfile = (orderMetaById.get(o.orderId)?.gameProfile || null) as
-                  | { gameName?: string; gameId?: string }
-                  | null;
+                const meta = orderMetaById.get(o.orderId) || null;
+                const gameProfile = (meta?.gameProfile || null) as { gameName?: string; gameId?: string } | null;
+                const metaLoading = Boolean(orderMetaLoading[o.orderId]);
                 return (
                   <div key={`chain-${o.orderId}`} className="dl-card" style={{ padding: 14 }}>
                     <div className="flex items-center justify-between">
@@ -379,28 +413,45 @@ export default function Showcase() {
                             ? `游戏名 ${gameProfile.gameName} · ID ${gameProfile.gameId}`
                             : "用户未填写游戏名/ID"}
                         </span>
-                        {gameProfile?.gameName && gameProfile?.gameId && (
-                          <div className="flex items-center gap-2">
-                            {copiedOrderId === o.orderId && (
-                              <span className="text-[11px] text-emerald-600" aria-live="polite">
-                                已复制
-                              </span>
-                            )}
+                        <div className="flex items-center gap-2">
+                          {gameProfile?.gameName && gameProfile?.gameId ? (
+                            <>
+                              {copiedOrderId === o.orderId && (
+                                <span className="text-[11px] text-emerald-600" aria-live="polite">
+                                  已复制
+                                </span>
+                              )}
+                              <button
+                                type="button"
+                                className="dl-tab-btn"
+                                style={{
+                                  padding: "4px 10px",
+                                  borderColor: "#34d399",
+                                  background: "#ecfdf5",
+                                  color: "#059669",
+                                }}
+                                onClick={() => copyGameProfile(o.orderId, gameProfile)}
+                              >
+                                复制
+                              </button>
+                            </>
+                          ) : (
                             <button
                               type="button"
                               className="dl-tab-btn"
                               style={{
                                 padding: "4px 10px",
-                                borderColor: "#34d399",
-                                background: "#ecfdf5",
-                                color: "#059669",
+                                borderColor: "#fde68a",
+                                background: "#fffbeb",
+                                color: "#b45309",
                               }}
-                              onClick={() => copyGameProfile(o.orderId, gameProfile)}
+                              onClick={() => hydrateOrderMeta(o.orderId, { toastOnError: true })}
+                              disabled={metaLoading}
                             >
-                              复制
+                              {metaLoading ? "加载中..." : "加载用户信息"}
                             </button>
-                          </div>
-                        )}
+                          )}
+                        </div>
                       </div>
                     )}
                     <div className="mt-2 text-xs text-gray-500">
@@ -458,6 +509,9 @@ export default function Showcase() {
                             if (!window.confirm("确认付押金并接单？押金锁定后如需取消请走争议/客服流程。")) {
                               return;
                             }
+                            if (!orderMetaById.get(o.orderId)?.gameProfile) {
+                              await hydrateOrderMeta(o.orderId);
+                            }
                             const ok = await runChainAction(
                               `deposit-${o.orderId}`,
                               () => lockDepositOnChain(o.orderId),
@@ -465,6 +519,7 @@ export default function Showcase() {
                               o.orderId
                             );
                             if (!ok) return;
+                            await hydrateOrderMeta(o.orderId, { toastOnError: true });
                             try {
                               const creditBody = JSON.stringify({ orderId: o.orderId, address: chainAddress });
                               const auth = await signAuthIntent(`mantou:credit:${o.orderId}`, creditBody);

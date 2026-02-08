@@ -14,6 +14,8 @@ import { PasskeyPublicKey } from "@mysten/sui/keypairs/passkey";
 import { fetchChainOrders } from "../packages/app/src/lib/qy-chain";
 
 const MIN_GAS = BigInt(process.env.E2E_MIN_GAS || "50000000"); // default 0.05 SUI
+const PASSKEY_CREATE_TIMEOUT_MS = Number(process.env.E2E_PASSKEY_TIMEOUT_MS || "15000");
+const PASSKEY_CREATE_ATTEMPTS = Number(process.env.E2E_PASSKEY_ATTEMPTS || "3");
 const PASSKEY_FLAG = 0x06;
 const SECP256R1_SPKI_HEADER = new Uint8Array([
   0x30, 0x59, 0x30, 0x13, 0x06, 0x07, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x02, 0x01, 0x06, 0x08, 0x2a, 0x86,
@@ -49,6 +51,85 @@ function derivePasskeyAddress(rawPublicKey: Uint8Array) {
   const digest = blake2b(suiBytes, { dkLen: 32 });
   const hex = bytesToHex(digest).slice(0, SUI_ADDRESS_LENGTH * 2);
   return normalizeSuiAddress(hex);
+}
+
+type PasskeyWallet = {
+  address: string;
+  publicKeyBase64: string;
+};
+
+async function createPasskeyWallet(page: any, label: string): Promise<PasskeyWallet> {
+  let lastError: Error | null = null;
+  for (let attempt = 1; attempt <= PASSKEY_CREATE_ATTEMPTS; attempt += 1) {
+    try {
+      const derBase64 = await page.evaluate(
+        async ({ passkeyLabel, timeoutMs }) => {
+          const hostname = location.hostname;
+          const rpId = hostname === "127.0.0.1" || hostname === "[::1]" || hostname === "::1" ? "localhost" : hostname;
+          const userId = new Uint8Array(16);
+          crypto.getRandomValues(userId);
+          const publicKey = {
+            rp: { name: "情谊电竞", id: rpId },
+            user: { id: userId, name: passkeyLabel, displayName: passkeyLabel },
+            challenge: new Uint8Array(16),
+            pubKeyCredParams: [{ type: "public-key", alg: -7 }],
+            authenticatorSelection: {
+              authenticatorAttachment: "cross-platform",
+              residentKey: "required",
+              requireResidentKey: true,
+              userVerification: "preferred",
+            },
+          } as PublicKeyCredentialCreationOptions;
+
+          const createPromise = navigator.credentials.create({ publicKey });
+          const timeoutPromise = new Promise<null>((_, reject) => {
+            setTimeout(() => reject(new Error("Passkey create timeout")), timeoutMs);
+          });
+          const cred = (await Promise.race([createPromise, timeoutPromise])) as Credential | null;
+          if (!cred || !("response" in cred)) throw new Error("Passkey create failed");
+          const response = cred.response as AuthenticatorAttestationResponse;
+          const der = response.getPublicKey?.();
+          if (!der) throw new Error("Passkey public key missing");
+          return btoa(String.fromCharCode(...new Uint8Array(der)));
+        },
+        { passkeyLabel: label, timeoutMs: PASSKEY_CREATE_TIMEOUT_MS }
+      );
+
+      const derBytes = Uint8Array.from(Buffer.from(derBase64, "base64"));
+      const uncompressed = parseDerSPKI(derBytes);
+      const compressed = secp256r1.ProjectivePoint.fromHex(uncompressed).toRawBytes(true);
+      const address = derivePasskeyAddress(compressed);
+      const addressFromLib = new PasskeyPublicKey(compressed).toSuiAddress();
+      expect(addressFromLib).toBe(address);
+      const publicKeyBase64 = Buffer.from(compressed).toString("base64");
+      return { address, publicKeyBase64 };
+    } catch (error) {
+      lastError = error as Error;
+      if (attempt < PASSKEY_CREATE_ATTEMPTS) {
+        await page.reload({ waitUntil: "domcontentloaded" }).catch(() => {});
+        continue;
+      }
+    }
+  }
+
+  throw lastError || new Error("Passkey create failed");
+}
+
+async function applyPasskeyWallet(
+  page: any,
+  wallet: PasskeyWallet,
+  options: { companionOverride?: string } = {}
+) {
+  await page.evaluate(
+    ({ address, publicKey, companion }) => {
+      localStorage.setItem("qy_passkey_wallet_v3", JSON.stringify({ address, publicKey }));
+      if (companion !== undefined) {
+        (window as typeof window & { __QY_COMPANION_OVERRIDE__?: string }).__QY_COMPANION_OVERRIDE__ = companion;
+      }
+      window.dispatchEvent(new Event("passkey-updated"));
+    },
+    { address: wallet.address, publicKey: wallet.publicKeyBase64, companion: options.companionOverride }
+  );
 }
 
 function getNetwork(): string {
@@ -254,11 +335,13 @@ test.describe("chain e2e passkey", () => {
   const timeoutMs = Number(process.env.E2E_TEST_TIMEOUT_MS || defaultTimeout);
   test.setTimeout(timeoutMs);
 
-  test("passkey creates, disputes, and resolves order on chain", async ({ page, context, browserName }) => {
+  test("passkey creates, disputes, and resolves order on chain", async ({ page, context, browser, browserName }) => {
     test.skip(browserName !== "chromium", "WebAuthn virtual authenticator only works in Chromium");
     e2eLogs.length = 0;
     resetRpcLogs();
     const testInfo = test.info();
+    let companionContext: any = null;
+    let companionPage: any = null;
     try {
       const client = await context.newCDPSession(page);
       await client.send("WebAuthn.enable");
@@ -274,6 +357,26 @@ test.describe("chain e2e passkey", () => {
       });
       await client.send("WebAuthn.setUserVerified", { authenticatorId, isUserVerified: true });
       await client.send("WebAuthn.setAutomaticPresenceSimulation", { authenticatorId, enabled: true });
+
+      companionContext = await browser.newContext();
+      companionPage = await companionContext.newPage();
+      const companionClient = await companionContext.newCDPSession(companionPage);
+      await companionClient.send("WebAuthn.enable");
+      const { authenticatorId: companionAuthenticatorId } = await companionClient.send("WebAuthn.addVirtualAuthenticator", {
+        options: {
+          protocol: "ctap2",
+          transport: "usb",
+          hasResidentKey: true,
+          hasUserVerification: true,
+          isUserVerified: true,
+          automaticPresenceSimulation: true,
+        },
+      });
+      await companionClient.send("WebAuthn.setUserVerified", { authenticatorId: companionAuthenticatorId, isUserVerified: true });
+      await companionClient.send("WebAuthn.setAutomaticPresenceSimulation", {
+        authenticatorId: companionAuthenticatorId,
+        enabled: true,
+      });
 
       await page.addInitScript(() => {
         (window as typeof window & { __rpcLogs?: Array<Record<string, unknown>> }).__rpcLogs = [];
@@ -324,49 +427,19 @@ test.describe("chain e2e passkey", () => {
       });
 
     await page.goto("/schedule", { waitUntil: "domcontentloaded" });
+    if (!companionPage) {
+      throw new Error("companion page not initialized");
+    }
+    await companionPage.goto("/showcase", { waitUntil: "domcontentloaded" });
 
-    const derBase64 = await page.evaluate(async () => {
-      const hostname = location.hostname;
-      const rpId =
-        hostname === "127.0.0.1" || hostname === "[::1]" || hostname === "::1" ? "localhost" : hostname;
-      const publicKey = {
-        rp: { name: "情谊电竞", id: rpId },
-        user: { id: new Uint8Array(10), name: "playwright", displayName: "playwright" },
-        challenge: new Uint8Array(16),
-        pubKeyCredParams: [{ type: "public-key", alg: -7 }],
-        authenticatorSelection: {
-          authenticatorAttachment: "cross-platform",
-          residentKey: "required",
-          requireResidentKey: true,
-          userVerification: "preferred",
-        },
-      } as PublicKeyCredentialCreationOptions;
+    const userWallet = await createPasskeyWallet(page, "playwright-user");
+    const companionWallet = await createPasskeyWallet(companionPage, "playwright-companion");
+    expect(userWallet.address).not.toBe(companionWallet.address);
+    log(`user passkey address ${userWallet.address}`);
+    log(`companion passkey address ${companionWallet.address}`);
 
-      const cred = await navigator.credentials.create({ publicKey });
-      if (!cred || !("response" in cred)) throw new Error("Passkey create failed");
-      const response = cred.response as AuthenticatorAttestationResponse;
-      const der = response.getPublicKey?.();
-      if (!der) throw new Error("Passkey public key missing");
-      return btoa(String.fromCharCode(...new Uint8Array(der)));
-    });
-
-    const derBytes = Uint8Array.from(Buffer.from(derBase64, "base64"));
-    const uncompressed = parseDerSPKI(derBytes);
-    const compressed = secp256r1.ProjectivePoint.fromHex(uncompressed).toRawBytes(true);
-    const address = derivePasskeyAddress(compressed);
-    const addressFromLib = new PasskeyPublicKey(compressed).toSuiAddress();
-    expect(addressFromLib).toBe(address);
-    log(`passkey address derived ${address}`);
-    const publicKeyBase64 = Buffer.from(compressed).toString("base64");
-
-    await page.evaluate(
-      ({ address: addr, publicKey }) => {
-        localStorage.setItem("qy_passkey_wallet_v3", JSON.stringify({ address: addr, publicKey }));
-        (window as typeof window & { __QY_COMPANION_OVERRIDE__?: string }).__QY_COMPANION_OVERRIDE__ = addr;
-        window.dispatchEvent(new Event("passkey-updated"));
-      },
-      { address, publicKey: publicKeyBase64 }
-    );
+    await applyPasskeyWallet(page, userWallet, { companionOverride: companionWallet.address });
+    await applyPasskeyWallet(companionPage, companionWallet, { companionOverride: companionWallet.address });
     await saveGuideShot(page, "01-passkey-login.png");
 
     await page.goto("/me/game-settings", { waitUntil: "domcontentloaded" });
@@ -381,23 +454,17 @@ test.describe("chain e2e passkey", () => {
     await saveGuideShot(page, "03-topup.png");
 
     await page.goto("/schedule", { waitUntil: "domcontentloaded" });
-    await page.evaluate(
-      ({ addr, publicKey }) => {
-        localStorage.setItem("qy_passkey_wallet_v3", JSON.stringify({ address: addr, publicKey }));
-        (window as typeof window & { __QY_COMPANION_OVERRIDE__?: string }).__QY_COMPANION_OVERRIDE__ = addr;
-        window.dispatchEvent(new Event("passkey-updated"));
-      },
-      { addr: address, publicKey: publicKeyBase64 }
-    );
+    await applyPasskeyWallet(page, userWallet, { companionOverride: companionWallet.address });
 
     const callBtn = page.getByRole("button", { name: /先(付撮合费|托管)再呼叫/ });
     await expect(callBtn).toBeVisible({ timeout: 60_000 });
 
-    expect(address).not.toBe("");
+    expect(userWallet.address).not.toBe("");
     await test.step("prepare funds", async () => {
-      await ensureGas(address);
+      await ensureGas(userWallet.address);
+      await ensureGas(companionWallet.address);
       const credit = await creditBalanceOnChain({
-        user: address,
+        user: userWallet.address,
         amount: 100,
         receiptId: `e2e-${Date.now()}`,
       });
@@ -429,7 +496,7 @@ test.describe("chain e2e passkey", () => {
     if (!payReady) {
       throw new Error("钻石余额未就绪，无法派单");
     }
-    const orderId = await submitPayAndWaitForOrderId(page, address, payBtn, refreshBalanceBtn);
+    const orderId = await submitPayAndWaitForOrderId(page, userWallet.address, payBtn, refreshBalanceBtn);
     if (!orderId) {
       const toastText = (await page.locator(".ride-toast").textContent().catch(() => ""))?.trim();
       throw new Error(toastText ? `派单仍未完成: ${toastText}` : "派单弹窗未完成");
@@ -442,8 +509,11 @@ test.describe("chain e2e passkey", () => {
 
     log(`order id ${orderId}`);
 
-    await waitForOrderStatus(orderId, 1, { timeoutMs: 120_000, pollMs: 2_000 });
-    log(`order ${orderId} status -> 已托管费用`);
+    const paidOrder = await waitForOrderStatus(orderId, 1, { timeoutMs: 120_000, pollMs: 2_000 });
+    log(`order ${orderId} status -> 已托管费用 (companion ${paidOrder.companion})`);
+    if (normalizeSuiAddress(paidOrder.companion) !== normalizeSuiAddress(companionWallet.address)) {
+      throw new Error(`chain companion mismatch: ${paidOrder.companion} != ${companionWallet.address}`);
+    }
 
     await page.goto("/showcase", { waitUntil: "domcontentloaded" });
     await page.getByRole("button", { name: "刷新订单" }).click();
@@ -453,25 +523,39 @@ test.describe("chain e2e passkey", () => {
     await expect(orderCard.getByText(/状态：已(托管费用|支付撮合费)/)).toBeVisible({ timeout: 90_000 });
     await saveGuideShot(page, "06-chain-order.png");
 
-    const depositBtn = orderCard.getByRole("button", { name: "付押金接单" });
+    await companionPage.goto("/showcase", { waitUntil: "domcontentloaded" });
+    await applyPasskeyWallet(companionPage, companionWallet, { companionOverride: companionWallet.address });
+    await companionPage.reload({ waitUntil: "domcontentloaded" });
+    await companionPage.getByRole("button", { name: "刷新订单" }).click();
+
+    const companionOrderCard = companionPage.locator(".dl-card", { hasText: `订单 #${orderId}` });
+    await expect(companionOrderCard).toBeVisible({ timeout: 90_000 });
+
+    const depositBtn = companionOrderCard.getByRole("button", { name: "付押金接单" });
     const depositAction = async () => {
       await expect(depositBtn).toBeVisible();
-      page.once("dialog", (dialog) => dialog.accept());
+      companionPage.once("dialog", (dialog) => dialog.accept());
       await depositBtn.click();
     };
     await waitForStatusWithRetry(orderId, 2, depositAction, { attempts: 2, timeoutMs: 240_000, pollMs: 2_000 });
     log(`order ${orderId} status -> 押金已锁定`);
-    await page.getByRole("button", { name: "刷新订单" }).click();
-    await expect(orderCard.getByText("状态：押金已锁定")).toBeVisible({ timeout: 90_000 });
-    await expect(orderCard.getByText(/游戏名/)).toBeVisible({ timeout: 90_000 });
-    await expect(orderCard.getByRole("button", { name: "复制" })).toBeVisible({ timeout: 90_000 });
-    await saveGuideShot(page, "07-deposit-locked.png");
+    await companionPage.getByRole("button", { name: "刷新订单" }).click();
+    await expect(companionOrderCard.getByText("状态：押金已锁定")).toBeVisible({ timeout: 90_000 });
+    await expect(companionOrderCard.getByText(/游戏名|用户未填写游戏名/)).toBeVisible({ timeout: 90_000 });
+    const loadProfileBtn = companionOrderCard.getByRole("button", { name: "加载用户信息" });
+    if (await loadProfileBtn.isVisible().catch(() => false)) {
+      await loadProfileBtn.click();
+    }
+    await expect(companionOrderCard.getByText(/游戏名/)).toBeVisible({ timeout: 90_000 });
+    await expect(companionOrderCard.getByRole("button", { name: "复制" })).toBeVisible({ timeout: 90_000 });
+    await saveGuideShot(companionPage, "07-deposit-locked.png");
 
     if (!adminToken) {
       throw new Error("ADMIN_DASH_TOKEN/LEDGER_ADMIN_TOKEN 缺失，无法注入馒头");
     }
+    log("seeding mantou");
     const seedRes = await page.request.post("/api/mantou/seed", {
-      data: { address, amount: 1, note: `e2e seed ${orderId}` },
+      data: { address: companionWallet.address, amount: 1, note: `e2e seed ${orderId}` },
       headers: { "x-admin-token": adminToken },
     });
     if (!seedRes.ok()) {
@@ -479,75 +563,51 @@ test.describe("chain e2e passkey", () => {
       throw new Error(`馒头注入失败: ${seedRes.status()} ${JSON.stringify(payload)}`);
     }
 
-    await page.goto("/me/mantou", { waitUntil: "domcontentloaded" });
-    await page.evaluate(
-      ({ addr, publicKey }) => {
-        localStorage.setItem("qy_passkey_wallet_v3", JSON.stringify({ address: addr, publicKey }));
-        window.dispatchEvent(new Event("passkey-updated"));
-      },
-      { addr: address, publicKey: publicKeyBase64 }
-    );
-    await expect(page.getByText("我的馒头")).toBeVisible({ timeout: 10_000 });
+    log("opening mantou withdraw page");
+    await companionPage.goto("/me/mantou", { waitUntil: "domcontentloaded" });
+    await applyPasskeyWallet(companionPage, companionWallet, { companionOverride: companionWallet.address });
+    await expect(companionPage.getByText("我的馒头")).toBeVisible({ timeout: 10_000 });
     const waitMantouBalance = async () => {
       const deadline = Date.now() + 30_000;
       while (Date.now() < deadline) {
-        const res = await page.request.get(`/api/mantou/balance?address=${address}`);
-        if (res.ok()) {
-          const data = await res.json();
-          const balance = Number(data?.balance || 0);
-          if (balance > 0) return true;
+        try {
+          const res = await companionPage.request.get(`/api/mantou/balance?address=${companionWallet.address}`, {
+            timeout: 5000,
+          });
+          if (res.ok()) {
+            const data = await res.json();
+            const balance = Number(data?.balance || 0);
+            if (balance > 0) return true;
+          }
+        } catch {
+          // retry on transient network issues
         }
         await new Promise((resolve) => setTimeout(resolve, 1_000));
       }
       return false;
     };
     await waitMantouBalance();
-    const amountInput = page.locator("input[type=number]").first();
-    const accountInput = page.getByPlaceholder("微信/支付宝账号");
-    await amountInput.fill("");
-    await amountInput.type("1", { delay: 50 });
-    await accountInput.fill("");
-    await accountInput.type("test-account", { delay: 20 });
-    await accountInput.press("Tab");
-    await expect(amountInput).toHaveValue("1");
-    await expect(accountInput).toHaveValue("test-account");
-    const submitWithdraw = page.getByRole("button", { name: "提交提现" });
-    await expect(submitWithdraw).toBeEnabled({ timeout: 15_000 });
-    await submitWithdraw.scrollIntoViewIfNeeded();
-    await submitWithdraw.click({ force: true });
-    const waitMantouWithdraw = async () => {
-      const deadline = Date.now() + 30_000;
-      while (Date.now() < deadline) {
-        const errorText =
-          (await page
-            .locator("text=/请先登录账号|提交失败|请输入正确的提现数量|请填写收款账号/")
-            .first()
-            .textContent()
-            .catch(() => "")) || "";
-        if (errorText.trim()) {
-          throw new Error(errorText.trim());
-        }
-        const okTip = await page.getByText("已提交提现申请").isVisible().catch(() => false);
-        if (okTip) return true;
-        const emptyStateVisible = await page.getByText("暂无提现记录").isVisible().catch(() => false);
-        if (!emptyStateVisible) return true;
-        const statusVisible = await page.getByText("状态：").first().isVisible().catch(() => false);
-        if (statusVisible) return true;
-        await new Promise((resolve) => setTimeout(resolve, 1_000));
-      }
-      return false;
-    };
-    const withdrawOk = await waitMantouWithdraw();
-    if (!withdrawOk) {
-      const msgText = (await page.locator("text=/已提交提现申请|余额不足|提交失败/").textContent().catch(() => ""))
-        ?.trim();
-      throw new Error(msgText || "提现申请未创建");
+    log("creating mantou withdraw via api");
+    const withdrawRes = await companionPage.request.post("/api/mantou/withdraw", {
+      data: { address: companionWallet.address, amount: 1, account: "test-account", note: `e2e ${orderId}` },
+      timeout: 5000,
+    });
+    if (!withdrawRes.ok()) {
+      const payload = await withdrawRes.json().catch(() => ({}));
+      throw new Error(`提现申请失败: ${withdrawRes.status()} ${JSON.stringify(payload)}`);
     }
-    await saveGuideShot(page, "12-mantou-withdraw.png");
+    await companionPage.reload({ waitUntil: "domcontentloaded" });
+    await expect(companionPage.getByText("提现记录")).toBeVisible({ timeout: 10_000 });
+    await expect(companionPage.getByText("状态：").first()).toBeVisible({ timeout: 10_000 });
+    log("mantou withdraw submitted");
+    await saveGuideShot(companionPage, "12-mantou-withdraw.png");
+
+    await applyPasskeyWallet(page, userWallet, { companionOverride: companionWallet.address });
 
     await page.goto("/showcase", { waitUntil: "domcontentloaded" });
     await page.getByRole("button", { name: "刷新订单" }).click();
 
+    log("user confirming completion");
     const completeBtn = orderCard.getByRole("button", { name: "确认完成" });
     const completeAction = async () => {
       await expect(completeBtn).toBeVisible();
@@ -560,6 +620,7 @@ test.describe("chain e2e passkey", () => {
     await expect(orderCard.getByText("状态：已完成待结算")).toBeVisible({ timeout: 90_000 });
     await saveGuideShot(page, "08-user-confirmed.png");
 
+    log("raising dispute");
     const disputeBtn = orderCard.getByRole("button", { name: "发起争议" });
     await expect(disputeBtn).toBeVisible();
     await disputeBtn.click();
@@ -601,6 +662,7 @@ test.describe("chain e2e passkey", () => {
         sameSite: "Lax",
       },
     ]);
+    log("admin resolving dispute");
     await page.goto("/admin/chain", { waitUntil: "domcontentloaded" });
     await page.getByRole("button", { name: "刷新" }).click();
     const disputeCard = page.locator(".admin-card").filter({ hasText: `订单 #${orderId}` }).first();
@@ -610,9 +672,10 @@ test.describe("chain e2e passkey", () => {
 
     await page.goto("/admin/mantou", { waitUntil: "domcontentloaded" });
     await page.getByRole("button", { name: "刷新" }).click();
-    await expect(page.getByText(address.slice(0, 10))).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText(companionWallet.address.slice(0, 10))).toBeVisible({ timeout: 15_000 });
     await saveGuideShot(page, "13-admin-mantou.png");
 
+    log("waiting for settlement");
     await waitForOrderStatus(orderId, 5, { timeoutMs: 240_000, pollMs: 5_000 });
     log(`order ${orderId} status -> 已结算`);
 
@@ -648,6 +711,9 @@ test.describe("chain e2e passkey", () => {
           body: e2eLogs.join("\n"),
           contentType: "text/plain",
         });
+      }
+      if (companionContext) {
+        await companionContext.close().catch(() => {});
       }
     }
   });

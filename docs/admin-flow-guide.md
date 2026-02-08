@@ -41,7 +41,7 @@
 ## 4. 定位待裁决订单
 找到状态为“争议中”的订单，点击进入详情或操作面板。
 
-![](assets/user-flow/08-admin-dispute.png)
+![](assets/user-flow/10-admin-dispute.png)
 
 要点：
 - 订单号应与前台争议订单一致。
@@ -80,5 +80,5 @@
 
 ## 备注
 - 本指南为“默认人工路径”，若后续需要自动裁决或策略引擎版本，可另出版本指南。
-- 截图复用前台全流程的后台裁决截图：`docs/assets/user-flow/08-admin-dispute.png`
+- 截图复用前台全流程的后台裁决截图：`docs/assets/user-flow/10-admin-dispute.png`
 - 前台陪玩接单后可查看用户游戏名/ID（对应用户流程第 7 步截图）。

@@ -95,5 +95,6 @@
   "settings.footer": "个人信息收集清单，第三方共享信息清单，个人信息处理规则，个人信息处理规则摘要",
   "settings.logout": "退出登录",
   "settings.language.current": "当前语言：中文",
-  "settings.language.switch": "切换为英文"
+  "settings.language.switch": "切换为英文",
+  "加载用户信息": "加载用户信息"
 }

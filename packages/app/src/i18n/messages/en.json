@@ -765,5 +765,6 @@
   "（无正文）": "(No content)",
   "，动作：${data.nextActionType}": ", action: ${data.nextActionType}",
   "> 备注：${note}\n": "> Note: ${note}\n",
-  "贵族铭牌|专属身份标识\n快速响应+|无限次": "Noble badge|Exclusive identity\nFast response+|Unlimited"
+  "贵族铭牌|专属身份标识\n快速响应+|无限次": "Noble badge|Exclusive identity\nFast response+|Unlimited",
+  "加载用户信息": "Load user info"
 }
