@@ -47,6 +47,9 @@ export default function AdminLoginPage() {
             <p className="admin-subtitle">使用后台密钥登录，开始订单与运营管理</p>
           </div>
         </div>
+        <div className="admin-badge warm" style={{ marginBottom: 12 }}>
+          若看不到“检查更新/强制更新”，请清除缓存或手动卸载 Service Worker。
+        </div>
         <div className="admin-chip" style={{ marginBottom: 14 }}>
           <ShieldCheck size={14} />
           ADMIN_DASH_TOKEN / LEDGER_ADMIN_TOKEN / ADMIN_TOKENS
