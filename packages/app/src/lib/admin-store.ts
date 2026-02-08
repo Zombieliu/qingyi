@@ -585,6 +585,23 @@ export async function removeOrders(orderIds: string[]) {
   return result.count;
 }
 
+export async function listE2eOrderIds() {
+  const rows = await prisma.adminOrder.findMany({
+    where: {
+      OR: [
+        { id: { startsWith: "E2E-ORDER-" } },
+        { item: { contains: "Admin E2E" } },
+        { item: { equals: "E2E Test Order" } },
+        { user: { equals: "E2E" } },
+        { user: { equals: "flow-test-user" } },
+        { note: { contains: "flow-test" } },
+      ],
+    },
+    select: { id: true },
+  });
+  return rows.map((row) => row.id);
+}
+
 export async function addOrder(order: AdminOrder) {
   const row = await prisma.adminOrder.create({
     data: {

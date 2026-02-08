@@ -27,6 +27,8 @@ export default function OrdersPage() {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [cleaningE2e, setCleaningE2e] = useState(false);
+  const [cleanResult, setCleanResult] = useState<string | null>(null);
   const pageSize = 20;
   const cacheTtlMs = 60_000;
 
@@ -168,6 +170,28 @@ export default function OrdersPage() {
     }
   };
 
+  const cleanupE2e = async () => {
+    if (!confirm("确认清理所有 E2E 测试订单？")) return;
+    setCleaningE2e(true);
+    setCleanResult(null);
+    try {
+      const res = await fetch("/api/admin/orders/cleanup-e2e", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        alert(data?.error || "清理失败");
+        return;
+      }
+      setCleanResult(`已清理 ${data?.deleted ?? 0} / ${data?.candidates ?? 0} 条`);
+      await loadOrders(1);
+    } finally {
+      setCleaningE2e(false);
+    }
+  };
+
   return (
     <div className="admin-section">
       <div className="admin-card">
@@ -206,6 +230,9 @@ export default function OrdersPage() {
           <button className="admin-btn ghost" disabled={selectedIds.length === 0} onClick={bulkDelete}>
             删除选中{selectedIds.length > 0 ? `（${selectedIds.length}）` : ""}
           </button>
+          <button className="admin-btn ghost" disabled={cleaningE2e} onClick={cleanupE2e}>
+            {cleaningE2e ? "清理中..." : "清理 E2E"}
+          </button>
           <a
             className="admin-btn ghost"
             href={`/api/admin/orders/export?format=csv&stage=${encodeURIComponent(stageFilter)}&q=${encodeURIComponent(
@@ -215,6 +242,11 @@ export default function OrdersPage() {
             导出 CSV
           </a>
         </div>
+        {cleanResult ? (
+          <div className="admin-badge" style={{ marginTop: 12 }}>
+            {cleanResult}
+          </div>
+        ) : null}
       </div>
 
       <div className="admin-card">
