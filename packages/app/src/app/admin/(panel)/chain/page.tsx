@@ -27,6 +27,8 @@ export default function ChainPage() {
   const [autoCancelHours, setAutoCancelHours] = useState<number | null>(null);
   const [autoCanceling, setAutoCanceling] = useState(false);
   const [autoCancelResult, setAutoCancelResult] = useState<string | null>(null);
+  const [cleanupMissing, setCleanupMissing] = useState(false);
+  const [cleanupResult, setCleanupResult] = useState<string | null>(null);
   const [bps, setBps] = useState<Record<string, { service: string; deposit: string }>>({});
   const cacheTtlMs = 60_000;
 
@@ -184,6 +186,31 @@ export default function ChainPage() {
       await loadData();
     } finally {
       setAutoCanceling(false);
+    }
+  };
+
+  const cleanupMissingChain = async () => {
+    if (missingChain.length === 0) return;
+    if (
+      !window.confirm(
+        `确认删除本地缺链订单？共 ${missingChain.length} 条，仅影响数据库，不会动链上。`
+      )
+    ) {
+      return;
+    }
+    setCleanupMissing(true);
+    setCleanupResult(null);
+    try {
+      const res = await fetch("/api/admin/chain/cleanup-missing", { method: "POST" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(data?.error || "清理失败");
+        return;
+      }
+      setCleanupResult(`已清理 ${data?.deleted ?? 0} / ${data?.candidates ?? 0} 条`);
+      await loadData();
+    } finally {
+      setCleanupMissing(false);
     }
   };
 
@@ -378,7 +405,21 @@ export default function ChainPage() {
       <div className="admin-card">
         <div className="admin-card-header">
           <h3>对账差异</h3>
+          <div className="admin-card-actions">
+            <button
+              className="admin-btn ghost"
+              onClick={cleanupMissingChain}
+              disabled={cleanupMissing || missingChain.length === 0}
+            >
+              {cleanupMissing ? "清理中..." : "清理缺链订单"}
+            </button>
+          </div>
         </div>
+        {cleanupResult ? (
+          <div className="admin-badge" style={{ marginTop: 12 }}>
+            {cleanupResult}
+          </div>
+        ) : null}
         {loading ? (
           <p>加载中...</p>
         ) : (
