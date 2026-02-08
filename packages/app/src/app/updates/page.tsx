@@ -1,12 +1,12 @@
 import Link from "next/link";
 import { listPublicAnnouncements } from "@/lib/admin-store";
 
+export const dynamic = "force-dynamic";
+
 export const metadata = {
   title: "公告更新 | 情谊电竞",
   description: "情谊电竞最新公告与更新。",
 };
-
-export const revalidate = 120;
 
 export default async function UpdatesPage() {
   const announcements = await listPublicAnnouncements();

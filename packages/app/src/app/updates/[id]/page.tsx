@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { listPublicAnnouncements } from "@/lib/admin-store";
 
-export const revalidate = 120;
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: { params: { id: string } }) {
   const announcements = await listPublicAnnouncements();
