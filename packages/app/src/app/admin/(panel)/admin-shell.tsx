@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { useI18n } from "@/lib/i18n-client";
 import AutoTranslate from "@/app/components/auto-translate";
+import SwControl from "@/app/components/sw-control";
 
 type AdminRole = "admin" | "ops" | "finance" | "viewer";
 
@@ -248,6 +249,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
             {t("当前权限：")}
             {t(roleLabels[role] || role)}
           </div>
+          <SwControl />
           <button className="admin-btn secondary" onClick={handleLogout}>
             <LogOut size={16} style={{ marginRight: 6 }} />
             {t("退出登录")}
