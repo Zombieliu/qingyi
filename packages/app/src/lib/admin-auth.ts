@@ -1,11 +1,11 @@
 import "server-only";
 import crypto from "crypto";
-import net from "net";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import type { AdminRole } from "./admin-types";
 import { createSession, getSessionByHash, removeSessionByHash, updateSessionByHash } from "./admin-store";
 import { rateLimit } from "./rate-limit";
+import { isIpAllowed, normalizeClientIp } from "./admin-ip-utils";
 
 export const ADMIN_SESSION_COOKIE = "admin_session";
 export const LEGACY_ADMIN_COOKIE = "admin_token";
@@ -128,67 +128,10 @@ function getClientIp(req: Request): string {
   return normalizeClientIp(raw);
 }
 
-function normalizeClientIp(raw: string): string {
-  let ip = raw.trim();
-  if (!ip) return "unknown";
-  if (ip.startsWith("[")) {
-    const end = ip.indexOf("]");
-    if (end > 0) {
-      ip = ip.slice(1, end);
-    }
-  } else if (ip.includes(":") && ip.includes(".")) {
-    ip = ip.split(":")[0];
-  }
-  return ip;
-}
-
-function parseAllowlist(raw: string): string[] {
-  if (!raw) return [];
-  return raw
-    .split(/[,\s]+/)
-    .map((item) => item.trim())
-    .filter(Boolean);
-}
-
-function ipv4ToInt(ip: string): number | null {
-  const parts = ip.split(".");
-  if (parts.length !== 4) return null;
-  const nums = parts.map((part) => Number(part));
-  if (nums.some((n) => !Number.isInteger(n) || n < 0 || n > 255)) return null;
-  return ((nums[0] << 24) >>> 0) + (nums[1] << 16) + (nums[2] << 8) + nums[3];
-}
-
-function isIpv4InCidr(ip: string, cidr: string): boolean {
-  const [base, maskRaw] = cidr.split("/");
-  const mask = Number(maskRaw);
-  if (!Number.isInteger(mask) || mask < 0 || mask > 32) return false;
-  const ipInt = ipv4ToInt(ip);
-  const baseInt = ipv4ToInt(base);
-  if (ipInt === null || baseInt === null) return false;
-  const bitmask = mask === 0 ? 0 : (0xffffffff << (32 - mask)) >>> 0;
-  return (ipInt & bitmask) === (baseInt & bitmask);
-}
-
-function isIpAllowed(ip: string): boolean {
-  const entries = parseAllowlist(ADMIN_IP_ALLOWLIST);
-  if (entries.length === 0) return true;
-  if (!ip || ip === "unknown") return false;
-  const version = net.isIP(ip);
-  for (const entry of entries) {
-    if (entry === "*") return true;
-    if (entry.includes("/")) {
-      if (version === 4 && isIpv4InCidr(ip, entry)) return true;
-      continue;
-    }
-    if (entry === ip) return true;
-  }
-  return false;
-}
-
 export function enforceAdminIpAllowlist(req: Request): NextResponse | null {
   if (!ADMIN_IP_ALLOWLIST) return null;
   const ip = getClientIp(req);
-  if (isIpAllowed(ip)) return null;
+  if (isIpAllowed(ip, ADMIN_IP_ALLOWLIST)) return null;
   return NextResponse.json({ error: "ip_forbidden" }, { status: 403 });
 }
 
