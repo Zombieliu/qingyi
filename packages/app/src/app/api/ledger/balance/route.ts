@@ -30,6 +30,17 @@ function decodeU64(value: unknown): string {
 }
 
 export async function GET(req: Request) {
+  const referer = req.headers.get("referer") || "";
+  if (referer) {
+    try {
+      const url = new URL(referer);
+      if (url.pathname.startsWith("/admin")) {
+        return NextResponse.json({ ok: true, balance: "0", skipped: true });
+      }
+    } catch {
+      // ignore invalid referer
+    }
+  }
   try {
     const { searchParams } = new URL(req.url);
     const address = normalizeSuiAddress(searchParams.get("address") || "");
