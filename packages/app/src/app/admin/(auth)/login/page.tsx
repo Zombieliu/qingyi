@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ShieldCheck, KeyRound } from "lucide-react";
+import SwControl from "@/app/components/sw-control";
 
 export default function AdminLoginPage() {
   const router = useRouter();
@@ -80,6 +81,9 @@ export default function AdminLoginPage() {
         <div className="admin-helper">
           提示：在 `.env.local` 中设置 `ADMIN_DASH_TOKEN` 或 `ADMIN_TOKENS`。
           如未设置，将回退使用 `LEDGER_ADMIN_TOKEN`。
+        </div>
+        <div style={{ marginTop: 16 }}>
+          <SwControl />
         </div>
       </div>
     </div>
