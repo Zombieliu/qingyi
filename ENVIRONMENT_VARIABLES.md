@@ -77,6 +77,12 @@
 - ADMIN_AUDIT_LOG_LIMIT
 - ADMIN_PAYMENT_EVENT_LIMIT
 - ORDER_RETENTION_DAYS
+- CHAIN_MISSING_CLEANUP_ENABLED
+  - "1" 启用链上缺失订单清理（由 /api/cron/chain/cleanup-missing 触发）。
+- CHAIN_MISSING_CLEANUP_MAX_AGE_HOURS
+  - 仅清理创建时间早于该阈值（小时）的缺链订单。
+- CHAIN_MISSING_CLEANUP_MAX
+  - 单次最多清理条数，默认 500。
 
 ## 增长埋点 (可选)
 

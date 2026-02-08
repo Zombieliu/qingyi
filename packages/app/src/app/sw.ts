@@ -16,21 +16,9 @@ if (process.env.NODE_ENV === "production") {
 
 const runtimeCaching: RuntimeCaching[] = [
   {
-    // Admin + balance APIs must always be fresh (avoid cached 401 causing login loops)
-    matcher: ({ url }) =>
-      url.pathname.startsWith("/api/admin/") ||
-      url.pathname.startsWith("/api/ledger/") ||
-      url.pathname.startsWith("/api/mantou/"),
-    handler: new NetworkOnly(),
-  },
-  {
-    // API calls to matchmaking / profiles
+    // Always fetch API fresh to avoid stale auth/state
     matcher: ({ url }) => url.pathname.startsWith("/api/"),
-    handler: new NetworkFirst({
-      cacheName: "api-cache",
-      networkTimeoutSeconds: 6,
-      plugins: [],
-    }),
+    handler: new NetworkOnly(),
   },
   {
     // External API calls
