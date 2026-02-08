@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { fetchChainOrdersAdmin } from "@/lib/chain-admin";
 import { listOrders, removeOrders } from "@/lib/admin-store";
+import { computeMissingChainCleanup } from "@/lib/chain-missing-utils";
 
 function isAuthorized(req: Request) {
   const secret = process.env.CRON_SECRET;
@@ -27,21 +28,14 @@ export async function GET(req: Request) {
     return NextResponse.json({ ok: true, enabled, deleted: 0 });
   }
 
-  const cutoff = Date.now() - maxAgeHours * 60 * 60 * 1000;
-
   const [chainOrders, localOrders] = await Promise.all([fetchChainOrdersAdmin(), listOrders()]);
-  const chainIds = new Set(chainOrders.map((order) => order.orderId));
-  const missingChain = localOrders.filter(
-    (order) => /^[0-9]+$/.test(order.id) && !chainIds.has(order.id)
-  );
-
-  const eligible = missingChain.filter((order) => {
-    if (order.source !== "chain") return false;
-    if (!Number.isFinite(order.createdAt)) return false;
-    return order.createdAt < cutoff;
+  const { ids, missing, eligible, cutoff, limit } = computeMissingChainCleanup({
+    chainOrders,
+    localOrders,
+    maxAgeHours,
+    maxDelete,
+    chainOnly: true,
   });
-
-  const ids = eligible.slice(0, maxDelete).map((order) => order.id);
   const deleted = ids.length ? await removeOrders(ids) : 0;
 
   return NextResponse.json({
@@ -49,8 +43,9 @@ export async function GET(req: Request) {
     enabled,
     maxAgeHours,
     cutoff,
+    maxDelete: limit,
     chainCount: chainOrders.length,
-    missingCount: missingChain.length,
+    missingCount: missing.length,
     eligibleCount: eligible.length,
     deleted,
   });
