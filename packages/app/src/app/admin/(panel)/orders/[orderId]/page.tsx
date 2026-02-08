@@ -67,14 +67,16 @@ export default function OrderDetailPage() {
   return (
     <div className="admin-section">
       <div className="admin-card">
-        <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
+        <div className="admin-card-header">
           <div>
             <h3>订单详情</h3>
-            <div style={{ fontSize: 12, color: "#64748b" }}>{order.id}</div>
+            <div className="admin-meta">{order.id}</div>
           </div>
-          <Link href="/admin/orders" className="admin-btn ghost">
-            返回订单列表
-          </Link>
+          <div className="admin-card-actions">
+            <Link href="/admin/orders" className="admin-btn ghost">
+              返回订单列表
+            </Link>
+          </div>
         </div>
         <div className="admin-form" style={{ marginTop: 16 }}>
           <label className="admin-field">

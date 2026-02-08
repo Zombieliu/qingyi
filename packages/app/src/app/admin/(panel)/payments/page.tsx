@@ -53,19 +53,27 @@ export default function PaymentsPage() {
   return (
     <div className="admin-section">
       <div className="admin-card">
-        <div className="admin-toolbar" style={{ justifyContent: "space-between" }}>
+        <div className="admin-card-header">
           <div>
             <h3>支付事件</h3>
             <p>展示支付回调事件与核验状态。</p>
           </div>
-          <button className="admin-btn ghost" onClick={() => load(1)}>
-            <RefreshCw size={16} style={{ marginRight: 6 }} />
-            刷新
-          </button>
+          <div className="admin-card-actions">
+            <button className="admin-btn ghost" onClick={() => load(1)}>
+              <RefreshCw size={16} style={{ marginRight: 6 }} />
+              刷新
+            </button>
+          </div>
         </div>
       </div>
 
       <div className="admin-card">
+        <div className="admin-card-header">
+          <h3>事件列表</h3>
+          <div className="admin-card-actions">
+            <span className="admin-pill">共 {events.length} 条</span>
+          </div>
+        </div>
         {loading ? (
           <p>加载中...</p>
         ) : events.length === 0 ? (
@@ -86,12 +94,24 @@ export default function PaymentsPage() {
               <tbody>
                 {events.map((event) => (
                   <tr key={event.id}>
-                    <td data-label="时间">{new Date(event.createdAt).toLocaleString()}</td>
+                    <td data-label="时间" className="admin-meta">
+                      {new Date(event.createdAt).toLocaleString()}
+                    </td>
                     <td data-label="事件">{event.event}</td>
                     <td data-label="订单号">{event.orderNo || "-"}</td>
                     <td data-label="金额">{typeof event.amount === "number" ? event.amount : "-"}</td>
-                    <td data-label="状态">{event.status || "-"}</td>
-                    <td data-label="校验">{event.verified ? "已校验" : "未校验"}</td>
+                    <td data-label="状态">
+                      {event.status ? (
+                        <span className="admin-badge neutral">{event.status}</span>
+                      ) : (
+                        "-"
+                      )}
+                    </td>
+                    <td data-label="校验">
+                      <span className={`admin-badge${event.verified ? "" : " warm"}`}>
+                        {event.verified ? "已校验" : "未校验"}
+                      </span>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -102,7 +122,7 @@ export default function PaymentsPage() {
           <button className="admin-btn ghost" disabled={page <= 1} onClick={() => load(page - 1)}>
             上一页
           </button>
-          <div style={{ fontSize: 12, color: "#64748b" }}>
+          <div className="admin-meta">
             第 {page} / {totalPages} 页
           </div>
           <button className="admin-btn ghost" disabled={page >= totalPages} onClick={() => load(page + 1)}>

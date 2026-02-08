@@ -100,14 +100,14 @@ export default function MantouPage() {
         return;
       }
       await refresh();
-      const address = getCurrentAddress();
-      if (address) {
-        const res = await fetch(`/api/mantou/withdraw?address=${address}&page=1&pageSize=10`);
+      const addressNext = getCurrentAddress();
+      if (addressNext) {
+        const res = await fetch(`/api/mantou/withdraw?address=${addressNext}&page=1&pageSize=10`);
         if (res.ok) {
           const data = await res.json();
           const next = Array.isArray(data?.items) ? data.items : [];
           setWithdraws(next);
-          writeCache(`cache:mantou:withdraw:${address}:page1`, next);
+          writeCache(`cache:mantou:withdraw:${addressNext}:page1`, next);
         }
       }
       setAmount(0);

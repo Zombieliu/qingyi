@@ -268,7 +268,12 @@ export default function VipAdminPage() {
   return (
     <div className="admin-section">
       <div className="admin-card">
-        <h3>新增会员等级</h3>
+        <div className="admin-card-header">
+          <div>
+            <h3>新增会员等级</h3>
+            <p>定义等级、权益与价格。</p>
+          </div>
+        </div>
         <div className="admin-form" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
           <label className="admin-field">
             等级名称
@@ -346,17 +351,20 @@ export default function VipAdminPage() {
       </div>
 
       <div className="admin-card">
+        <div className="admin-card-header">
+          <div>
+            <h3>会员申请筛选</h3>
+            <p>按申请人、联系方式与状态过滤。</p>
+          </div>
+          <div className="admin-card-actions">
+            <span className="admin-pill">上架 {totalActive} 个</span>
+          </div>
+        </div>
         <div className="admin-toolbar">
           <div className="admin-toolbar-grow" style={{ position: "relative" }}>
             <Search
               size={16}
-              style={{
-                position: "absolute",
-                left: 12,
-                top: "50%",
-                transform: "translateY(-50%)",
-                color: "#64748b",
-              }}
+              className="admin-input-icon"
             />
             <input
               className="admin-input"
@@ -378,11 +386,16 @@ export default function VipAdminPage() {
             <RefreshCw size={16} style={{ marginRight: 6 }} />
             刷新申请
           </button>
-          <span className="admin-badge neutral">上架 {totalActive} 个</span>
         </div>
       </div>
 
       <div className="admin-card">
+        <div className="admin-card-header">
+          <h3>会员等级列表</h3>
+          <div className="admin-card-actions">
+            <span className="admin-pill">共 {tiers.length} 条</span>
+          </div>
+        </div>
         {tiers.length === 0 ? (
           <p>暂无会员等级</p>
         ) : (
@@ -403,8 +416,8 @@ export default function VipAdminPage() {
                 {tiers.map((tier) => (
                   <tr key={tier.id}>
                     <td data-label="等级">
-                      <div style={{ fontWeight: 600 }}>{tier.name}</div>
-                      <div style={{ fontSize: 12, color: "#64748b" }}>Lv.{tier.level}</div>
+                      <div className="admin-text-strong">{tier.name}</div>
+                      <div className="admin-meta">Lv.{tier.level}</div>
                     </td>
                     <td data-label="价格">
                       <input
@@ -507,7 +520,12 @@ export default function VipAdminPage() {
       </div>
 
       <div className="admin-card">
-        <h3>会员申请</h3>
+        <div className="admin-card-header">
+          <h3>会员申请</h3>
+          <div className="admin-card-actions">
+            <span className="admin-pill">本页 {requests.length} 条</span>
+          </div>
+        </div>
         {loading ? (
           <p>加载中...</p>
         ) : requests.length === 0 ? (
@@ -530,12 +548,12 @@ export default function VipAdminPage() {
                 {requests.map((req) => (
                   <tr key={req.id}>
                     <td data-label="用户">
-                      <div style={{ fontWeight: 600 }}>{req.userName || "访客"}</div>
-                      <div style={{ fontSize: 12, color: "#64748b" }}>{req.userAddress || "-"}</div>
-                      <div style={{ fontSize: 11, color: "#94a3b8" }}>{req.id}</div>
+                      <div className="admin-text-strong">{req.userName || "访客"}</div>
+                      <div className="admin-meta">{req.userAddress || "-"}</div>
+                      <div className="admin-meta-faint">{req.id}</div>
                     </td>
                     <td data-label="等级">{req.tierName || "-"}</td>
-                    <td data-label="联系方式" style={{ fontSize: 12, color: "#64748b" }}>
+                    <td data-label="联系方式" className="admin-meta">
                       {req.contact || "-"}
                     </td>
                     <td data-label="状态">
@@ -585,7 +603,12 @@ export default function VipAdminPage() {
       </div>
 
       <div className="admin-card">
-        <h3>会员列表</h3>
+        <div className="admin-card-header">
+          <h3>会员列表</h3>
+          <div className="admin-card-actions">
+            <span className="admin-pill">共 {members.length} 条</span>
+          </div>
+        </div>
         {members.length === 0 ? (
           <p>暂无会员记录</p>
         ) : (
@@ -606,8 +629,8 @@ export default function VipAdminPage() {
                 {members.map((member) => (
                   <tr key={member.id}>
                     <td data-label="用户">
-                      <div style={{ fontWeight: 600 }}>{member.userName || "-"}</div>
-                      <div style={{ fontSize: 12, color: "#64748b" }}>{member.userAddress || "-"}</div>
+                      <div className="admin-text-strong">{member.userName || "-"}</div>
+                      <div className="admin-meta">{member.userAddress || "-"}</div>
                     </td>
                     <td data-label="等级">{member.tierName || "-"}</td>
                     <td data-label="成长值">

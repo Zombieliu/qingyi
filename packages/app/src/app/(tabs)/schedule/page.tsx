@@ -4,6 +4,7 @@ import { Clock3, ShieldCheck, QrCode, Loader2, CheckCircle2 } from "lucide-react
 import { type LocalOrder } from "@/app/components/order-store";
 import { createOrder, deleteOrder, fetchOrders, patchOrder, syncChainOrder } from "@/app/components/order-service";
 import { readCache, writeCache } from "@/app/components/client-cache";
+import { trackEvent } from "@/app/components/analytics";
 import {
   type ChainOrder,
   cancelOrderOnChain,
@@ -52,6 +53,8 @@ type PublicPlayer = {
 };
 
 const GAME_PROFILE_KEY = "qy_game_profile_v1";
+const FIRST_ORDER_STORAGE_KEY = "qy_first_order_discount_used_v1";
+const FIRST_ORDER_DISCOUNT = { minSpend: 99, amount: 10, label: "首单满99减10" };
 
 type GameProfile = {
   gameName: string;
@@ -126,6 +129,35 @@ const sections: RideSection[] = [
 
 const PLAYER_SECTION_TITLE = "可接打手";
 
+function readDiscountUsage(address: string) {
+  if (typeof window === "undefined") return false;
+  const key = address || "guest";
+  const raw = window.localStorage.getItem(FIRST_ORDER_STORAGE_KEY);
+  if (!raw) return false;
+  try {
+    const parsed = JSON.parse(raw) as Record<string, boolean>;
+    return Boolean(parsed[key]);
+  } catch {
+    return false;
+  }
+}
+
+function markDiscountUsage(address: string) {
+  if (typeof window === "undefined") return;
+  const key = address || "guest";
+  const raw = window.localStorage.getItem(FIRST_ORDER_STORAGE_KEY);
+  const next: Record<string, boolean> = {};
+  if (raw) {
+    try {
+      Object.assign(next, JSON.parse(raw) as Record<string, boolean>);
+    } catch {
+      // ignore
+    }
+  }
+  next[key] = true;
+  window.localStorage.setItem(FIRST_ORDER_STORAGE_KEY, JSON.stringify(next));
+}
+
 export default function Schedule() {
   const [checked, setChecked] = useState<Record<string, boolean>>(() => ({}));
   const [active, setActive] = useState("推荐");
@@ -141,8 +173,18 @@ export default function Schedule() {
   const [balanceReady, setBalanceReady] = useState(false);
   const [vipTier, setVipTier] = useState<{ level?: number; name?: string } | null>(null);
   const [vipLoading, setVipLoading] = useState(false);
-  const [locked, setLocked] = useState<{ total: number; service: number; player: number; items: string[] }>({
+  const [firstOrderEligible, setFirstOrderEligible] = useState(false);
+  const [locked, setLocked] = useState<{
+    total: number;
+    originalTotal: number;
+    discount: number;
+    service: number;
+    player: number;
+    items: string[];
+  }>({
     total: 0,
+    originalTotal: 0,
+    discount: 0,
     service: 0,
     player: 0,
     items: [],
@@ -173,6 +215,12 @@ export default function Schedule() {
   useEffect(() => {
     refreshOrders();
   }, []);
+
+  useEffect(() => {
+    const addr = getCurrentAddress();
+    const used = readDiscountUsage(addr);
+    setFirstOrderEligible(!used && orders.length === 0);
+  }, [orders, chainAddress]);
 
   const refreshVip = async () => {
     const addr = getCurrentAddress();
@@ -413,10 +461,21 @@ export default function Schedule() {
       setToast("请先选择服务");
       return;
     }
-    const total = pickedPrice || Math.max(pickedNames.length * 10, 10);
+    const originalTotal = pickedPrice || Math.max(pickedNames.length * 10, 10);
+    const canDiscount = firstOrderEligible && originalTotal >= FIRST_ORDER_DISCOUNT.minSpend;
+    const discount = canDiscount ? FIRST_ORDER_DISCOUNT.amount : 0;
+    const total = Math.max(originalTotal - discount, 0);
     const service = Number((total * MATCH_RATE).toFixed(2));
     const player = Math.max(Number((total - service).toFixed(2)), 0);
-    setLocked({ total, service, player, items: pickedNames });
+    setLocked({ total, originalTotal, discount, service, player, items: pickedNames });
+    trackEvent("order_intent", {
+      source: "schedule",
+      itemsCount: pickedNames.length,
+      originalTotal,
+      total,
+      discount,
+      eligible: firstOrderEligible,
+    });
     setFeeOpen(true);
     setFeeChecked(false);
   };
@@ -645,6 +704,7 @@ export default function Schedule() {
         playerPaid: true,
         note: [
           `来源：安排页呼叫服务。托管费用使用钻石支付(${requiredDiamonds}钻石)`,
+          locked.discount > 0 ? `首单优惠减免 ¥${locked.discount}` : "",
           requestedNote,
         ]
           .filter(Boolean)
@@ -657,6 +717,14 @@ export default function Schedule() {
           paymentMode: "diamond_escrow",
           diamondCharge: requiredDiamonds,
           diamondChargeCny: locked.total,
+          firstOrderDiscount:
+            locked.discount > 0
+              ? {
+                  amount: locked.discount,
+                  minSpend: FIRST_ORDER_DISCOUNT.minSpend,
+                  originalTotal: locked.originalTotal,
+                }
+              : null,
           requestedPlayerId: selectedPlayer?.id || null,
           requestedPlayerName: selectedPlayer?.name || null,
           requestedPlayerRole: selectedPlayer?.role || null,
@@ -670,6 +738,21 @@ export default function Schedule() {
         },
       });
       await refreshOrders();
+      if (locked.discount > 0) {
+        markDiscountUsage(getCurrentAddress());
+        trackEvent("first_order_discount_applied", {
+          orderId: result.orderId,
+          discount: locked.discount,
+          originalTotal: locked.originalTotal,
+        });
+      }
+      trackEvent("order_create_success", {
+        orderId: result.orderId,
+        total: locked.total,
+        discount: locked.discount,
+        paymentMode: "diamond_escrow",
+        chain: Boolean(chainDigest),
+      });
       setMode("notifying");
       setFeeOpen(false);
       if (result.sent === false) {
@@ -678,7 +761,13 @@ export default function Schedule() {
         setToast(chainDigest ? "已提交并派单" : "托管费用已记录，正在派单");
       }
     } catch (e) {
-      setToast((e as Error).message);
+      const message = (e as Error).message || "创建订单失败";
+      trackEvent("order_create_failed", {
+        error: message,
+        total: locked.total,
+        discount: locked.discount,
+      });
+      setToast(message);
     } finally {
       setTimeout(() => setToast(null), 3000);
       setCalling(false);
@@ -826,6 +915,22 @@ export default function Schedule() {
                 <div className="text-xs text-gray-500">
                   订单 ¥{locked.total.toFixed(2)} × {diamondRate} = {requiredDiamonds} 钻石
                 </div>
+                {locked.discount > 0 && (
+                  <div className="ride-price-stack">
+                    <div className="ride-price-line">
+                      <span>原价</span>
+                      <span>¥{locked.originalTotal.toFixed(2)}</span>
+                    </div>
+                    <div className="ride-price-line discount">
+                      <span>{FIRST_ORDER_DISCOUNT.label}</span>
+                      <span>-¥{locked.discount.toFixed(2)}</span>
+                    </div>
+                    <div className="ride-price-line total">
+                      <span>应付</span>
+                      <span>¥{locked.total.toFixed(2)}</span>
+                    </div>
+                  </div>
+                )}
                 <div className="text-xs text-gray-500" style={{ marginTop: 4 }}>
                   撮合费 ¥{locked.service.toFixed(2)} / 打手费用 ¥{locked.player.toFixed(2)}
                 </div>
@@ -1039,6 +1144,9 @@ export default function Schedule() {
         <div className="ride-footer-left">
           <div className="ride-range">预估价 {pickedPrice ? pickedPrice.toFixed(0) : "4-9"}</div>
           <div className="ride-extra">动态调价</div>
+          {firstOrderEligible && (
+            <div className="ride-discount-tag">{FIRST_ORDER_DISCOUNT.label}</div>
+          )}
         </div>
         <button className="ride-call" onClick={submit}>
           <QrCode size={16} style={{ marginRight: 6 }} />

@@ -152,7 +152,12 @@ export default function PlayersPage() {
   return (
     <div className="admin-section">
       <div className="admin-card">
-        <h3>新增打手档案</h3>
+        <div className="admin-card-header">
+          <div>
+            <h3>新增打手档案</h3>
+            <p>录入打手信息与授信配置。</p>
+          </div>
+        </div>
         <div className="admin-form" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
           <label className="admin-field">
             名称
@@ -263,10 +268,10 @@ export default function PlayersPage() {
       </div>
 
       <div className="admin-card">
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+        <div className="admin-card-header">
           <h3>打手列表</h3>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "#475569" }}>
+          <div className="admin-card-actions">
+            <label className="admin-check">
               <input
                 type="checkbox"
                 checked={players.length > 0 && selectedIds.length === players.length}
@@ -316,8 +321,8 @@ export default function PlayersPage() {
                         onChange={() => toggleSelect(player.id)}
                       />
                     </td>
-                    <td data-label="名称" style={{ fontWeight: 600 }}>
-                      {player.name}
+                    <td data-label="名称">
+                      <span className="admin-text-strong">{player.name}</span>
                     </td>
                     <td data-label="位置">
                       <input

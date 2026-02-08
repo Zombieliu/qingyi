@@ -158,7 +158,12 @@ export default function AnnouncementsPage() {
   return (
     <div className="admin-section">
       <div className="admin-card">
-        <h3>{editingId ? "编辑公告" : "发布新公告"}</h3>
+        <div className="admin-card-header">
+          <div>
+            <h3>{editingId ? "编辑公告" : "发布新公告"}</h3>
+            <p>管理公告与资讯内容。</p>
+          </div>
+        </div>
         <div className="admin-form">
           <label className="admin-field">
             标题
@@ -204,7 +209,7 @@ export default function AnnouncementsPage() {
             </select>
           </label>
         </div>
-        <div style={{ display: "flex", gap: 12, marginTop: 14 }}>
+        <div className="admin-card-actions" style={{ marginTop: 14 }}>
           <button className="admin-btn primary" onClick={submitForm}>
             <PlusCircle size={16} style={{ marginRight: 6 }} />
             {editingId ? "保存修改" : "发布公告"}
@@ -218,10 +223,10 @@ export default function AnnouncementsPage() {
       </div>
 
       <div className="admin-card">
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+        <div className="admin-card-header">
           <h3>公告列表</h3>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "#475569" }}>
+          <div className="admin-card-actions">
+            <label className="admin-check">
               <input
                 type="checkbox"
                 checked={announcements.length > 0 && selectedIds.length === announcements.length}
@@ -241,10 +246,10 @@ export default function AnnouncementsPage() {
         ) : announcements.length === 0 ? (
           <p>暂无公告记录</p>
         ) : (
-          <div style={{ display: "grid", gap: 12 }}>
+          <div className="admin-stack">
             {announcements.map((item) => (
-              <div key={item.id} className="admin-card" style={{ boxShadow: "none" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+              <div key={item.id} className="admin-card admin-card--subtle">
+                <div className="admin-card-header" style={{ alignItems: "flex-start", flexWrap: "wrap" }}>
                   <div>
                     <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                       <input
@@ -258,14 +263,14 @@ export default function AnnouncementsPage() {
                         {item.status}
                       </span>
                     </div>
-                    <div style={{ fontSize: 12, color: "#64748b", marginTop: 4 }}>
+                    <div className="admin-meta" style={{ marginTop: 4 }}>
                       {item.tag}
                     </div>
-                    <div style={{ marginTop: 10, fontSize: 14, color: "#0f172a" }}>
+                    <div className="admin-text-body" style={{ marginTop: 10 }}>
                       {item.content || "（无正文）"}
                     </div>
                   </div>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  <div className="admin-card-actions" style={{ flexDirection: "column", alignItems: "stretch" }}>
                     <button className="admin-btn ghost" onClick={() => handleEdit(item)}>
                       <Pencil size={14} style={{ marginRight: 4 }} />
                       编辑

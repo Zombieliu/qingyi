@@ -54,6 +54,19 @@ export interface AdminPaymentEvent {
   raw?: Record<string, unknown>;
 }
 
+export interface GrowthEvent {
+  id: string;
+  event: string;
+  clientId?: string;
+  sessionId?: string;
+  userAddress?: string;
+  path?: string;
+  referrer?: string;
+  ua?: string;
+  meta?: Record<string, unknown>;
+  createdAt: number;
+}
+
 export interface AdminOrder {
   id: string;
   user: string;

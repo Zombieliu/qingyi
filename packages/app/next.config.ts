@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 import path from "path";
 import withSerwistInit from "@serwist/next";
+import { withSentryConfig } from "@sentry/nextjs";
 
 const withSerwist = withSerwistInit({
   swSrc: "src/app/sw.ts",
@@ -22,9 +23,6 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: repoRoot,
   },
-  eslint: {
-    ignoreDuringBuilds: isVercel,
-  },
   typescript: {
     ignoreBuildErrors: isVercel,
   },
@@ -41,4 +39,14 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default process.env.PWA_BUILD === "1" ? withSerwist(nextConfig) : nextConfig;
+const pwaConfig = process.env.PWA_BUILD === "1" ? withSerwist(nextConfig) : nextConfig;
+
+export default withSentryConfig(
+  pwaConfig,
+  {
+    silent: true,
+    org: process.env.SENTRY_ORG,
+    project: process.env.SENTRY_PROJECT,
+    authToken: process.env.SENTRY_AUTH_TOKEN,
+  }
+);

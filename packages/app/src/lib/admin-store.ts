@@ -532,6 +532,12 @@ export async function queryOrders(params: {
   };
 }
 
+export async function hasOrdersForAddress(address: string) {
+  if (!address) return false;
+  const count = await prisma.adminOrder.count({ where: { userAddress: address } });
+  return count > 0;
+}
+
 export async function getOrderById(orderId: string) {
   const row = await prisma.adminOrder.findUnique({ where: { id: orderId } });
   return row ? mapOrder(row) : null;

@@ -52,14 +52,12 @@ export async function PATCH(req: Request, { params }: RouteContext) {
   }
 
   let rawBody = "";
-  let body:
-    | (Partial<AdminOrder> & {
-        userAddress?: string;
-        companionAddress?: string;
-        status?: string;
-        meta?: Record<string, unknown>;
-      })
-    | {} = {};
+  let body: Partial<AdminOrder> & {
+    userAddress?: string;
+    companionAddress?: string;
+    status?: string;
+    meta?: Record<string, unknown>;
+  } = {};
   try {
     rawBody = await req.text();
     body = rawBody ? (JSON.parse(rawBody) as Partial<AdminOrder> & { userAddress?: string; status?: string }) : {};

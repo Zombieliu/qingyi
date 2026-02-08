@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import crypto from "crypto";
-import { addOrder, queryOrders, queryPublicOrdersCursor } from "@/lib/admin-store";
+import { addOrder, hasOrdersForAddress, queryOrders, queryPublicOrdersCursor } from "@/lib/admin-store";
 import { requireAdmin } from "@/lib/admin-auth";
 import { isValidSuiAddress, normalizeSuiAddress } from "@mysten/sui/utils";
 import { requireUserSignature } from "@/lib/user-auth";
@@ -170,6 +170,27 @@ export async function POST(req: Request) {
 
   const auth = await requireUserSignature(req, { intent: "orders:create", address: userAddress, body: rawBody });
   if (!auth.ok) return auth.response;
+
+  const discountMeta = (payload.meta as { firstOrderDiscount?: Record<string, unknown> } | undefined)
+    ?.firstOrderDiscount;
+  if (discountMeta) {
+    const discount = Number((discountMeta as { amount?: number }).amount);
+    const minSpend = Number((discountMeta as { minSpend?: number }).minSpend);
+    const originalTotal = Number((discountMeta as { originalTotal?: number }).originalTotal);
+    if (!Number.isFinite(discount) || !Number.isFinite(minSpend) || !Number.isFinite(originalTotal)) {
+      return NextResponse.json({ error: "invalid_discount" }, { status: 400 });
+    }
+    if (originalTotal < minSpend || discount <= 0) {
+      return NextResponse.json({ error: "invalid_discount" }, { status: 400 });
+    }
+    const expected = Number((originalTotal - discount).toFixed(2));
+    if (Math.abs(expected - amount) > 0.01) {
+      return NextResponse.json({ error: "discount_mismatch" }, { status: 400 });
+    }
+    if (await hasOrdersForAddress(userAddress)) {
+      return NextResponse.json({ error: "first_order_only" }, { status: 403 });
+    }
+  }
 
   try {
     await addOrder({

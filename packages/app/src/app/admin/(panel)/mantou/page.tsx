@@ -96,6 +96,12 @@ export default function MantouWithdrawPage() {
   return (
     <div className="admin-section">
       <div className="admin-card">
+        <div className="admin-card-header">
+          <div>
+            <h3>提现筛选</h3>
+            <p>按状态查看并处理提现申请。</p>
+          </div>
+        </div>
         <div className="admin-toolbar">
           <select className="admin-select" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
             <option value="全部">全部状态</option>
@@ -113,6 +119,12 @@ export default function MantouWithdrawPage() {
       </div>
 
       <div className="admin-card">
+        <div className="admin-card-header">
+          <h3>提现申请列表</h3>
+          <div className="admin-card-actions">
+            <span className="admin-pill">共 {requests.length} 条</span>
+          </div>
+        </div>
         {loading ? (
           <p>加载提现申请中...</p>
         ) : requests.length === 0 ? (
@@ -135,11 +147,11 @@ export default function MantouWithdrawPage() {
                 {requests.map((item) => (
                   <tr key={item.id}>
                     <td data-label="打手账号">
-                      <div style={{ fontSize: 12, color: "#64748b" }}>{item.address}</div>
+                      <div className="admin-meta">{item.address}</div>
                     </td>
                     <td data-label="数量">{item.amount}</td>
                     <td data-label="收款账号">
-                      <div style={{ fontSize: 12, color: "#64748b" }}>{item.account || "-"}</div>
+                      <div className="admin-meta">{item.account || "-"}</div>
                     </td>
                     <td data-label="状态">
                       <select
@@ -189,7 +201,7 @@ export default function MantouWithdrawPage() {
           >
             上一页
           </button>
-          <span style={{ color: "#64748b" }}>
+          <span className="admin-meta">
             第 {page} / {totalPages} 页
           </span>
           <button

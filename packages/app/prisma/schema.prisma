@@ -114,6 +114,24 @@ model AdminPaymentEvent {
   @@index([orderNo])
 }
 
+model GrowthEvent {
+  id         String   @id
+  event      String
+  clientId   String?
+  sessionId  String?
+  userAddress String?
+  path       String?
+  referrer   String?
+  ua         String?
+  meta       Json?
+  createdAt  DateTime
+
+  @@index([createdAt])
+  @@index([event])
+  @@index([userAddress])
+  @@index([clientId])
+}
+
 model AdminSupportTicket {
   id          String   @id
   userName    String?

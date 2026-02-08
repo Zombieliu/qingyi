@@ -8,6 +8,7 @@ import {
   getDefaultCompanionAddress,
   isChainOrdersEnabled,
 } from "@/lib/qy-chain";
+import { trackEvent } from "@/app/components/analytics";
 
 interface Props {
   user: string;
@@ -47,6 +48,7 @@ export default function OrderButton({ user, item, amount, note }: Props) {
     try {
       setLoading(true);
       setMsg(null);
+      trackEvent("order_intent", { source: "home_card", user, item, amount });
       let chainOrderId: string | null = null;
       let chainDigest: string | null = null;
       if (isChainOrdersEnabled()) {
@@ -80,11 +82,20 @@ export default function OrderButton({ user, item, amount, note }: Props) {
         },
       });
       if (result.sent === false) {
+        trackEvent("order_create_failed", {
+          source: "home_card",
+          user,
+          item,
+          amount,
+          reason: result.error || "notify_failed",
+        });
         setMsg(result.error || "订单已创建，通知失败");
       } else {
+        trackEvent("order_create_success", { source: "home_card", user, item, amount });
         setMsg(chainDigest ? "已提交并同步到微信群" : "已同步到微信群");
       }
     } catch (e) {
+      trackEvent("order_create_failed", { source: "home_card", user, item, amount, reason: "exception" });
       setMsg((e as Error).message || "下单失败");
     } finally {
       setLoading(false);

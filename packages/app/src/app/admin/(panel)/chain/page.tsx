@@ -90,6 +90,12 @@ export default function ChainPage() {
     }
   };
 
+  const statusBadgeClass = (status: number) => {
+    if (status === 4) return "admin-badge warm";
+    if (status === 6) return "admin-badge neutral";
+    return "admin-badge";
+  };
+
   const formatAmount = (value: string) => {
     const num = Number(value);
     if (!Number.isFinite(num)) return value;
@@ -128,15 +134,17 @@ export default function ChainPage() {
   return (
     <div className="admin-section">
       <div className="admin-card">
-        <div className="admin-toolbar" style={{ justifyContent: "space-between" }}>
+        <div className="admin-card-header">
           <div>
             <h3>订单对账</h3>
             <p>对比订单记录与对账数据，处理争议裁决。</p>
           </div>
-          <button className="admin-btn ghost" onClick={loadData} disabled={loading}>
-            <RefreshCw size={16} style={{ marginRight: 6 }} />
-            刷新
-          </button>
+          <div className="admin-card-actions">
+            <button className="admin-btn ghost" onClick={loadData} disabled={loading}>
+              <RefreshCw size={16} style={{ marginRight: 6 }} />
+              刷新
+            </button>
+          </div>
         </div>
         {error ? (
           <div className="admin-badge warm" style={{ marginTop: 12 }}>
@@ -146,27 +154,32 @@ export default function ChainPage() {
       </div>
 
       <div className="admin-card">
-        <h3>争议订单</h3>
+        <div className="admin-card-header">
+          <h3>争议订单</h3>
+          <div className="admin-card-actions">
+            <span className="admin-pill">共 {disputedOrders.length} 条</span>
+          </div>
+        </div>
         {loading ? (
           <p>加载中...</p>
         ) : disputedOrders.length === 0 ? (
           <p>暂无争议订单</p>
         ) : (
-          <div style={{ display: "grid", gap: 12 }}>
+          <div className="admin-stack">
             {disputedOrders.map((order) => (
-              <div key={order.orderId} className="admin-card" style={{ boxShadow: "none" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+              <div key={order.orderId} className="admin-card admin-card--subtle">
+                <div className="admin-card-header" style={{ alignItems: "flex-start", flexWrap: "wrap" }}>
                   <div>
-                    <div style={{ fontWeight: 600 }}>订单 #{order.orderId}</div>
-                    <div style={{ fontSize: 12, color: "#64748b" }}>
+                    <div className="admin-text-strong">订单 #{order.orderId}</div>
+                    <div className="admin-meta">
                       用户 {order.user.slice(0, 6)}...{order.user.slice(-4)} · 陪玩{" "}
                       {order.companion.slice(0, 6)}...{order.companion.slice(-4)}
                     </div>
-                    <div style={{ fontSize: 12, color: "#64748b", marginTop: 6 }}>
+                    <div className="admin-meta" style={{ marginTop: 6 }}>
                       撮合费 ¥{formatAmount(order.serviceFee)} · 押金 ¥{formatAmount(order.deposit)}
                     </div>
                   </div>
-                  <div>
+                  <div className="admin-card-actions" style={{ flexDirection: "column", alignItems: "stretch" }}>
                     <div style={{ display: "flex", gap: 8 }}>
                       <input
                         className="admin-input"
@@ -210,7 +223,12 @@ export default function ChainPage() {
       </div>
 
       <div className="admin-card">
-        <h3>订单列表</h3>
+        <div className="admin-card-header">
+          <h3>订单列表</h3>
+          <div className="admin-card-actions">
+            <span className="admin-pill">共 {chainOrders.length} 条</span>
+          </div>
+        </div>
         {loading ? (
           <p>加载中...</p>
         ) : chainOrders.length === 0 ? (
@@ -231,7 +249,11 @@ export default function ChainPage() {
                 {chainOrders.map((order) => (
                   <tr key={order.orderId}>
                     <td data-label="订单号">{order.orderId}</td>
-                    <td data-label="状态">{statusLabel(order.status)}</td>
+                    <td data-label="状态">
+                      <span className={statusBadgeClass(order.status)}>
+                        {statusLabel(order.status)}
+                      </span>
+                    </td>
                     <td data-label="撮合费">¥{formatAmount(order.serviceFee)}</td>
                     <td data-label="押金">¥{formatAmount(order.deposit)}</td>
                     <td data-label="争议截止">
@@ -248,11 +270,13 @@ export default function ChainPage() {
       </div>
 
       <div className="admin-card">
-        <h3>对账差异</h3>
+        <div className="admin-card-header">
+          <h3>对账差异</h3>
+        </div>
         {loading ? (
           <p>加载中...</p>
         ) : (
-          <div style={{ display: "grid", gap: 12 }}>
+          <div className="admin-stack">
             <div>
               <strong>对账侧存在但本地缺失：</strong>
               {missingLocal.length === 0 ? (

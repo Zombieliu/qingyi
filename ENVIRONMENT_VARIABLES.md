@@ -68,6 +68,32 @@
 - ADMIN_PAYMENT_EVENT_LIMIT
 - ORDER_RETENTION_DAYS
 
+## 增长埋点 (可选)
+
+- TRACK_RATE_LIMIT_WINDOW_MS
+  - /api/track 的限流窗口 (毫秒)。
+- TRACK_RATE_LIMIT_MAX
+  - /api/track 窗口内最大请求数。
+
+## 监控 (Sentry，可选)
+
+- SENTRY_DSN
+  - Sentry 项目 DSN（服务端）。
+- NEXT_PUBLIC_SENTRY_DSN
+  - Sentry 项目 DSN（客户端）。
+- SENTRY_TRACES_SAMPLE_RATE
+  - 服务端性能采样比例（0-1）。
+- NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE
+  - 客户端性能采样比例（0-1）。
+- SENTRY_ENVIRONMENT
+  - 可选环境名（默认使用 VERCEL_ENV / NODE_ENV）。
+- SENTRY_AUTH_TOKEN
+  - Sentry Auth Token（用于构建时上传 sourcemap）。
+- SENTRY_ORG
+  - Sentry 组织 slug（用于 sourcemap 上传）。
+- SENTRY_PROJECT
+  - Sentry 项目 slug（用于 sourcemap 上传）。
+
 ## 说明
 
 - 代码运行时不直接读取 SUPABASE_* 与 POSTGRES_* (如 POSTGRES_HOST/USER/PASSWORD)。

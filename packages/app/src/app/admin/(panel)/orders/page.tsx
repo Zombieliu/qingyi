@@ -171,17 +171,17 @@ export default function OrdersPage() {
   return (
     <div className="admin-section">
       <div className="admin-card">
+        <div className="admin-card-header">
+          <div>
+            <h3>订单筛选</h3>
+            <p>按用户、订单号、商品与阶段检索。</p>
+          </div>
+        </div>
         <div className="admin-toolbar">
           <div className="admin-toolbar-grow" style={{ position: "relative" }}>
             <Search
               size={16}
-              style={{
-                position: "absolute",
-                left: 12,
-                top: "50%",
-                transform: "translateY(-50%)",
-                color: "#64748b",
-              }}
+              className="admin-input-icon"
             />
             <input
               className="admin-input"
@@ -218,6 +218,15 @@ export default function OrdersPage() {
       </div>
 
       <div className="admin-card">
+        <div className="admin-card-header">
+          <h3>订单列表</h3>
+          <div className="admin-card-actions">
+            <span className="admin-pill">本页 {orders.length} 条</span>
+            {selectedIds.length > 0 ? (
+              <span className="admin-pill">已选 {selectedIds.length} 条</span>
+            ) : null}
+          </div>
+        </div>
         {loading ? (
           <p>加载订单中...</p>
         ) : orders.length === 0 ? (
@@ -270,24 +279,18 @@ export default function OrdersPage() {
                       />
                     </td>
                     <td data-label="订单信息">
-                      <div style={{ fontWeight: 600 }}>{order.user}</div>
-                      <div style={{ fontSize: 12, color: "#64748b" }}>
-                        {order.item}
-                      </div>
-                      <div style={{ fontSize: 11, color: "#94a3b8" }}>
-                        {order.id}
-                      </div>
+                      <div className="admin-text-strong">{order.user}</div>
+                      <div className="admin-meta">{order.item}</div>
+                      <div className="admin-meta-faint">{order.id}</div>
                       {isChainOrder ? (
                         <div style={{ marginTop: 6 }}>
                           <span className="admin-badge warm">系统订单</span>
                         </div>
                       ) : null}
-                      <div style={{ fontSize: 11, color: "#94a3b8" }}>
-                        {formatTime(order.createdAt)}
-                      </div>
+                      <div className="admin-meta-faint">{formatTime(order.createdAt)}</div>
                     </td>
                     <td data-label="金额">
-                      <div style={{ fontWeight: 600 }}>
+                      <div className="admin-text-strong">
                         {order.currency === "CNY" ? "¥" : order.currency} {order.amount}
                       </div>
                     </td>
@@ -373,10 +376,7 @@ export default function OrdersPage() {
                           ))}
                         </select>
                         <div
-                          style={{
-                            fontSize: 11,
-                            color: insufficient ? "#dc2626" : "#94a3b8",
-                          }}
+                          className={`admin-meta-faint${insufficient ? " admin-text-danger" : ""}`}
                         >
                           {playersLoading
                             ? "额度加载中..."
@@ -431,7 +431,7 @@ export default function OrdersPage() {
           >
             上一页
           </button>
-          <div style={{ fontSize: 12, color: "#64748b" }}>
+          <div className="admin-meta">
             第 {page} / {totalPages} 页
           </div>
           <button

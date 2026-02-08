@@ -88,22 +88,30 @@ export default function AdminDashboard() {
     <div>
       <div className="admin-grid-cards">
         <div className="admin-card">
-          <h3>订单总量</h3>
+          <div className="admin-card-header">
+            <h3>订单总量</h3>
+          </div>
           <div className="admin-stat">{stats.totalOrders}</div>
           <p>本地订单池累计数量</p>
         </div>
         <div className="admin-card">
-          <h3>待处理订单</h3>
+          <div className="admin-card-header">
+            <h3>待处理订单</h3>
+          </div>
           <div className="admin-stat">{stats.pendingOrders}</div>
           <p>未完成/未取消订单</p>
         </div>
         <div className="admin-card">
-          <h3>可用打手</h3>
+          <div className="admin-card-header">
+            <h3>可用打手</h3>
+          </div>
           <div className="admin-stat">{stats.activePlayers}</div>
           <p>可接单或忙碌状态</p>
         </div>
         <div className="admin-card">
-          <h3>已发布公告</h3>
+          <div className="admin-card-header">
+            <h3>已发布公告</h3>
+          </div>
           <div className="admin-stat">{stats.publishedAnnouncements}</div>
           <p>当前面向用户的资讯</p>
         </div>
@@ -111,7 +119,15 @@ export default function AdminDashboard() {
 
       <div className="admin-section" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))" }}>
         <div className="admin-card">
-          <h3>待处理订单</h3>
+          <div className="admin-card-header">
+            <h3>待处理订单</h3>
+            <div className="admin-card-actions">
+              <Link href="/admin/orders" className="admin-btn ghost">
+                <ClipboardList size={16} style={{ marginRight: 6 }} />
+                查看全部订单
+              </Link>
+            </div>
+          </div>
           {loading ? (
             <p>正在加载...</p>
           ) : recentOrders.length === 0 ? (
@@ -130,29 +146,33 @@ export default function AdminDashboard() {
                   {recentOrders.map((order) => (
                     <tr key={order.id}>
                       <td data-label="订单">
-                        <div style={{ fontWeight: 600 }}>{order.user}</div>
-                        <div style={{ fontSize: 12, color: "#64748b" }}>{order.item}</div>
+                        <div className="admin-text-strong">{order.user}</div>
+                        <div className="admin-meta">{order.item}</div>
                       </td>
                       <td data-label="状态">
                         <span className="admin-badge">{order.stage}</span>
                       </td>
-                      <td data-label="时间" style={{ fontSize: 12 }}>
+                      <td data-label="时间" className="admin-meta">
                         {formatTime(order.createdAt)}
                       </td>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                ))}
+              </tbody>
+            </table>
+          </div>
           )}
-          <Link href="/admin/orders" className="admin-btn ghost" style={{ marginTop: 12, display: "inline-flex" }}>
-            <ClipboardList size={16} style={{ marginRight: 6 }} />
-            查看全部订单
-          </Link>
         </div>
 
         <div className="admin-card">
-          <h3>打手状态</h3>
+          <div className="admin-card-header">
+            <h3>打手状态</h3>
+            <div className="admin-card-actions">
+              <Link href="/admin/players" className="admin-btn ghost">
+                <Users size={16} style={{ marginRight: 6 }} />
+                管理打手资料
+              </Link>
+            </div>
+          </div>
           {loading ? (
             <p>正在加载...</p>
           ) : activePlayers.length === 0 ? (
@@ -169,25 +189,25 @@ export default function AdminDashboard() {
                 <tbody>
                   {activePlayers.map((player) => (
                     <tr key={player.id}>
-                      <td data-label="名字">{player.name}</td>
+                      <td data-label="名字" className="admin-text-strong">
+                        {player.name}
+                      </td>
                       <td data-label="状态">
                         <span className="admin-badge neutral">{player.status}</span>
                       </td>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                ))}
+              </tbody>
+            </table>
+          </div>
           )}
-          <Link href="/admin/players" className="admin-btn ghost" style={{ marginTop: 12, display: "inline-flex" }}>
-            <Users size={16} style={{ marginRight: 6 }} />
-            管理打手资料
-          </Link>
         </div>
 
         <div className="admin-card">
-          <h3>快速入口</h3>
-          <div style={{ display: "grid", gap: 10, marginTop: 10 }}>
+          <div className="admin-card-header">
+            <h3>快速入口</h3>
+          </div>
+          <div className="admin-stack" style={{ marginTop: 10 }}>
             <Link href="/admin/orders" className="admin-chip">
               <Zap size={14} />
               订单分配与状态更新

@@ -50,8 +50,12 @@ export default function LedgerPage() {
   return (
     <div className="admin-section">
       <div className="admin-card">
-        <h3>记账登记</h3>
-        <p>用于人工补记余额或对账后的记录写入。</p>
+        <div className="admin-card-header">
+          <div>
+            <h3>记账登记</h3>
+            <p>用于人工补记余额或对账后的记录写入。</p>
+          </div>
+        </div>
         <div className="admin-form" style={{ marginTop: 12 }}>
           <label className="admin-field">
             用户账号

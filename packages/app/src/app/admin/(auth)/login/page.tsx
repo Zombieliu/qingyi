@@ -40,7 +40,7 @@ export default function AdminLoginPage() {
   return (
     <div className="admin-login">
       <div className="admin-card admin-login-card">
-        <div className="admin-topbar" style={{ marginBottom: 18 }}>
+        <div className="admin-card-header">
           <div>
             <h2 className="admin-title">运营管理后台</h2>
             <p className="admin-subtitle">使用后台密钥登录，开始订单与运营管理</p>
@@ -77,7 +77,7 @@ export default function AdminLoginPage() {
             {loading ? "登录中..." : "进入后台"}
           </button>
         </form>
-        <div style={{ marginTop: 18, fontSize: 12, color: "#64748b", lineHeight: 1.6 }}>
+        <div className="admin-helper">
           提示：在 `.env.local` 中设置 `ADMIN_DASH_TOKEN` 或 `ADMIN_TOKENS`。
           如未设置，将回退使用 `LEDGER_ADMIN_TOKEN`。
         </div>

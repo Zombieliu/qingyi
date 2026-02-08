@@ -24,6 +24,7 @@
     "@0xobelisk/sui-client": "^1.2.0-pre.86",
     "@mysten/sui": "^1.45.2",
     "@prisma/client": "^5.19.1",
+    "@sentry/nextjs": "^8.53.0",
     "@serwist/next": "^9.5.0",
     "@serwist/precaching": "^9.5.0",
     "@serwist/strategies": "^9.5.0",

@@ -97,17 +97,17 @@ export default function InvoicesPage() {
   return (
     <div className="admin-section">
       <div className="admin-card">
+        <div className="admin-card-header">
+          <div>
+            <h3>发票筛选</h3>
+            <p>按抬头、税号、订单号与状态快速定位。</p>
+          </div>
+        </div>
         <div className="admin-toolbar">
           <div className="admin-toolbar-grow" style={{ position: "relative" }}>
             <Search
               size={16}
-              style={{
-                position: "absolute",
-                left: 12,
-                top: "50%",
-                transform: "translateY(-50%)",
-                color: "#64748b",
-              }}
+              className="admin-input-icon"
             />
             <input
               className="admin-input"
@@ -133,6 +133,12 @@ export default function InvoicesPage() {
       </div>
 
       <div className="admin-card">
+        <div className="admin-card-header">
+          <h3>发票申请列表</h3>
+          <div className="admin-card-actions">
+            <span className="admin-pill">共 {requests.length} 条</span>
+          </div>
+        </div>
         {loading ? (
           <p>加载发票申请中...</p>
         ) : requests.length === 0 ? (
@@ -156,16 +162,16 @@ export default function InvoicesPage() {
                 {requests.map((item) => (
                   <tr key={item.id}>
                     <td data-label="抬头 / 税号">
-                      <div style={{ fontWeight: 600 }}>{item.title || "-"}</div>
-                      <div style={{ fontSize: 12, color: "#64748b" }}>{item.taxId || "-"}</div>
+                      <div className="admin-text-strong">{item.title || "-"}</div>
+                      <div className="admin-meta">{item.taxId || "-"}</div>
                     </td>
                     <td data-label="金额">{typeof item.amount === "number" ? `¥${item.amount}` : "-"}</td>
                     <td data-label="订单号">
-                      <div style={{ fontSize: 12, color: "#64748b" }}>{item.orderId || "-"}</div>
+                      <div className="admin-meta">{item.orderId || "-"}</div>
                     </td>
                     <td data-label="联系方式">
-                      <div style={{ fontSize: 12, color: "#64748b" }}>{item.email || "-"}</div>
-                      <div style={{ fontSize: 12, color: "#64748b" }}>{item.contact || "-"}</div>
+                      <div className="admin-meta">{item.email || "-"}</div>
+                      <div className="admin-meta">{item.contact || "-"}</div>
                     </td>
                     <td data-label="状态">
                       <select
@@ -217,7 +223,7 @@ export default function InvoicesPage() {
           >
             上一页
           </button>
-          <div style={{ fontSize: 12, color: "#64748b" }}>
+          <div className="admin-meta">
             第 {page} / {totalPages} 页
           </div>
           <button

@@ -101,17 +101,17 @@ export default function SupportPage() {
   return (
     <div className="admin-section">
       <div className="admin-card">
+        <div className="admin-card-header">
+          <div>
+            <h3>工单筛选</h3>
+            <p>快速定位客户问题与处理进度。</p>
+          </div>
+        </div>
         <div className="admin-toolbar">
           <div className="admin-toolbar-grow" style={{ position: "relative" }}>
             <Search
               size={16}
-              style={{
-                position: "absolute",
-                left: 12,
-                top: "50%",
-                transform: "translateY(-50%)",
-                color: "#64748b",
-              }}
+              className="admin-input-icon"
             />
             <input
               className="admin-input"
@@ -137,6 +137,12 @@ export default function SupportPage() {
       </div>
 
       <div className="admin-card">
+        <div className="admin-card-header">
+          <h3>工单列表</h3>
+          <div className="admin-card-actions">
+            <span className="admin-pill">共 {tickets.length} 条</span>
+          </div>
+        </div>
         {loading ? (
           <p>加载工单中...</p>
         ) : tickets.length === 0 ? (
@@ -159,15 +165,15 @@ export default function SupportPage() {
                 {tickets.map((ticket) => (
                   <tr key={ticket.id}>
                     <td data-label="用户">
-                      <div style={{ fontWeight: 600 }}>{ticket.userName || "访客"}</div>
-                      <div style={{ fontSize: 12, color: "#64748b" }}>{ticket.contact || "-"}</div>
-                      <div style={{ fontSize: 11, color: "#94a3b8" }}>{ticket.id}</div>
+                      <div className="admin-text-strong">{ticket.userName || "访客"}</div>
+                      <div className="admin-meta">{ticket.contact || "-"}</div>
+                      <div className="admin-meta-faint">{ticket.id}</div>
                     </td>
                     <td data-label="主题">
-                      <div style={{ fontWeight: 600 }}>{ticket.topic || "其他"}</div>
+                      <div className="admin-text-strong">{ticket.topic || "其他"}</div>
                     </td>
                     <td data-label="内容">
-                      <div style={{ fontSize: 12, color: "#475569" }}>{ticket.message}</div>
+                      <div className="admin-meta">{ticket.message}</div>
                     </td>
                     <td data-label="状态">
                       <select
@@ -223,7 +229,7 @@ export default function SupportPage() {
           >
             上一页
           </button>
-          <div style={{ fontSize: 12, color: "#64748b" }}>
+          <div className="admin-meta">
             第 {page} / {totalPages} 页
           </div>
           <button

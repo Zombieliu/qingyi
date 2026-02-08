@@ -97,17 +97,17 @@ export default function GuardiansPage() {
   return (
     <div className="admin-section">
       <div className="admin-card">
+        <div className="admin-card-header">
+          <div>
+            <h3>护航筛选</h3>
+            <p>按申请人、状态与联系方式快速定位。</p>
+          </div>
+        </div>
         <div className="admin-toolbar">
           <div className="admin-toolbar-grow" style={{ position: "relative" }}>
             <Search
               size={16}
-              style={{
-                position: "absolute",
-                left: 12,
-                top: "50%",
-                transform: "translateY(-50%)",
-                color: "#64748b",
-              }}
+              className="admin-input-icon"
             />
             <input
               className="admin-input"
@@ -133,6 +133,12 @@ export default function GuardiansPage() {
       </div>
 
       <div className="admin-card">
+        <div className="admin-card-header">
+          <h3>护航申请列表</h3>
+          <div className="admin-card-actions">
+            <span className="admin-pill">共 {applications.length} 条</span>
+          </div>
+        </div>
         {loading ? (
           <p>加载护航申请中...</p>
         ) : applications.length === 0 ? (
@@ -156,14 +162,14 @@ export default function GuardiansPage() {
                 {applications.map((item) => (
                   <tr key={item.id}>
                     <td data-label="申请人">
-                      <div style={{ fontWeight: 600 }}>{item.user || "-"}</div>
-                      <div style={{ fontSize: 12, color: "#64748b" }}>{item.contact || "-"}</div>
+                      <div className="admin-text-strong">{item.user || "-"}</div>
+                      <div className="admin-meta">{item.contact || "-"}</div>
                     </td>
                     <td data-label="擅长游戏">{item.games || "-"}</td>
-                    <td data-label="经验" style={{ fontSize: 12, color: "#475569" }}>
+                    <td data-label="经验" className="admin-meta">
                       {item.experience || "-"}
                     </td>
-                    <td data-label="可接单时段" style={{ fontSize: 12, color: "#475569" }}>
+                    <td data-label="可接单时段" className="admin-meta">
                       {item.availability || "-"}
                     </td>
                     <td data-label="状态">
@@ -216,7 +222,7 @@ export default function GuardiansPage() {
           >
             上一页
           </button>
-          <div style={{ fontSize: 12, color: "#64748b" }}>
+          <div className="admin-meta">
             第 {page} / {totalPages} 页
           </div>
           <button

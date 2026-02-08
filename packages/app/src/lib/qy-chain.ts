@@ -125,9 +125,9 @@ export async function signAuthIntent(intent: string, body?: string) {
 
   const provider = new BrowserPasskeyProvider(RP_NAME, getProviderOptions());
   const keypair = new PasskeyKeypair(fromBase64(wallet.publicKey), provider);
-  const signature = await keypair.signPersonalMessage(new TextEncoder().encode(message));
+  const signed = await keypair.signPersonalMessage(new TextEncoder().encode(message));
 
-  return { address: wallet.address, signature, timestamp, nonce, bodyHash };
+  return { address: wallet.address, signature: signed.signature, timestamp, nonce, bodyHash };
 }
 
 function getRpcUrl(): string {
