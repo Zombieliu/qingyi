@@ -6,7 +6,7 @@ type GlobalPrisma = typeof globalThis & { prisma?: PrismaClient };
 const globalForPrisma = globalThis as GlobalPrisma;
 
 const prismaDatasourceUrl = (() => {
-  const rawUrl = process.env.DATABASE_URL;
+  const rawUrl = process.env.DATABASE_POOL_URL || process.env.DATABASE_POOLED_URL || process.env.DATABASE_URL;
   if (!rawUrl) return undefined;
   try {
     const url = new URL(rawUrl);

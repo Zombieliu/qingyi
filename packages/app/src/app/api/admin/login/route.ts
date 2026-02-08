@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import {
   ADMIN_SESSION_COOKIE,
   createAdminSession,
+  enforceAdminIpAllowlist,
   enforceLoginRateLimit,
   getAdminRoleForToken,
 } from "@/lib/admin-auth";
@@ -11,6 +12,9 @@ export async function POST(req: Request) {
   if (!(await enforceLoginRateLimit(req))) {
     return NextResponse.json({ error: "登录过于频繁" }, { status: 429 });
   }
+
+  const ipCheck = enforceAdminIpAllowlist(req);
+  if (ipCheck) return ipCheck;
 
   let body: { token?: string } = {};
   try {

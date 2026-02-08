@@ -1,5 +1,6 @@
 import "server-only";
 import crypto from "crypto";
+import net from "net";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import type { AdminRole } from "./admin-types";
@@ -12,6 +13,8 @@ const DEFAULT_SESSION_TTL_HOURS = Number(process.env.ADMIN_SESSION_TTL_HOURS || 
 const RATE_LIMIT_WINDOW_MS = Number(process.env.ADMIN_RATE_LIMIT_WINDOW_MS || "60000");
 const RATE_LIMIT_MAX = Number(process.env.ADMIN_RATE_LIMIT_MAX || "120");
 const LOGIN_RATE_LIMIT_MAX = Number(process.env.ADMIN_LOGIN_RATE_LIMIT_MAX || "10");
+const ADMIN_IP_ALLOWLIST = (process.env.ADMIN_IP_ALLOWLIST || "").trim();
+const ADMIN_REQUIRE_SESSION = process.env.ADMIN_REQUIRE_SESSION === "1";
 
 type AdminTokenEntry = { token: string; role: AdminRole; label?: string };
 
@@ -121,8 +124,72 @@ function getRoleForToken(token?: string | null): AdminTokenEntry | null {
 
 function getClientIp(req: Request): string {
   const forwarded = req.headers.get("x-forwarded-for");
-  if (forwarded) return forwarded.split(",")[0].trim();
-  return req.headers.get("x-real-ip") || "unknown";
+  const raw = forwarded ? forwarded.split(",")[0].trim() : req.headers.get("x-real-ip") || "unknown";
+  return normalizeClientIp(raw);
+}
+
+function normalizeClientIp(raw: string): string {
+  let ip = raw.trim();
+  if (!ip) return "unknown";
+  if (ip.startsWith("[")) {
+    const end = ip.indexOf("]");
+    if (end > 0) {
+      ip = ip.slice(1, end);
+    }
+  } else if (ip.includes(":") && ip.includes(".")) {
+    ip = ip.split(":")[0];
+  }
+  return ip;
+}
+
+function parseAllowlist(raw: string): string[] {
+  if (!raw) return [];
+  return raw
+    .split(/[,\s]+/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function ipv4ToInt(ip: string): number | null {
+  const parts = ip.split(".");
+  if (parts.length !== 4) return null;
+  const nums = parts.map((part) => Number(part));
+  if (nums.some((n) => !Number.isInteger(n) || n < 0 || n > 255)) return null;
+  return ((nums[0] << 24) >>> 0) + (nums[1] << 16) + (nums[2] << 8) + nums[3];
+}
+
+function isIpv4InCidr(ip: string, cidr: string): boolean {
+  const [base, maskRaw] = cidr.split("/");
+  const mask = Number(maskRaw);
+  if (!Number.isInteger(mask) || mask < 0 || mask > 32) return false;
+  const ipInt = ipv4ToInt(ip);
+  const baseInt = ipv4ToInt(base);
+  if (ipInt === null || baseInt === null) return false;
+  const bitmask = mask === 0 ? 0 : (0xffffffff << (32 - mask)) >>> 0;
+  return (ipInt & bitmask) === (baseInt & bitmask);
+}
+
+function isIpAllowed(ip: string): boolean {
+  const entries = parseAllowlist(ADMIN_IP_ALLOWLIST);
+  if (entries.length === 0) return true;
+  if (!ip || ip === "unknown") return false;
+  const version = net.isIP(ip);
+  for (const entry of entries) {
+    if (entry === "*") return true;
+    if (entry.includes("/")) {
+      if (version === 4 && isIpv4InCidr(ip, entry)) return true;
+      continue;
+    }
+    if (entry === ip) return true;
+  }
+  return false;
+}
+
+export function enforceAdminIpAllowlist(req: Request): NextResponse | null {
+  if (!ADMIN_IP_ALLOWLIST) return null;
+  const ip = getClientIp(req);
+  if (isIpAllowed(ip)) return null;
+  return NextResponse.json({ error: "ip_forbidden" }, { status: 403 });
 }
 
 function enforceRateLimit(req: Request, limit: number, windowMs: number) {
@@ -236,6 +303,11 @@ export async function requireAdmin(req: Request, options: RequireOptions = {}): 
     };
   }
 
+  const ipCheck = enforceAdminIpAllowlist(req);
+  if (ipCheck) {
+    return { ok: false, response: ipCheck };
+  }
+
   const sessionToken = await getAdminSessionTokenFromCookies();
   if (sessionToken) {
     const sessionHash = hashToken(sessionToken);
@@ -258,14 +330,14 @@ export async function requireAdmin(req: Request, options: RequireOptions = {}): 
 
   const legacyCookieStore = await cookies();
   const legacyToken = legacyCookieStore.get(LEGACY_ADMIN_COOKIE)?.value;
-  if (legacyToken) {
+  if (!ADMIN_REQUIRE_SESSION && legacyToken) {
     const entry = getRoleForToken(legacyToken);
     if (entry && roleRank(entry.role) >= roleRank(role)) {
       return { ok: true, role: entry.role, tokenLabel: entry.label, authType: "legacy" };
     }
   }
 
-  if (allowToken) {
+  if (!ADMIN_REQUIRE_SESSION && allowToken) {
     const header = req.headers.get("authorization") || "";
     const alt = req.headers.get("x-admin-token") || "";
     const bearer = header.startsWith("Bearer ") ? header.slice(7) : "";

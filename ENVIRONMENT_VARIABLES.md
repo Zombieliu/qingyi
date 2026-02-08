@@ -10,9 +10,15 @@
 - DATABASE_DIRECT_URL
   - Prisma directUrl (非 pooler)。
   - 建议: 直接填 Supabase 的 POSTGRES_URL_NON_POOLING。
+- DATABASE_POOL_URL
+  - 可选：专门用于连接池/pgBouncer 的连接串（优先于 DATABASE_URL）。
 - ADMIN_DASH_TOKEN
   - 后台登录密钥 (单一 token)。
   - 可选替代: ADMIN_TOKENS 或 ADMIN_TOKENS_JSON (多角色/多 token)。
+- ADMIN_IP_ALLOWLIST
+  - 可选：后台 IP 白名单（逗号/空格分隔；支持 IPv4 CIDR）。
+- ADMIN_REQUIRE_SESSION
+  - 可选："1" 时禁用 Header Token/Legacy Token，仅允许 Session Cookie 登录。
 
 ## 建议 (生产)
 
@@ -63,6 +69,8 @@
 
 - E2E_SKIP_WEBHOOK ("1" 跳过 webhook)
 - ADMIN_SESSION_TTL_HOURS
+- PRISMA_CONNECTION_LIMIT
+- PRISMA_POOL_TIMEOUT
 - ADMIN_RATE_LIMIT_WINDOW_MS
 - ADMIN_RATE_LIMIT_MAX
 - ADMIN_LOGIN_RATE_LIMIT_MAX
