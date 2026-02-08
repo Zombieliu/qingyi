@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { usePathname } from "next/navigation";
 import { getCurrentAddress } from "@/lib/qy-chain";
 import { readCache, writeCache } from "./client-cache";
 
@@ -19,12 +20,15 @@ const MantouContext = createContext<MantouContextValue>({
 });
 
 export function MantouProvider({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  const isAdminRoute = pathname.startsWith("/admin");
   const [balance, setBalance] = useState("0");
   const [frozen, setFrozen] = useState("0");
   const [loading, setLoading] = useState(false);
   const cacheTtlMs = 60_000;
 
   const refresh = useCallback(async () => {
+    if (isAdminRoute) return null;
     const address = getCurrentAddress();
     if (!address) {
       setBalance("0");
@@ -56,9 +60,10 @@ export function MantouProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setLoading(false);
     }
-  }, [cacheTtlMs]);
+  }, [cacheTtlMs, isAdminRoute]);
 
   useEffect(() => {
+    if (isAdminRoute) return;
     refresh();
     const handler = () => {
       refresh();
@@ -69,7 +74,7 @@ export function MantouProvider({ children }: { children: React.ReactNode }) {
       window.removeEventListener("passkey-updated", handler);
       window.removeEventListener("storage", handler);
     };
-  }, [refresh]);
+  }, [refresh, isAdminRoute]);
 
   const value = useMemo(
     () => ({ balance, frozen, loading, refresh }),
