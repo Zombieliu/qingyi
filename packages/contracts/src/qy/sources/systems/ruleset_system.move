@@ -2,6 +2,7 @@
 module qy::ruleset_system {
   use dubhe::dapp_service::DappHub;
   use dubhe::dapp_system;
+  use qy::dapp_key;
   use qy::dapp_key::DappKey;
   use qy::ruleset;
 
@@ -9,7 +10,7 @@ module qy::ruleset_system {
   const E_INVALID_BPS: u64 = 2;
 
   public fun get_ruleset(dapp_hub: &DappHub, rule_set_id: u64): ruleset::Ruleset {
-    ruleset::get_struct(dapp_hub, rule_set_id)
+    ruleset::get_struct(dapp_hub, dapp_key::to_string(), rule_set_id)
   }
 
   /// 管理员创建规则集 / Admin registers a ruleset by id.
@@ -22,9 +23,9 @@ module qy::ruleset_system {
     ctx: &mut TxContext
   ) {
     dapp_system::ensure_dapp_admin<DappKey>(dapp_hub, ctx.sender());
-    assert!(!ruleset::has(dapp_hub, rule_set_id), E_RULESET_EXISTS);
+    assert!(!ruleset::has(dapp_hub, dapp_key::to_string(), rule_set_id), E_RULESET_EXISTS);
     assert!(platform_fee_bps <= 10000, E_INVALID_BPS);
     let rs = ruleset::new(rule_hash, dispute_window_ms, platform_fee_bps);
-    ruleset::set_struct(dapp_hub, rule_set_id, rs);
+    ruleset::set_struct(dapp_hub, dapp_key::to_string(), rule_set_id, rs, ctx);
   }
 }
