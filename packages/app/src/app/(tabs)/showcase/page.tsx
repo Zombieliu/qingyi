@@ -5,6 +5,7 @@ import { deleteOrder, fetchOrderDetail, fetchOrders, fetchPublicOrders, patchOrd
 import { Activity, Clock3, Car, MapPin } from "lucide-react";
 import {
   type ChainOrder,
+  claimOrderOnChain,
   cancelOrderOnChain,
   fetchChainOrders,
   finalizeNoDisputeOnChain,
@@ -101,6 +102,14 @@ export default function Showcase() {
   }, [refreshMyOrders]);
 
   useEffect(() => {
+    const timer = window.setInterval(() => {
+      refreshOrders(true);
+      refreshMyOrders(true);
+    }, 20_000);
+    return () => window.clearInterval(timer);
+  }, [refreshMyOrders]);
+
+  useEffect(() => {
     if (!loadMoreRef.current) return;
     if (!publicCursor) return;
     const target = loadMoreRef.current;
@@ -151,6 +160,51 @@ export default function Showcase() {
 
   const accept = async (id: string) => {
     const address = getCurrentAddress();
+    if (!address) {
+      setChainToast("请先登录账号再接单");
+      setTimeout(() => setChainToast(null), 3000);
+      return;
+    }
+    const localOrder = orders.find((order) => order.id === id);
+    const needsChain = isChainOrdersEnabled() && !isVisualTestMode() && Boolean(localOrder?.chainDigest);
+    let chainOrder: ChainOrder | null = null;
+    if (needsChain) {
+      chainOrder = chainOrders.find((order) => order.orderId === id) || null;
+      if (!chainOrder) {
+        try {
+          const list = await fetchChainOrders();
+          setChainOrders(list);
+          chainOrder = list.find((order) => order.orderId === id) || null;
+        } catch (e) {
+          setChainToast((e as Error).message || "链上订单加载失败");
+          setTimeout(() => setChainToast(null), 3000);
+          return;
+        }
+      }
+      if (!chainOrder) {
+        setChainToast("未找到链上订单，无法接单");
+        setTimeout(() => setChainToast(null), 3000);
+        return;
+      }
+      if (chainOrder.status === 0) {
+        setChainToast("链上订单未托管费用，无法接单");
+        setTimeout(() => setChainToast(null), 3000);
+        return;
+      }
+      if (chainOrder.status >= 2) {
+        setChainToast("押金已锁定，订单已被接走");
+        setTimeout(() => setChainToast(null), 3000);
+        return;
+      }
+      if (chainOrder.companion !== address) {
+        const ok = await runChainAction(`claim-${id}`, () => claimOrderOnChain(id), "已认领订单", id);
+        if (!ok) return;
+      }
+      if (chainOrder.status === 1) {
+        const ok = await runChainAction(`deposit-${id}`, () => lockDepositOnChain(id), "押金已锁定", id);
+        if (!ok) return;
+      }
+    }
     const companionProfile = address ? loadGameProfile(address) : null;
     const profilePayload =
       companionProfile && (companionProfile.gameName || companionProfile.gameId)
@@ -161,9 +215,8 @@ export default function Showcase() {
           }
         : null;
     await patchOrder(id, {
-      status: "待用户支付打手费",
+      status: "已接单",
       depositPaid: true,
-      playerPaid: false,
       driver: {
         name: "护航·刘师傅",
         car: "白色新能源汽车",
@@ -185,7 +238,8 @@ export default function Showcase() {
   };
 
   const cancel = async (id: string) => {
-    const isChainOrder = isChainOrdersEnabled() && /^[0-9]+$/.test(id);
+    const hasChain = chainOrders.some((order) => order.orderId === id);
+    const isChainOrder = isChainOrdersEnabled() && hasChain;
     if (isChainOrder) {
       const chainOrder = chainOrders.find((order) => order.orderId === id) || null;
       if (chainOrder && chainOrder.status >= 2) {

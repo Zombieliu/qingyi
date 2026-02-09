@@ -201,14 +201,15 @@ export default function Schedule() {
   const [playersLoading, setPlayersLoading] = useState(false);
   const [playersError, setPlayersError] = useState<string | null>(null);
   const [selectedPlayerId, setSelectedPlayerId] = useState<string>("");
+  const [userAddress, setUserAddress] = useState(() => getCurrentAddress());
   const cacheTtlMs = 60_000;
 
   const MATCH_RATE = 0.15;
 
-  const refreshOrders = async () => {
-    const list = await fetchOrders();
+  const refreshOrders = async (addrOverride?: string) => {
+    const list = await fetchOrders({ force: true });
     setOrders(list);
-    const addr = getCurrentAddress();
+    const addr = addrOverride ?? userAddress ?? getCurrentAddress();
     const filtered = list.filter((order) => {
       if (!addr) return true;
       if (!order.userAddress) return true;
@@ -222,7 +223,25 @@ export default function Schedule() {
   }, []);
 
   useEffect(() => {
-    const addr = getCurrentAddress();
+    const sync = () => {
+      const addr = getCurrentAddress();
+      setUserAddress(addr);
+      refreshOrders(addr);
+    };
+    sync();
+    window.addEventListener("passkey-updated", sync);
+    return () => window.removeEventListener("passkey-updated", sync);
+  }, []);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      refreshOrders(userAddress || getCurrentAddress());
+    }, 20_000);
+    return () => window.clearInterval(timer);
+  }, [userAddress]);
+
+  useEffect(() => {
+    const addr = userAddress || getCurrentAddress();
     const used = readDiscountUsage(addr);
     const filtered = orders.filter((order) => {
       if (!addr) return true;
@@ -230,7 +249,7 @@ export default function Schedule() {
       return order.userAddress === addr;
     });
     setFirstOrderEligible(!used && filtered.length === 0);
-  }, [orders, chainAddress]);
+  }, [orders, chainAddress, userAddress]);
 
   const refreshVip = async () => {
     const addr = getCurrentAddress();
@@ -341,14 +360,14 @@ export default function Schedule() {
     }, 0);
 
   const currentOrder = useMemo(() => {
-    const addr = getCurrentAddress();
+    const addr = userAddress || getCurrentAddress();
     const filtered = orders.filter((order) => {
       if (!addr) return true;
       if (!order.userAddress) return true;
       return order.userAddress === addr;
     });
     return filtered.find((o) => !o.status.includes("取消") && !o.status.includes("完成")) || null;
-  }, [orders, chainAddress]);
+  }, [orders, chainAddress, userAddress]);
   const chainCurrentOrder = useMemo(() => {
     const addr = chainAddress;
     const list = addr
@@ -373,7 +392,8 @@ export default function Schedule() {
 
   const cancelOrder = async () => {
     if (!currentOrder) return;
-    const isChainOrder = isChainOrdersEnabled() && /^[0-9]+$/.test(currentOrder.id);
+    const meta = (currentOrder.meta || {}) as Record<string, unknown>;
+    const isChainOrder = Boolean(currentOrder.chainDigest || meta.chain);
     if (isChainOrder) {
       const chainOrder =
         chainCurrentOrder && chainCurrentOrder.orderId === currentOrder.id ? chainCurrentOrder : null;
@@ -1224,7 +1244,9 @@ function deriveMode(list: LocalOrder[]): Mode {
   const latest = list.find((o) => !o.status.includes("取消") && !o.status.includes("完成")) || null;
   if (!latest) return "select";
   if (latest.driver) {
-    return latest.playerPaid ? "enroute" : "await-user-pay";
+    const paymentMode = (latest.meta as { paymentMode?: string } | undefined)?.paymentMode;
+    const treatedPaid = Boolean(latest.playerPaid || paymentMode === "diamond_escrow");
+    return treatedPaid ? "enroute" : "await-user-pay";
   }
   return "notifying";
 }

@@ -23,6 +23,11 @@ module qy::events {
     deposit: u64,
   }
 
+  public struct OrderClaimed has copy, drop {
+    order_id: u64,
+    companion: address,
+  }
+
   public struct OrderCompleted has copy, drop {
     order_id: u64,
     user: address,
@@ -70,6 +75,10 @@ module qy::events {
 
   public fun emit_deposit_locked(order_id: u64, companion: address, deposit: u64) {
     event::emit(DepositLocked { order_id, companion, deposit });
+  }
+
+  public fun emit_order_claimed(order_id: u64, companion: address) {
+    event::emit(OrderClaimed { order_id, companion });
   }
 
   public fun emit_order_completed(order_id: u64, user: address, finish_at: u64, dispute_deadline: u64) {

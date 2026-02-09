@@ -84,11 +84,10 @@ export async function fetchOrders(options: { force?: boolean } = {}): Promise<Lo
   const userAddress = resolveUserAddress();
   if (!userAddress) return [];
   const cacheKey = `cache:orders:${userAddress || "local"}`;
+  let cached: { value: LocalOrder[]; fresh?: boolean } | null = null;
   if (!options.force) {
-    const cached = readCache<LocalOrder[]>(cacheKey, 60_000, true);
-    if (cached?.fresh) {
-      return cached.value;
-    }
+    cached = readCache<LocalOrder[]>(cacheKey, 60_000, true);
+    if (cached?.fresh) return cached.value;
   }
   const params = new URLSearchParams();
   params.set("page", "1");
@@ -146,11 +145,10 @@ export async function fetchPublicOrders(
     return { items: loadOrders(), nextCursor: null };
   }
   const cacheKey = cursor ? `cache:orders:public:${cursor}` : "cache:orders:public:first";
+  let cached: { value: { items: LocalOrder[]; nextCursor?: string | null }; fresh?: boolean } | null = null;
   if (!options.force) {
-    const cached = readCache<{ items: LocalOrder[]; nextCursor?: string | null }>(cacheKey, 15_000, true);
-    if (cached?.fresh) {
-      return cached.value;
-    }
+    cached = readCache<{ items: LocalOrder[]; nextCursor?: string | null }>(cacheKey, 15_000, true);
+    if (cached?.fresh) return cached.value;
   }
   const params = new URLSearchParams();
   params.set("pageSize", "30");

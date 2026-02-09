@@ -57,6 +57,7 @@ Cancelled: 仅允许 Created/Paid
 
 ### 订单流程
 - `qy::order_system::create_order(dapp_hub, order_id, companion, rule_set_id, service_fee, deposit, clock)`
+- `qy::order_system::claim_order(dapp_hub, order_id)`
 - `qy::order_system::pay_service_fee(dapp_hub, order_id)`
 - `qy::order_system::lock_deposit(dapp_hub, order_id)`
 - `qy::order_system::mark_completed(dapp_hub, order_id, clock)`
@@ -109,6 +110,7 @@ tx.moveCall({
 - `qy::events::OrderCreated`
 - `qy::events::OrderPaid`
 - `qy::events::DepositLocked`
+- `qy::events::OrderClaimed`
 - `qy::events::OrderCompleted`
 - `qy::events::OrderDisputed`
 - `qy::events::OrderResolved`

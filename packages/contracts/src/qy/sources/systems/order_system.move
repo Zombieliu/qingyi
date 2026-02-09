@@ -95,6 +95,20 @@ module qy::order_system {
     events::emit_order_paid(order_id, ctx.sender(), fee);
   }
 
+  /// 陪玩认领订单（押金前可改陪玩） / Companion claims order before deposit.
+  public fun claim_order(dapp_hub: &mut DappHub, order_id: u64, ctx: &mut TxContext) {
+    order::ensure_has(dapp_hub, dapp_key::to_string(), order_id);
+    let mut ord = order::get_struct(dapp_hub, dapp_key::to_string(), order_id);
+    let status = order::status(&ord);
+    assert!(status == STATUS_CREATED || status == STATUS_PAID, E_BAD_STATUS);
+    assert!(order::vault_deposit(&ord) == 0, E_BAD_STATUS);
+
+    let companion = ctx.sender();
+    order::update_companion(&mut ord, companion);
+    order::set_struct(dapp_hub, dapp_key::to_string(), order_id, ord, ctx);
+    events::emit_order_claimed(order_id, companion);
+  }
+
   /// 陪玩缴押金（扣减余额） / Companion locks deposit from ledger balance.
   public fun lock_deposit(dapp_hub: &mut DappHub, order_id: u64, ctx: &mut TxContext) {
     order::ensure_has(dapp_hub, dapp_key::to_string(), order_id);

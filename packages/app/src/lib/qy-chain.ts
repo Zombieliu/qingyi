@@ -440,6 +440,18 @@ export async function payServiceFeeOnChain(orderId: string) {
   return executeTransaction(tx);
 }
 
+export async function claimOrderOnChain(orderId: string) {
+  ensurePackageId();
+  ensureOrderId(orderId);
+  const tx = new Transaction();
+  const dappHub = getDappHubSharedRef();
+  tx.moveCall({
+    target: PACKAGE_ID + "::order_system::claim_order",
+    arguments: [tx.object(dappHub), tx.pure.u64(orderId)],
+  });
+  return executeTransaction(tx);
+}
+
 export async function lockDepositOnChain(orderId: string) {
   ensurePackageId();
   ensureOrderId(orderId);
