@@ -299,7 +299,7 @@ export async function deleteOrder(orderId: string, userAddress?: string) {
   await fetchWithUserAuth(`/api/orders/${orderId}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ userAddress: userAddress || address, status: "取消" }),
+    body,
   }, address);
 }
 
@@ -315,7 +315,7 @@ export async function syncChainOrder(orderId: string, userAddress?: string) {
   const res = await fetchWithUserAuth(`/api/orders/${orderId}/chain-sync`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ userAddress: userAddress || address }),
+    body,
   }, address);
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));

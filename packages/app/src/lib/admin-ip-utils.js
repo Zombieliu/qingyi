@@ -1,4 +1,4 @@
-const net = require("net");
+import net from "net";
 
 function normalizeClientIp(raw) {
   let ip = String(raw || "").trim();
@@ -57,10 +57,4 @@ function isIpAllowed(ip, rawAllowlist) {
   return false;
 }
 
-module.exports = {
-  normalizeClientIp,
-  parseAllowlist,
-  ipv4ToInt,
-  isIpv4InCidr,
-  isIpAllowed,
-};
+export { normalizeClientIp, parseAllowlist, ipv4ToInt, isIpv4InCidr, isIpAllowed };

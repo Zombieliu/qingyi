@@ -206,7 +206,7 @@ export default function Schedule() {
 
   const MATCH_RATE = 0.15;
 
-  const refreshOrders = async (addrOverride?: string) => {
+  const refreshOrders = useCallback(async (addrOverride?: string) => {
     const list = await fetchOrders({ force: true });
     const addr = addrOverride ?? userAddress ?? getCurrentAddress();
     const filtered = list.filter((order) => {
@@ -216,11 +216,11 @@ export default function Schedule() {
     });
     setOrders(filtered);
     setMode(deriveMode(filtered));
-  };
+  }, [userAddress]);
 
   useEffect(() => {
     refreshOrders();
-  }, []);
+  }, [refreshOrders]);
 
   useEffect(() => {
     const sync = () => {
@@ -231,14 +231,14 @@ export default function Schedule() {
     sync();
     window.addEventListener("passkey-updated", sync);
     return () => window.removeEventListener("passkey-updated", sync);
-  }, []);
+  }, [refreshOrders]);
 
   useEffect(() => {
     const timer = window.setInterval(() => {
       refreshOrders(userAddress || getCurrentAddress());
     }, 20_000);
     return () => window.clearInterval(timer);
-  }, [userAddress]);
+  }, [refreshOrders, userAddress]);
 
   useEffect(() => {
     const addr = userAddress || getCurrentAddress();
@@ -247,7 +247,7 @@ export default function Schedule() {
       ? orders.filter((order) => order.userAddress === addr)
       : orders;
     setFirstOrderEligible(!used && eligibleList.length === 0);
-  }, [orders, chainAddress, userAddress]);
+  }, [orders, userAddress]);
 
   const refreshVip = async () => {
     const addr = getCurrentAddress();
@@ -360,7 +360,7 @@ export default function Schedule() {
   const currentOrder = useMemo(() => {
     const list = orders;
     return list.find((o) => !o.status.includes("取消") && !o.status.includes("完成")) || null;
-  }, [orders, chainAddress, userAddress]);
+  }, [orders]);
   const chainCurrentOrder = useMemo(() => {
     const addr = chainAddress;
     const list = addr
@@ -482,7 +482,7 @@ export default function Schedule() {
       patchOrder(currentOrder.id, { ...patch, userAddress: getCurrentAddress() });
       refreshOrders();
     }
-  }, [chainCurrentOrder, currentOrder]);
+  }, [chainCurrentOrder, currentOrder, refreshOrders]);
 
   const submit = () => {
     if (pickedNames.length === 0) {
