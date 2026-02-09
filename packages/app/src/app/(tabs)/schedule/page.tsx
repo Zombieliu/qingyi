@@ -538,6 +538,8 @@ export default function Schedule() {
   }, [feeOpen, balanceLoading, balanceReady, hasEnoughDiamonds]);
 
   if (mode === "await-user-pay" && currentOrder?.driver) {
+    const companionProfile = (currentOrder.meta?.companionProfile || null) as { gameName?: string; gameId?: string } | null;
+    const hasCompanionProfile = Boolean(companionProfile?.gameName || companionProfile?.gameId);
     return (
       <div className="ride-shell">
         <div className="ride-tip" style={{ marginTop: 0 }}>
@@ -549,18 +551,40 @@ export default function Schedule() {
             <div className="ride-driver-avatar" />
             <div>
               <div className="text-sm text-amber-600 font-semibold">等待支付打手费用</div>
-              <div className="text-lg font-bold text-gray-900">{currentOrder.driver.name}</div>
-              <div className="text-xs text-gray-500">{currentOrder.driver.car}</div>
+              {hasCompanionProfile ? (
+                <>
+                  <div className="text-lg font-bold text-gray-900">打手游戏设置</div>
+                  <div className="text-xs text-gray-500">
+                    游戏名 {companionProfile?.gameName || "-"} · ID {companionProfile?.gameId || "-"}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="text-lg font-bold text-gray-900">{currentOrder.driver.name}</div>
+                  <div className="text-xs text-gray-500">{currentOrder.driver.car}</div>
+                </>
+              )}
             </div>
             <div className="ml-auto text-right">
-              <div className="text-emerald-600 font-semibold text-sm">{currentOrder.driver.eta}</div>
-              {currentOrder.driver.price && <div className="text-xs text-gray-500">一口价 ¥{currentOrder.driver.price / 10}</div>}
+              {hasCompanionProfile ? (
+                <>
+                  <div className="text-emerald-600 font-semibold text-sm">已接单</div>
+                  <div className="text-xs text-gray-500">请确认游戏信息</div>
+                </>
+              ) : (
+                <>
+                  <div className="text-emerald-600 font-semibold text-sm">{currentOrder.driver.eta}</div>
+                  {currentOrder.driver.price && (
+                    <div className="text-xs text-gray-500">一口价 ¥{currentOrder.driver.price / 10}</div>
+                  )}
+                </>
+              )}
             </div>
           </div>
           <div className="ride-driver-actions">
             <button className="dl-tab-btn" onClick={cancelOrder}>取消用车</button>
             <button className="dl-tab-btn" style={{ background: "#f97316", color: "#fff" }}>
-              联系司机
+              联系打手
             </button>
           </div>
           <div className="text-xs text-gray-500 mt-2">订单：{currentOrder.item}</div>
@@ -596,6 +620,8 @@ export default function Schedule() {
   }
 
   if (mode === "enroute" && currentOrder?.driver) {
+    const companionProfile = (currentOrder.meta?.companionProfile || null) as { gameName?: string; gameId?: string } | null;
+    const hasCompanionProfile = Boolean(companionProfile?.gameName || companionProfile?.gameId);
     return (
       <div className="ride-shell">
         <div className="ride-map-large">地图加载中…</div>
@@ -603,20 +629,42 @@ export default function Schedule() {
           <div className="flex items-center gap-3">
             <div className="ride-driver-avatar" />
             <div>
-              <div className="text-sm text-amber-600 font-semibold">司机正在赶来</div>
-              <div className="text-lg font-bold text-gray-900">{currentOrder.driver.name}</div>
-              <div className="text-xs text-gray-500">{currentOrder.driver.car}</div>
+              <div className="text-sm text-amber-600 font-semibold">打手已接单</div>
+              {hasCompanionProfile ? (
+                <>
+                  <div className="text-lg font-bold text-gray-900">打手游戏设置</div>
+                  <div className="text-xs text-gray-500">
+                    游戏名 {companionProfile?.gameName || "-"} · ID {companionProfile?.gameId || "-"}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="text-lg font-bold text-gray-900">{currentOrder.driver.name}</div>
+                  <div className="text-xs text-gray-500">{currentOrder.driver.car}</div>
+                </>
+              )}
             </div>
             <div className="ml-auto text-right">
-              <div className="text-emerald-600 font-semibold text-sm">{currentOrder.driver.eta}</div>
-              {currentOrder.driver.price && <div className="text-xs text-gray-500">一口价 ¥{currentOrder.driver.price / 10}</div>}
+              {hasCompanionProfile ? (
+                <>
+                  <div className="text-emerald-600 font-semibold text-sm">服务进行中</div>
+                  <div className="text-xs text-gray-500">请保持在线</div>
+                </>
+              ) : (
+                <>
+                  <div className="text-emerald-600 font-semibold text-sm">{currentOrder.driver.eta}</div>
+                  {currentOrder.driver.price && (
+                    <div className="text-xs text-gray-500">一口价 ¥{currentOrder.driver.price / 10}</div>
+                  )}
+                </>
+              )}
             </div>
           </div>
           <div className="ride-driver-actions">
             <button className="dl-tab-btn" onClick={cancelOrder}>取消用车</button>
             <button className="dl-tab-btn">安全中心</button>
             <button className="dl-tab-btn" style={{ background: "#f97316", color: "#fff" }}>
-              联系司机
+              联系打手
             </button>
           </div>
           <div className="text-xs text-gray-500 mt-2">订单：{currentOrder.item}</div>
