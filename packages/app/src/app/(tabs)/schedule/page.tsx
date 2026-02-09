@@ -606,7 +606,7 @@ export default function Schedule() {
               )}
             </div>
             <div className="ml-auto text-right">
-              {hasCompanionProfile ? (
+              {hasUserProfile ? (
                 <>
                   <div className="text-emerald-600 font-semibold text-sm">已接单</div>
                   <div className="text-xs text-gray-500">请确认游戏信息</div>
@@ -685,7 +685,7 @@ export default function Schedule() {
               )}
             </div>
             <div className="ml-auto text-right">
-              {hasCompanionProfile ? (
+              {hasUserProfile ? (
                 <>
                   <div className="text-emerald-600 font-semibold text-sm">服务进行中</div>
                   <div className="text-xs text-gray-500">请保持在线</div>

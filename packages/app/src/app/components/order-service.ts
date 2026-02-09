@@ -77,6 +77,58 @@ function resolveUserAddress() {
   return isChainOrdersEnabled() ? getCurrentAddress() : "";
 }
 
+const AUTH_RETRY_ERRORS = new Set([
+  "auth_required",
+  "auth_expired",
+  "session_missing",
+  "invalid_signature",
+  "replay_detected",
+]);
+
+let sessionPromise: Promise<void> | null = null;
+
+async function ensureUserSession(address: string) {
+  if (!address) {
+    throw new Error("请先登录账号");
+  }
+  if (sessionPromise) return sessionPromise;
+  sessionPromise = (async () => {
+    const body = JSON.stringify({ address });
+    const { headers } = await buildAuthHeaders("user:session:create", body, address);
+    const res = await fetch("/api/auth/session", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...headers },
+      body,
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data?.error || "session_create_failed");
+    }
+  })();
+  try {
+    await sessionPromise;
+  } finally {
+    sessionPromise = null;
+  }
+}
+
+async function fetchWithUserAuth(url: string, init: RequestInit, address: string) {
+  const res = await fetch(url, init);
+  if (res.status !== 401) return res;
+  let shouldRetry = true;
+  try {
+    const data = await res.clone().json();
+    if (data?.error && !AUTH_RETRY_ERRORS.has(data.error)) {
+      shouldRetry = false;
+    }
+  } catch {
+    // ignore parse errors
+  }
+  if (!shouldRetry) return res;
+  await ensureUserSession(address);
+  return fetch(url, init);
+}
+
 export async function fetchOrders(options: { force?: boolean } = {}): Promise<LocalOrder[]> {
   if (ORDER_SOURCE !== "server") {
     return loadOrders();
@@ -93,8 +145,7 @@ export async function fetchOrders(options: { force?: boolean } = {}): Promise<Lo
   params.set("page", "1");
   params.set("pageSize", "50");
   if (userAddress) params.set("address", userAddress);
-  const { headers } = await buildAuthHeaders("orders:read");
-  const res = await fetch(`/api/orders?${params.toString()}`, { headers });
+  const res = await fetchWithUserAuth(`/api/orders?${params.toString()}`, {}, userAddress);
   if (!res.ok) return cached?.value ?? [];
   const data = await res.json();
   const items = Array.isArray(data?.items) ? data.items : [];
@@ -112,8 +163,7 @@ export async function fetchOrderDetail(orderId: string, userAddress?: string): P
   if (!address) return null;
   const params = new URLSearchParams();
   params.set("userAddress", address);
-  const { headers } = await buildAuthHeaders(`orders:read:${orderId}`);
-  const res = await fetch(`/api/orders/${orderId}?${params.toString()}`, { headers });
+  const res = await fetchWithUserAuth(`/api/orders/${orderId}?${params.toString()}`, {}, address);
   if (!res.ok) return null;
   const data = await res.json().catch(() => null);
   if (!data) return null;
@@ -186,15 +236,14 @@ export async function createOrder(
     meta: buildMeta(payload),
   };
   const body = JSON.stringify(requestBody);
-  const { auth, headers } = await buildAuthHeaders("orders:create", body);
-  if (requestBody.userAddress && requestBody.userAddress !== auth.address) {
+  if (requestBody.userAddress && address && requestBody.userAddress !== address) {
     throw new Error("userAddress mismatch");
   }
-  const res = await fetch("/api/orders", {
+  const res = await fetchWithUserAuth("/api/orders", {
     method: "POST",
-    headers: { "Content-Type": "application/json", ...headers },
+    headers: { "Content-Type": "application/json" },
     body,
-  });
+  }, address);
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     throw new Error(data?.error || "创建订单失败");
@@ -223,18 +272,17 @@ export async function patchOrder(
     meta,
   };
   const body = JSON.stringify(requestBody);
-  const { auth, headers } = await buildAuthHeaders(`orders:patch:${orderId}`, body);
-  if (requestBody.userAddress && requestBody.userAddress !== auth.address) {
+  if (requestBody.userAddress && address && requestBody.userAddress !== address) {
     throw new Error("userAddress mismatch");
   }
-  if (patch.companionAddress && patch.companionAddress !== auth.address) {
+  if (patch.companionAddress && address && patch.companionAddress !== address) {
     throw new Error("companionAddress mismatch");
   }
-  await fetch(`/api/orders/${orderId}`, {
+  await fetchWithUserAuth(`/api/orders/${orderId}`, {
     method: "PATCH",
-    headers: { "Content-Type": "application/json", ...headers },
+    headers: { "Content-Type": "application/json" },
     body,
-  });
+  }, address);
 }
 
 export async function deleteOrder(orderId: string, userAddress?: string) {
@@ -244,15 +292,14 @@ export async function deleteOrder(orderId: string, userAddress?: string) {
   }
   const address = getCurrentAddress();
   const body = JSON.stringify({ userAddress: userAddress || address, status: "取消" });
-  const { auth, headers } = await buildAuthHeaders(`orders:patch:${orderId}`, body);
-  if (userAddress && userAddress !== auth.address) {
+  if (userAddress && address && userAddress !== address) {
     throw new Error("userAddress mismatch");
   }
-  await fetch(`/api/orders/${orderId}`, {
+  await fetchWithUserAuth(`/api/orders/${orderId}`, {
     method: "PATCH",
-    headers: { "Content-Type": "application/json", ...headers },
-    body: JSON.stringify({ userAddress: userAddress || auth.address, status: "取消" }),
-  });
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ userAddress: userAddress || address, status: "取消" }),
+  }, address);
 }
 
 export async function syncChainOrder(orderId: string, userAddress?: string) {
@@ -261,15 +308,14 @@ export async function syncChainOrder(orderId: string, userAddress?: string) {
   }
   const address = getCurrentAddress();
   const body = JSON.stringify({ userAddress: userAddress || address });
-  const { auth, headers } = await buildAuthHeaders(`orders:chain-sync:${orderId}`, body);
-  if (userAddress && userAddress !== auth.address) {
+  if (userAddress && address && userAddress !== address) {
     throw new Error("userAddress mismatch");
   }
-  const res = await fetch(`/api/orders/${orderId}/chain-sync`, {
+  const res = await fetchWithUserAuth(`/api/orders/${orderId}/chain-sync`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", ...headers },
-    body: JSON.stringify({ userAddress: userAddress || auth.address }),
-  });
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ userAddress: userAddress || address }),
+  }, address);
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
     throw new Error(data?.error || "chain sync failed");

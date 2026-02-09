@@ -1,13 +1,23 @@
 import "server-only";
 import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
 import { verifyPersonalMessageSignature } from "@mysten/sui/verify";
 import { isValidSuiAddress, normalizeSuiAddress } from "@mysten/sui/utils";
 import { buildAuthMessage } from "./auth-message";
 import { consumeNonce } from "./rate-limit";
+import {
+  createUserSession as createUserSessionRecord,
+  getUserSessionByHash,
+  removeUserSessionByHash,
+  updateUserSessionByHash,
+  type UserSessionRecord,
+} from "./user-session-store";
 import crypto from "crypto";
 
 const AUTH_MAX_SKEW_MS = Number(process.env.AUTH_MAX_SKEW_MS || "300000");
 const AUTH_NONCE_TTL_MS = Number(process.env.AUTH_NONCE_TTL_MS || "600000");
+const USER_SESSION_TTL_HOURS = Number(process.env.USER_SESSION_TTL_HOURS || "12");
+const USER_SESSION_COOKIE = "user_session";
 
 function getHeaderValue(req: Request, key: string) {
   return req.headers.get(key) || "";
@@ -15,6 +25,87 @@ function getHeaderValue(req: Request, key: string) {
 
 function hashBody(body: string) {
   return crypto.createHash("sha256").update(body).digest("base64");
+}
+
+function hashToken(token: string) {
+  return crypto.createHash("sha256").update(token).digest("hex");
+}
+
+function ensureSameOrigin(req: Request) {
+  const origin = req.headers.get("origin");
+  const host = req.headers.get("host");
+  if (!origin || !host) return true;
+  try {
+    return new URL(origin).host === host;
+  } catch {
+    return false;
+  }
+}
+
+async function getUserSessionTokenFromCookies() {
+  const cookieStore = await cookies();
+  return cookieStore.get(USER_SESSION_COOKIE)?.value || "";
+}
+
+export async function createUserSession(params: { address: string; ip?: string; userAgent?: string }) {
+  const token = crypto.randomBytes(32).toString("hex");
+  const tokenHash = hashToken(token);
+  const now = Date.now();
+  const session: UserSessionRecord = {
+    id: `us_${now}_${crypto.randomInt(1000, 9999)}`,
+    tokenHash,
+    address: normalizeSuiAddress(params.address),
+    createdAt: now,
+    expiresAt: now + USER_SESSION_TTL_HOURS * 60 * 60 * 1000,
+    lastSeenAt: now,
+    ip: params.ip ?? null,
+    userAgent: params.userAgent ?? null,
+  };
+  await createUserSessionRecord(session);
+  return { token, session };
+}
+
+export async function revokeUserSession(token: string) {
+  if (!token) return false;
+  return removeUserSessionByHash(hashToken(token));
+}
+
+export function setUserSessionCookie(res: NextResponse, token: string, expiresAt: number) {
+  res.cookies.set({
+    name: USER_SESSION_COOKIE,
+    value: token,
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    expires: new Date(expiresAt),
+  });
+}
+
+export function clearUserSessionCookie(res: NextResponse) {
+  res.cookies.set({
+    name: USER_SESSION_COOKIE,
+    value: "",
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    expires: new Date(0),
+  });
+}
+
+async function getUserSession() {
+  const sessionToken = await getUserSessionTokenFromCookies();
+  if (!sessionToken) return null;
+  const sessionHash = hashToken(sessionToken);
+  const session = await getUserSessionByHash(sessionHash);
+  if (!session) return null;
+  if (session.expiresAt <= Date.now()) {
+    await removeUserSessionByHash(sessionHash);
+    return null;
+  }
+  await updateUserSessionByHash(sessionHash, { lastSeenAt: Date.now() });
+  return session;
 }
 
 export async function requireUserSignature(
@@ -83,4 +174,34 @@ export async function requireUserSignature(
   }
 
   return { ok: true };
+}
+
+export async function requireUserAuth(
+  req: Request,
+  params: { intent: string; address: string; body?: string; requireOrigin?: boolean }
+): Promise<
+  | { ok: true; address: string; authType: "session" | "signature" }
+  | { ok: false; response: NextResponse }
+> {
+  const session = await getUserSession();
+  if (session) {
+    const normalized = normalizeSuiAddress(params.address || "");
+    if (!normalized || !isValidSuiAddress(normalized)) {
+      return { ok: false, response: NextResponse.json({ error: "invalid_address" }, { status: 400 }) };
+    }
+    if (normalized !== normalizeSuiAddress(session.address)) {
+      await removeUserSessionByHash(session.tokenHash);
+    } else {
+      const requireOrigin =
+        params.requireOrigin ?? !["GET", "HEAD", "OPTIONS"].includes(req.method.toUpperCase());
+      if (requireOrigin && !ensureSameOrigin(req)) {
+        return { ok: false, response: NextResponse.json({ error: "origin_mismatch" }, { status: 403 }) };
+      }
+      return { ok: true, address: session.address, authType: "session" };
+    }
+  }
+
+  const auth = await requireUserSignature(req, params);
+  if (!auth.ok) return auth;
+  return { ok: true, address: normalizeSuiAddress(params.address), authType: "signature" };
 }

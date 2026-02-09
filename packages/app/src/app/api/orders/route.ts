@@ -3,7 +3,7 @@ import crypto from "crypto";
 import { addOrder, hasOrdersForAddress, queryOrders, queryPublicOrdersCursor } from "@/lib/admin-store";
 import { requireAdmin } from "@/lib/admin-auth";
 import { isValidSuiAddress, normalizeSuiAddress } from "@mysten/sui/utils";
-import { requireUserSignature } from "@/lib/user-auth";
+import { requireUserAuth } from "@/lib/user-auth";
 import { rateLimit } from "@/lib/rate-limit";
 
 const ORDER_RATE_LIMIT_WINDOW_MS = Number(process.env.ORDER_RATE_LIMIT_WINDOW_MS || "60000");
@@ -116,7 +116,7 @@ export async function GET(req: Request) {
     q: user || q || undefined,
   });
   if (userAddress) {
-    const auth = await requireUserSignature(req, { intent: "orders:read", address: userAddress });
+    const auth = await requireUserAuth(req, { intent: "orders:read", address: userAddress });
     if (!auth.ok) return auth.response;
   }
   return NextResponse.json(result);
@@ -169,7 +169,7 @@ export async function POST(req: Request) {
     meta.time = new Date(createdAt).toISOString();
   }
 
-  const auth = await requireUserSignature(req, { intent: "orders:create", address: userAddress, body: rawBody });
+  const auth = await requireUserAuth(req, { intent: "orders:create", address: userAddress, body: rawBody });
   if (!auth.ok) return auth.response;
 
   const discountMeta = (payload.meta as { firstOrderDiscount?: Record<string, unknown> } | undefined)

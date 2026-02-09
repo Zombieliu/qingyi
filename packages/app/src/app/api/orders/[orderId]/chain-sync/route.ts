@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin-auth";
 import { findChainOrder, upsertChainOrder } from "@/lib/chain-sync";
 import { isValidSuiAddress, normalizeSuiAddress } from "@mysten/sui/utils";
-import { requireUserSignature } from "@/lib/user-auth";
+import { requireUserAuth } from "@/lib/user-auth";
 
 type RouteContext = {
   params: Promise<{ orderId: string }>;
@@ -41,7 +41,7 @@ export async function POST(req: Request, { params }: RouteContext) {
       return NextResponse.json({ error: "forbidden" }, { status: 403 });
     }
 
-    const auth = await requireUserSignature(req, {
+    const auth = await requireUserAuth(req, {
       intent: `orders:chain-sync:${orderId}`,
       address: normalized,
       body: rawBody,

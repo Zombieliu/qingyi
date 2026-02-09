@@ -84,6 +84,20 @@ model AdminSession {
   @@index([expiresAt])
 }
 
+model UserSession {
+  id         String   @id
+  tokenHash  String   @unique
+  address    String
+  createdAt  DateTime
+  expiresAt  DateTime
+  lastSeenAt DateTime?
+  ip         String?
+  userAgent  String?
+
+  @@index([address])
+  @@index([expiresAt])
+}
+
 model AdminAuditLog {
   id             String   @id
   actorRole      String

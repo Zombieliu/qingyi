@@ -4,7 +4,7 @@ import { getOrderById, updateOrder, updateOrderIfUnassigned } from "@/lib/admin-
 import { isValidSuiAddress, normalizeSuiAddress } from "@mysten/sui/utils";
 import { canTransitionStage, isChainOrder } from "@/lib/order-guard";
 import type { AdminOrder } from "@/lib/admin-types";
-import { requireUserSignature } from "@/lib/user-auth";
+import { requireUserAuth } from "@/lib/user-auth";
 
 type RouteContext = {
   params: Promise<{ orderId: string }>;
@@ -31,7 +31,7 @@ export async function GET(req: Request, { params }: RouteContext) {
     if (!isValidSuiAddress(normalized)) {
       return NextResponse.json({ error: "invalid userAddress" }, { status: 400 });
     }
-    const auth = await requireUserSignature(req, { intent: `orders:read:${orderId}`, address: normalized });
+    const auth = await requireUserAuth(req, { intent: `orders:read:${orderId}`, address: normalized });
     if (!auth.ok) return auth.response;
     if (order.userAddress && order.userAddress !== normalized && order.companionAddress !== normalized) {
       return NextResponse.json({ error: "forbidden" }, { status: 403 });
@@ -127,7 +127,7 @@ export async function PATCH(req: Request, { params }: RouteContext) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
 
-  const auth = await requireUserSignature(req, {
+  const auth = await requireUserAuth(req, {
     intent: `orders:patch:${orderId}`,
     address: actor,
     body: rawBody,
