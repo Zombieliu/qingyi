@@ -109,6 +109,7 @@ export async function PATCH(req: Request, { params }: RouteContext) {
   }
 
   const companionRaw = typeof body.companionAddress === "string" ? body.companionAddress : "";
+  let companionIsAssignee = false;
   if (companionRaw) {
     const companion = normalizeSuiAddress(companionRaw);
     if (!isValidSuiAddress(companion)) {
@@ -120,8 +121,11 @@ export async function PATCH(req: Request, { params }: RouteContext) {
     if (companion !== actor) {
       return NextResponse.json({ error: "companionAddress must match userAddress" }, { status: 400 });
     }
-    if (order.companionAddress && order.companionAddress !== companion) {
-      return NextResponse.json({ error: "order already accepted" }, { status: 409 });
+    if (order.companionAddress) {
+      if (order.companionAddress !== companion) {
+        return NextResponse.json({ error: "order already accepted" }, { status: 409 });
+      }
+      companionIsAssignee = true;
     }
   } else if (order.userAddress && order.userAddress !== actor) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
@@ -151,9 +155,13 @@ export async function PATCH(req: Request, { params }: RouteContext) {
     return NextResponse.json({ error: "订单阶段不允许回退或跨越" }, { status: 409 });
   }
 
-  const updated = companionRaw ? await updateOrderIfUnassigned(orderId, patch) : await updateOrder(orderId, patch);
+  const updated = companionRaw
+    ? companionIsAssignee
+      ? await updateOrder(orderId, patch)
+      : await updateOrderIfUnassigned(orderId, patch)
+    : await updateOrder(orderId, patch);
   if (!updated) {
-    if (companionRaw) {
+    if (companionRaw && !companionIsAssignee) {
       return NextResponse.json({ error: "order already accepted" }, { status: 409 });
     }
     return NextResponse.json({ error: "not found" }, { status: 404 });

@@ -659,9 +659,16 @@ export default function Schedule() {
       | { gameName?: string; gameId?: string }
       | null;
     const hasCompanionProfile = Boolean(companionProfile?.gameName || companionProfile?.gameId);
+    const companionEndedAt = (currentOrder.meta as { companionEndedAt?: number | string } | undefined)?.companionEndedAt;
+    const canConfirmCompletion = Boolean(companionEndedAt);
     return (
       <div className="ride-shell">
         <div className="ride-map-large">地图加载中…</div>
+        {canConfirmCompletion && (
+          <div className="ride-tip" style={{ marginTop: 0 }}>
+            打手已结束服务，请确认完成后进入结算/争议期
+          </div>
+        )}
         <div className="ride-driver-card dl-card">
           <div className="flex items-center gap-3">
             <div className="ride-driver-avatar" />
@@ -700,38 +707,40 @@ export default function Schedule() {
           <div className="ride-driver-actions">
             <button className="dl-tab-btn" onClick={cancelOrder}>取消订单</button>
             <button className="dl-tab-btn">安全中心</button>
-            <button
-              className="dl-tab-btn"
-              onClick={async () => {
-                if (!currentOrder) return;
-                const meta = (currentOrder.meta || {}) as Record<string, unknown>;
-                const isChainOrder = Boolean(currentOrder.chainDigest || meta.chain);
-                if (isChainOrder) {
-                  const chainOrder =
-                    chainCurrentOrder && chainCurrentOrder.orderId === currentOrder.id ? chainCurrentOrder : null;
-                  if (!chainOrder) {
-                    setToast("链上订单未同步");
+            {canConfirmCompletion && (
+              <button
+                className="dl-tab-btn"
+                onClick={async () => {
+                  if (!currentOrder) return;
+                  const meta = (currentOrder.meta || {}) as Record<string, unknown>;
+                  const isChainOrder = Boolean(currentOrder.chainDigest || meta.chain);
+                  if (isChainOrder) {
+                    const chainOrder =
+                      chainCurrentOrder && chainCurrentOrder.orderId === currentOrder.id ? chainCurrentOrder : null;
+                    if (!chainOrder) {
+                      setToast("链上订单未同步");
+                      return;
+                    }
+                    if (chainOrder.status !== 2) {
+                      setToast("当前状态无法确认完成");
+                      return;
+                    }
+                    await runChainAction(
+                      `complete-${currentOrder.id}`,
+                      () => markCompletedOnChain(currentOrder.id),
+                      "已确认完成",
+                      currentOrder.id
+                    );
                     return;
                   }
-                  if (chainOrder.status !== 2) {
-                    setToast("当前状态无法结束服务");
-                    return;
-                  }
-                  await runChainAction(
-                    `complete-${currentOrder.id}`,
-                    () => markCompletedOnChain(currentOrder.id),
-                    "已确认完成",
-                    currentOrder.id
-                  );
-                  return;
-                }
-                await patchOrder(currentOrder.id, { status: "待结算", userAddress: getCurrentAddress() });
-                await refreshOrders();
-                setMode("pending-settlement");
-              }}
-            >
-              结束服务
-            </button>
+                  await patchOrder(currentOrder.id, { status: "待结算", userAddress: getCurrentAddress() });
+                  await refreshOrders();
+                  setMode("pending-settlement");
+                }}
+              >
+                确认完成
+              </button>
+            )}
             <button className="dl-tab-btn" style={{ background: "#f97316", color: "#fff" }}>
               联系打手
             </button>

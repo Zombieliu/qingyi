@@ -444,6 +444,35 @@ export default function Showcase() {
     }
   };
 
+  const markCompanionServiceEnded = async (orderId: string, isChain: boolean) => {
+    const address = getCurrentAddress();
+    if (!address) {
+      setChainToast("请先登录账号再结束服务");
+      setTimeout(() => setChainToast(null), 3000);
+      return;
+    }
+    const endedAt = Date.now();
+    try {
+      await patchOrder(orderId, {
+        companionAddress: address,
+        status: isChain ? undefined : "待结算",
+        meta: { companionEndedAt: endedAt },
+      });
+      setOrderMetaOverrides((prev) => ({
+        ...prev,
+        [orderId]: { ...(prev[orderId] || {}), companionEndedAt: endedAt },
+      }));
+      if (!isChain) {
+        await refreshMyOrders(true);
+      }
+      setChainToast(isChain ? "已标记服务完成，等待用户确认" : "已结束服务，等待结算");
+    } catch (error) {
+      setChainToast((error as Error).message || "结束服务失败");
+    } finally {
+      setTimeout(() => setChainToast(null), 3000);
+    }
+  };
+
   const visibleChainOrders = (
     chainAddress && chainAddress.length > 0
       ? chainOrders.filter((o) => o.user === chainAddress || o.companion === chainAddress)
@@ -508,6 +537,8 @@ export default function Showcase() {
                 const canDispute = o.status === 3 && Number.isFinite(deadline) && now <= deadline;
                 const meta = orderMetaById.get(o.orderId) || null;
                 const gameProfile = (meta?.gameProfile || null) as { gameName?: string; gameId?: string } | null;
+                const companionEndedAt = (meta as { companionEndedAt?: number | string } | null)?.companionEndedAt;
+                const companionEnded = Boolean(companionEndedAt);
                 const metaLoading = Boolean(orderMetaLoading[o.orderId]);
                 return (
                   <div key={`chain-${o.orderId}`} className="dl-card" style={{ padding: 14 }}>
@@ -665,6 +696,16 @@ export default function Showcase() {
                           付押金接单
                         </button>
                       )}
+                      {isCompanion && o.status === 2 && (
+                        <button
+                          className="dl-tab-btn"
+                          style={{ padding: "8px 10px" }}
+                          disabled={companionEnded}
+                          onClick={() => markCompanionServiceEnded(o.orderId, true)}
+                        >
+                          {companionEnded ? "已结束服务" : "结束服务"}
+                        </button>
+                      )}
                       {isUser && o.status === 2 && (
                         <button
                           className="dl-tab-btn"
@@ -729,6 +770,9 @@ export default function Showcase() {
           </div>
           {myAcceptedOrders.map((order) => {
             const gameProfile = (order.meta?.gameProfile || null) as { gameName?: string; gameId?: string } | null;
+            const companionEndedAt = (order.meta as { companionEndedAt?: number | string } | undefined)
+              ?.companionEndedAt;
+            const companionEnded = Boolean(companionEndedAt);
             return (
               <div key={`accepted-${order.id}`} className="dl-card" style={{ padding: 14 }}>
                 <div className="flex items-center justify-between">
@@ -747,6 +791,16 @@ export default function Showcase() {
                     游戏名 {gameProfile?.gameName || "-"} · ID {gameProfile?.gameId || "-"}
                   </div>
                 ) : null}
+                <div className="mt-3 flex gap-2 flex-wrap">
+                  <button
+                    className="dl-tab-btn"
+                    style={{ padding: "6px 10px" }}
+                    disabled={companionEnded}
+                    onClick={() => markCompanionServiceEnded(order.id, false)}
+                  >
+                    {companionEnded ? "已结束服务" : "结束服务"}
+                  </button>
+                </div>
               </div>
             );
           })}
