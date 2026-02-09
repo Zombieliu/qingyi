@@ -77,16 +77,18 @@ function resolveUserAddress() {
   return isChainOrdersEnabled() ? getCurrentAddress() : "";
 }
 
-export async function fetchOrders(): Promise<LocalOrder[]> {
+export async function fetchOrders(options: { force?: boolean } = {}): Promise<LocalOrder[]> {
   if (ORDER_SOURCE !== "server") {
     return loadOrders();
   }
   const userAddress = resolveUserAddress();
   if (!userAddress) return [];
   const cacheKey = `cache:orders:${userAddress || "local"}`;
-  const cached = readCache<LocalOrder[]>(cacheKey, 60_000, true);
-  if (cached?.fresh) {
-    return cached.value;
+  if (!options.force) {
+    const cached = readCache<LocalOrder[]>(cacheKey, 60_000, true);
+    if (cached?.fresh) {
+      return cached.value;
+    }
   }
   const params = new URLSearchParams();
   params.set("page", "1");
@@ -137,15 +139,18 @@ async function buildAuthHeaders(intent: string, body?: string, addressOverride?:
 }
 
 export async function fetchPublicOrders(
-  cursor?: string
+  cursor?: string,
+  options: { force?: boolean } = {}
 ): Promise<{ items: LocalOrder[]; nextCursor?: string | null }> {
   if (ORDER_SOURCE !== "server") {
     return { items: loadOrders(), nextCursor: null };
   }
   const cacheKey = cursor ? `cache:orders:public:${cursor}` : "cache:orders:public:first";
-  const cached = readCache<{ items: LocalOrder[]; nextCursor?: string | null }>(cacheKey, 15_000, true);
-  if (cached?.fresh) {
-    return cached.value;
+  if (!options.force) {
+    const cached = readCache<{ items: LocalOrder[]; nextCursor?: string | null }>(cacheKey, 15_000, true);
+    if (cached?.fresh) {
+      return cached.value;
+    }
   }
   const params = new URLSearchParams();
   params.set("pageSize", "30");

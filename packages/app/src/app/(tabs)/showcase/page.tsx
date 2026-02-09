@@ -1,7 +1,7 @@
 "use client";
 import { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import { type LocalOrder } from "@/app/components/order-store";
-import { deleteOrder, fetchOrderDetail, fetchPublicOrders, patchOrder, syncChainOrder } from "@/app/components/order-service";
+import { deleteOrder, fetchOrderDetail, fetchOrders, fetchPublicOrders, patchOrder, syncChainOrder } from "@/app/components/order-service";
 import { Activity, Clock3, Car, MapPin } from "lucide-react";
 import {
   type ChainOrder,
@@ -31,20 +31,32 @@ export default function Showcase() {
   const [copiedOrderId, setCopiedOrderId] = useState<string | null>(null);
   const [publicCursor, setPublicCursor] = useState<string | null>(null);
   const [publicLoading, setPublicLoading] = useState(false);
+  const [myOrders, setMyOrders] = useState<LocalOrder[]>([]);
+  const [myOrdersLoading, setMyOrdersLoading] = useState(false);
   const [orderMetaOverrides, setOrderMetaOverrides] = useState<Record<string, Record<string, unknown>>>({});
   const [orderMetaLoading, setOrderMetaLoading] = useState<Record<string, boolean>>({});
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
 
-  const refreshOrders = async () => {
+  const refreshOrders = async (force = false) => {
     setPublicLoading(true);
     try {
-      const result = await fetchPublicOrders();
+      const result = await fetchPublicOrders(undefined, { force });
       setOrders(result.items);
       setPublicCursor(result.nextCursor || null);
     } finally {
       setPublicLoading(false);
     }
   };
+
+  const refreshMyOrders = useCallback(async (force = false) => {
+    setMyOrdersLoading(true);
+    try {
+      const list = await fetchOrders({ force });
+      setMyOrders(list);
+    } finally {
+      setMyOrdersLoading(false);
+    }
+  }, []);
 
   const loadMoreOrders = useCallback(async () => {
     if (!publicCursor || publicLoading) return;
@@ -61,6 +73,10 @@ export default function Showcase() {
   useEffect(() => {
     refreshOrders();
   }, []);
+
+  useEffect(() => {
+    refreshMyOrders();
+  }, [refreshMyOrders]);
 
   useEffect(() => {
     if (!loadMoreRef.current) return;
@@ -128,7 +144,10 @@ export default function Showcase() {
       userAddress: address,
       companionAddress: address,
     });
-    await refreshOrders();
+    await refreshOrders(true);
+    await refreshMyOrders(true);
+    setChainToast("接单成功，已移至「我已接的订单」");
+    setTimeout(() => setChainToast(null), 3000);
   };
 
   const cancel = async (id: string) => {
@@ -345,6 +364,12 @@ export default function Showcase() {
   ).filter((o) => o.status !== 6);
 
   const visibleOrders = orders.filter((o) => !o.status.includes("完成") && !o.status.includes("取消"));
+  const myAcceptedOrders = myOrders.filter((o) => {
+    const address = chainAddress || getCurrentAddress();
+    if (!address || !o.companionAddress) return false;
+    if (o.companionAddress !== address) return false;
+    return !o.status.includes("完成") && !o.status.includes("取消");
+  });
 
   return (
     <div className="dl-shell">
@@ -608,6 +633,38 @@ export default function Showcase() {
           )}
         </div>
       )}
+
+      {myAcceptedOrders.length > 0 || myOrdersLoading ? (
+        <div className="space-y-3 mb-6">
+          <div className="dl-card text-xs text-gray-500">
+            <div>我已接的订单</div>
+            {myOrdersLoading && <div className="mt-1 text-amber-600">加载中…</div>}
+          </div>
+          {myAcceptedOrders.map((order) => {
+            const gameProfile = (order.meta?.gameProfile || null) as { gameName?: string; gameId?: string } | null;
+            return (
+              <div key={`accepted-${order.id}`} className="dl-card" style={{ padding: 14 }}>
+                <div className="flex items-center justify-between">
+                  <div className="text-sm font-semibold text-gray-900">{order.item}</div>
+                  <div className="text-sm font-bold text-amber-600">¥{order.amount}</div>
+                </div>
+                <div className="mt-2 text-xs text-gray-500">
+                  状态：{order.status} · 订单号：{order.id}
+                </div>
+                {order.userAddress ? (
+                  <div className="mt-2 text-xs text-gray-500">用户地址：{shortAddr(order.userAddress)}</div>
+                ) : null}
+                <div className="mt-2 text-xs text-gray-500">{new Date(order.time).toLocaleString()}</div>
+                {gameProfile?.gameName || gameProfile?.gameId ? (
+                  <div className="mt-2 text-xs text-emerald-700">
+                    游戏名 {gameProfile?.gameName || "-"} · ID {gameProfile?.gameId || "-"}
+                  </div>
+                ) : null}
+              </div>
+            );
+          })}
+        </div>
+      ) : null}
 
       {visibleOrders.length === 0 ? (
         <div className="dl-card text-sm text-slate-500">暂无呼叫记录，去首页/安排页选择服务吧。</div>

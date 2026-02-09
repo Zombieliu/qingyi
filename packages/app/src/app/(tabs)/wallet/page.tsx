@@ -226,11 +226,11 @@ export default function Wallet() {
               <div className="pay-option-price">¥{opt.price.toFixed(2)}</div>
             </button>
           ))}
-          <div className={`pay-option ${isCustomSelected ? "is-active" : ""}`} style={{ textAlign: "left" }}>
+          <div className={`pay-option pay-option-custom ${isCustomSelected ? "is-active" : ""}`}>
             <div className="pay-option-amt">自定义数量</div>
-            <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 8 }}>
+            <div className="pay-custom-row">
               <input
-                className="admin-input"
+                className="admin-input pay-custom-input"
                 type="number"
                 min={1}
                 step={1}
@@ -245,12 +245,10 @@ export default function Wallet() {
                     setSelected(customOption);
                   }
                 }}
-                style={{ flex: 1, padding: "6px 10px" }}
               />
               <button
                 type="button"
-                className="dl-tab-btn"
-                style={{ padding: "6px 10px" }}
+                className="dl-tab-btn pay-custom-btn"
                 disabled={!customOption}
                 onClick={() => {
                   if (customOption) setSelected(customOption);

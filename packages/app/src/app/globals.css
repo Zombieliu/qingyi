@@ -1884,6 +1884,24 @@ a {
   text-align: left;
   box-shadow: var(--shadow-sm);
 }
+.pay-option-custom {
+  grid-column: 1 / -1;
+}
+.pay-custom-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 8px;
+}
+.pay-custom-input {
+  flex: 1;
+  padding: 6px 10px;
+  min-width: 0;
+}
+.pay-custom-btn {
+  padding: 6px 10px;
+  white-space: nowrap;
+}
 .pay-option.is-active {
   border-color: rgba(14, 165, 233, 0.6);
   box-shadow: 0 12px 26px rgba(14, 165, 233, 0.18);
@@ -2130,6 +2148,14 @@ a {
   .pay-qr-card {
     flex-direction: column;
     align-items: flex-start;
+  }
+  .pay-custom-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .pay-custom-input,
+  .pay-custom-btn {
+    width: 100%;
   }
   .ride-qr-img,
   .pay-qr-img {
