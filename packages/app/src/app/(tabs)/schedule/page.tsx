@@ -715,8 +715,17 @@ export default function Schedule() {
                   const meta = (currentOrder.meta || {}) as Record<string, unknown>;
                   const isChainOrder = Boolean(currentOrder.chainDigest || meta.chain);
                   if (isChainOrder) {
-                    const chainOrder =
-                      chainCurrentOrder && chainCurrentOrder.orderId === currentOrder.id ? chainCurrentOrder : null;
+                    let chainOrder = chainOrders.find((order) => order.orderId === currentOrder.id) || null;
+                    if (!chainOrder) {
+                      try {
+                        const list = await fetchChainOrders();
+                        setChainOrders(list);
+                        chainOrder = list.find((order) => order.orderId === currentOrder.id) || null;
+                      } catch (error) {
+                        setToast((error as Error).message || "链上订单加载失败");
+                        return;
+                      }
+                    }
                     if (!chainOrder) {
                       setToast("链上订单未同步");
                       return;
@@ -747,6 +756,7 @@ export default function Schedule() {
           </div>
           <div className="text-xs text-gray-500 mt-2">订单：{currentOrder.item}</div>
         </div>
+        {toast && <div className="ride-toast">{toast}</div>}
       </div>
     );
   }
