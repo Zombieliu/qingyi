@@ -208,13 +208,13 @@ export default function Schedule() {
 
   const refreshOrders = async (addrOverride?: string) => {
     const list = await fetchOrders({ force: true });
-    setOrders(list);
     const addr = addrOverride ?? userAddress ?? getCurrentAddress();
     const filtered = list.filter((order) => {
       if (!addr) return true;
-      if (!order.userAddress) return true;
+      if (!order.userAddress) return false;
       return order.userAddress === addr;
     });
+    setOrders(filtered);
     setMode(deriveMode(filtered));
   };
 
@@ -243,12 +243,10 @@ export default function Schedule() {
   useEffect(() => {
     const addr = userAddress || getCurrentAddress();
     const used = readDiscountUsage(addr);
-    const filtered = orders.filter((order) => {
-      if (!addr) return true;
-      if (!order.userAddress) return true;
-      return order.userAddress === addr;
-    });
-    setFirstOrderEligible(!used && filtered.length === 0);
+    const eligibleList = addr
+      ? orders.filter((order) => order.userAddress === addr)
+      : orders;
+    setFirstOrderEligible(!used && eligibleList.length === 0);
   }, [orders, chainAddress, userAddress]);
 
   const refreshVip = async () => {
@@ -360,13 +358,8 @@ export default function Schedule() {
     }, 0);
 
   const currentOrder = useMemo(() => {
-    const addr = userAddress || getCurrentAddress();
-    const filtered = orders.filter((order) => {
-      if (!addr) return true;
-      if (!order.userAddress) return true;
-      return order.userAddress === addr;
-    });
-    return filtered.find((o) => !o.status.includes("取消") && !o.status.includes("完成")) || null;
+    const list = orders;
+    return list.find((o) => !o.status.includes("取消") && !o.status.includes("完成")) || null;
   }, [orders, chainAddress, userAddress]);
   const chainCurrentOrder = useMemo(() => {
     const addr = chainAddress;
