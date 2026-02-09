@@ -265,8 +265,9 @@ export async function patchOrder(
   }
   const address = getCurrentAddress();
   const meta = buildMeta(patch);
+  const isCompanionAction = Boolean(patch.companionAddress);
   const requestBody = {
-    userAddress: patch.userAddress || address,
+    userAddress: patch.userAddress ?? (isCompanionAction ? undefined : address),
     companionAddress: patch.companionAddress,
     status: patch.status,
     meta,

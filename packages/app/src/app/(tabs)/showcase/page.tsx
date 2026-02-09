@@ -225,7 +225,6 @@ export default function Showcase() {
         phone: "138****0000",
         price: 63,
       },
-      userAddress: address,
       companionAddress: address,
       meta: {
         companionProfile: profilePayload,
