@@ -36,6 +36,28 @@ export default function Showcase() {
   const [orderMetaOverrides, setOrderMetaOverrides] = useState<Record<string, Record<string, unknown>>>({});
   const [orderMetaLoading, setOrderMetaLoading] = useState<Record<string, boolean>>({});
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
+  const GAME_PROFILE_KEY = "qy_game_profile_v1";
+
+  type GameProfile = {
+    gameName: string;
+    gameId: string;
+    updatedAt: number;
+    userAddress?: string;
+  };
+
+  type StoredProfiles = Record<string, GameProfile>;
+
+  const loadGameProfile = (address: string) => {
+    if (typeof window === "undefined") return null;
+    try {
+      const raw = localStorage.getItem(GAME_PROFILE_KEY);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw) as StoredProfiles;
+      return parsed[address] || parsed.local || null;
+    } catch {
+      return null;
+    }
+  };
 
   const refreshOrders = async (force = false) => {
     setPublicLoading(true);
@@ -129,6 +151,15 @@ export default function Showcase() {
 
   const accept = async (id: string) => {
     const address = getCurrentAddress();
+    const companionProfile = address ? loadGameProfile(address) : null;
+    const profilePayload =
+      companionProfile && (companionProfile.gameName || companionProfile.gameId)
+        ? {
+            gameName: companionProfile.gameName,
+            gameId: companionProfile.gameId,
+            updatedAt: companionProfile.updatedAt,
+          }
+        : null;
     await patchOrder(id, {
       status: "待用户支付打手费",
       depositPaid: true,
@@ -143,6 +174,9 @@ export default function Showcase() {
       },
       userAddress: address,
       companionAddress: address,
+      meta: {
+        companionProfile: profilePayload,
+      },
     });
     await refreshOrders(true);
     await refreshMyOrders(true);
@@ -673,23 +707,37 @@ export default function Showcase() {
           {visibleOrders.map((o, idx) =>
             o.driver ? (
               <div key={`${o.id}-${idx}`} className="dl-card" style={{ padding: 14, borderColor: "#fed7aa", background: "#fff7ed" }}>
+                {(() => {
+                  const profile = (o.meta?.companionProfile || null) as { gameName?: string; gameId?: string } | null;
+                  const hasProfile = Boolean(profile?.gameName || profile?.gameId);
+                  return (
+                    <>
                 <div className="flex items-center gap-2 text-amber-600 text-sm font-semibold">
                   <Car size={16} />
-                  司机正在赶来
+                  打手已接单
                 </div>
-                <div className="mt-2 flex items-center gap-6 text-sm text-gray-900">
-                  <div>
-                    <div className="font-bold">{o.driver.name}</div>
-                    <div className="text-xs text-gray-500">{o.driver.car}</div>
+                {hasProfile ? (
+                  <div className="mt-2 text-sm text-gray-900">
+                    <div className="font-bold">打手游戏设置</div>
+                    <div className="text-xs text-gray-500">
+                      游戏名 {profile?.gameName || "-"} · ID {profile?.gameId || "-"}
+                    </div>
                   </div>
-                  <div className="text-right text-sm">
-                    <div className="font-semibold text-emerald-600">{o.driver.eta}</div>
-                    {o.driver.price && <div className="text-xs text-gray-500">一口价 ¥{o.driver.price / 10}</div>}
+                ) : (
+                  <div className="mt-2 flex items-center gap-6 text-sm text-gray-900">
+                    <div>
+                      <div className="font-bold">{o.driver.name}</div>
+                      <div className="text-xs text-gray-500">{o.driver.car}</div>
+                    </div>
+                    <div className="text-right text-sm">
+                      <div className="font-semibold text-emerald-600">{o.driver.eta}</div>
+                      {o.driver.price && <div className="text-xs text-gray-500">一口价 ¥{o.driver.price / 10}</div>}
+                    </div>
                   </div>
-                </div>
+                )}
                 <div className="mt-2 text-xs text-gray-500 flex items-center gap-2">
                   <MapPin size={14} />
-                  取货用车
+                  服务信息
                 </div>
                 <div className="mt-2 text-xs">
                   <span className="text-emerald-600 font-semibold mr-2">押金已付</span>
@@ -714,9 +762,12 @@ export default function Showcase() {
                     完成
                   </button>
                   <button className="dl-tab-btn" style={{ padding: "8px 10px", background: "#f97316", color: "#fff" }}>
-                    联系司机
+                    联系打手
                   </button>
                 </div>
+                    </>
+                  );
+                })()}
               </div>
             ) : (
               <div key={`${o.id}-${idx}`} className="dl-card" style={{ padding: 14 }}>
