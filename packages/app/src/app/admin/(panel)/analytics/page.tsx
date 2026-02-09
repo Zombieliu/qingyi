@@ -91,7 +91,7 @@ export default function AnalyticsPage() {
             </div>
           </div>
         ) : (
-          <p>暂无数据</p>
+          <p className="admin-empty">暂无数据</p>
         )}
       </div>
 
@@ -125,7 +125,7 @@ export default function AnalyticsPage() {
             </table>
           </div>
         ) : (
-          <p>暂无数据</p>
+          <p className="admin-empty">暂无数据</p>
         )}
       </div>
 
@@ -159,7 +159,7 @@ export default function AnalyticsPage() {
             </table>
           </div>
         ) : (
-          <p>暂无数据</p>
+          <p className="admin-empty">暂无数据</p>
         )}
       </div>
 
@@ -191,7 +191,7 @@ export default function AnalyticsPage() {
             </table>
           </div>
         ) : (
-          <p>暂无数据</p>
+          <p className="admin-empty">暂无数据</p>
         )}
       </div>
     </div>

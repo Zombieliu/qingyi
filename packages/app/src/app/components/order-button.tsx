@@ -8,6 +8,7 @@ import {
   isChainOrdersEnabled,
 } from "@/lib/qy-chain";
 import { trackEvent } from "@/app/components/analytics";
+import { Button } from "@/components/ui/button";
 
 interface Props {
   user: string;
@@ -102,7 +103,9 @@ export default function OrderButton({ user, item, amount, note }: Props) {
   };
 
   return (
-    <button
+    <Button
+      variant="ghost"
+      size="unstyled"
       onClick={submit}
       disabled={loading}
       className="lc-order"
@@ -110,6 +113,6 @@ export default function OrderButton({ user, item, amount, note }: Props) {
     >
       {loading ? "发送中..." : "自助下单"}
       {msg && <span className="lc-order-tip">{msg}</span>}
-    </button>
+    </Button>
   );
 }

@@ -142,7 +142,7 @@ export default function GuardiansPage() {
         {loading ? (
           <p>加载护航申请中...</p>
         ) : applications.length === 0 ? (
-          <p>暂无护航申请</p>
+          <p className="admin-empty">暂无护航申请</p>
         ) : (
           <div className="admin-table-wrap">
             <table className="admin-table">

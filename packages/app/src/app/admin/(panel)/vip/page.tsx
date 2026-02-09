@@ -397,7 +397,7 @@ export default function VipAdminPage() {
           </div>
         </div>
         {tiers.length === 0 ? (
-          <p>暂无会员等级</p>
+          <p className="admin-empty">暂无会员等级</p>
         ) : (
           <div className="admin-table-wrap">
             <table className="admin-table">
@@ -529,7 +529,7 @@ export default function VipAdminPage() {
         {loading ? (
           <p>加载中...</p>
         ) : requests.length === 0 ? (
-          <p>暂无会员申请</p>
+          <p className="admin-empty">暂无会员申请</p>
         ) : (
           <div className="admin-table-wrap">
             <table className="admin-table">
@@ -610,7 +610,7 @@ export default function VipAdminPage() {
           </div>
         </div>
         {members.length === 0 ? (
-          <p>暂无会员记录</p>
+          <p className="admin-empty">暂无会员记录</p>
         ) : (
           <div className="admin-table-wrap">
             <table className="admin-table">

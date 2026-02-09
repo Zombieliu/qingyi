@@ -23,6 +23,10 @@
   --shadow-sm: 0 6px 16px rgba(15, 23, 42, 0.08);
   --shadow-md: 0 12px 30px rgba(15, 23, 42, 0.1);
   --shadow-lg: 0 20px 60px rgba(15, 23, 42, 0.12);
+  --motion-fast: 140ms;
+  --motion-base: 220ms;
+  --motion-slow: 360ms;
+  --motion-ease: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 html {
@@ -35,6 +39,42 @@ html {
 *::before,
 *::after {
   box-sizing: border-box;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+.motion-page {
+  will-change: transform, opacity, filter;
+}
+
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: #e2e8f0;
+  border-radius: 10px;
+}
+.skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.6), transparent);
+  animation: skeleton-shimmer 1.2s infinite;
+}
+
+@keyframes skeleton-shimmer {
+  100% {
+    transform: translateX(100%);
+  }
 }
 
 body {
@@ -306,6 +346,11 @@ a {
   background: var(--surface);
   box-shadow: var(--shadow-sm);
   color: var(--text);
+  transition: transform var(--motion-fast) var(--motion-ease), box-shadow var(--motion-fast) var(--motion-ease);
+}
+.dl-icon-circle:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
 }
 
 .dl-card {
@@ -316,6 +361,11 @@ a {
   box-shadow: var(--shadow-md);
   margin-bottom: 14px;
   border: 1px solid var(--border);
+  transition: transform var(--motion-base) var(--motion-ease), box-shadow var(--motion-base) var(--motion-ease);
+}
+.dl-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
 }
 
 .dl-profile {
@@ -531,6 +581,28 @@ a {
   color: var(--muted);
   border: none;
   background: transparent;
+  transition: transform var(--motion-fast) var(--motion-ease), color var(--motion-fast) var(--motion-ease);
+}
+.dl-tab:hover {
+  transform: translateY(-1px);
+}
+
+.dl-empty {
+  display: grid;
+  place-items: center;
+  gap: 6px;
+  text-align: center;
+  padding: 18px;
+  color: var(--muted);
+  border: 1px dashed rgba(148, 163, 184, 0.4);
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.dl-empty-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
 }
 .dl-tab:focus-visible {
   outline: 2px solid var(--brand);
@@ -931,6 +1003,11 @@ a {
   font-size: 12px;
   text-align: center;
   box-shadow: 0 4px 12px rgba(15, 23, 42, 0.04);
+  transition: transform var(--motion-fast) var(--motion-ease), box-shadow var(--motion-fast) var(--motion-ease);
+}
+.ride-side-tab:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 16px rgba(15, 23, 42, 0.08);
 }
 .ride-side-tab.is-active {
   background: linear-gradient(135deg, #ffedd5 0%, #fff7ed 100%);
@@ -952,6 +1029,11 @@ a {
   padding: 8px 0;
   box-shadow: 0 6px 20px rgba(15, 23, 42, 0.06);
   border: 1px solid #e2e8f0;
+  transition: transform var(--motion-base) var(--motion-ease), box-shadow var(--motion-base) var(--motion-ease);
+}
+.ride-block:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 26px rgba(15, 23, 42, 0.12);
 }
 .ride-block.is-highlight {
   background: #fff7ed;
@@ -974,6 +1056,10 @@ a {
   gap: 10px;
   padding: 8px 14px;
   border-top: 1px solid #f1f5f9;
+  transition: background var(--motion-fast) var(--motion-ease);
+}
+.ride-row:hover {
+  background: rgba(14, 165, 233, 0.06);
 }
 .ride-row:first-child {
   border-top: none;
@@ -1042,6 +1128,11 @@ a {
   align-items: center;
   justify-content: center;
   cursor: pointer;
+  transition: transform var(--motion-fast) var(--motion-ease), box-shadow var(--motion-fast) var(--motion-ease);
+}
+.ride-info-dot:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 16px rgba(251, 146, 60, 0.18);
 }
 .ride-tooltip {
   position: absolute;
@@ -1080,6 +1171,7 @@ a {
   border: 1px solid #cbd5e1;
   display: block;
   background: #fff;
+  transition: transform var(--motion-fast) var(--motion-ease), box-shadow var(--motion-fast) var(--motion-ease);
 }
 .ride-checkbox input:checked + .ride-checkbox-box {
   border-color: #f97316;
@@ -1131,6 +1223,11 @@ a {
   font-size: 15px;
   font-weight: 800;
   min-width: 150px;
+  transition: transform var(--motion-fast) var(--motion-ease), box-shadow var(--motion-fast) var(--motion-ease);
+}
+.ride-call:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 24px rgba(236, 72, 153, 0.3);
 }
 .ride-toast {
   position: fixed;
@@ -1731,6 +1828,11 @@ a {
   border: 1px solid #e5e7eb;
   box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
   align-items: center;
+  transition: transform var(--motion-base) var(--motion-ease), box-shadow var(--motion-base) var(--motion-ease);
+}
+.lc-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 16px 30px rgba(15, 23, 42, 0.12);
 }
 .lc-avatar-wrap {
   position: relative;
@@ -1816,6 +1918,11 @@ a {
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  transition: transform var(--motion-fast) var(--motion-ease), box-shadow var(--motion-fast) var(--motion-ease);
+}
+.lc-order:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 16px 30px rgba(14, 165, 233, 0.24);
 }
 .lc-order:focus-visible,
 .yx-btn:focus-visible,

@@ -25,6 +25,7 @@ import {
 import { useI18n } from "@/lib/i18n-client";
 import AutoTranslate from "@/app/components/auto-translate";
 import SwControl from "@/app/components/sw-control";
+import { PageTransition, Stagger, StaggerItem } from "@/components/ui/motion";
 
 type AdminRole = "admin" | "ops" | "finance" | "viewer";
 
@@ -225,21 +226,24 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
             return (
               <div key={section.label} className="admin-nav-section">
                 <div className="admin-nav-label">{t(section.label)}</div>
-                {items.map((item) => {
-                  const Icon = item.icon;
-                  const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
-                  return (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      onClick={() => setSidebarOpen(false)}
-                      className={`admin-nav-item${isActive ? " active" : ""}`}
-                    >
-                      <Icon size={18} />
-                      {t(item.label)}
-                    </Link>
-                  );
-                })}
+                <Stagger>
+                  {items.map((item) => {
+                    const Icon = item.icon;
+                    const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
+                    return (
+                      <StaggerItem key={item.href}>
+                        <Link
+                          href={item.href}
+                          onClick={() => setSidebarOpen(false)}
+                          className={`admin-nav-item${isActive ? " active" : ""}`}
+                        >
+                          <Icon size={18} />
+                          {t(item.label)}
+                        </Link>
+                      </StaggerItem>
+                    );
+                  })}
+                </Stagger>
               </div>
             );
           })}
@@ -288,7 +292,9 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
             </button>
           </div>
         </div>
-        <AutoTranslate>{children}</AutoTranslate>
+        <AutoTranslate>
+          <PageTransition routeKey={pathname}>{children}</PageTransition>
+        </AutoTranslate>
       </main>
     </div>
   );

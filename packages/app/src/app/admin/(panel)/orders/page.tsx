@@ -262,7 +262,7 @@ export default function OrdersPage() {
         {loading ? (
           <p>加载订单中...</p>
         ) : orders.length === 0 ? (
-          <p>没有符合条件的订单</p>
+          <p className="admin-empty">没有符合条件的订单</p>
         ) : (
           <div className="admin-table-wrap">
             <table className="admin-table">

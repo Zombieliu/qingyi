@@ -1017,7 +1017,7 @@ export default function Schedule() {
           {chainError && <div className="mt-2 text-xs text-rose-500">{chainError}</div>}
           {chainToast && <div className="mt-2 text-xs text-emerald-600">{chainToast}</div>}
           {!chainCurrentOrder ? (
-            <div className="mt-2 text-xs text-gray-500">暂无订单</div>
+            <div className="mt-2 text-xs text-gray-500 dl-empty-inline">暂无订单</div>
           ) : (
             <div className="mt-3 text-xs text-gray-600">
               <div>订单号：{chainCurrentOrder.orderId}</div>
@@ -1258,7 +1258,7 @@ export default function Schedule() {
                 {playersLoading ? (
                   <div className="px-4 pb-2 text-xs text-slate-500">加载打手列表中...</div>
                 ) : players.length === 0 ? (
-                  <div className="px-4 pb-2 text-xs text-slate-500">暂无可接打手</div>
+                  <div className="px-4 pb-2 text-xs text-slate-500 dl-empty-inline">暂无可接打手</div>
                 ) : (
                   players.map((player) => (
                     <div

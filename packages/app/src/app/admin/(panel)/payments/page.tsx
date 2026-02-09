@@ -77,7 +77,7 @@ export default function PaymentsPage() {
         {loading ? (
           <p>加载中...</p>
         ) : events.length === 0 ? (
-          <p>暂无支付事件</p>
+          <p className="admin-empty">暂无支付事件</p>
         ) : (
           <div className="admin-table-wrap">
             <table className="admin-table">

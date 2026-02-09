@@ -128,7 +128,7 @@ export default function MantouWithdrawPage() {
         {loading ? (
           <p>加载提现申请中...</p>
         ) : requests.length === 0 ? (
-          <p>暂无提现申请</p>
+          <p className="admin-empty">暂无提现申请</p>
         ) : (
           <div className="admin-table-wrap">
             <table className="admin-table">

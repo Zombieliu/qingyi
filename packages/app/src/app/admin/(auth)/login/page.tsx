@@ -4,6 +4,9 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ShieldCheck, KeyRound } from "lucide-react";
 import SwControl from "@/app/components/sw-control";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { MotionCard } from "@/components/ui/motion";
 
 export default function AdminLoginPage() {
   const router = useRouter();
@@ -40,7 +43,7 @@ export default function AdminLoginPage() {
 
   return (
     <div className="admin-login">
-      <div className="admin-card admin-login-card">
+      <MotionCard className="admin-card admin-login-card">
         <div className="admin-card-header">
           <div>
             <h2 className="admin-title">运营管理后台</h2>
@@ -62,7 +65,7 @@ export default function AdminLoginPage() {
                 size={16}
                 style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "#64748b" }}
               />
-              <input
+              <Input
                 className="admin-input"
                 style={{ paddingLeft: 36 }}
                 type="password"
@@ -77,9 +80,9 @@ export default function AdminLoginPage() {
               {error}
             </div>
           ) : null}
-          <button className="admin-btn primary" type="submit" disabled={loading}>
+          <Button variant="admin" size="unstyled" className="primary" type="submit" disabled={loading}>
             {loading ? "登录中..." : "进入后台"}
-          </button>
+          </Button>
         </form>
         <div className="admin-helper">
           提示：在 `.env.local` 中设置 `ADMIN_DASH_TOKEN` 或 `ADMIN_TOKENS`。
@@ -88,7 +91,7 @@ export default function AdminLoginPage() {
         <div style={{ marginTop: 16 }}>
           <SwControl />
         </div>
-      </div>
+      </MotionCard>
     </div>
   );
 }

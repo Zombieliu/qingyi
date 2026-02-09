@@ -98,7 +98,7 @@ export default function AuditPage() {
         {loading ? (
           <p>加载中...</p>
         ) : logs.length === 0 ? (
-          <p>暂无审计记录</p>
+          <p className="admin-empty">暂无审计记录</p>
         ) : (
           <div className="admin-table-wrap">
             <table className="admin-table">

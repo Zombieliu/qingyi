@@ -286,7 +286,7 @@ export default function CouponsPage() {
         {loading ? (
           <p>加载优惠券中...</p>
         ) : coupons.length === 0 ? (
-          <p>暂无优惠券</p>
+          <p className="admin-empty">暂无优惠券</p>
         ) : (
           <div className="admin-table-wrap">
             <table className="admin-table">

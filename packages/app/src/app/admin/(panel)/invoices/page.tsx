@@ -142,7 +142,7 @@ export default function InvoicesPage() {
         {loading ? (
           <p>加载发票申请中...</p>
         ) : requests.length === 0 ? (
-          <p>暂无发票申请</p>
+          <p className="admin-empty">暂无发票申请</p>
         ) : (
           <div className="admin-table-wrap">
             <table className="admin-table">

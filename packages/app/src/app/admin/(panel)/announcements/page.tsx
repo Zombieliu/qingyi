@@ -244,7 +244,7 @@ export default function AnnouncementsPage() {
         {loading ? (
           <p>加载中...</p>
         ) : announcements.length === 0 ? (
-          <p>暂无公告记录</p>
+          <p className="admin-empty">暂无公告记录</p>
         ) : (
           <div className="admin-stack">
             {announcements.map((item) => (

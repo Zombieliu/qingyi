@@ -146,7 +146,7 @@ export default function SupportPage() {
         {loading ? (
           <p>加载工单中...</p>
         ) : tickets.length === 0 ? (
-          <p>暂无客服工单</p>
+          <p className="admin-empty">暂无客服工单</p>
         ) : (
           <div className="admin-table-wrap">
             <table className="admin-table">

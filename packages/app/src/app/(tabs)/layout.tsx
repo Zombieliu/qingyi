@@ -11,6 +11,7 @@ import {
 import PasskeyGate from "../components/passkey-gate";
 import AutoTranslate from "../components/auto-translate";
 import { useI18n } from "@/lib/i18n-client";
+import { PageTransition } from "@/components/ui/motion";
 
 export default function TabsLayout({ children }: { children: React.ReactNode }) {
   const { t } = useI18n();
@@ -51,7 +52,9 @@ export default function TabsLayout({ children }: { children: React.ReactNode }) 
 
       <main className="dl-main">
         <PasskeyGate>
-          <AutoTranslate>{children}</AutoTranslate>
+          <AutoTranslate>
+            <PageTransition routeKey={pathname}>{children}</PageTransition>
+          </AutoTranslate>
         </PasskeyGate>
       </main>
 

@@ -289,7 +289,7 @@ export default function PlayersPage() {
         {loading ? (
           <p>加载中...</p>
         ) : players.length === 0 ? (
-          <p>暂无打手档案</p>
+          <p className="admin-empty">暂无打手档案</p>
         ) : (
           <div className="admin-table-wrap">
             <table className="admin-table">

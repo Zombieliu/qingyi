@@ -18,6 +18,7 @@ import {
   raiseDisputeOnChain,
   signAuthIntent,
 } from "@/lib/qy-chain";
+import { MotionCard } from "@/components/ui/motion";
 
 export default function Showcase() {
   const [orders, setOrders] = useState<LocalOrder[]>([]);
@@ -525,10 +526,10 @@ export default function Showcase() {
             {chainToast && <div className="mt-1 text-emerald-600">{chainToast}</div>}
           </div>
           {visibleChainOrders.length === 0 && !chainLoading ? (
-            <div className="dl-card text-sm text-slate-500">暂无订单。</div>
+            <div className="dl-card dl-empty">暂无订单。</div>
           ) : (
             <div className="space-y-3">
-              {visibleChainOrders.map((o) => {
+                {visibleChainOrders.map((o) => {
                 const isUser = chainAddress && o.user === chainAddress;
                 const isCompanion = chainAddress && o.companion === chainAddress;
                 const now = Date.now();
@@ -540,8 +541,8 @@ export default function Showcase() {
                 const companionEndedAt = (meta as { companionEndedAt?: number | string } | null)?.companionEndedAt;
                 const companionEnded = Boolean(companionEndedAt);
                 const metaLoading = Boolean(orderMetaLoading[o.orderId]);
-                return (
-                  <div key={`chain-${o.orderId}`} className="dl-card" style={{ padding: 14 }}>
+                  return (
+                    <MotionCard key={`chain-${o.orderId}`} className="dl-card" style={{ padding: 14 }}>
                     <div className="flex items-center justify-between">
                       <div className="text-sm font-semibold text-gray-900">订单 #{o.orderId}</div>
                       <div className="text-sm font-bold text-amber-600">¥{formatAmount(o.serviceFee)}</div>
@@ -754,9 +755,9 @@ export default function Showcase() {
                         </button>
                       )}
                     </div>
-                  </div>
-                );
-              })}
+                    </MotionCard>
+                  );
+                })}
             </div>
           )}
         </div>
@@ -774,7 +775,7 @@ export default function Showcase() {
               ?.companionEndedAt;
             const companionEnded = Boolean(companionEndedAt);
             return (
-              <div key={`accepted-${order.id}`} className="dl-card" style={{ padding: 14 }}>
+              <MotionCard key={`accepted-${order.id}`} className="dl-card" style={{ padding: 14 }}>
                 <div className="flex items-center justify-between">
                   <div className="text-sm font-semibold text-gray-900">{order.item}</div>
                   <div className="text-sm font-bold text-amber-600">¥{order.amount}</div>
@@ -801,19 +802,19 @@ export default function Showcase() {
                     {companionEnded ? "已结束服务" : "结束服务"}
                   </button>
                 </div>
-              </div>
+              </MotionCard>
             );
           })}
         </div>
       ) : null}
 
       {visibleOrders.length === 0 ? (
-        <div className="dl-card text-sm text-slate-500">暂无呼叫记录，去首页/安排页选择服务吧。</div>
+        <div className="dl-card dl-empty">暂无呼叫记录，去首页/安排页选择服务吧。</div>
       ) : (
         <div className="space-y-3">
           {visibleOrders.map((o, idx) =>
             o.driver ? (
-              <div key={`${o.id}-${idx}`} className="dl-card" style={{ padding: 14, borderColor: "#fed7aa", background: "#fff7ed" }}>
+              <MotionCard key={`${o.id}-${idx}`} className="dl-card" style={{ padding: 14, borderColor: "#fed7aa", background: "#fff7ed" }}>
                 {(() => {
                   const profile = (o.meta?.gameProfile || null) as { gameName?: string; gameId?: string } | null;
                   const hasProfile = Boolean(profile?.gameName || profile?.gameId);
@@ -875,9 +876,9 @@ export default function Showcase() {
                     </>
                   );
                 })()}
-              </div>
+              </MotionCard>
             ) : (
-              <div key={`${o.id}-${idx}`} className="dl-card" style={{ padding: 14 }}>
+              <MotionCard key={`${o.id}-${idx}`} className="dl-card" style={{ padding: 14 }}>
                 <div className="flex items-center justify-between">
                   <div className="text-sm font-semibold text-gray-900">{o.item}</div>
                   <div className="text-sm font-bold text-amber-600">¥{o.amount}</div>
@@ -909,7 +910,7 @@ export default function Showcase() {
                     取消
                   </button>
                 </div>
-              </div>
+              </MotionCard>
             )
           )}
         </div>

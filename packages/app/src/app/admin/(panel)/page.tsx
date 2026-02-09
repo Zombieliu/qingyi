@@ -131,7 +131,7 @@ export default function AdminDashboard() {
           {loading ? (
             <p>正在加载...</p>
           ) : recentOrders.length === 0 ? (
-            <p>暂无订单记录</p>
+            <p className="admin-empty">暂无订单记录</p>
           ) : (
             <div className="admin-table-wrap">
               <table className="admin-table">
@@ -176,7 +176,7 @@ export default function AdminDashboard() {
           {loading ? (
             <p>正在加载...</p>
           ) : activePlayers.length === 0 ? (
-            <p>暂无打手档案</p>
+            <p className="admin-empty">暂无打手档案</p>
           ) : (
             <div className="admin-table-wrap">
               <table className="admin-table">

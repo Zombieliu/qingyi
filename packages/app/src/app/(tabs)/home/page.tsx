@@ -1,6 +1,7 @@
 import Image from "next/image";
 import { Heart, MoreHorizontal, Search, Verified } from "lucide-react";
 import OrderButton from "@/app/components/order-button";
+import { MotionCard, Stagger, StaggerItem } from "@/components/ui/motion";
 
 const tabs = ["达人"];
 const subTabs = ["推荐"];
@@ -63,40 +64,42 @@ export default function Home() {
         ))}
       </div>
 
-      <div className="lc-list">
+      <Stagger className="lc-list">
         {creators.map((c) => (
-          <div key={c.name} className="lc-card">
-            <div className="lc-avatar-wrap">
-              <Image src={c.avatar} alt={c.name} fill sizes="64px" className="lc-avatar" />
-            </div>
-            <div className="lc-card-body">
-              <div className="lc-row">
-                <div className="lc-name">
-                  {c.name}
-                  {c.verified && <Verified size={14} className="text-amber-500" />}
+          <StaggerItem key={c.name}>
+            <MotionCard className="lc-card">
+              <div className="lc-avatar-wrap">
+                <Image src={c.avatar} alt={c.name} fill sizes="64px" className="lc-avatar" />
+              </div>
+              <div className="lc-card-body">
+                <div className="lc-row">
+                  <div className="lc-name">
+                    {c.name}
+                    {c.verified && <Verified size={14} className="text-amber-500" />}
+                  </div>
+                  <span className="lc-status">{c.status}</span>
                 </div>
-                <span className="lc-status">{c.status}</span>
-              </div>
-              <div className="lc-tags">
-                {c.tags.map((t) => (
-                  <span key={t} className="lc-tag">
-                    {t}
-                  </span>
-                ))}
-              </div>
-              <div className="lc-desc">{c.desc}</div>
-              <div className="lc-footer">
-                <div className="lc-price">{c.price}</div>
-                <div className="lc-meta">
-                  <Heart size={14} className="text-rose-400" />
-                  <span>{c.orders}</span>
+                <div className="lc-tags">
+                  {c.tags.map((t) => (
+                    <span key={t} className="lc-tag">
+                      {t}
+                    </span>
+                  ))}
+                </div>
+                <div className="lc-desc">{c.desc}</div>
+                <div className="lc-footer">
+                  <div className="lc-price">{c.price}</div>
+                  <div className="lc-meta">
+                    <Heart size={14} className="text-rose-400" />
+                    <span>{c.orders}</span>
+                  </div>
                 </div>
               </div>
-            </div>
-            <OrderButton user={c.name} item={c.desc || c.name} amount={c.amount ?? 1330} />
-          </div>
+              <OrderButton user={c.name} item={c.desc || c.name} amount={c.amount ?? 1330} />
+            </MotionCard>
+          </StaggerItem>
         ))}
-      </div>
+      </Stagger>
     </div>
   );
 }

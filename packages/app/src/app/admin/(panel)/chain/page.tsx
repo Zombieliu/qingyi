@@ -267,7 +267,7 @@ export default function ChainPage() {
         {loading ? (
           <p>加载中...</p>
         ) : disputedOrders.length === 0 ? (
-          <p>暂无争议订单</p>
+          <p className="admin-empty">暂无争议订单</p>
         ) : (
           <div className="admin-stack">
             {disputedOrders.map((order) => (
@@ -336,7 +336,7 @@ export default function ChainPage() {
         {loading ? (
           <p>加载中...</p>
         ) : chainOrders.length === 0 ? (
-          <p>暂无订单</p>
+          <p className="admin-empty">暂无订单</p>
         ) : (
           <div className="admin-table-wrap">
             <table className="admin-table">
