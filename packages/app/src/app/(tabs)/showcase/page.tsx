@@ -762,7 +762,7 @@ export default function Showcase() {
             o.driver ? (
               <div key={`${o.id}-${idx}`} className="dl-card" style={{ padding: 14, borderColor: "#fed7aa", background: "#fff7ed" }}>
                 {(() => {
-                  const profile = (o.meta?.companionProfile || null) as { gameName?: string; gameId?: string } | null;
+                  const profile = (o.meta?.gameProfile || null) as { gameName?: string; gameId?: string } | null;
                   const hasProfile = Boolean(profile?.gameName || profile?.gameId);
                   return (
                     <>
@@ -772,7 +772,7 @@ export default function Showcase() {
                 </div>
                 {hasProfile ? (
                   <div className="mt-2 text-sm text-gray-900">
-                    <div className="font-bold">打手游戏设置</div>
+                    <div className="font-bold">下单人游戏设置</div>
                     <div className="text-xs text-gray-500">
                       游戏名 {profile?.gameName || "-"} · ID {profile?.gameId || "-"}
                     </div>
@@ -810,7 +810,7 @@ export default function Showcase() {
                 </div>
                 <div className="mt-3 flex gap-2">
                   <button className="dl-tab-btn" style={{ padding: "8px 10px" }} onClick={() => cancel(o.id)}>
-                    取消用车
+                    取消订单
                   </button>
                   <button className="dl-tab-btn" style={{ padding: "8px 10px" }} onClick={() => complete(o.id)}>
                     完成

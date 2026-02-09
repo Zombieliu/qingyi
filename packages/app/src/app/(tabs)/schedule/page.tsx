@@ -574,8 +574,10 @@ export default function Schedule() {
   }, [feeOpen, balanceLoading, balanceReady, hasEnoughDiamonds]);
 
   if (mode === "await-user-pay" && currentOrder?.driver) {
-    const companionProfile = (currentOrder.meta?.companionProfile || null) as { gameName?: string; gameId?: string } | null;
-    const hasCompanionProfile = Boolean(companionProfile?.gameName || companionProfile?.gameId);
+    const userProfile = (currentOrder.meta?.gameProfile || null) as { gameName?: string; gameId?: string } | null;
+    const hasUserProfile = Boolean(userProfile?.gameName || userProfile?.gameId);
+    const paymentMode = (currentOrder.meta as { paymentMode?: string } | undefined)?.paymentMode;
+    const isEscrow = paymentMode === "diamond_escrow";
     return (
       <div className="ride-shell">
         <div className="ride-tip" style={{ marginTop: 0 }}>
@@ -586,12 +588,14 @@ export default function Schedule() {
           <div className="flex items-center gap-3">
             <div className="ride-driver-avatar" />
             <div>
-              <div className="text-sm text-amber-600 font-semibold">等待支付打手费用</div>
-              {hasCompanionProfile ? (
+              <div className="text-sm text-amber-600 font-semibold">
+                {isEscrow ? "打手费用已托管" : "等待支付打手费用"}
+              </div>
+              {hasUserProfile ? (
                 <>
-                  <div className="text-lg font-bold text-gray-900">打手游戏设置</div>
+                  <div className="text-lg font-bold text-gray-900">下单人游戏设置</div>
                   <div className="text-xs text-gray-500">
-                    游戏名 {companionProfile?.gameName || "-"} · ID {companionProfile?.gameId || "-"}
+                    游戏名 {userProfile?.gameName || "-"} · ID {userProfile?.gameId || "-"}
                   </div>
                 </>
               ) : (
@@ -618,7 +622,7 @@ export default function Schedule() {
             </div>
           </div>
           <div className="ride-driver-actions">
-            <button className="dl-tab-btn" onClick={cancelOrder}>取消用车</button>
+            <button className="dl-tab-btn" onClick={cancelOrder}>取消订单</button>
             <button className="dl-tab-btn" style={{ background: "#f97316", color: "#fff" }}>
               联系打手
             </button>
@@ -635,7 +639,7 @@ export default function Schedule() {
             <div className="ride-pay-amount">¥{playerDue.toFixed(2)}</div>
           </div>
           <div className="ride-pay-actions">
-            <button className="dl-tab-btn" onClick={cancelOrder}>取消</button>
+            <button className="dl-tab-btn" onClick={cancelOrder}>取消订单</button>
             <button
               className="dl-tab-btn"
               style={{ background: "#0f172a", color: "#fff" }}
@@ -656,8 +660,8 @@ export default function Schedule() {
   }
 
   if (mode === "enroute" && currentOrder?.driver) {
-    const companionProfile = (currentOrder.meta?.companionProfile || null) as { gameName?: string; gameId?: string } | null;
-    const hasCompanionProfile = Boolean(companionProfile?.gameName || companionProfile?.gameId);
+    const userProfile = (currentOrder.meta?.gameProfile || null) as { gameName?: string; gameId?: string } | null;
+    const hasUserProfile = Boolean(userProfile?.gameName || userProfile?.gameId);
     return (
       <div className="ride-shell">
         <div className="ride-map-large">地图加载中…</div>
@@ -666,11 +670,11 @@ export default function Schedule() {
             <div className="ride-driver-avatar" />
             <div>
               <div className="text-sm text-amber-600 font-semibold">打手已接单</div>
-              {hasCompanionProfile ? (
+              {hasUserProfile ? (
                 <>
-                  <div className="text-lg font-bold text-gray-900">打手游戏设置</div>
+                  <div className="text-lg font-bold text-gray-900">下单人游戏设置</div>
                   <div className="text-xs text-gray-500">
-                    游戏名 {companionProfile?.gameName || "-"} · ID {companionProfile?.gameId || "-"}
+                    游戏名 {userProfile?.gameName || "-"} · ID {userProfile?.gameId || "-"}
                   </div>
                 </>
               ) : (
@@ -697,7 +701,7 @@ export default function Schedule() {
             </div>
           </div>
           <div className="ride-driver-actions">
-            <button className="dl-tab-btn" onClick={cancelOrder}>取消用车</button>
+            <button className="dl-tab-btn" onClick={cancelOrder}>取消订单</button>
             <button className="dl-tab-btn">安全中心</button>
             <button className="dl-tab-btn" style={{ background: "#f97316", color: "#fff" }}>
               联系打手
