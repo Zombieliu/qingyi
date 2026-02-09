@@ -94,6 +94,7 @@ export async function GET(req: Request) {
       items: result.items.map((item) => ({
         id: item.id,
         user: "匿名用户",
+        userAddress: item.userAddress ?? undefined,
         item: item.item,
         amount: item.amount,
         currency: item.currency,

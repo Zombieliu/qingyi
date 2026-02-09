@@ -12,7 +12,6 @@ import {
   createOrderOnChain,
   fetchChainOrders,
   finalizeNoDisputeOnChain,
-  getDefaultCompanionAddress,
   getCurrentAddress,
   isChainOrdersEnabled,
   isVisualTestMode,
@@ -686,12 +685,10 @@ export default function Schedule() {
         chainDigest = chainResult.digest;
       }
       const gameProfile = loadGameProfile(getCurrentAddress());
-      const companionAddress = isChainOrdersEnabled() ? getDefaultCompanionAddress() : undefined;
       const result = await createOrder({
         id: chainOrderId || `${Date.now()}`,
         user: "安排页面",
         userAddress: getCurrentAddress(),
-        companionAddress,
         item: locked.items.join("、"),
         amount: locked.total,
         status: "待派单",
@@ -728,6 +725,7 @@ export default function Schedule() {
           requestedPlayerId: selectedPlayer?.id || null,
           requestedPlayerName: selectedPlayer?.name || null,
           requestedPlayerRole: selectedPlayer?.role || null,
+          publicPool: true,
           gameProfile: gameProfile
             ? {
                 gameName: gameProfile.gameName,

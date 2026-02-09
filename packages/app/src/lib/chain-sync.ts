@@ -58,18 +58,26 @@ export async function upsertChainOrder(chain: ChainOrder) {
   const deposit = toCny(chain.deposit);
   const amount = existing?.amount ?? Number((serviceFee + deposit).toFixed(2));
   const meta = buildChainMeta(existing, chain);
+  const existingMeta = (existing?.meta || {}) as Record<string, unknown>;
+  const preserveCompanion = existingMeta.publicPool === true;
+  const preserveAmounts = existingMeta.paymentMode === "diamond_escrow";
 
   if (existing) {
-    return updateOrder(orderId, {
+    const patch: Partial<AdminOrder> = {
       userAddress: chain.user,
-      companionAddress: chain.companion,
       chainStatus: chain.status,
-      serviceFee,
-      deposit,
       paymentStatus: mapPaymentStatus(chain.status),
       stage: mapStage(chain.status),
       meta,
-    });
+    };
+    if (!preserveCompanion) {
+      patch.companionAddress = chain.companion;
+    }
+    if (!preserveAmounts) {
+      patch.serviceFee = serviceFee;
+      patch.deposit = deposit;
+    }
+    return updateOrder(orderId, patch);
   }
 
   return addOrder({

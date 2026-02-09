@@ -5,7 +5,6 @@ import {
   createChainOrderId,
   createOrderOnChain,
   getCurrentAddress,
-  getDefaultCompanionAddress,
   isChainOrdersEnabled,
 } from "@/lib/qy-chain";
 import { trackEvent } from "@/app/components/analytics";
@@ -62,13 +61,11 @@ export default function OrderButton({ user, item, amount, note }: Props) {
         chainDigest = chainResult.digest;
       }
       const currentAddress = isChainOrdersEnabled() ? getCurrentAddress() : "";
-      const companionAddress = isChainOrdersEnabled() ? getDefaultCompanionAddress() : undefined;
       const gameProfile = currentAddress ? loadGameProfile(currentAddress) : null;
       const result = await createOrder({
         id: chainOrderId || `${Date.now()}`,
         user,
         userAddress: currentAddress || undefined,
-        companionAddress,
         item,
         amount,
         status: "已支付",
@@ -76,6 +73,7 @@ export default function OrderButton({ user, item, amount, note }: Props) {
         chainDigest: chainDigest || undefined,
         note,
         meta: {
+          publicPool: true,
           gameProfile: gameProfile
             ? { gameName: gameProfile.gameName, gameId: gameProfile.gameId, updatedAt: gameProfile.updatedAt }
             : null,
