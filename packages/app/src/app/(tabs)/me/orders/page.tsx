@@ -106,7 +106,7 @@ export default function OrderCenterPage() {
         {loading ? (
           <div className="mt-3 text-xs text-slate-500">加载中...</div>
         ) : filtered.length === 0 ? (
-          <div className="mt-4 text-center text-xs text-slate-500">
+          <div className="mt-4 dl-empty">
             暂无订单，去安排页选择服务吧。
             <div className="mt-3">
               <Link

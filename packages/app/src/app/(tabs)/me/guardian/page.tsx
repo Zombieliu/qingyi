@@ -201,7 +201,7 @@ export default function GuardianPage() {
       <section className="dl-card" style={{ padding: 16 }}>
         <div className="text-sm font-semibold text-gray-900">申请进度</div>
         {applications.length === 0 ? (
-          <div className="mt-3 text-xs text-slate-500">暂无申请记录。</div>
+          <div className="mt-3 text-xs text-slate-500 dl-empty-inline">暂无申请记录。</div>
         ) : (
           <div className="mt-3 grid gap-3">
             {applications.map((item) => (

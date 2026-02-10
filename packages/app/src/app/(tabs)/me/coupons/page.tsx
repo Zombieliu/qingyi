@@ -117,7 +117,7 @@ export default function CouponsPage() {
         {loading ? (
           <div className="mt-3 text-xs text-slate-500">加载中...</div>
         ) : coupons.length === 0 ? (
-          <div className="mt-3 text-xs text-slate-500">暂无可用优惠券，请稍后再试。</div>
+          <div className="mt-3 text-xs text-slate-500 dl-empty-inline">暂无可用优惠券，请稍后再试。</div>
         ) : (
           <div className="mt-3 grid gap-3">
             {coupons.map((coupon) => {

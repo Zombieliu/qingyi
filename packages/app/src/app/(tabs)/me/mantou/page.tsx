@@ -190,7 +190,7 @@ export default function MantouPage() {
       <section className="dl-card" style={{ padding: 16, marginTop: 12 }}>
         <div className="text-sm font-semibold text-gray-900">提现记录</div>
         {withdraws.length === 0 ? (
-          <div className="mt-3 text-xs text-slate-500">暂无提现记录</div>
+          <div className="mt-3 text-xs text-slate-500 dl-empty-inline">暂无提现记录</div>
         ) : (
           <div className="mt-3 grid gap-3">
             {withdraws.map((item) => (
@@ -212,7 +212,7 @@ export default function MantouPage() {
       <section className="dl-card" style={{ padding: 16, marginTop: 12, marginBottom: 24 }}>
         <div className="text-sm font-semibold text-gray-900">馒头流水</div>
         {transactions.length === 0 ? (
-          <div className="mt-3 text-xs text-slate-500">暂无流水</div>
+          <div className="mt-3 text-xs text-slate-500 dl-empty-inline">暂无流水</div>
         ) : (
           <div className="mt-3 grid gap-3">
             {transactions.map((item) => (

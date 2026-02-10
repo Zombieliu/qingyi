@@ -220,7 +220,7 @@ export default function SupportPage() {
           <MessageCircle size={16} className="text-slate-500" />
         </div>
         {requests.length === 0 ? (
-          <div className="mt-3 text-xs text-slate-500">暂无记录，提交工单后会在这里显示。</div>
+          <div className="mt-3 text-xs text-slate-500 dl-empty-inline">暂无记录，提交工单后会在这里显示。</div>
         ) : (
           <div className="mt-3 grid gap-3">
             {requests.map((item) => (

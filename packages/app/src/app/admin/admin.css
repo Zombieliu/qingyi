@@ -13,6 +13,11 @@
   --admin-radius-lg: 24px;
   --admin-radius-md: 16px;
   --admin-radius-sm: 12px;
+  --admin-text-xxl: 30px;
+  --admin-text-xl: 22px;
+  --admin-text-lg: 16px;
+  --admin-text-md: 14px;
+  --admin-text-sm: 12px;
   --admin-motion-fast: 140ms;
   --admin-motion-base: 220ms;
   --admin-motion-ease: cubic-bezier(0.22, 1, 0.36, 1);
@@ -189,7 +194,7 @@
 }
 
 .admin-title {
-  font-size: 28px;
+  font-size: var(--admin-text-xxl);
   font-weight: 700;
   margin: 0;
   letter-spacing: -0.02em;
@@ -198,7 +203,7 @@
 .admin-subtitle {
   margin: 6px 0 0;
   color: var(--admin-muted);
-  font-size: 14px;
+  font-size: var(--admin-text-md);
 }
 
 .admin-actions {
@@ -303,13 +308,13 @@
 
 .admin-card h3 {
   margin: 0;
-  font-size: 16px;
+  font-size: var(--admin-text-lg);
 }
 
 .admin-card p {
   margin: 0;
   color: var(--admin-muted);
-  font-size: 13px;
+  font-size: var(--admin-text-sm);
 }
 
 .admin-card-header {
@@ -367,7 +372,7 @@
 }
 
 .admin-table th {
-  font-size: 11px;
+  font-size: var(--admin-text-sm);
   color: var(--admin-muted);
   text-transform: uppercase;
   letter-spacing: 0.1em;
@@ -375,6 +380,10 @@
   position: sticky;
   top: 0;
   z-index: 1;
+}
+
+.admin-table tbody tr:nth-child(odd) {
+  background: rgba(15, 23, 42, 0.02);
 }
 
 .admin-table tbody tr:hover {
@@ -553,6 +562,10 @@
 .admin-table-wrap {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
+  border-radius: 16px;
+  border: 1px solid var(--admin-border);
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
 }
 
 .admin-login .admin-topbar {
