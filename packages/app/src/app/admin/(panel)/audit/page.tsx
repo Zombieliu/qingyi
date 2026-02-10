@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { RefreshCw, Search } from "lucide-react";
 import { readCache, writeCache } from "@/app/components/client-cache";
+import { StateBlock } from "@/app/components/state-block";
 
 type AuditLog = {
   id: string;
@@ -96,9 +97,9 @@ export default function AuditPage() {
           </div>
         </div>
         {loading ? (
-          <p>加载中...</p>
+          <StateBlock tone="loading" size="compact" title="加载中" description="正在同步审计日志" />
         ) : logs.length === 0 ? (
-          <p className="admin-empty">暂无审计记录</p>
+          <StateBlock tone="empty" size="compact" title="暂无审计记录" description="暂时没有可展示的日志" />
         ) : (
           <div className="admin-table-wrap">
             <table className="admin-table">

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { RefreshCw } from "lucide-react";
+import { StateBlock } from "@/app/components/state-block";
 
 type AnalyticsSummary = {
   rangeDays: number;
@@ -60,7 +61,7 @@ export default function AnalyticsPage() {
           </div>
         </div>
         {loading ? (
-          <p>加载中...</p>
+          <StateBlock tone="loading" size="compact" title="加载中" description="同步增长概览数据" />
         ) : data ? (
           <div className="admin-grid-cards" style={{ marginTop: 6 }}>
             <div className="admin-card admin-card--subtle">
@@ -91,7 +92,7 @@ export default function AnalyticsPage() {
             </div>
           </div>
         ) : (
-          <p className="admin-empty">暂无数据</p>
+          <StateBlock tone="empty" size="compact" title="暂无数据" description="稍后刷新再看" />
         )}
       </div>
 
@@ -100,7 +101,7 @@ export default function AnalyticsPage() {
           <h3>转化漏斗</h3>
         </div>
         {loading ? (
-          <p>加载中...</p>
+          <StateBlock tone="loading" size="compact" title="加载中" description="同步转化漏斗" />
         ) : data ? (
           <div className="admin-table-wrap">
             <table className="admin-table">
@@ -125,7 +126,7 @@ export default function AnalyticsPage() {
             </table>
           </div>
         ) : (
-          <p className="admin-empty">暂无数据</p>
+          <StateBlock tone="empty" size="compact" title="暂无数据" description="暂未收集到漏斗数据" />
         )}
       </div>
 
@@ -134,7 +135,7 @@ export default function AnalyticsPage() {
           <h3>事件分布</h3>
         </div>
         {loading ? (
-          <p>加载中...</p>
+          <StateBlock tone="loading" size="compact" title="加载中" description="同步热门页面" />
         ) : data ? (
           <div className="admin-table-wrap">
             <table className="admin-table">
@@ -159,7 +160,7 @@ export default function AnalyticsPage() {
             </table>
           </div>
         ) : (
-          <p className="admin-empty">暂无数据</p>
+          <StateBlock tone="empty" size="compact" title="暂无数据" description="暂无热门页面记录" />
         )}
       </div>
 
@@ -168,7 +169,7 @@ export default function AnalyticsPage() {
           <h3>热门页面</h3>
         </div>
         {loading ? (
-          <p>加载中...</p>
+          <StateBlock tone="loading" size="compact" title="加载中" description="同步事件排行" />
         ) : data ? (
           <div className="admin-table-wrap">
             <table className="admin-table">
@@ -191,7 +192,7 @@ export default function AnalyticsPage() {
             </table>
           </div>
         ) : (
-          <p className="admin-empty">暂无数据</p>
+          <StateBlock tone="empty" size="compact" title="暂无数据" description="暂无事件排行记录" />
         )}
       </div>
     </div>

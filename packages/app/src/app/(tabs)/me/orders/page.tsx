@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { fetchOrders } from "@/app/components/order-service";
 import type { LocalOrder } from "@/app/components/order-store";
+import { StateBlock } from "@/app/components/state-block";
 
 const filters = [
   { key: "all", label: "全部订单" },
@@ -104,19 +105,22 @@ export default function OrderCenterPage() {
           <span className="text-xs text-slate-500">共 {filtered.length} 单</span>
         </div>
         {loading ? (
-          <div className="mt-3 text-xs text-slate-500">加载中...</div>
+          <div className="mt-3">
+            <StateBlock tone="loading" size="compact" title="加载中" description="正在同步订单列表" />
+          </div>
         ) : filtered.length === 0 ? (
-          <div className="mt-4 dl-empty">
-            暂无订单，去安排页选择服务吧。
-            <div className="mt-3">
-              <Link
-                href="/schedule"
-                className="inline-flex items-center gap-2 rounded-full bg-slate-900 text-white px-4 py-2 text-xs"
-              >
-                <CalendarCheck size={14} />
-                去安排
-              </Link>
-            </div>
+          <div className="mt-4">
+            <StateBlock
+              tone="empty"
+              title="暂无订单"
+              description="去安排页选择服务吧"
+              actions={
+                <Link href="/schedule" className="dl-tab-btn">
+                  <CalendarCheck size={14} />
+                  去安排
+                </Link>
+              }
+            />
           </div>
         ) : (
           <div className="mt-3 grid gap-3">

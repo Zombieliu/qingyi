@@ -7,6 +7,7 @@ import { PASSKEY_STORAGE_KEY } from "@/app/components/passkey-wallet";
 import { readCache, writeCache } from "@/app/components/client-cache";
 import type { AdminMember, AdminMembershipTier } from "@/lib/admin-types";
 import { isVisualTestMode } from "@/lib/qy-chain";
+import { StateBlock } from "@/app/components/state-block";
 
 const fallbackPerks = [
   { label: "贵族铭牌", desc: "坚韧白银专属" },
@@ -172,7 +173,7 @@ export default function Vip() {
         <div className="vip-rank">可选等级</div>
         <div style={{ display: "grid", gap: 10, marginTop: 10 }}>
           {tiers.length === 0 ? (
-            <div className="vip-progress">暂无可用等级，请稍后再试。</div>
+            <StateBlock tone="empty" size="compact" title="暂无可用等级" description="请稍后再试" />
           ) : (
             tiers.map((tier) => (
               <button

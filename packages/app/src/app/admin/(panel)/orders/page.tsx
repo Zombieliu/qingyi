@@ -6,6 +6,7 @@ import Link from "next/link";
 import type { AdminOrder, AdminPlayer, OrderStage } from "@/lib/admin-types";
 import { ORDER_STAGE_OPTIONS } from "@/lib/admin-types";
 import { readCache, writeCache } from "@/app/components/client-cache";
+import { StateBlock } from "@/app/components/state-block";
 
 function formatTime(ts: number) {
   return new Date(ts).toLocaleString("zh-CN", {
@@ -260,9 +261,9 @@ export default function OrdersPage() {
           </div>
         </div>
         {loading ? (
-          <p>加载订单中...</p>
+          <StateBlock tone="loading" size="compact" title="加载订单中" description="正在同步最新订单列表" />
         ) : orders.length === 0 ? (
-          <p className="admin-empty">没有符合条件的订单</p>
+          <StateBlock tone="empty" size="compact" title="没有符合条件的订单" description="调整筛选条件试试" />
         ) : (
           <div className="admin-table-wrap">
             <table className="admin-table">

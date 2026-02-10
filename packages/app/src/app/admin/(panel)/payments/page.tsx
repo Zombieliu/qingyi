@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { RefreshCw } from "lucide-react";
 import { readCache, writeCache } from "@/app/components/client-cache";
+import { StateBlock } from "@/app/components/state-block";
 
 type PaymentEvent = {
   id: string;
@@ -75,9 +76,9 @@ export default function PaymentsPage() {
           </div>
         </div>
         {loading ? (
-          <p>加载中...</p>
+          <StateBlock tone="loading" size="compact" title="加载中" description="正在同步支付事件" />
         ) : events.length === 0 ? (
-          <p className="admin-empty">暂无支付事件</p>
+          <StateBlock tone="empty" size="compact" title="暂无支付事件" description="目前没有支付记录" />
         ) : (
           <div className="admin-table-wrap">
             <table className="admin-table">

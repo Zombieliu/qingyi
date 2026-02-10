@@ -5,6 +5,7 @@ import { RefreshCw } from "lucide-react";
 import type { MantouWithdrawRequest, MantouWithdrawStatus } from "@/lib/admin-types";
 import { MANTOU_WITHDRAW_STATUS_OPTIONS } from "@/lib/admin-types";
 import { readCache, writeCache } from "@/app/components/client-cache";
+import { StateBlock } from "@/app/components/state-block";
 
 function formatTime(ts: number) {
   return new Date(ts).toLocaleString("zh-CN", {
@@ -126,9 +127,9 @@ export default function MantouWithdrawPage() {
           </div>
         </div>
         {loading ? (
-          <p>加载提现申请中...</p>
+          <StateBlock tone="loading" size="compact" title="加载提现申请中" description="正在同步最新提现记录" />
         ) : requests.length === 0 ? (
-          <p className="admin-empty">暂无提现申请</p>
+          <StateBlock tone="empty" size="compact" title="暂无提现申请" description="目前没有待处理的提现" />
         ) : (
           <div className="admin-table-wrap">
             <table className="admin-table">

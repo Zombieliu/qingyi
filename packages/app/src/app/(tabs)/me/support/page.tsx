@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ArrowLeft, Headset, MessageCircle, Send, Clock3 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { PASSKEY_STORAGE_KEY } from "@/app/components/passkey-wallet";
+import { StateBlock } from "@/app/components/state-block";
 
 const STORAGE_KEY = "qy_support_requests_v1";
 
@@ -220,7 +221,9 @@ export default function SupportPage() {
           <MessageCircle size={16} className="text-slate-500" />
         </div>
         {requests.length === 0 ? (
-          <div className="mt-3 text-xs text-slate-500 dl-empty-inline">暂无记录，提交工单后会在这里显示。</div>
+          <div className="mt-3">
+            <StateBlock tone="empty" size="compact" title="暂无记录" description="提交工单后会在这里显示" />
+          </div>
         ) : (
           <div className="mt-3 grid gap-3">
             {requests.map((item) => (

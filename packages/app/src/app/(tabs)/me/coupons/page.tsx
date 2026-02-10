@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ArrowLeft, TicketPercent, Sparkles } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { readCache, writeCache } from "@/app/components/client-cache";
+import { StateBlock } from "@/app/components/state-block";
 
 type Coupon = {
   id: string;
@@ -115,9 +116,13 @@ export default function CouponsPage() {
           <TicketPercent size={16} className="text-slate-500" />
         </div>
         {loading ? (
-          <div className="mt-3 text-xs text-slate-500">加载中...</div>
+          <div className="mt-3">
+            <StateBlock tone="loading" size="compact" title="加载中" description="正在同步优惠券" />
+          </div>
         ) : coupons.length === 0 ? (
-          <div className="mt-3 text-xs text-slate-500 dl-empty-inline">暂无可用优惠券，请稍后再试。</div>
+          <div className="mt-3">
+            <StateBlock tone="empty" size="compact" title="暂无可用优惠券" description="稍后再试或留意活动" />
+          </div>
         ) : (
           <div className="mt-3 grid gap-3">
             {coupons.map((coupon) => {

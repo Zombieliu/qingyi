@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { RefreshCw } from "lucide-react";
 import { readCache, writeCache } from "@/app/components/client-cache";
 import * as chainOrderUtils from "@/lib/chain-order-utils";
+import { StateBlock } from "@/app/components/state-block";
 
 type ChainOrder = {
   orderId: string;
@@ -265,9 +266,9 @@ export default function ChainPage() {
           </div>
         </div>
         {loading ? (
-          <p>加载中...</p>
+          <StateBlock tone="loading" size="compact" title="加载中" description="正在同步争议订单" />
         ) : disputedOrders.length === 0 ? (
-          <p className="admin-empty">暂无争议订单</p>
+          <StateBlock tone="empty" size="compact" title="暂无争议订单" description="目前没有待处理争议" />
         ) : (
           <div className="admin-stack">
             {disputedOrders.map((order) => (
@@ -334,9 +335,9 @@ export default function ChainPage() {
           </div>
         </div>
         {loading ? (
-          <p>加载中...</p>
+          <StateBlock tone="loading" size="compact" title="加载中" description="正在同步链上订单" />
         ) : chainOrders.length === 0 ? (
-          <p className="admin-empty">暂无订单</p>
+          <StateBlock tone="empty" size="compact" title="暂无订单" description="暂无链上订单记录" />
         ) : (
           <div className="admin-table-wrap">
             <table className="admin-table">
@@ -421,7 +422,7 @@ export default function ChainPage() {
           </div>
         ) : null}
         {loading ? (
-          <p>加载中...</p>
+          <StateBlock tone="loading" size="compact" title="加载中" description="正在对账链上/本地订单" />
         ) : (
           <div className="admin-stack">
             <div>

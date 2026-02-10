@@ -122,6 +122,10 @@ export async function executeSponsoredTransaction(params: { txBytes: string; use
     signature: [params.userSignature, sponsorSignature.signature],
     options: { showEffects: true },
   });
+  const status = result.effects?.status?.status;
+  if (status && status !== "success") {
+    throw new Error(result.effects?.status?.error || "链上交易失败");
+  }
 
   return { digest: result.digest };
 }

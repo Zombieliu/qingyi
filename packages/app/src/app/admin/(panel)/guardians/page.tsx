@@ -5,6 +5,7 @@ import { RefreshCw, Search } from "lucide-react";
 import type { AdminGuardianApplication, GuardianStatus } from "@/lib/admin-types";
 import { GUARDIAN_STATUS_OPTIONS } from "@/lib/admin-types";
 import { readCache, writeCache } from "@/app/components/client-cache";
+import { StateBlock } from "@/app/components/state-block";
 
 function formatTime(ts: number) {
   return new Date(ts).toLocaleString("zh-CN", {
@@ -140,9 +141,9 @@ export default function GuardiansPage() {
           </div>
         </div>
         {loading ? (
-          <p>加载护航申请中...</p>
+          <StateBlock tone="loading" size="compact" title="加载护航申请中" description="正在同步最新申请" />
         ) : applications.length === 0 ? (
-          <p className="admin-empty">暂无护航申请</p>
+          <StateBlock tone="empty" size="compact" title="暂无护航申请" description="当前没有待处理的申请" />
         ) : (
           <div className="admin-table-wrap">
             <table className="admin-table">

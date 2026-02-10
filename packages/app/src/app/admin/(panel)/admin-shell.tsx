@@ -192,6 +192,15 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
     }
   }, [router, session.needsLogin]);
 
+  useEffect(() => {
+    if (!sidebarOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [sidebarOpen]);
+
   const handleLogout = async () => {
     await fetch("/api/admin/logout", { method: "POST" });
     router.push("/admin/login");
@@ -235,6 +244,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
                         <Link
                           href={item.href}
                           onClick={() => setSidebarOpen(false)}
+                          aria-current={isActive ? "page" : undefined}
                           className={`admin-nav-item${isActive ? " active" : ""}`}
                         >
                           <Icon size={18} />

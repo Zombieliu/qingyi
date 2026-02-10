@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ClipboardList, Megaphone, Users, Zap } from "lucide-react";
 import type { AdminOrder, AdminPlayer } from "@/lib/admin-types";
 import { readCache, writeCache } from "@/app/components/client-cache";
+import { StateBlock } from "@/app/components/state-block";
 
 interface AdminStats {
   totalOrders: number;
@@ -86,7 +87,7 @@ export default function AdminDashboard() {
 
   return (
     <div>
-      <div className="admin-grid-cards">
+      <div className="admin-grid-cards motion-stack">
         <div className="admin-card">
           <div className="admin-card-header">
             <h3>订单总量</h3>
@@ -117,7 +118,7 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      <div className="admin-section" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))" }}>
+      <div className="admin-section motion-stack" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))" }}>
         <div className="admin-card">
           <div className="admin-card-header">
             <h3>待处理订单</h3>
@@ -129,9 +130,9 @@ export default function AdminDashboard() {
             </div>
           </div>
           {loading ? (
-            <p>正在加载...</p>
+            <StateBlock tone="loading" size="compact" title="正在加载" description="同步最新订单数据" />
           ) : recentOrders.length === 0 ? (
-            <p className="admin-empty">暂无订单记录</p>
+            <StateBlock tone="empty" size="compact" title="暂无订单记录" description="稍后再来查看" />
           ) : (
             <div className="admin-table-wrap">
               <table className="admin-table">
@@ -174,9 +175,9 @@ export default function AdminDashboard() {
             </div>
           </div>
           {loading ? (
-            <p>正在加载...</p>
+            <StateBlock tone="loading" size="compact" title="正在加载" description="同步打手状态" />
           ) : activePlayers.length === 0 ? (
-            <p className="admin-empty">暂无打手档案</p>
+            <StateBlock tone="empty" size="compact" title="暂无打手档案" description="先去创建打手资料" />
           ) : (
             <div className="admin-table-wrap">
               <table className="admin-table">

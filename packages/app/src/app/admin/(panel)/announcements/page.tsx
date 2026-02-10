@@ -5,6 +5,7 @@ import { Megaphone, Pencil, PlusCircle, Trash2, Archive } from "lucide-react";
 import type { AdminAnnouncement, AnnouncementStatus } from "@/lib/admin-types";
 import { ANNOUNCEMENT_STATUS_OPTIONS } from "@/lib/admin-types";
 import { readCache, writeCache } from "@/app/components/client-cache";
+import { StateBlock } from "@/app/components/state-block";
 
 export default function AnnouncementsPage() {
   const [announcements, setAnnouncements] = useState<AdminAnnouncement[]>([]);
@@ -242,9 +243,9 @@ export default function AnnouncementsPage() {
           </div>
         </div>
         {loading ? (
-          <p>加载中...</p>
+          <StateBlock tone="loading" size="compact" title="加载中" description="正在同步公告列表" />
         ) : announcements.length === 0 ? (
-          <p className="admin-empty">暂无公告记录</p>
+          <StateBlock tone="empty" size="compact" title="暂无公告记录" description="发布第一条公告吧" />
         ) : (
           <div className="admin-stack">
             {announcements.map((item) => (

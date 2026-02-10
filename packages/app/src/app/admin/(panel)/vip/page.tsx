@@ -16,6 +16,7 @@ import {
   MEMBERSHIP_TIER_STATUS_OPTIONS,
 } from "@/lib/admin-types";
 import { readCache, writeCache } from "@/app/components/client-cache";
+import { StateBlock } from "@/app/components/state-block";
 
 function formatTime(ts: number) {
   return new Date(ts).toLocaleString("zh-CN", {
@@ -397,7 +398,7 @@ export default function VipAdminPage() {
           </div>
         </div>
         {tiers.length === 0 ? (
-          <p className="admin-empty">暂无会员等级</p>
+          <StateBlock tone="empty" size="compact" title="暂无会员等级" description="先创建会员等级" />
         ) : (
           <div className="admin-table-wrap">
             <table className="admin-table">
@@ -527,9 +528,9 @@ export default function VipAdminPage() {
           </div>
         </div>
         {loading ? (
-          <p>加载中...</p>
+          <StateBlock tone="loading" size="compact" title="加载中" description="正在同步会员申请" />
         ) : requests.length === 0 ? (
-          <p className="admin-empty">暂无会员申请</p>
+          <StateBlock tone="empty" size="compact" title="暂无会员申请" description="暂无待处理申请" />
         ) : (
           <div className="admin-table-wrap">
             <table className="admin-table">
@@ -610,7 +611,7 @@ export default function VipAdminPage() {
           </div>
         </div>
         {members.length === 0 ? (
-          <p className="admin-empty">暂无会员记录</p>
+          <StateBlock tone="empty" size="compact" title="暂无会员记录" description="当前没有会员记录" />
         ) : (
           <div className="admin-table-wrap">
             <table className="admin-table">

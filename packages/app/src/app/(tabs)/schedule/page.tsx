@@ -20,6 +20,7 @@ import {
   raiseDisputeOnChain,
 } from "@/lib/qy-chain";
 import { resolveDisputePolicy } from "@/lib/risk-policy";
+import { StateBlock } from "@/app/components/state-block";
 
 type RideItem = {
   name: string;
@@ -663,7 +664,9 @@ export default function Schedule() {
     const canConfirmCompletion = Boolean(companionEndedAt);
     return (
       <div className="ride-shell">
-        <div className="ride-map-large">地图加载中…</div>
+        <div className="ride-map-large">
+          <StateBlock tone="loading" size="compact" align="center" title="地图加载中" description="正在定位服务区域" />
+        </div>
         {canConfirmCompletion && (
           <div className="ride-tip" style={{ marginTop: 0 }}>
             打手已结束服务，请确认完成后进入结算/争议期
@@ -773,7 +776,9 @@ export default function Schedule() {
     const canSettle = Boolean(chainOrder && chainOrder.status === 3);
     return (
       <div className="ride-shell">
-        <div className="ride-map-large">地图加载中…</div>
+        <div className="ride-map-large">
+          <StateBlock tone="loading" size="compact" align="center" title="地图加载中" description="正在定位服务区域" />
+        </div>
         <div className="ride-driver-card dl-card">
           <div className="flex items-center gap-3">
             <div className="ride-driver-avatar" />
@@ -1017,7 +1022,19 @@ export default function Schedule() {
           {chainError && <div className="mt-2 text-xs text-rose-500">{chainError}</div>}
           {chainToast && <div className="mt-2 text-xs text-emerald-600">{chainToast}</div>}
           {!chainCurrentOrder ? (
-            <div className="mt-2 text-xs text-gray-500 dl-empty-inline">暂无订单</div>
+            <StateBlock
+              tone={chainLoading ? "loading" : chainError ? "danger" : "empty"}
+              size="compact"
+              title={chainLoading ? "同步中" : chainError ? "加载失败" : "暂无订单"}
+              description={chainLoading ? "正在刷新链上订单" : chainError || "点击刷新获取最新状态"}
+              actions={
+                chainLoading ? null : (
+                  <button className="dl-tab-btn" onClick={loadChain} disabled={chainLoading}>
+                    刷新
+                  </button>
+                )
+              }
+            />
           ) : (
             <div className="mt-3 text-xs text-gray-600">
               <div>订单号：{chainCurrentOrder.orderId}</div>
@@ -1234,7 +1251,7 @@ export default function Schedule() {
         </div>
 
         <div className="ride-main">
-          <div className="ride-sections">
+          <div className="ride-sections motion-stack">
             <div
               ref={(el) => {
                 sectionRefs.current[PLAYER_SECTION_TITLE] = el;
@@ -1255,10 +1272,27 @@ export default function Schedule() {
                 </div>
               </div>
               <div className="ride-items">
-                {playersLoading ? (
-                  <div className="px-4 pb-2 text-xs text-slate-500">加载打手列表中...</div>
+                {playersLoading && players.length === 0 ? (
+                  <StateBlock tone="loading" size="compact" title="加载中" description="正在获取可接打手" />
+                ) : playersError && players.length === 0 ? (
+                  <StateBlock
+                    tone="danger"
+                    size="compact"
+                    title="打手列表加载失败"
+                    description={playersError}
+                    actions={
+                      <button className="dl-tab-btn" onClick={loadPlayers} type="button">
+                        重新加载
+                      </button>
+                    }
+                  />
                 ) : players.length === 0 ? (
-                  <div className="px-4 pb-2 text-xs text-slate-500 dl-empty-inline">暂无可接打手</div>
+                  <StateBlock
+                    tone="empty"
+                    size="compact"
+                    title="暂无可接打手"
+                    description="稍后刷新或切换时间段试试"
+                  />
                 ) : (
                   players.map((player) => (
                     <div
@@ -1291,8 +1325,8 @@ export default function Schedule() {
                     </div>
                   ))
                 )}
-                {playersError && (
-                  <div className="px-4 pb-2 text-xs text-rose-500">打手列表加载失败：{playersError}</div>
+                {playersError && players.length > 0 && (
+                  <div className="px-4 pb-2 text-xs text-rose-500">打手列表更新失败：{playersError}</div>
                 )}
               </div>
               <div className="px-4 pb-2 text-[11px] text-slate-400">

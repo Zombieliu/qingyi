@@ -359,6 +359,10 @@ async function executeTransaction(tx: Transaction) {
       transaction: tx,
       options: { showEffects: true },
     });
+    const status = result.effects?.status?.status;
+    if (status && status !== "success") {
+      throw new Error(result.effects?.status?.error || "链上交易失败");
+    }
     return { digest: result.digest };
   };
 

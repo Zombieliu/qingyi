@@ -5,6 +5,7 @@ import { PlusCircle, RefreshCw, Search } from "lucide-react";
 import type { AdminCoupon, CouponStatus } from "@/lib/admin-types";
 import { COUPON_STATUS_OPTIONS } from "@/lib/admin-types";
 import { readCache, writeCache } from "@/app/components/client-cache";
+import { StateBlock } from "@/app/components/state-block";
 
 function toDateInput(ts?: number | null) {
   if (!ts) return "";
@@ -284,9 +285,9 @@ export default function CouponsPage() {
           </div>
         </div>
         {loading ? (
-          <p>加载优惠券中...</p>
+          <StateBlock tone="loading" size="compact" title="加载优惠券中" description="正在同步最新优惠券" />
         ) : coupons.length === 0 ? (
-          <p className="admin-empty">暂无优惠券</p>
+          <StateBlock tone="empty" size="compact" title="暂无优惠券" description="可以新建优惠券" />
         ) : (
           <div className="admin-table-wrap">
             <table className="admin-table">

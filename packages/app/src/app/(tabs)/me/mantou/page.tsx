@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { getCurrentAddress } from "@/lib/qy-chain";
 import { useMantouBalance } from "@/app/components/mantou-provider";
 import { readCache, writeCache } from "@/app/components/client-cache";
+import { StateBlock } from "@/app/components/state-block";
 
 type WithdrawItem = {
   id: string;
@@ -30,7 +31,7 @@ export default function MantouPage() {
   const [account, setAccount] = useState("");
   const [note, setNote] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [msg, setMsg] = useState<string | null>(null);
+  const [status, setStatus] = useState<{ tone: "success" | "warning" | "danger"; title: string } | null>(null);
   const [withdraws, setWithdraws] = useState<WithdrawItem[]>([]);
   const [transactions, setTransactions] = useState<TxItem[]>([]);
   const cacheTtlMs = 60_000;
@@ -75,19 +76,19 @@ export default function MantouPage() {
     if (submitting) return;
     const address = getCurrentAddress();
     if (!address) {
-      setMsg("请先登录账号");
+      setStatus({ tone: "warning", title: "请先登录账号" });
       return;
     }
     if (!Number.isFinite(amount) || amount <= 0) {
-      setMsg("请输入正确的提现数量");
+      setStatus({ tone: "warning", title: "请输入正确的提现数量" });
       return;
     }
     if (!account.trim()) {
-      setMsg("请填写收款账号");
+      setStatus({ tone: "warning", title: "请填写收款账号" });
       return;
     }
     setSubmitting(true);
-    setMsg(null);
+    setStatus(null);
     try {
       const res = await fetch("/api/mantou/withdraw", {
         method: "POST",
@@ -96,7 +97,7 @@ export default function MantouPage() {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setMsg(data?.error || "提交失败");
+        setStatus({ tone: "danger", title: data?.error || "提交失败" });
         return;
       }
       await refresh();
@@ -112,7 +113,7 @@ export default function MantouPage() {
       }
       setAmount(0);
       setNote("");
-      setMsg("已提交提现申请，等待后台审核");
+      setStatus({ tone: "success", title: "已提交提现申请，等待后台审核" });
     } finally {
       setSubmitting(false);
     }
@@ -184,13 +185,19 @@ export default function MantouPage() {
         >
           {submitting ? "提交中..." : "提交提现"}
         </button>
-        {msg && <div className="mt-3 text-xs text-emerald-600">{msg}</div>}
+        {status && (
+          <div className="mt-3">
+            <StateBlock tone={status.tone} size="compact" title={status.title} />
+          </div>
+        )}
       </section>
 
       <section className="dl-card" style={{ padding: 16, marginTop: 12 }}>
         <div className="text-sm font-semibold text-gray-900">提现记录</div>
         {withdraws.length === 0 ? (
-          <div className="mt-3 text-xs text-slate-500 dl-empty-inline">暂无提现记录</div>
+          <div className="mt-3">
+            <StateBlock tone="empty" size="compact" title="暂无提现记录" description="提交提现后会出现在这里" />
+          </div>
         ) : (
           <div className="mt-3 grid gap-3">
             {withdraws.map((item) => (
@@ -212,7 +219,9 @@ export default function MantouPage() {
       <section className="dl-card" style={{ padding: 16, marginTop: 12, marginBottom: 24 }}>
         <div className="text-sm font-semibold text-gray-900">馒头流水</div>
         {transactions.length === 0 ? (
-          <div className="mt-3 text-xs text-slate-500 dl-empty-inline">暂无流水</div>
+          <div className="mt-3">
+            <StateBlock tone="empty" size="compact" title="暂无流水" description="暂无馒头流水记录" />
+          </div>
         ) : (
           <div className="mt-3 grid gap-3">
             {transactions.map((item) => (

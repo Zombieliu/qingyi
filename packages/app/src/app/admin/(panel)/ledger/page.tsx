@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Send, CheckCircle2, AlertCircle } from "lucide-react";
+import { Send } from "lucide-react";
+import { StateBlock } from "@/app/components/state-block";
 
 export default function LedgerPage() {
   const [form, setForm] = useState({
@@ -99,15 +100,13 @@ export default function LedgerPage() {
           {loading ? "提交中..." : "提交记账"}
         </button>
         {result ? (
-          <div className="admin-badge" style={{ marginTop: 14 }}>
-            <CheckCircle2 size={14} />
-            {result}
+          <div style={{ marginTop: 14 }}>
+            <StateBlock tone="success" size="compact" title="记账成功" description={result} />
           </div>
         ) : null}
         {error ? (
-          <div className="admin-badge warm" style={{ marginTop: 14 }}>
-            <AlertCircle size={14} />
-            {error}
+          <div style={{ marginTop: 14 }}>
+            <StateBlock tone="danger" size="compact" title="记账失败" description={error} />
           </div>
         ) : null}
       </div>

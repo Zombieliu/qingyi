@@ -9,6 +9,7 @@ import {
 } from "@/lib/qy-chain";
 import { trackEvent } from "@/app/components/analytics";
 import { Button } from "@/components/ui/button";
+import { StateBlock } from "@/app/components/state-block";
 
 interface Props {
   user: string;
@@ -42,12 +43,18 @@ function loadGameProfile(address: string) {
 
 export default function OrderButton({ user, item, amount, note }: Props) {
   const [loading, setLoading] = useState(false);
-  const [msg, setMsg] = useState<string | null>(null);
+  const [status, setStatus] = useState<
+    | {
+        tone: "success" | "warning" | "danger" | "info";
+        title: string;
+      }
+    | null
+  >(null);
 
   const submit = async () => {
     try {
       setLoading(true);
-      setMsg(null);
+      setStatus(null);
       trackEvent("order_intent", { source: "home_card", user, item, amount });
       let chainOrderId: string | null = null;
       let chainDigest: string | null = null;
@@ -88,31 +95,37 @@ export default function OrderButton({ user, item, amount, note }: Props) {
           amount,
           reason: result.error || "notify_failed",
         });
-        setMsg(result.error || "订单已创建，通知失败");
+        setStatus({ tone: "warning", title: result.error || "订单已创建，通知失败" });
       } else {
         trackEvent("order_create_success", { source: "home_card", user, item, amount });
-        setMsg(chainDigest ? "已提交并同步到微信群" : "已同步到微信群");
+        setStatus({ tone: "success", title: chainDigest ? "已提交并同步到微信群" : "已同步到微信群" });
       }
     } catch (e) {
       trackEvent("order_create_failed", { source: "home_card", user, item, amount, reason: "exception" });
-      setMsg((e as Error).message || "下单失败");
+      setStatus({ tone: "danger", title: (e as Error).message || "下单失败" });
     } finally {
       setLoading(false);
-      setTimeout(() => setMsg(null), 3000);
+      setTimeout(() => setStatus(null), 3000);
     }
   };
 
   return (
-    <Button
-      variant="ghost"
-      size="unstyled"
-      onClick={submit}
-      disabled={loading}
-      className="lc-order"
-      aria-label={`为 ${user} 下单 ${item}`}
-    >
-      {loading ? "发送中..." : "自助下单"}
-      {msg && <span className="lc-order-tip">{msg}</span>}
-    </Button>
+    <div className="lc-order-wrap">
+      <Button
+        variant="ghost"
+        size="unstyled"
+        onClick={submit}
+        disabled={loading}
+        className="lc-order"
+        aria-label={`为 ${user} 下单 ${item}`}
+      >
+        {loading ? "发送中..." : "自助下单"}
+      </Button>
+      {status && (
+        <div className="lc-order-state">
+          <StateBlock tone={status.tone} size="compact" align="center" title={status.title} />
+        </div>
+      )}
+    </div>
   );
 }

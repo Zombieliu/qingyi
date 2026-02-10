@@ -13,7 +13,6 @@ const grid = [
   { label: "优惠卡券", icon: Diamond, color: "#f97316", href: "/me/coupons" },
   { label: "馒头提现", icon: Diamond, color: "#22c55e", href: "/me/mantou" },
   { label: "全部订单", icon: Gamepad2, color: "#0ea5e9", href: "/me/orders" },
-  { label: "游戏设置", icon: Gamepad2, color: "#10b981", href: "/me/game-settings" },
   { label: "待开始", icon: Gamepad2, color: "#6366f1", href: "/me/orders?filter=pending-start" },
   { label: "待确认", icon: ShieldCheck, color: "#f59e0b", href: "/me/orders?filter=pending-confirm" },
   { label: "开发票", icon: Phone, color: "#22c55e", href: "/me/invoice" },
@@ -39,6 +38,7 @@ export default function Me() {
 
   const goWallet = () => router.push("/wallet");
   const goSettings = () => router.push("/me?settings=1");
+  const goGameSettings = () => router.push("/me/game-settings");
   const goMantou = () => router.push("/me/mantou");
   const closeSettings = () => router.push("/me");
   const logout = () => {
@@ -133,7 +133,9 @@ export default function Me() {
             {gameProfile?.gameId ? `ID ${gameProfile.gameId}` : "请先在游戏设置填写"}
           </div>
         </div>
-        <button className="dl-edit">编辑</button>
+        <button className="dl-edit" onClick={goGameSettings} aria-label="编辑游戏设置">
+          编辑
+        </button>
         <div className="dl-stats">
           {[
             { label: "钻石", value: balance, onClick: goWallet },

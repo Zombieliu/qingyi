@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ArrowLeft, FileText, Send } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { PASSKEY_STORAGE_KEY } from "@/app/components/passkey-wallet";
+import { StateBlock } from "@/app/components/state-block";
 
 const STORAGE_KEY = "qy_invoice_requests_v1";
 
@@ -227,7 +228,9 @@ export default function InvoicePage() {
       <section className="dl-card" style={{ padding: 16 }}>
         <div className="text-sm font-semibold text-gray-900">最近申请</div>
         {requests.length === 0 ? (
-          <div className="mt-3 text-xs text-slate-500 dl-empty-inline">暂无记录。</div>
+          <div className="mt-3">
+            <StateBlock tone="empty" size="compact" title="暂无记录" description="提交申请后会显示在这里" />
+          </div>
         ) : (
           <div className="mt-3 grid gap-3">
             {requests.map((item) => (

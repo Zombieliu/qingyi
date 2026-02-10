@@ -7,6 +7,7 @@ import {
   type BrowserPasswordProviderOptions,
   findCommonPublicKey,
 } from "@mysten/sui/keypairs/passkey";
+import { StateBlock } from "@/app/components/state-block";
 
 export const PASSKEY_STORAGE_KEY = "qy_passkey_wallet_v3";
 
@@ -172,8 +173,16 @@ export default function PasskeyWallet() {
           {busy ? "恢复中..." : "找回已有账号"}
         </button>
       )}
-      {msg && <div className="mt-2 text-xs text-emerald-600">{msg}</div>}
-      {error && <div className="mt-2 text-xs text-rose-500">{error}</div>}
+      {msg && (
+        <div className="mt-3">
+          <StateBlock tone="success" size="compact" title={msg} />
+        </div>
+      )}
+      {error && (
+        <div className="mt-3">
+          <StateBlock tone="danger" size="compact" title={error} />
+        </div>
+      )}
       {busy && (
         <div className="auth-overlay">
           <div className="auth-overlay-box">账号验证进行中，请完成系统弹窗…</div>

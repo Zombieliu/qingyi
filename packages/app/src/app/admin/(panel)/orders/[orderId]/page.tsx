@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import type { AdminOrder } from "@/lib/admin-types";
 import { readCache, writeCache } from "@/app/components/client-cache";
+import { StateBlock } from "@/app/components/state-block";
 
 export default function OrderDetailPage() {
   const params = useParams();
@@ -50,16 +51,27 @@ export default function OrderDetailPage() {
   }, [orderId]);
 
   if (loading) {
-    return <div className="admin-card">加载中...</div>;
+    return (
+      <div className="admin-card">
+        <StateBlock tone="loading" size="compact" title="加载中" description="正在获取订单详情" />
+      </div>
+    );
   }
 
   if (!order) {
     return (
       <div className="admin-card">
-        <p>{error || "订单不存在"}</p>
-        <Link href="/admin/orders" className="admin-btn ghost" style={{ marginTop: 12 }}>
-          返回订单列表
-        </Link>
+        <StateBlock
+          tone="danger"
+          size="compact"
+          title="订单不可用"
+          description={error || "订单不存在"}
+          actions={
+            <Link href="/admin/orders" className="admin-btn ghost">
+              返回订单列表
+            </Link>
+          }
+        />
       </div>
     );
   }

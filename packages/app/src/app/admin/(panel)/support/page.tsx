@@ -5,6 +5,7 @@ import { RefreshCw, Search } from "lucide-react";
 import type { AdminSupportTicket, SupportStatus } from "@/lib/admin-types";
 import { SUPPORT_STATUS_OPTIONS } from "@/lib/admin-types";
 import { readCache, writeCache } from "@/app/components/client-cache";
+import { StateBlock } from "@/app/components/state-block";
 
 function formatTime(ts: number) {
   return new Date(ts).toLocaleString("zh-CN", {
@@ -144,9 +145,9 @@ export default function SupportPage() {
           </div>
         </div>
         {loading ? (
-          <p>加载工单中...</p>
+          <StateBlock tone="loading" size="compact" title="加载工单中" description="正在同步工单列表" />
         ) : tickets.length === 0 ? (
-          <p className="admin-empty">暂无客服工单</p>
+          <StateBlock tone="empty" size="compact" title="暂无客服工单" description="目前没有待处理工单" />
         ) : (
           <div className="admin-table-wrap">
             <table className="admin-table">

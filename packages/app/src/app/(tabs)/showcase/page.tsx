@@ -19,6 +19,7 @@ import {
   signAuthIntent,
 } from "@/lib/qy-chain";
 import { MotionCard } from "@/components/ui/motion";
+import { StateBlock } from "@/app/components/state-block";
 
 export default function Showcase() {
   const [orders, setOrders] = useState<LocalOrder[]>([]);
@@ -525,10 +526,21 @@ export default function Showcase() {
             {chainError && <div className="mt-1 text-rose-500">{chainError}</div>}
             {chainToast && <div className="mt-1 text-emerald-600">{chainToast}</div>}
           </div>
-          {visibleChainOrders.length === 0 && !chainLoading ? (
-            <div className="dl-card dl-empty">暂无订单。</div>
+          {visibleChainOrders.length === 0 ? (
+            <StateBlock
+              tone={chainLoading ? "loading" : chainError ? "danger" : "empty"}
+              title={chainLoading ? "正在同步链上订单" : chainError ? "链上订单加载失败" : "暂时没有可接订单"}
+              description={chainLoading ? "索引刷新中，请稍等片刻" : chainError || "点击刷新获取最新订单"}
+              actions={
+                chainLoading ? null : (
+                  <button className="dl-tab-btn" onClick={loadChain} disabled={chainLoading}>
+                    刷新订单
+                  </button>
+                )
+              }
+            />
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-3 motion-stack">
                 {visibleChainOrders.map((o) => {
                 const isUser = chainAddress && o.user === chainAddress;
                 const isCompanion = chainAddress && o.companion === chainAddress;
@@ -764,7 +776,7 @@ export default function Showcase() {
       )}
 
       {myAcceptedOrders.length > 0 || myOrdersLoading ? (
-        <div className="space-y-3 mb-6">
+        <div className="space-y-3 mb-6 motion-stack">
           <div className="dl-card text-xs text-gray-500">
             <div>我已接的订单</div>
             {myOrdersLoading && <div className="mt-1 text-amber-600">加载中…</div>}
@@ -809,9 +821,18 @@ export default function Showcase() {
       ) : null}
 
       {visibleOrders.length === 0 ? (
-        <div className="dl-card dl-empty">暂无呼叫记录，去首页/安排页选择服务吧。</div>
+        <StateBlock
+          tone="empty"
+          title="暂无呼叫记录"
+          description="去首页/安排页选择服务吧"
+          actions={
+            <a className="dl-tab-btn" href="/schedule">
+              立即下单
+            </a>
+          }
+        />
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-3 motion-stack">
           {visibleOrders.map((o, idx) =>
             o.driver ? (
               <MotionCard key={`${o.id}-${idx}`} className="dl-card" style={{ padding: 14, borderColor: "#fed7aa", background: "#fff7ed" }}>

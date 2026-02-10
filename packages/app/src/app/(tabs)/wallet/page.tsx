@@ -2,10 +2,11 @@
 
 import Image, { type ImageLoader } from "next/image";
 import Link from "next/link";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { getCurrentAddress } from "@/lib/qy-chain";
 import { useBalance } from "@/app/components/balance-provider";
+import { StateBlock } from "@/app/components/state-block";
 
 type Option = { amount: number; price: number };
 type PayChannel = "alipay" | "wechat_pay";
@@ -20,6 +21,8 @@ type PayResponse = {
   qrCodeLink?: string | null;
   qrCodeText?: string | null;
 };
+type StatusTone = "info" | "success" | "warning" | "danger" | "loading";
+type StatusMessage = { tone: StatusTone; title: string; description?: string };
 
 const options: Option[] = [
   { amount: 42, price: 6 },
@@ -42,8 +45,7 @@ export default function Wallet() {
   const [payInfo, setPayInfo] = useState<PayResponse | null>(null);
   const [orderId, setOrderId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [msg, setMsg] = useState<string | null>(null);
-  const [polling, setPolling] = useState(false);
+  const [status, setStatus] = useState<StatusMessage | null>(null);
   const [pollCount, setPollCount] = useState(0);
   const { balance, refresh } = useBalance();
 
@@ -79,20 +81,26 @@ export default function Wallet() {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const status = params.get("redirect_status");
-    let attempts = status === "succeeded" ? 6 : 1;
-    if (status === "succeeded") {
-      setMsg("支付成功，正在刷新余额...");
-      setPolling(true);
+    const redirectStatus = params.get("redirect_status");
+    let attempts = redirectStatus === "succeeded" ? 6 : 1;
+    if (redirectStatus === "succeeded") {
+      setStatus({
+        tone: "loading",
+        title: "支付成功，正在刷新余额...",
+        description: "正在确认支付信息",
+      });
       setPollCount(0);
     }
     const fetchBalance = async () => {
       try {
         const next = await refresh();
         if (next !== null) {
-          if (status === "succeeded") {
-            setMsg("余额已更新。");
-            setPolling(false);
+          if (redirectStatus === "succeeded") {
+            setStatus({
+              tone: "success",
+              title: "余额已更新",
+              description: "可返回查看余额或继续充值",
+            });
           }
         }
       } catch {
@@ -100,13 +108,16 @@ export default function Wallet() {
       } finally {
         attempts -= 1;
         if (attempts > 0) {
-          if (status === "succeeded") {
+          if (redirectStatus === "succeeded") {
             setPollCount((count) => count + 1);
           }
           setTimeout(fetchBalance, 2000);
-        } else if (status === "succeeded") {
-          setMsg("余额更新超时，请稍后下拉刷新或重新进入页面。");
-          setPolling(false);
+        } else if (redirectStatus === "succeeded") {
+          setStatus({
+            tone: "warning",
+            title: "余额更新超时",
+            description: "请稍后下拉刷新或重新进入页面。",
+          });
         }
       }
     };
@@ -131,18 +142,21 @@ export default function Wallet() {
     return null;
   }, [payInfo, wechatQrSrc]);
 
+  const statusDescription =
+    status?.tone === "loading" && pollCount > 0 ? `已轮询 ${pollCount} 次…` : status?.description;
+
   const handleConfirm = async () => {
     if (!agree) {
-      setMsg("请先勾选同意充值协议");
+      setStatus({ tone: "warning", title: "请先勾选同意充值协议" });
       return;
     }
     if (loading) return;
     setLoading(true);
-    setMsg(null);
+    setStatus(null);
     setPayInfo(null);
     const address = getCurrentAddress();
     if (!address) {
-      setMsg("请先登录账号以便入账");
+      setStatus({ tone: "warning", title: "请先登录账号以便入账" });
       setLoading(false);
       return;
     }
@@ -167,7 +181,7 @@ export default function Wallet() {
       });
       const data = (await res.json()) as PayResponse & { error?: string };
       if (!res.ok) {
-        setMsg(data.error || "支付创建失败");
+        setStatus({ tone: "danger", title: data.error || "支付创建失败" });
         return;
       }
       setPayInfo(data);
@@ -178,18 +192,24 @@ export default function Wallet() {
       if (!data.qrCodeData && !data.qrCodeUrl && !data.qrCodeLink && !data.qrCodeText) {
         if (channel === "alipay") {
           if (data.status === "succeeded") {
-            setMsg("支付已完成，可在明细中查看状态。");
+            setStatus({ tone: "success", title: "支付已完成，可在明细中查看状态。" });
           } else {
             const info = data.nextActionType ? `，动作：${data.nextActionType}` : "";
-            setMsg(`未获取到支付宝跳转链接（状态：${data.status || "unknown"}${info}），请稍后重试`);
+            setStatus({
+              tone: "warning",
+              title: `未获取到支付宝跳转链接（状态：${data.status || "unknown"}${info}），请稍后重试`,
+            });
           }
         } else {
           const info = data.nextActionType ? `，动作：${data.nextActionType}` : "";
-          setMsg(`未获取到二维码（状态：${data.status || "unknown"}${info}），请稍后重试`);
+          setStatus({
+            tone: "warning",
+            title: `未获取到二维码（状态：${data.status || "unknown"}${info}），请稍后重试`,
+          });
         }
       }
     } catch (error) {
-      setMsg((error as Error).message || "网络错误，请稍后重试");
+      setStatus({ tone: "danger", title: (error as Error).message || "网络错误，请稍后重试" });
     } finally {
       setLoading(false);
     }
@@ -352,12 +372,14 @@ export default function Wallet() {
         <button type="button" className="pay-submit" disabled={!agree || loading} onClick={handleConfirm}>
           {loading ? "创建支付中..." : `支付 ¥${selected.price.toFixed(2)}`}
         </button>
-        {msg && <div className="pay-hint">{msg}</div>}
-        {polling && (
-          <div className="pay-hint">
-            <Loader2 size={14} className="spin" style={{ marginRight: 6 }} />
-            支付确认中，已轮询 {pollCount} 次…
-          </div>
+        {status && (
+          <StateBlock
+            tone={status.tone}
+            size="compact"
+            align="center"
+            title={status.title}
+            description={statusDescription}
+          />
         )}
       </div>
     </div>

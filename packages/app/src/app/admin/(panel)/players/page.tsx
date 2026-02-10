@@ -5,6 +5,7 @@ import { PlusCircle, Trash2 } from "lucide-react";
 import type { AdminPlayer, PlayerStatus } from "@/lib/admin-types";
 import { PLAYER_STATUS_OPTIONS } from "@/lib/admin-types";
 import { readCache, writeCache } from "@/app/components/client-cache";
+import { StateBlock } from "@/app/components/state-block";
 
 export default function PlayersPage() {
   const [players, setPlayers] = useState<AdminPlayer[]>([]);
@@ -287,9 +288,9 @@ export default function PlayersPage() {
           </div>
         </div>
         {loading ? (
-          <p>加载中...</p>
+          <StateBlock tone="loading" size="compact" title="加载中" description="正在同步打手档案" />
         ) : players.length === 0 ? (
-          <p className="admin-empty">暂无打手档案</p>
+          <StateBlock tone="empty" size="compact" title="暂无打手档案" description="可以先创建打手资料" />
         ) : (
           <div className="admin-table-wrap">
             <table className="admin-table">
