@@ -72,3 +72,5 @@ next-env.d.ts
 **/Move.lock
 **/*.mv
 **/*.mvd
+
+/ai

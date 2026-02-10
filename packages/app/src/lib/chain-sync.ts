@@ -2,6 +2,12 @@ import "server-only";
 import { fetchChainOrdersAdmin, type ChainOrder } from "./chain-admin";
 import { addOrder, getOrderById, updateOrder } from "./admin-store";
 import type { AdminOrder } from "./admin-types";
+import {
+  findChainOrderCached,
+  fetchChainOrdersCached,
+  clearCache,
+  getCacheStats,
+} from "./chain-order-cache";
 
 export function mapStage(status: number): AdminOrder["stage"] {
   if (status === 6) return "已取消";
@@ -101,7 +107,8 @@ export async function upsertChainOrder(chain: ChainOrder) {
 }
 
 export async function syncChainOrders() {
-  const chainOrders = await fetchChainOrdersAdmin();
+  // 强制刷新缓存获取最新订单
+  const chainOrders = await fetchChainOrdersCached(true);
   let created = 0;
   let updated = 0;
 
@@ -118,13 +125,49 @@ export async function syncChainOrders() {
   return { total: chainOrders.length, created, updated };
 }
 
-export async function findChainOrder(orderId: string) {
+/**
+ * 查找链上订单（优化版 - 使用缓存）
+ *
+ * @param orderId - 订单 ID
+ * @param forceRefresh - 是否强制刷新缓存（默认 false）
+ * @returns 订单对象或 null
+ */
+export async function findChainOrder(orderId: string, forceRefresh = false) {
+  return findChainOrderCached(orderId, { forceRefresh });
+}
+
+/**
+ * 查找链上订单（向后兼容的老方法，不使用缓存）
+ * 仅用于需要实时数据的场景
+ */
+export async function findChainOrderDirect(orderId: string) {
   const chainOrders = await fetchChainOrdersAdmin();
   return chainOrders.find((order) => order.orderId === orderId) || null;
 }
 
 export async function syncChainOrder(orderId: string) {
-  const chain = await findChainOrder(orderId);
+  const chain = await findChainOrder(orderId, true); // 强制刷新以获取最新状态
   if (!chain) return null;
   return upsertChainOrder(chain);
 }
+
+/**
+ * 清除链上订单缓存
+ * 用于需要强制刷新的场景
+ */
+export function clearChainOrderCache() {
+  clearCache();
+}
+
+/**
+ * 获取缓存统计信息
+ * 用于监控和调试
+ */
+export function getChainOrderCacheStats() {
+  return getCacheStats();
+}
+
+/**
+ * 导出缓存查询函数供其他模块使用
+ */
+export { fetchChainOrdersCached } from "./chain-order-cache";

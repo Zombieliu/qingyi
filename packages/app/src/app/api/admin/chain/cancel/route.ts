@@ -25,12 +25,33 @@ export async function POST(req: Request) {
   }
 
   try {
-    const chainOrder = await findChainOrder(orderId);
+    // 强制刷新以获取最新状态
+    const chainOrder = await findChainOrder(orderId, true);
     if (!chainOrder) {
-      return NextResponse.json({ error: "未找到链上订单" }, { status: 404 });
+      return NextResponse.json(
+        {
+          error: "chain_order_not_found",
+          message: "未找到链上订单",
+          orderId,
+          troubleshooting: [
+            "检查订单 ID 是否正确",
+            "确认订单已在区块链上创建",
+            "检查网络配置（当前：" + (process.env.SUI_NETWORK || "testnet") + "）",
+          ],
+        },
+        { status: 404 }
+      );
     }
     if (!chainOrderUtils.isChainOrderCancelable(chainOrder.status)) {
-      return NextResponse.json({ error: "订单已进入锁押金/争议流程，无法取消" }, { status: 400 });
+      return NextResponse.json(
+        {
+          error: "order_not_cancelable",
+          message: "订单已进入锁押金/争议流程，无法取消",
+          currentStatus: chainOrder.status,
+          allowedStatuses: [0, 1], // CREATED, PAID
+        },
+        { status: 400 }
+      );
     }
     const result = await cancelOrderAdmin(orderId);
     await syncChainOrder(orderId);
