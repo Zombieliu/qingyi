@@ -119,7 +119,7 @@ export default async function LandingPage() {
           </div>
         </section>
 
-        <section id="features">
+        <section id="features" className="public-core">
           <div className="public-section-title">{t("landing.section.core.title")}</div>
           <div className="public-section-sub">{t("landing.section.core.sub")}</div>
           <div className="public-grid" style={{ marginTop: 16 }}>

@@ -17,6 +17,7 @@
 /test-results/
 /blob-report/
 /.playwright/
+tests/visual.spec.ts-snapshots/
 
 # next.js
 /.next/
