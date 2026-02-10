@@ -13,6 +13,7 @@ import {
   fetchChainOrders,
   finalizeNoDisputeOnChain,
   getCurrentAddress,
+  getChainDebugInfo,
   isChainOrdersEnabled,
   isVisualTestMode,
   markCompletedOnChain,
@@ -194,6 +195,7 @@ export default function Schedule() {
   const [chainLoading, setChainLoading] = useState(false);
   const [chainError, setChainError] = useState<string | null>(null);
   const [chainToast, setChainToast] = useState<string | null>(null);
+  const [debugOpen, setDebugOpen] = useState(false);
   const [chainAction, setChainAction] = useState<string | null>(null);
   const [chainAddress, setChainAddress] = useState("");
   const [chainUpdatedAt, setChainUpdatedAt] = useState<number | null>(null);
@@ -286,6 +288,25 @@ export default function Schedule() {
     return () => window.removeEventListener("passkey-updated", handle);
   }, []);
 
+  const fetchOrSyncChainOrder = async (orderId: string) => {
+    let list = await fetchChainOrders();
+    let found = list.find((order) => order.orderId === orderId) || null;
+    if (found) {
+      setChainOrders(list);
+      return found;
+    }
+    try {
+      await syncChainOrder(orderId, chainAddress || undefined);
+      list = await fetchChainOrders();
+      setChainOrders(list);
+      found = list.find((order) => order.orderId === orderId) || null;
+      if (found) return found;
+    } catch (error) {
+      throw new Error((error as Error).message || "链上订单同步失败");
+    }
+    throw new Error("未找到链上订单（已尝试服务端刷新）");
+  };
+
   const loadChain = useCallback(async () => {
     if (!isChainOrdersEnabled()) return;
     const visualTest = isVisualTestMode();
@@ -299,7 +320,7 @@ export default function Schedule() {
       setChainOrders(list);
       setChainUpdatedAt(Date.now());
     } catch (e) {
-      setChainError((e as Error).message || "订单加载失败");
+      setChainError((e as Error).message || "链上订单加载失败，请检查链上配置");
     } finally {
       if (!visualTest) {
         setChainLoading(false);
@@ -721,16 +742,14 @@ export default function Schedule() {
                     let chainOrder = chainOrders.find((order) => order.orderId === currentOrder.id) || null;
                     if (!chainOrder) {
                       try {
-                        const list = await fetchChainOrders();
-                        setChainOrders(list);
-                        chainOrder = list.find((order) => order.orderId === currentOrder.id) || null;
+                        chainOrder = await fetchOrSyncChainOrder(currentOrder.id);
                       } catch (error) {
-                        setToast((error as Error).message || "链上订单加载失败");
+                        setToast((error as Error).message || "链上订单加载失败，请检查链上配置");
                         return;
                       }
                     }
                     if (!chainOrder) {
-                      setToast("链上订单未同步");
+                      setToast("链上订单未同步（已尝试服务端刷新）");
                       return;
                     }
                     if (chainOrder.status !== 2) {
@@ -1019,6 +1038,11 @@ export default function Schedule() {
           <div className="text-xs text-gray-500 mt-1">
             上次刷新：{chainUpdatedAt ? new Date(chainUpdatedAt).toLocaleTimeString() : "-"}
           </div>
+          <div className="mt-2 flex justify-end">
+            <button className="dl-tab-btn" style={{ padding: "6px 10px" }} onClick={() => setDebugOpen(true)}>
+              链上调试信息
+            </button>
+          </div>
           {chainError && <div className="mt-2 text-xs text-rose-500">{chainError}</div>}
           {chainToast && <div className="mt-2 text-xs text-emerald-600">{chainToast}</div>}
           {!chainCurrentOrder ? (
@@ -1215,6 +1239,33 @@ export default function Schedule() {
               >
                 {calling ? <Loader2 size={16} className="spin" /> : null}
                 <span style={{ marginLeft: calling ? 6 : 0 }}>扣减钻石并派单</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {debugOpen && (
+        <div className="ride-modal-mask" role="dialog" aria-modal="true" aria-label="链上调试信息">
+          <div className="ride-modal">
+            <div className="ride-modal-head">
+              <div>
+                <div className="ride-modal-title">链上调试信息</div>
+                <div className="ride-modal-sub">用于排查未同步、链上配置不一致等问题</div>
+              </div>
+              <div className="ride-modal-amount">Debug</div>
+            </div>
+            <div className="ride-qr-inline">
+              <pre
+                className="admin-input"
+                style={{ width: "100%", minHeight: 140, whiteSpace: "pre-wrap", fontSize: 12 }}
+              >
+                {JSON.stringify(getChainDebugInfo(), null, 2)}
+              </pre>
+            </div>
+            <div className="ride-modal-actions">
+              <button className="dl-tab-btn" onClick={() => setDebugOpen(false)}>
+                关闭
               </button>
             </div>
           </div>

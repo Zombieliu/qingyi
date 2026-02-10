@@ -17,6 +17,7 @@ import {
   payServiceFeeOnChain,
   raiseDisputeOnChain,
   signAuthIntent,
+  getChainDebugInfo,
 } from "@/lib/qy-chain";
 import { MotionCard } from "@/components/ui/motion";
 import { StateBlock } from "@/app/components/state-block";
@@ -27,10 +28,18 @@ export default function Showcase() {
   const [chainLoading, setChainLoading] = useState(false);
   const [chainError, setChainError] = useState<string | null>(null);
   const [chainToast, setChainToast] = useState<string | null>(null);
+  const [confirmAction, setConfirmAction] = useState<{
+    title: string;
+    description: string;
+    confirmLabel: string;
+    action: () => Promise<void>;
+  } | null>(null);
+  const [confirmBusy, setConfirmBusy] = useState(false);
   const [chainAction, setChainAction] = useState<string | null>(null);
   const [chainAddress, setChainAddress] = useState("");
   const [chainUpdatedAt, setChainUpdatedAt] = useState<number | null>(null);
   const [disputeOpen, setDisputeOpen] = useState<{ orderId: string; evidence: string } | null>(null);
+  const [debugOpen, setDebugOpen] = useState(false);
   const [copiedOrderId, setCopiedOrderId] = useState<string | null>(null);
   const [publicCursor, setPublicCursor] = useState<string | null>(null);
   const [publicLoading, setPublicLoading] = useState(false);
@@ -141,7 +150,7 @@ export default function Showcase() {
       setChainOrders(list);
       setChainUpdatedAt(Date.now());
     } catch (e) {
-      setChainError((e as Error).message || "订单加载失败");
+      setChainError((e as Error).message || "链上订单加载失败，请检查链上配置");
     } finally {
       if (!visualTest) {
         setChainLoading(false);
@@ -160,6 +169,45 @@ export default function Showcase() {
     return () => window.clearInterval(timer);
   }, [chainLoading, loadChain]);
 
+  const openConfirm = (payload: {
+    title: string;
+    description: string;
+    confirmLabel: string;
+    action: () => Promise<void>;
+  }) => {
+    setConfirmAction(payload);
+  };
+
+  const runConfirmAction = async () => {
+    if (!confirmAction) return;
+    setConfirmBusy(true);
+    try {
+      await confirmAction.action();
+    } finally {
+      setConfirmBusy(false);
+      setConfirmAction(null);
+    }
+  };
+
+  const fetchOrSyncChainOrder = async (orderId: string) => {
+    let list = await fetchChainOrders();
+    let found = list.find((order) => order.orderId === orderId) || null;
+    if (found) {
+      setChainOrders(list);
+      return found;
+    }
+    try {
+      await syncChainOrder(orderId, chainAddress || undefined);
+      list = await fetchChainOrders();
+      setChainOrders(list);
+      found = list.find((order) => order.orderId === orderId) || null;
+      if (found) return found;
+    } catch (error) {
+      throw new Error((error as Error).message || "链上订单同步失败");
+    }
+    throw new Error("未找到链上订单（已尝试服务端刷新）");
+  };
+
   const accept = async (id: string) => {
     const address = getCurrentAddress();
     if (!address) {
@@ -174,17 +222,15 @@ export default function Showcase() {
       chainOrder = chainOrders.find((order) => order.orderId === id) || null;
       if (!chainOrder) {
         try {
-          const list = await fetchChainOrders();
-          setChainOrders(list);
-          chainOrder = list.find((order) => order.orderId === id) || null;
+          chainOrder = await fetchOrSyncChainOrder(id);
         } catch (e) {
-          setChainToast((e as Error).message || "链上订单加载失败");
+          setChainToast((e as Error).message || "链上订单加载失败，请检查链上配置");
           setTimeout(() => setChainToast(null), 3000);
           return;
         }
       }
       if (!chainOrder) {
-        setChainToast("未找到链上订单，无法接单");
+        setChainToast("未找到链上订单（已尝试服务端刷新）");
         setTimeout(() => setChainToast(null), 3000);
         return;
       }
@@ -236,6 +282,46 @@ export default function Showcase() {
     await refreshMyOrders(true);
     setChainToast("接单成功，已移至「我已接的订单」");
     setTimeout(() => setChainToast(null), 3000);
+  };
+
+  const confirmDepositAccept = (orderId: string, depositLabel?: string) => {
+    openConfirm({
+      title: "确认付押金并接单？",
+      description: depositLabel
+        ? `将锁定押金 ${depositLabel} 并认领订单。押金锁定后如需取消请走争议/客服流程。`
+        : "将锁定押金并认领订单。押金锁定后如需取消请走争议/客服流程。",
+      confirmLabel: "确认接单",
+      action: async () => {
+        await accept(orderId);
+      },
+    });
+  };
+
+  const confirmMarkCompleted = (orderId: string) => {
+    openConfirm({
+      title: "确认服务已完成？",
+      description: "确认后将进入结算/争议期，如有问题请先发起争议。",
+      confirmLabel: "确认完成",
+      action: async () => {
+        await runChainAction(
+          `complete-${orderId}`,
+          () => markCompletedOnChain(orderId),
+          "已确认完成",
+          orderId
+        );
+      },
+    });
+  };
+
+  const confirmEndService = (orderId: string) => {
+    openConfirm({
+      title: "确认结束服务？",
+      description: "结束后等待用户确认完成，若有争议可发起争议处理。",
+      confirmLabel: "结束服务",
+      action: async () => {
+        await markCompanionServiceEnded(orderId, true);
+      },
+    });
   };
 
   const cancel = async (id: string) => {
@@ -662,48 +748,52 @@ export default function Showcase() {
                           style={{ padding: "8px 10px" }}
                           disabled={chainAction === `deposit-${o.orderId}`}
                           onClick={async () => {
-                            if (!window.confirm("确认付押金并接单？押金锁定后如需取消请走争议/客服流程。")) {
-                              return;
-                            }
-                            if (!orderMetaById.get(o.orderId)?.gameProfile) {
-                              await hydrateOrderMeta(o.orderId);
-                            }
-                            const ok = await runChainAction(
-                              `deposit-${o.orderId}`,
-                              () => lockDepositOnChain(o.orderId),
-                              "押金已锁定",
-                              o.orderId
-                            );
-                            if (!ok) return;
-                            await hydrateOrderMeta(o.orderId, { toastOnError: true });
-                            try {
-                              const creditBody = JSON.stringify({ orderId: o.orderId, address: chainAddress });
-                              const auth = await signAuthIntent(`mantou:credit:${o.orderId}`, creditBody);
-                              const res = await fetch("/api/mantou/credit", {
-                                method: "POST",
-                                headers: {
-                                  "Content-Type": "application/json",
-                                  "x-auth-address": auth.address,
-                                  "x-auth-signature": auth.signature,
-                                  "x-auth-timestamp": String(auth.timestamp),
-                                  "x-auth-nonce": auth.nonce,
-                                  "x-auth-body-sha256": auth.bodyHash,
-                                },
-                                body: creditBody,
-                              });
-                              const data = await res.json().catch(() => ({}));
-                              if (res.ok) {
-                                if (!data?.duplicated) {
-                                  setChainToast("已自动转换为馒头");
+                            openConfirm({
+                              title: "确认付押金并接单？",
+                              description: "押金锁定后如需取消请走争议/客服流程。",
+                              confirmLabel: "确认接单",
+                              action: async () => {
+                                if (!orderMetaById.get(o.orderId)?.gameProfile) {
+                                  await hydrateOrderMeta(o.orderId);
                                 }
-                              } else {
-                                setChainToast(data?.error || "馒头转换失败");
-                              }
-                            } catch (error) {
-                              setChainToast((error as Error).message || "馒头转换失败");
-                            } finally {
-                              setTimeout(() => setChainToast(null), 3000);
-                            }
+                                const ok = await runChainAction(
+                                  `deposit-${o.orderId}`,
+                                  () => lockDepositOnChain(o.orderId),
+                                  "押金已锁定",
+                                  o.orderId
+                                );
+                                if (!ok) return;
+                                await hydrateOrderMeta(o.orderId, { toastOnError: true });
+                                try {
+                                  const creditBody = JSON.stringify({ orderId: o.orderId, address: chainAddress });
+                                  const auth = await signAuthIntent(`mantou:credit:${o.orderId}`, creditBody);
+                                  const res = await fetch("/api/mantou/credit", {
+                                    method: "POST",
+                                    headers: {
+                                      "Content-Type": "application/json",
+                                      "x-auth-address": auth.address,
+                                      "x-auth-signature": auth.signature,
+                                      "x-auth-timestamp": String(auth.timestamp),
+                                      "x-auth-nonce": auth.nonce,
+                                      "x-auth-body-sha256": auth.bodyHash,
+                                    },
+                                    body: creditBody,
+                                  });
+                                  const data = await res.json().catch(() => ({}));
+                                  if (res.ok) {
+                                    if (!data?.duplicated) {
+                                      setChainToast("已自动转换为馒头");
+                                    }
+                                  } else {
+                                    setChainToast(data?.error || "馒头转换失败");
+                                  }
+                                } catch (error) {
+                                  setChainToast((error as Error).message || "馒头转换失败");
+                                } finally {
+                                  setTimeout(() => setChainToast(null), 3000);
+                                }
+                              },
+                            });
                           }}
                         >
                           付押金接单
@@ -714,7 +804,7 @@ export default function Showcase() {
                           className="dl-tab-btn"
                           style={{ padding: "8px 10px" }}
                           disabled={companionEnded}
-                          onClick={() => markCompanionServiceEnded(o.orderId, true)}
+                          onClick={() => confirmEndService(o.orderId)}
                         >
                           {companionEnded ? "已结束服务" : "结束服务"}
                         </button>
@@ -725,15 +815,7 @@ export default function Showcase() {
                           style={{ padding: "8px 10px" }}
                           disabled={chainAction === `complete-${o.orderId}`}
                           onClick={() => {
-                            if (!window.confirm("确认服务已完成？确认后将进入结算/争议期。")) {
-                              return;
-                            }
-                            runChainAction(
-                              `complete-${o.orderId}`,
-                              () => markCompletedOnChain(o.orderId),
-                              "已确认完成",
-                              o.orderId
-                            );
+                            confirmMarkCompleted(o.orderId);
                           }}
                         >
                           确认完成
@@ -921,7 +1003,9 @@ export default function Showcase() {
                   <button
                     className="dl-tab-btn"
                     style={{ padding: "8px 10px" }}
-                    onClick={() => accept(o.id)}
+                    onClick={() =>
+                      confirmDepositAccept(o.id, typeof o.deposit === "number" ? `¥${formatAmount(o.deposit)}` : undefined)
+                    }
                     disabled={Boolean(o.userAddress && o.userAddress === chainAddress)}
                     title={o.userAddress && o.userAddress === chainAddress ? "不能接自己发的单" : undefined}
                   >
@@ -936,8 +1020,8 @@ export default function Showcase() {
           )}
         </div>
       )}
-      <div className="mt-4 flex justify-center" ref={loadMoreRef}>
-        {publicCursor ? (
+        <div className="mt-4 flex justify-center" ref={loadMoreRef}>
+          {publicCursor ? (
           <button
             className="dl-tab-btn"
             style={{ padding: "8px 12px" }}
@@ -949,6 +1033,11 @@ export default function Showcase() {
         ) : (
           <div className="text-xs text-gray-400">没有更多了</div>
         )}
+      </div>
+      <div className="mt-3 flex justify-center">
+        <button className="dl-tab-btn" style={{ padding: "6px 12px" }} onClick={() => setDebugOpen(true)}>
+          链上调试信息
+        </button>
       </div>
       {disputeOpen && (
         <div className="ride-modal-mask" role="dialog" aria-modal="true" aria-label="发起争议">
@@ -994,6 +1083,58 @@ export default function Showcase() {
                 }}
               >
                 提交争议
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {debugOpen && (
+        <div className="ride-modal-mask" role="dialog" aria-modal="true" aria-label="链上调试信息">
+          <div className="ride-modal">
+            <div className="ride-modal-head">
+              <div>
+                <div className="ride-modal-title">链上调试信息</div>
+                <div className="ride-modal-sub">用于排查未同步、链上配置不一致等问题</div>
+              </div>
+              <div className="ride-modal-amount">Debug</div>
+            </div>
+            <div className="ride-qr-inline">
+              <pre
+                className="admin-input"
+                style={{ width: "100%", minHeight: 140, whiteSpace: "pre-wrap", fontSize: 12 }}
+              >
+                {JSON.stringify(getChainDebugInfo(), null, 2)}
+              </pre>
+            </div>
+            <div className="ride-modal-actions">
+              <button className="dl-tab-btn" onClick={() => setDebugOpen(false)}>
+                关闭
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {confirmAction && (
+        <div className="ride-modal-mask" role="dialog" aria-modal="true" aria-label={confirmAction.title}>
+          <div className="ride-modal">
+            <div className="ride-modal-head">
+              <div>
+                <div className="ride-modal-title">{confirmAction.title}</div>
+                <div className="ride-modal-sub">{confirmAction.description}</div>
+              </div>
+              <div className="ride-modal-amount">确认</div>
+            </div>
+            <div className="ride-modal-actions">
+              <button className="dl-tab-btn" onClick={() => setConfirmAction(null)} disabled={confirmBusy}>
+                取消
+              </button>
+              <button
+                className="dl-tab-btn"
+                style={{ background: "#0f172a", color: "#fff" }}
+                onClick={runConfirmAction}
+                disabled={confirmBusy}
+              >
+                {confirmBusy ? "处理中..." : confirmAction.confirmLabel}
               </button>
             </div>
           </div>
