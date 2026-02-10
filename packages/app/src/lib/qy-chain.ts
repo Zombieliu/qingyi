@@ -42,7 +42,7 @@ export type ChainOrder = {
 const RP_NAME = "情谊电竞";
 const CHAIN_ORDERS_FLAG = process.env.NEXT_PUBLIC_CHAIN_ORDERS === "1";
 const VISUAL_TEST_FLAG = process.env.NEXT_PUBLIC_VISUAL_TEST === "1";
-const EVENT_LIMIT = Number(process.env.NEXT_PUBLIC_QY_EVENT_LIMIT || "200");
+const EVENT_LIMIT = Number(process.env.NEXT_PUBLIC_QY_EVENT_LIMIT || "1000");
 const CHAIN_SPONSOR_MODE = (process.env.NEXT_PUBLIC_CHAIN_SPONSOR || "auto").toLowerCase();
 
 let cachedDubhePackageId: string | null = null;

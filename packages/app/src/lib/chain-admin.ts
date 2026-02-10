@@ -27,7 +27,7 @@ export type ChainOrder = {
   lastUpdatedMs?: number;
 };
 
-const EVENT_LIMIT = Number(process.env.ADMIN_CHAIN_EVENT_LIMIT || process.env.NEXT_PUBLIC_QY_EVENT_LIMIT || "200");
+const EVENT_LIMIT = Number(process.env.ADMIN_CHAIN_EVENT_LIMIT || process.env.NEXT_PUBLIC_QY_EVENT_LIMIT || "1000");
 const RETRYABLE_RPC_PATTERNS = [
   "429",
   "too many requests",
