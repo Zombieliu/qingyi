@@ -87,6 +87,26 @@ export default function OrderButton({ user, item, amount, note }: Props) {
             : null,
         },
       });
+      if (chainOrderId) {
+        const address = getCurrentAddress();
+        const retrySync = async () => {
+          const delays = [1000, 2000, 4000, 8000];
+          for (const delay of delays) {
+            try {
+              await fetch(`/api/orders/${chainOrderId}/chain-sync?force=1&maxWaitMs=15000`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ userAddress: address }),
+              });
+              break;
+            } catch {
+              // ignore and retry
+            }
+            await new Promise((resolve) => setTimeout(resolve, delay));
+          }
+        };
+        void retrySync();
+      }
       if (result.sent === false) {
         trackEvent("order_create_failed", {
           source: "home_card",

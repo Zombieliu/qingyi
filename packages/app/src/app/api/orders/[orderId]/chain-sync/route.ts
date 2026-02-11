@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin-auth";
-import { findChainOrder, upsertChainOrder, getChainOrderCacheStats } from "@/lib/chain-sync";
+import { findChainOrder, findChainOrderDirect, upsertChainOrder, getChainOrderCacheStats, clearChainOrderCache } from "@/lib/chain-sync";
 import { isValidSuiAddress, normalizeSuiAddress } from "@mysten/sui/utils";
 import { requireUserAuth } from "@/lib/user-auth";
 import { getOrderById } from "@/lib/admin-store";
@@ -26,63 +26,71 @@ export async function POST(req: Request, { params }: RouteContext) {
   }
 
   const admin = await requireAdmin(req, { role: "viewer", requireOrigin: false, allowToken: true });
+  const url = new URL(req.url);
+  const force =
+    url.searchParams.get("force") === "1" || url.searchParams.get("force") === "true";
+  const maxWaitMs = Number(url.searchParams.get("maxWaitMs") || "3000");
 
   // 智能重试查找链上订单
   // 应对场景：订单刚创建，Dubhe 索引器还未完成索引
-  let chain = await findChainOrder(orderId, false);
+  if (force) {
+    clearChainOrderCache();
+  }
+  let chain = await findChainOrder(orderId, force);
 
   if (!chain) {
-    // 第一次重试：强制刷新缓存
-    chain = await findChainOrder(orderId, true);
+    const delays = [1000, 2000, 4000, 8000];
+    let waited = 0;
+    for (const delay of delays) {
+      if (waited >= maxWaitMs) break;
+      await new Promise((resolve) => setTimeout(resolve, delay));
+      waited += delay;
+      chain = await findChainOrder(orderId, true);
+      if (chain) break;
+    }
+
+    if (!chain && force) {
+      // 最后尝试：绕过缓存直接从链上拉取
+      chain = await findChainOrderDirect(orderId);
+    }
 
     if (!chain) {
-      // 第二次重试：等待1秒后再次刷新（给索引器时间）
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      chain = await findChainOrder(orderId, true);
+      // 所有重试失败，返回详细错误信息
+      const cacheStats = getChainOrderCacheStats();
+      const localOrder = await getOrderById(orderId);
 
-      if (!chain) {
-        // 第三次重试：等待2秒后最后一次尝试
-        await new Promise((resolve) => setTimeout(resolve, 2000));
-        chain = await findChainOrder(orderId, true);
+      const errorDetail = {
+        error: "chain_order_not_found",
+        message: "链上订单未找到",
+        orderId,
+        details: {
+          existsInLocal: !!localOrder,
+          localOrderSource: localOrder?.source || null,
+          chainCacheStats: {
+            totalOrders: cacheStats.orderCount,
+            cacheAge: cacheStats.cacheAgeMs,
+            lastFetch: cacheStats.lastFetch,
+          },
+          retries: delays.length,
+          totalWaitTime: `${Math.min(maxWaitMs, delays.reduce((sum, value) => sum + value, 0))}ms`,
+          forced: force,
+        },
+        possibleReasons: [
+          "订单事件尚未被 Dubhe 索引器索引（已等待）",
+          "订单未在区块链上成功创建",
+          "订单超出查询范围（超过 " + (process.env.ADMIN_CHAIN_EVENT_LIMIT || "1000") + " 条）",
+          "网络配置错误（当前：" + (process.env.SUI_NETWORK || process.env.NEXT_PUBLIC_SUI_NETWORK || "testnet") + "）",
+        ],
+        troubleshooting: [
+          "等待几秒后重试",
+          "检查订单交易 digest 在 Sui Explorer 中的状态",
+          "确认 PACKAGE_ID 和 DAPP_HUB_ID 配置正确",
+          "检查 Dubhe 索引器是否正常运行",
+          "尝试增加 ADMIN_CHAIN_EVENT_LIMIT 环境变量",
+        ],
+      };
 
-        if (!chain) {
-          // 所有重试失败，返回详细错误信息
-          const cacheStats = getChainOrderCacheStats();
-          const localOrder = await getOrderById(orderId);
-
-          const errorDetail = {
-            error: "chain_order_not_found",
-            message: "链上订单未找到",
-            orderId,
-            details: {
-              existsInLocal: !!localOrder,
-              localOrderSource: localOrder?.source || null,
-              chainCacheStats: {
-                totalOrders: cacheStats.orderCount,
-                cacheAge: cacheStats.cacheAgeMs,
-                lastFetch: cacheStats.lastFetch,
-              },
-              retries: 3,
-              totalWaitTime: "3000ms",
-            },
-            possibleReasons: [
-              "订单事件尚未被 Dubhe 索引器索引（已等待3秒）",
-              "订单未在区块链上成功创建",
-              "订单超出查询范围（超过 " + (process.env.ADMIN_CHAIN_EVENT_LIMIT || "1000") + " 条）",
-              "网络配置错误（当前：" + (process.env.SUI_NETWORK || process.env.NEXT_PUBLIC_SUI_NETWORK || "testnet") + "）",
-            ],
-            troubleshooting: [
-              "等待几秒后重试",
-              "检查订单交易 digest 在 Sui Explorer 中的状态",
-              "确认 PACKAGE_ID 和 DAPP_HUB_ID 配置正确",
-              "检查 Dubhe 索引器是否正常运行",
-              "尝试增加 ADMIN_CHAIN_EVENT_LIMIT 环境变量",
-            ],
-          };
-
-          return NextResponse.json(errorDetail, { status: 404 });
-        }
-      }
+      return NextResponse.json(errorDetail, { status: 404 });
     }
   }
 
