@@ -384,6 +384,20 @@ export function isChainOrdersEnabled(): boolean {
   return CHAIN_ORDERS_FLAG || isVisualTestMode();
 }
 
+export function getChainDebugInfo() {
+  return {
+    packageId: PACKAGE_ID,
+    dappHubId: DAPP_HUB_ID,
+    dappHubInitialSharedVersion: DAPP_HUB_INITIAL_SHARED_VERSION,
+    network: process.env.NEXT_PUBLIC_SUI_NETWORK || "",
+    rpcUrl: process.env.NEXT_PUBLIC_SUI_RPC_URL || "",
+    chainOrdersEnabled: isChainOrdersEnabled(),
+    sponsorMode: CHAIN_SPONSOR_MODE,
+    ruleSetId: getRuleSetId(),
+    defaultCompanion: getDefaultCompanion(),
+  };
+}
+
 export function createChainOrderId(): string {
   const now = Date.now();
   const rand = Math.floor(Math.random() * 1000);
