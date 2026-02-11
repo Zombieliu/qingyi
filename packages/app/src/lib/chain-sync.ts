@@ -2,6 +2,7 @@ import "server-only";
 import { fetchChainOrdersAdmin, type ChainOrder } from "./chain-admin";
 import { addOrder, getOrderById, updateOrder } from "./admin-store";
 import type { AdminOrder } from "./admin-types";
+import { isValidSuiAddress, normalizeSuiAddress } from "@mysten/sui/utils";
 import {
   findChainOrderCached,
   fetchChainOrdersCached,
@@ -57,6 +58,20 @@ function buildChainMeta(existing: AdminOrder | null, chain: ChainOrder) {
   } as Record<string, unknown>;
 }
 
+function normalizeCompanionAddress(chainCompanion: string) {
+  const normalized = normalizeSuiAddress(chainCompanion);
+  if (!isValidSuiAddress(normalized)) return null;
+  if (normalized === "0x0") return null;
+  const defaultRaw = process.env.NEXT_PUBLIC_QY_DEFAULT_COMPANION || "";
+  if (defaultRaw) {
+    const defaultNormalized = normalizeSuiAddress(defaultRaw);
+    if (isValidSuiAddress(defaultNormalized) && defaultNormalized === normalized) {
+      return null;
+    }
+  }
+  return normalized;
+}
+
 export async function upsertChainOrder(chain: ChainOrder) {
   const orderId = chain.orderId;
   const existing = await getOrderById(orderId);
@@ -67,6 +82,7 @@ export async function upsertChainOrder(chain: ChainOrder) {
   const existingMeta = (existing?.meta || {}) as Record<string, unknown>;
   const preserveCompanion = existingMeta.publicPool === true;
   const preserveAmounts = existingMeta.paymentMode === "diamond_escrow";
+  const companionAddress = normalizeCompanionAddress(chain.companion);
 
   if (existing) {
     const patch: Partial<AdminOrder> = {
@@ -77,7 +93,7 @@ export async function upsertChainOrder(chain: ChainOrder) {
       meta,
     };
     if (!preserveCompanion) {
-      patch.companionAddress = chain.companion;
+      patch.companionAddress = companionAddress ?? undefined;
     }
     if (!preserveAmounts) {
       patch.serviceFee = serviceFee;
@@ -86,11 +102,15 @@ export async function upsertChainOrder(chain: ChainOrder) {
     return updateOrder(orderId, patch);
   }
 
+  if (companionAddress === null) {
+    meta.publicPool = true;
+  }
+
   return addOrder({
     id: orderId,
     user: chain.user,
     userAddress: chain.user,
-    companionAddress: chain.companion,
+    companionAddress: companionAddress ?? undefined,
     item: `链上订单 #${orderId}`,
     amount,
     currency: "CNY",

@@ -18,6 +18,7 @@ import {
   raiseDisputeOnChain,
   signAuthIntent,
   getChainDebugInfo,
+  getDefaultCompanionAddress,
 } from "@/lib/qy-chain";
 import { MotionCard } from "@/components/ui/motion";
 import { StateBlock } from "@/app/components/state-block";
@@ -572,11 +573,19 @@ export default function Showcase() {
     }
   };
 
-  const visibleChainOrders = (
-    chainAddress && chainAddress.length > 0
-      ? chainOrders.filter((o) => o.user === chainAddress || o.companion === chainAddress)
-      : chainOrders
-  ).filter((o) => o.status !== 6);
+  let defaultCompanion = "";
+  if (isChainOrdersEnabled()) {
+    try {
+      defaultCompanion = getDefaultCompanionAddress();
+    } catch {
+      defaultCompanion = "";
+    }
+  }
+  const visibleChainOrders = chainOrders.filter((order) => {
+    if (order.status === 6) return false;
+    if (!defaultCompanion) return true;
+    return order.companion === defaultCompanion;
+  });
 
   const visibleOrders = orders.filter((o) => !o.status.includes("完成") && !o.status.includes("取消"));
   const myAcceptedOrders = myOrders.filter((o) => {
@@ -617,7 +626,7 @@ export default function Showcase() {
       {isChainOrdersEnabled() && (
         <div className="space-y-3 mb-6">
           <div className="dl-card text-xs text-gray-500">
-            <div>订单（{chainAddress ? "已登录" : "未登录"}）</div>
+            <div>公开链上订单（{chainAddress ? "已登录" : "未登录"}）</div>
             <div className="mt-1">上次刷新：{chainUpdatedAt ? new Date(chainUpdatedAt).toLocaleTimeString() : "-"}</div>
             {chainLoading && <div className="mt-1 text-amber-600">加载中…</div>}
             {chainError && <div className="mt-1 text-rose-500">{chainError}</div>}
