@@ -34,6 +34,7 @@ export default function Me() {
       return "";
     }
   });
+  const [addrToast, setAddrToast] = useState<string | null>(null);
   const [gameProfile, setGameProfile] = useState<{ gameName: string; gameId: string } | null>(null);
 
   const goWallet = () => router.push("/wallet");
@@ -41,6 +42,22 @@ export default function Me() {
   const goGameSettings = () => router.push("/me/game-settings");
   const goMantou = () => router.push("/me/mantou");
   const closeSettings = () => router.push("/me");
+  const copyAddress = async () => {
+    const addr = walletAddress || "";
+    if (!addr) {
+      setAddrToast("未登录，无法获取地址");
+      setTimeout(() => setAddrToast(null), 2000);
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(addr);
+      setAddrToast("已复制 Sui 地址");
+    } catch {
+      setAddrToast(`Sui 地址：${addr}`);
+    } finally {
+      setTimeout(() => setAddrToast(null), 3000);
+    }
+  };
   const logout = () => {
     localStorage.removeItem(PASSKEY_STORAGE_KEY);
     window.dispatchEvent(new Event("passkey-updated"));
@@ -113,14 +130,15 @@ export default function Me() {
           <span className="dl-chip dl-chip-soft">实时</span>
         </div>
         <div className="dl-actions">
-          <span className="dl-icon-circle">
+          <button className="dl-icon-circle" onClick={copyAddress} aria-label="复制 Sui 地址">
             <ShieldCheck size={16} />
-          </span>
+          </button>
           <button onClick={goSettings} className="dl-icon-circle" aria-label="设置">
             <Settings size={16} />
           </button>
         </div>
       </header>
+      {addrToast && <div className="ride-toast">{addrToast}</div>}
 
       <section className="dl-card dl-profile">
         <div className="dl-avatar" />
