@@ -286,6 +286,68 @@ export async function cancelOrderAdmin(orderId: string) {
   return { digest: result.digest, effects: result.effects };
 }
 
+export async function markCompletedAdmin(orderId: string) {
+  const { pkg, hubId, hubVer } = ensureChainEnv();
+  const signer = getAdminSigner();
+  const client = new SuiClient({ url: getRpcUrl() });
+
+  if (!/^[0-9]+$/.test(orderId)) {
+    throw new Error("orderId must be numeric string");
+  }
+
+  const tx = new Transaction();
+  const dappHub = Inputs.SharedObjectRef({
+    objectId: hubId,
+    initialSharedVersion: hubVer,
+    mutable: true,
+  });
+  tx.moveCall({
+    target: `${pkg}::order_system::admin_mark_completed`,
+    arguments: [tx.object(dappHub), tx.pure.u64(orderId), tx.object("0x6")],
+  });
+
+  const result = await retryRpc(() =>
+    client.signAndExecuteTransaction({
+      signer,
+      transaction: tx,
+      options: { showEffects: true },
+    })
+  );
+
+  return { digest: result.digest, effects: result.effects };
+}
+
+export async function finalizeNoDisputeAdmin(orderId: string) {
+  const { pkg, hubId, hubVer } = ensureChainEnv();
+  const signer = getAdminSigner();
+  const client = new SuiClient({ url: getRpcUrl() });
+
+  if (!/^[0-9]+$/.test(orderId)) {
+    throw new Error("orderId must be numeric string");
+  }
+
+  const tx = new Transaction();
+  const dappHub = Inputs.SharedObjectRef({
+    objectId: hubId,
+    initialSharedVersion: hubVer,
+    mutable: true,
+  });
+  tx.moveCall({
+    target: `${pkg}::order_system::finalize_no_dispute`,
+    arguments: [tx.object(dappHub), tx.pure.u64(orderId), tx.object("0x6")],
+  });
+
+  const result = await retryRpc(() =>
+    client.signAndExecuteTransaction({
+      signer,
+      transaction: tx,
+      options: { showEffects: true },
+    })
+  );
+
+  return { digest: result.digest, effects: result.effects };
+}
+
 export function validateCompanionAddress(address: string) {
   const normalized = normalizeSuiAddress(address);
   if (!isValidSuiAddress(normalized)) {

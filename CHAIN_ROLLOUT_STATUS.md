@@ -1,16 +1,19 @@
 # 情谊电竞链上落地状态（testnet）
 
-更新时间：2026-02-01
+更新时间：2026-02-11
 
 ## 1) 合约部署状态
 - 已发布 qy 包（testnet）  
-  - PACKAGE_ID: 0x192b102df0f8aa41d03ce4023b66dc3db1711be1185a26105b017765eedcca42
-  - UpgradeCap: 0x33765d8008eb0b5e2a3936ecdd563e8d8766a2c9e3c320e297608cf0fa8c786d
+  - PACKAGE_ID: 0x566f2d639a29ac29c64fb5bb1a87415ec5ae45fcbcb5d9066539bff5801fd934
+  - UpgradeCap: 0xabb8d68f2be23786f0666ecd6767cb839f32434824af595c769bd00d11efe211
+  - Publish Tx: B21hLoYvQsvdFjFbQcHuwdu7P6QmUDuLytinXEkeAoQy
+  - Deploy Hook Tx: EFQqRPW8FCGt8xmy3LysJyfXbL2sMS3gtaR5CQW1n7FD
 - DappHub（Dubhe）  
   - DAPP_HUB_ID: 0xb65df6ea777f1ed0fb9a0d9173eec6b43f2ae1da4346af1b48f678d8af796379
   - DAPP_HUB_INITIAL_SHARED_VERSION: 593960969
 - ruleset 已初始化  
   - rule_set_id=1, rule_hash="v1", dispute_window_ms=86400000, platform_fee_bps=1500
+  - Init Tx: GaCvZgeiqJQTT23RGy1Ypczm6tVjws32Svp2F8oiMFqb
 
 ## 2) 前端链上接入现状
 - 已接入链上下单（Passkey 签名）

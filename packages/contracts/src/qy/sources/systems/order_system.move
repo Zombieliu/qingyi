@@ -142,6 +142,23 @@ module qy::order_system {
     events::emit_order_completed(order_id, ctx.sender(), now, deadline);
   }
 
+  /// 管理员标记完成（用于超时自动确认） / Admin marks order completed (auto-confirm timeout).
+  public fun admin_mark_completed(dapp_hub: &mut DappHub, order_id: u64, clock: &Clock, ctx: &mut TxContext) {
+    dapp_system::ensure_dapp_admin<DappKey>(dapp_hub, ctx.sender());
+    order::ensure_has(dapp_hub, dapp_key::to_string(), order_id);
+    let mut ord = order::get_struct(dapp_hub, dapp_key::to_string(), order_id);
+    assert!(order::status(&ord) == STATUS_DEPOSITED, E_BAD_STATUS);
+
+    let rs = ruleset::get_struct(dapp_hub, dapp_key::to_string(), order::rule_set_id(&ord));
+    let now = clock::timestamp_ms(clock);
+    order::update_finish_at(&mut ord, now);
+    let deadline = now + ruleset::dispute_window_ms(&rs);
+    order::update_dispute_deadline(&mut ord, deadline);
+    order::update_status(&mut ord, STATUS_COMPLETED);
+    order::set_struct(dapp_hub, dapp_key::to_string(), order_id, ord, ctx);
+    events::emit_order_completed(order_id, ctx.sender(), now, deadline);
+  }
+
   /// 争议期内任意一方可发起争议 / Either party can dispute within the dispute window.
   public fun raise_dispute(
     dapp_hub: &mut DappHub,

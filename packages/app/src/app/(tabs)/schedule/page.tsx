@@ -289,22 +289,39 @@ export default function Schedule() {
   }, []);
 
   const fetchOrSyncChainOrder = async (orderId: string) => {
+    // 第一步：尝试从本地链上订单列表查找
     let list = await fetchChainOrders();
     let found = list.find((order) => order.orderId === orderId) || null;
     if (found) {
       setChainOrders(list);
       return found;
     }
+
+    // 第二步：同步到服务端查询（服务端会自动重试3次，共等待3秒）
     try {
       await syncChainOrder(orderId, chainAddress || undefined);
+
+      // 第三步：重新获取链上订单列表
+      list = await fetchChainOrders();
+      setChainOrders(list);
+      found = list.find((order) => order.orderId === orderId) || null;
+      if (found) return found;
+
+      // 第四步：如果还是找不到，等待1秒后再试一次（应对极端延迟）
+      await new Promise((resolve) => setTimeout(resolve, 1000));
       list = await fetchChainOrders();
       setChainOrders(list);
       found = list.find((order) => order.orderId === orderId) || null;
       if (found) return found;
     } catch (error) {
-      throw new Error((error as Error).message || "链上订单同步失败");
+      const errorMsg = (error as Error).message || "链上订单同步失败";
+      // 如果是 chain order not found 错误，提供更友好的提示
+      if (errorMsg.includes("not found") || errorMsg.includes("未找到")) {
+        throw new Error("链上订单暂未索引完成，请稍后再试（通常需要等待3-10秒）");
+      }
+      throw new Error(errorMsg);
     }
-    throw new Error("未找到链上订单（已尝试服务端刷新）");
+    throw new Error("链上订单未找到，可能索引延迟较大，请稍后重试");
   };
 
   const loadChain = useCallback(async () => {

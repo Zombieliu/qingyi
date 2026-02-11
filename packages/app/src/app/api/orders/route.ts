@@ -5,6 +5,7 @@ import { requireAdmin } from "@/lib/admin-auth";
 import { isValidSuiAddress, normalizeSuiAddress } from "@mysten/sui/utils";
 import { requireUserAuth } from "@/lib/user-auth";
 import { rateLimit } from "@/lib/rate-limit";
+import { clearChainOrderCache } from "@/lib/chain-sync";
 
 const ORDER_RATE_LIMIT_WINDOW_MS = Number(process.env.ORDER_RATE_LIMIT_WINDOW_MS || "60000");
 const ORDER_RATE_LIMIT_MAX = Number(process.env.ORDER_RATE_LIMIT_MAX || "30");
@@ -213,6 +214,11 @@ export async function POST(req: Request) {
       meta,
       createdAt,
     });
+
+    // 如果是链上订单，立即清除缓存，确保下次查询能获取最新数据
+    if (payload.chainDigest || payload.chainStatus !== undefined) {
+      clearChainOrderCache();
+    }
   } catch (error) {
     console.error("Failed to persist order:", error);
     return NextResponse.json({ error: "persist_failed" }, { status: 500 });
