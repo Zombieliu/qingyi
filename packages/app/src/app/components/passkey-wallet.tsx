@@ -29,8 +29,10 @@ export default function PasskeyWallet() {
   const [error, setError] = useState<string | null>(null);
   const isAutomation = process.env.NEXT_PUBLIC_PASSKEY_AUTOMATION === "1";
 
-  const providerOpts = useMemo<BrowserPasswordProviderOptions>(
-    () => ({
+  const providerOpts = useMemo<BrowserPasswordProviderOptions>(() => {
+    const isApple =
+      typeof navigator !== "undefined" && /Mac|iPhone|iPad|iPod/.test(navigator.platform || "");
+    return {
       rpName: "情谊电竞",
       rpId: typeof window !== "undefined" ? window.location.hostname : undefined,
       authenticatorSelection: isAutomation
@@ -40,10 +42,9 @@ export default function PasskeyWallet() {
             requireResidentKey: false,
             userVerification: "preferred",
           }
-        : { authenticatorAttachment: "platform", userVerification: "preferred" },
-    }),
-    [isAutomation]
-  );
+        : { authenticatorAttachment: isApple ? "cross-platform" : "platform", userVerification: "preferred" },
+    };
+  }, [isAutomation]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;

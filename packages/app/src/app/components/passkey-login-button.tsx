@@ -28,14 +28,18 @@ export default function PasskeyLoginButton() {
   const [hasWallet, setHasWallet] = useState(false);
   const [overlay, setOverlay] = useState(false);
 
-  const providerOpts = useMemo<BrowserPasswordProviderOptions>(
-    () => ({
+  const providerOpts = useMemo<BrowserPasswordProviderOptions>(() => {
+    const isApple =
+      typeof navigator !== "undefined" && /Mac|iPhone|iPad|iPod/.test(navigator.platform || "");
+    return {
       rpName: "情谊电竞",
       rpId: typeof window !== "undefined" ? window.location.hostname : undefined,
-      authenticatorSelection: { authenticatorAttachment: "platform", userVerification: "preferred" },
-    }),
-    []
-  );
+      authenticatorSelection: {
+        authenticatorAttachment: isApple ? "cross-platform" : "platform",
+        userVerification: "preferred",
+      },
+    };
+  }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
