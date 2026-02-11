@@ -62,18 +62,7 @@ export default function LoginPage() {
       </div>
       <PasskeyLoginButton />
       <div style={{ textAlign: "center", marginTop: 18, fontSize: 13 }}>
-        {hasWallet ? (
-          <TrackedLink
-            href="/home"
-            className="text-sm underline"
-            event="cta_click"
-            meta={{ section: "login", label: "已完成验证？进入主页" }}
-          >
-            {t("login.enter")}
-          </TrackedLink>
-        ) : (
-          <span style={{ color: "#6b7280" }}>{t("login.need")}</span>
-        )}
+        <span style={{ color: "#6b7280" }}>{t("login.need")}</span>
       </div>
     </div>
   );

@@ -70,7 +70,6 @@
   "login.sub": "游戏不仅仅是游戏，陪玩可以走进生活，也能改变生活",
   "login.tip": "登录仅在 HTTPS 或 localhost 下可用，请切换到安全域名再登录。",
   "login.passkey": "没账号？一键注册/登录",
-  "login.enter": "已完成验证？进入主页",
   "login.need": "请先完成登录",
   "passkey.login": "一键登录",
   "passkey.register": "一键注册并登录",

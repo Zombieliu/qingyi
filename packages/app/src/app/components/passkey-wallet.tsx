@@ -23,6 +23,7 @@ const fromBase64 = (b64: string) =>
 
 export default function PasskeyWallet() {
   const [wallet, setWallet] = useState<StoredWallet | null>(null);
+  const [hasCredential, setHasCredential] = useState(false);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -56,6 +57,23 @@ export default function PasskeyWallet() {
     }
   }, []);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const controller = new AbortController();
+    const check = async () => {
+      try {
+        if (!window.PublicKeyCredential?.isConditionalMediationAvailable) return;
+        const available = await window.PublicKeyCredential.isConditionalMediationAvailable();
+        if (controller.signal.aborted) return;
+        setHasCredential(Boolean(available));
+      } catch {
+        // ignore detection errors
+      }
+    };
+    check();
+    return () => controller.abort();
+  }, []);
+
   const persist = (stored: StoredWallet, toast: string) => {
     localStorage.setItem(PASSKEY_STORAGE_KEY, JSON.stringify(stored));
     setWallet(stored);
@@ -66,6 +84,10 @@ export default function PasskeyWallet() {
 
   const create = async () => {
     if (typeof window === "undefined") return;
+    if (hasCredential) {
+      setError("已检测到已有账号，请使用「找回已有账号」");
+      return;
+    }
     try {
       setBusy(true);
       setMsg(null);
@@ -156,11 +178,11 @@ export default function PasskeyWallet() {
       ) : (
         <button
           onClick={create}
-          disabled={busy}
+          disabled={busy || hasCredential}
           className="lc-tab-btn"
           style={{ marginTop: 8, padding: "10px 12px" }}
         >
-          {busy ? "创建中..." : "创建账号"}
+          {busy ? "创建中..." : hasCredential ? "已有账号" : "创建账号"}
         </button>
       )}
       {!wallet && (
