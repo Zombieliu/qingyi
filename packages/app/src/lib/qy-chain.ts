@@ -314,13 +314,15 @@ async function executeSponsoredTransaction(tx: Transaction) {
     throw new Error("赞助交易返回无效");
   }
   const userSignature = await signer.signTransaction(fromBase64(txBytes));
+  const signature =
+    typeof userSignature.signature === "string" ? userSignature.signature : toBase64(userSignature.signature);
   const execRes = await fetch("/api/chain/sponsor", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       step: "execute",
       txBytes,
-      userSignature: userSignature.signature,
+      userSignature: signature,
     }),
   });
   const execData = await execRes.json().catch(() => ({}));
