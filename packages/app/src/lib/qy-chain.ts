@@ -42,10 +42,14 @@ export type ChainOrder = {
 const RP_NAME = "情谊电竞";
 const CHAIN_ORDERS_FLAG = process.env.NEXT_PUBLIC_CHAIN_ORDERS === "1";
 const VISUAL_TEST_FLAG = process.env.NEXT_PUBLIC_VISUAL_TEST === "1";
-const EVENT_LIMIT = Number(process.env.NEXT_PUBLIC_QY_EVENT_LIMIT || "1000");
+const EVENT_LIMIT = Number(process.env.NEXT_PUBLIC_QY_EVENT_LIMIT || "200");
+const EVENT_MIN_INTERVAL_MS = Number(process.env.NEXT_PUBLIC_QY_EVENT_MIN_INTERVAL_MS || "60000");
 const CHAIN_SPONSOR_MODE = (process.env.NEXT_PUBLIC_CHAIN_SPONSOR || "auto").toLowerCase();
 
 let cachedDubhePackageId: string | null = null;
+let cachedOrders: ChainOrder[] | null = null;
+let lastFetchMs = 0;
+let inFlightFetch: Promise<ChainOrder[]> | null = null;
 
 export function isVisualTestMode(): boolean {
   if (VISUAL_TEST_FLAG) return true;
@@ -540,67 +544,85 @@ export async function fetchChainOrders(): Promise<ChainOrder[]> {
   if (isVisualTestMode()) {
     return [];
   }
-  ensurePackageId();
-  const dappHubId = String(DAPP_HUB_ID || "");
-  if (!dappHubId || dappHubId === "0x0") {
-    throw new Error("合约未部署：缺少 DAPP_HUB_ID");
+  const now = Date.now();
+  if (cachedOrders && now - lastFetchMs < EVENT_MIN_INTERVAL_MS) {
+    return cachedOrders;
   }
-  const client = new SuiClient({ url: getRpcUrl() });
-  const dubhePackageId = await getDubhePackageId(client);
-  const eventType = `${dubhePackageId}::dubhe_events::Dubhe_Store_SetRecord`;
-  const targetKey = normalizeDappKey(`${strip0x(PACKAGE_ID)}::dapp_key::DappKey`);
-  const orders = new Map<string, ChainOrder>();
+  if (inFlightFetch) {
+    return inFlightFetch;
+  }
+  inFlightFetch = (async () => {
+    ensurePackageId();
+    const dappHubId = String(DAPP_HUB_ID || "");
+    if (!dappHubId || dappHubId === "0x0") {
+      throw new Error("合约未部署：缺少 DAPP_HUB_ID");
+    }
+    const client = new SuiClient({ url: getRpcUrl() });
+    const dubhePackageId = await getDubhePackageId(client);
+    const eventType = `${dubhePackageId}::dubhe_events::Dubhe_Store_SetRecord`;
+    const targetKey = normalizeDappKey(`${strip0x(PACKAGE_ID)}::dapp_key::DappKey`);
+    const orders = new Map<string, ChainOrder>();
 
-  let cursor: EventId | null = null;
-  let remaining = Number.isFinite(EVENT_LIMIT) ? EVENT_LIMIT : 200;
-  while (remaining > 0) {
-    let page: Awaited<ReturnType<typeof client.queryEvents>>;
-    let attempt = 0;
-    while (true) {
-      try {
-        page = await client.queryEvents({
-          query: { MoveEventType: eventType },
-          limit: Math.min(50, remaining),
-          order: "descending",
-          cursor,
-        });
-        break;
-      } catch (error) {
-        const message = (error as Error).message || "";
-        if (
-          message.includes("429") ||
-          message.toLowerCase().includes("too many requests") ||
-          message.toLowerCase().includes("timeout") ||
-          message.toLowerCase().includes("fetch failed") ||
-          message.toLowerCase().includes("socket")
-        ) {
-          attempt += 1;
-          if (attempt > 5) throw error;
-          await new Promise((resolve) => setTimeout(resolve, 800 * attempt));
-          continue;
+    let cursor: EventId | null = null;
+    let remaining = Number.isFinite(EVENT_LIMIT) ? EVENT_LIMIT : 200;
+    while (remaining > 0) {
+      let page: Awaited<ReturnType<typeof client.queryEvents>>;
+      let attempt = 0;
+      while (true) {
+        try {
+          page = await client.queryEvents({
+            query: { MoveEventType: eventType },
+            limit: Math.min(50, remaining),
+            order: "descending",
+            cursor,
+          });
+          break;
+        } catch (error) {
+          const message = (error as Error).message || "";
+          if (
+            message.includes("429") ||
+            message.toLowerCase().includes("too many requests") ||
+            message.toLowerCase().includes("timeout") ||
+            message.toLowerCase().includes("fetch failed") ||
+            message.toLowerCase().includes("socket")
+          ) {
+            attempt += 1;
+            if (attempt > 5) throw error;
+            await new Promise((resolve) => setTimeout(resolve, 800 * attempt));
+            continue;
+          }
+          throw error;
         }
-        throw error;
       }
+      for (const event of page.data) {
+        const parsed = event.parsedJson as {
+          dapp_key?: string;
+          table_id?: string;
+          key_tuple?: number[][];
+          value_tuple?: number[][];
+        } | null;
+        if (!parsed || parsed.table_id !== "order") continue;
+        const dappKey = normalizeDappKey(parsed.dapp_key || "");
+        if (dappKey !== targetKey) continue;
+        const order = decodeOrderFromTuple(parsed.key_tuple || [], parsed.value_tuple || []);
+        if (!order || orders.has(order.orderId)) continue;
+        order.lastUpdatedMs = Number(event.timestampMs || 0);
+        orders.set(order.orderId, order);
+      }
+      remaining -= page.data.length;
+      if (!page.hasNextPage) break;
+      cursor = page.nextCursor ?? null;
     }
-    for (const event of page.data) {
-      const parsed = event.parsedJson as {
-        dapp_key?: string;
-        table_id?: string;
-        key_tuple?: number[][];
-        value_tuple?: number[][];
-      } | null;
-      if (!parsed || parsed.table_id !== "order") continue;
-      const dappKey = normalizeDappKey(parsed.dapp_key || "");
-      if (dappKey !== targetKey) continue;
-      const order = decodeOrderFromTuple(parsed.key_tuple || [], parsed.value_tuple || []);
-      if (!order || orders.has(order.orderId)) continue;
-      order.lastUpdatedMs = Number(event.timestampMs || 0);
-      orders.set(order.orderId, order);
-    }
-    remaining -= page.data.length;
-    if (!page.hasNextPage) break;
-    cursor = page.nextCursor ?? null;
-  }
 
-  return Array.from(orders.values()).sort((a, b) => Number(b.createdAt) - Number(a.createdAt));
+    const result = Array.from(orders.values()).sort((a, b) => Number(b.createdAt) - Number(a.createdAt));
+    cachedOrders = result;
+    lastFetchMs = Date.now();
+    return result;
+  })();
+
+  try {
+    return await inFlightFetch;
+  } finally {
+    inFlightFetch = null;
+  }
 }
