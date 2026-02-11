@@ -208,6 +208,124 @@ export async function fetchChainOrdersAdmin(): Promise<ChainOrder[]> {
   return Array.from(orders.values()).sort((a, b) => Number(b.createdAt) - Number(a.createdAt));
 }
 
+type ParsedEvent = {
+  type?: string;
+  parsedJson?: Record<string, unknown>;
+};
+
+function readStringField(obj: Record<string, unknown> | undefined, key: string, fallback = "0") {
+  if (!obj) return fallback;
+  const value = obj[key];
+  if (value === null || value === undefined) return fallback;
+  return String(value);
+}
+
+function readAddressField(obj: Record<string, unknown> | undefined, key: string) {
+  const raw = readStringField(obj, key, "0x0");
+  return normalizeSuiAddress(raw);
+}
+
+function readHexField(obj: Record<string, unknown> | undefined, key: string) {
+  const raw = obj?.[key];
+  if (typeof raw === "string") return raw;
+  if (Array.isArray(raw)) {
+    const bytes = raw.map((value) => Number(value));
+    if (bytes.every((value) => Number.isFinite(value))) {
+      return `0x${toHex(Uint8Array.from(bytes))}`;
+    }
+  }
+  return "0x";
+}
+
+export async function findChainOrderFromDigest(digest: string): Promise<ChainOrder | null> {
+  const { pkg } = ensureChainEnv();
+  if (!digest) return null;
+  const client = new SuiClient({ url: getRpcUrl() });
+  const tx = await retryRpc(() =>
+    client.getTransactionBlock({
+      digest,
+      options: { showEvents: true },
+    })
+  );
+  const events = (tx.events || []) as ParsedEvent[];
+  if (!events.length) return null;
+  const prefix = `${pkg}::events::`;
+  const createdEvent = events.find((event) => event.type === `${prefix}OrderCreated`);
+  if (!createdEvent?.parsedJson) return null;
+  const created = createdEvent.parsedJson;
+  const orderId = readStringField(created, "order_id", "");
+  if (!orderId) return null;
+  const serviceFee = readStringField(created, "service_fee", "0");
+  const deposit = readStringField(created, "deposit", "0");
+  const chain: ChainOrder = {
+    orderId,
+    user: readAddressField(created, "user"),
+    companion: readAddressField(created, "companion"),
+    ruleSetId: readStringField(created, "rule_set_id", "0"),
+    serviceFee,
+    deposit,
+    platformFeeBps: "0",
+    status: 0,
+    createdAt: String(tx.timestampMs || Date.now()),
+    finishAt: "0",
+    disputeDeadline: "0",
+    vaultService: "0",
+    vaultDeposit: "0",
+    evidenceHash: "0x",
+    disputeStatus: 0,
+    resolvedBy: "0x0",
+    resolvedAt: "0",
+  };
+
+  const getEvent = (name: string) =>
+    events.find((event) => event.type === `${prefix}${name}`)?.parsedJson as
+      | Record<string, unknown>
+      | undefined;
+  const paid = getEvent("OrderPaid");
+  const depositLocked = getEvent("DepositLocked");
+  const completed = getEvent("OrderCompleted");
+  const disputed = getEvent("OrderDisputed");
+  const resolved = getEvent("OrderResolved");
+  const finalized = getEvent("OrderFinalized");
+
+  if (paid) {
+    chain.status = 1;
+    chain.vaultService = serviceFee;
+  }
+  if (depositLocked) {
+    chain.status = 2;
+    chain.vaultService = serviceFee;
+    chain.vaultDeposit = deposit;
+  }
+  if (completed) {
+    chain.status = 3;
+    chain.finishAt = readStringField(completed, "finish_at", "0");
+    chain.disputeDeadline = readStringField(completed, "dispute_deadline", "0");
+    chain.vaultService = serviceFee;
+    chain.vaultDeposit = depositLocked ? deposit : "0";
+  }
+  if (disputed) {
+    chain.status = 4;
+    chain.disputeStatus = 1;
+    chain.evidenceHash = readHexField(disputed, "evidence_hash");
+  }
+  if (resolved) {
+    chain.status = 5;
+    chain.disputeStatus = 2;
+    chain.resolvedBy = readAddressField(resolved, "resolved_by");
+    chain.resolvedAt = String(tx.timestampMs || 0);
+    chain.vaultService = "0";
+    chain.vaultDeposit = "0";
+  }
+  if (finalized) {
+    chain.status = 5;
+    chain.vaultService = "0";
+    chain.vaultDeposit = "0";
+  }
+
+  return chain;
+}
+
 export async function resolveDisputeAdmin(params: {
   orderId: string;
   serviceRefundBps: number;

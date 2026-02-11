@@ -31,6 +31,10 @@ export default function ChainPage() {
   const [cleanupMissing, setCleanupMissing] = useState(false);
   const [cleanupResult, setCleanupResult] = useState<string | null>(null);
   const [bps, setBps] = useState<Record<string, { service: string; deposit: string }>>({});
+  const [manualOrderId, setManualOrderId] = useState("");
+  const [manualDigest, setManualDigest] = useState("");
+  const [manualSyncing, setManualSyncing] = useState(false);
+  const [manualSyncResult, setManualSyncResult] = useState<string | null>(null);
   const cacheTtlMs = 60_000;
 
   const loadData = async () => {
@@ -190,6 +194,38 @@ export default function ChainPage() {
     }
   };
 
+  const runManualSync = async () => {
+    const orderId = manualOrderId.trim();
+    const digest = manualDigest.trim();
+    if (!orderId || !digest) {
+      setManualSyncResult("请填写订单号和交易 digest");
+      return;
+    }
+    setManualSyncing(true);
+    setManualSyncResult(null);
+    try {
+      const res = await fetch(
+        `/api/orders/${orderId}/chain-sync?force=1&maxWaitMs=15000&digest=${encodeURIComponent(digest)}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({}),
+        }
+      );
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setManualSyncResult(data?.message || data?.error || "补单失败");
+        return;
+      }
+      setManualSyncResult(`已补单：订单 #${data?.order?.id || orderId}`);
+      setManualOrderId("");
+      setManualDigest("");
+      await loadData();
+    } finally {
+      setManualSyncing(false);
+    }
+  };
+
   const cleanupMissingChain = async () => {
     if (missingChain.length === 0) return;
     if (
@@ -233,6 +269,25 @@ export default function ChainPage() {
             </p>
           </div>
           <div className="admin-card-actions">
+            <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+              <input
+                className="admin-input"
+                style={{ width: 140 }}
+                placeholder="订单号"
+                value={manualOrderId}
+                onChange={(event) => setManualOrderId(event.target.value)}
+              />
+              <input
+                className="admin-input"
+                style={{ width: 220 }}
+                placeholder="交易 digest"
+                value={manualDigest}
+                onChange={(event) => setManualDigest(event.target.value)}
+              />
+              <button className="admin-btn ghost" onClick={runManualSync} disabled={manualSyncing}>
+                {manualSyncing ? "补单中..." : "按 digest 补单"}
+              </button>
+            </div>
             <button
               className="admin-btn ghost"
               onClick={runAutoCancel}
@@ -246,6 +301,11 @@ export default function ChainPage() {
             </button>
           </div>
         </div>
+        {manualSyncResult ? (
+          <div className="admin-badge" style={{ marginTop: 12 }}>
+            {manualSyncResult}
+          </div>
+        ) : null}
         {autoCancelResult ? (
           <div className="admin-badge" style={{ marginTop: 12 }}>
             {autoCancelResult}

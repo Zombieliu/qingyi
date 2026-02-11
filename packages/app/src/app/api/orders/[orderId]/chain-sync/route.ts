@@ -1,6 +1,13 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin-auth";
-import { findChainOrder, findChainOrderDirect, upsertChainOrder, getChainOrderCacheStats, clearChainOrderCache } from "@/lib/chain-sync";
+import {
+  findChainOrder,
+  findChainOrderDirect,
+  findChainOrderFromDigest,
+  upsertChainOrder,
+  getChainOrderCacheStats,
+  clearChainOrderCache,
+} from "@/lib/chain-sync";
 import { isValidSuiAddress, normalizeSuiAddress } from "@mysten/sui/utils";
 import { requireUserAuth } from "@/lib/user-auth";
 import { getOrderById } from "@/lib/admin-store";
@@ -25,11 +32,23 @@ export async function POST(req: Request, { params }: RouteContext) {
     return NextResponse.json({ error: "orderId required" }, { status: 400 });
   }
 
+  let rawBody = "";
+  let body: { userAddress?: string; digest?: string } = {};
+  try {
+    rawBody = await req.text();
+    body = rawBody ? (JSON.parse(rawBody) as { userAddress?: string; digest?: string }) : {};
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+  }
+
   const admin = await requireAdmin(req, { role: "viewer", requireOrigin: false, allowToken: true });
   const url = new URL(req.url);
   const force =
     url.searchParams.get("force") === "1" || url.searchParams.get("force") === "true";
   const maxWaitMs = Number(url.searchParams.get("maxWaitMs") || "3000");
+  const digestFromQuery = url.searchParams.get("digest")?.trim();
+  const digestFromBody = typeof body.digest === "string" ? body.digest.trim() : "";
+  const digest = digestFromQuery || digestFromBody;
 
   // 智能重试查找链上订单
   // 应对场景：订单刚创建，Dubhe 索引器还未完成索引
@@ -52,6 +71,14 @@ export async function POST(req: Request, { params }: RouteContext) {
     if (!chain && force) {
       // 最后尝试：绕过缓存直接从链上拉取
       chain = await findChainOrderDirect(orderId);
+    }
+
+    if (!chain && digest) {
+      // 兜底：直接从交易 digest 解析事件
+      const byDigest = await findChainOrderFromDigest(digest);
+      if (byDigest && byDigest.orderId === orderId) {
+        chain = byDigest;
+      }
     }
 
     if (!chain) {
@@ -95,15 +122,6 @@ export async function POST(req: Request, { params }: RouteContext) {
   }
 
   if (!admin.ok) {
-    let rawBody = "";
-    let body: { userAddress?: string } = {};
-    try {
-      rawBody = await req.text();
-      body = rawBody ? (JSON.parse(rawBody) as { userAddress?: string }) : {};
-    } catch {
-      return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-    }
-
     const userAddressRaw = typeof body.userAddress === "string" ? body.userAddress : "";
     if (!userAddressRaw) {
       return NextResponse.json({ error: "userAddress required" }, { status: 401 });

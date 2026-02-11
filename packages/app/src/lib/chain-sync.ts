@@ -171,3 +171,4 @@ export function getChainOrderCacheStats() {
  * 导出缓存查询函数供其他模块使用
  */
 export { fetchChainOrdersCached } from "./chain-order-cache";
+export { findChainOrderFromDigest } from "./chain-admin";

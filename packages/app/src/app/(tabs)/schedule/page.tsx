@@ -1000,7 +1000,7 @@ export default function Schedule() {
               await fetch(`/api/orders/${chainOrderId}/chain-sync?force=1&maxWaitMs=15000`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ userAddress: address }),
+                body: JSON.stringify({ userAddress: address, digest: chainDigest }),
               });
               break;
             } catch {
