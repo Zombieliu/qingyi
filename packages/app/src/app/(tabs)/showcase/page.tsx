@@ -161,13 +161,7 @@ export default function Showcase() {
   useEffect(() => {
     if (!isChainOrdersEnabled()) return;
     loadChain();
-    const timer = window.setInterval(() => {
-      if (!chainLoading) {
-        loadChain();
-      }
-    }, 60_000);
-    return () => window.clearInterval(timer);
-  }, [chainLoading, loadChain]);
+  }, [loadChain]);
 
   const openConfirm = (payload: {
     title: string;

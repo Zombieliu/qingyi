@@ -348,13 +348,7 @@ export default function Schedule() {
   useEffect(() => {
     if (!isChainOrdersEnabled()) return;
     loadChain();
-    const timer = window.setInterval(() => {
-      if (!chainLoading) {
-        loadChain();
-      }
-    }, 30_000);
-    return () => window.clearInterval(timer);
-  }, [chainLoading, loadChain]);
+  }, [loadChain]);
 
   const loadPlayers = async () => {
     setPlayersLoading(true);
