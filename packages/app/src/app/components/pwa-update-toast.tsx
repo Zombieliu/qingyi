@@ -26,9 +26,21 @@ export default function PwaUpdateToast() {
     };
   }, []);
 
-  const activate = () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (window as any).serwist?.messageSkipWaiting?.();
+  const activate = async () => {
+    if (typeof window === "undefined" || !("serviceWorker" in navigator)) return;
+    try {
+      const reg = await navigator.serviceWorker.getRegistration();
+      if (reg?.waiting) {
+        reg.waiting.postMessage({ type: "SKIP_WAITING" });
+      } else {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (window as any).serwist?.messageSkipWaiting?.();
+        await reg?.update();
+      }
+      setTimeout(() => window.location.reload(), 600);
+    } catch {
+      setTimeout(() => window.location.reload(), 600);
+    }
   };
 
   if (!ready) return null;
