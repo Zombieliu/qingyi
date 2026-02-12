@@ -159,6 +159,11 @@ export default function Showcase() {
     }
   }, []);
 
+  const refreshAll = useCallback(async () => {
+    await Promise.all([refreshOrders(true), refreshMyOrders(true)]);
+    await loadChain();
+  }, [loadChain, refreshMyOrders]);
+
   useEffect(() => {
     if (!isChainOrdersEnabled()) return;
     loadChain();
@@ -609,7 +614,7 @@ export default function Showcase() {
           {isChainOrdersEnabled() && (
             <button
               className="dl-icon-circle"
-              onClick={loadChain}
+              onClick={refreshAll}
               aria-label="刷新订单"
               disabled={chainLoading}
               title={chainLoading ? "刷新中..." : "刷新订单"}
@@ -617,6 +622,15 @@ export default function Showcase() {
               <span style={{ fontSize: 12 }}>链</span>
             </button>
           )}
+          <button
+            className="dl-icon-circle"
+            onClick={() => refreshOrders(true)}
+            aria-label="刷新公开订单"
+            disabled={publicLoading}
+            title={publicLoading ? "刷新中..." : "刷新公开订单"}
+          >
+            <span style={{ fontSize: 12 }}>公</span>
+          </button>
           <button className="dl-icon-circle" onClick={clearAll} aria-label="清空订单">
             <span style={{ fontSize: 12 }}>清</span>
           </button>
@@ -639,7 +653,7 @@ export default function Showcase() {
               description={chainLoading ? "索引刷新中，请稍等片刻" : chainError || "点击刷新获取最新订单"}
               actions={
                 chainLoading ? null : (
-                  <button className="dl-tab-btn" onClick={loadChain} disabled={chainLoading}>
+                  <button className="dl-tab-btn" onClick={refreshAll} disabled={chainLoading}>
                     刷新订单
                   </button>
                 )
