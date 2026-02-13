@@ -24,8 +24,10 @@ sui move build
 
 ## Init
 
-- 部署 Dubhe + qy 后，调用 `qy::genesis::init_dapp` 初始化表。
-- 需要传入 Dubhe `DappHub` 共享对象与 `Clock`。
+- 部署 Dubhe + qy 后，调用 `qy::genesis::run` 初始化表（传入 Dubhe `DappHub` 共享对象与 `Clock`）。
+- 推荐脚本（仓库根目录执行）：
+  - `pnpm chain:init-dapp`
+  - `pnpm chain:init-ruleset`
 
 ## Notes
 

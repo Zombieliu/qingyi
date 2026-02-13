@@ -63,8 +63,9 @@ deps = { Dubhe = "Dubhe", Sui = "Sui" }
 
 
 
+
 [env.testnet]
 chain-id = "4c78adac"
-original-published-id = "0x566f2d639a29ac29c64fb5bb1a87415ec5ae45fcbcb5d9066539bff5801fd934"
-latest-published-id = "0x566f2d639a29ac29c64fb5bb1a87415ec5ae45fcbcb5d9066539bff5801fd934"
+original-published-id = "0x656852b28b4e7a4b3e0c2d1aa33c74142da0620b375de5d2474fb5c4d1d6a148"
+latest-published-id = "0x656852b28b4e7a4b3e0c2d1aa33c74142da0620b375de5d2474fb5c4d1d6a148"
 published-version = "1"

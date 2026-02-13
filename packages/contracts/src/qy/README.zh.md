@@ -11,6 +11,14 @@
 - `genesis`：初始化表
 - `events`：订单/结算事件
 
+## 部署/初始化
+
+- 发布合约后先执行 `qy::genesis::run`（参数：`DappHub` 共享对象 + `Clock`）。
+- 再创建规则集：`qy::ruleset_system::create_ruleset`。
+- 推荐脚本（仓库根目录执行）：
+  - `pnpm chain:init-dapp`
+  - `pnpm chain:init-ruleset`
+
 ## 状态机
 
 ```
@@ -119,5 +127,6 @@ tx.moveCall({
 ## 注意事项
 
 - 本版本为“记账型”合约，**清算不可逆**；争议必须在 `dispute_window_ms` 内提出。
+- 争议期内仅用户可调用 `finalize_no_dispute` 作为放弃争议结算；争议期结束后可直接结算。
 - `resolve_dispute` 仅管理员可调用。
 - 生产环境建议优先使用 `credit_balance_with_receipt`，避免重复记账。

@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import { type LocalOrder } from "@/app/components/order-store";
 import { deleteOrder, fetchOrderDetail, fetchOrders, fetchPublicOrders, patchOrder, syncChainOrder } from "@/app/components/order-service";
-import { Activity, Clock3, Car, MapPin } from "lucide-react";
+import { Activity, Clock3, Car, MapPin, Loader2 } from "lucide-react";
 import {
   type ChainOrder,
   claimOrderOnChain,
@@ -88,6 +88,18 @@ export default function Showcase() {
     }
     return map;
   }, [orders, myOrders]);
+  const localDisputeDeadlineById = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const order of [...orders, ...myOrders]) {
+      const meta = (order.meta || {}) as { chain?: { disputeDeadline?: number | string } };
+      const raw = meta.chain?.disputeDeadline;
+      const deadline = typeof raw === "string" ? Number(raw) : Number(raw ?? 0);
+      if (!Number.isFinite(deadline) || deadline <= 0) continue;
+      const prev = map.get(order.id);
+      map.set(order.id, typeof prev === "number" ? Math.max(prev, deadline) : deadline);
+    }
+    return map;
+  }, [orders, myOrders]);
   const resolveChainStatus = useCallback(
     (order: ChainOrder) => {
       const local = localChainStatusById.get(order.orderId);
@@ -95,6 +107,19 @@ export default function Showcase() {
       return typeof merged === "number" ? merged : order.status;
     },
     [localChainStatusById]
+  );
+  const resolveDisputeDeadline = useCallback(
+    (order: ChainOrder) => {
+      const local = localDisputeDeadlineById.get(order.orderId);
+      const remote = Number(order.disputeDeadline);
+      if (Number.isFinite(local) && local > 0 && Number.isFinite(remote) && remote > 0) {
+        return Math.max(local, remote);
+      }
+      if (Number.isFinite(local) && local > 0) return local;
+      if (Number.isFinite(remote) && remote > 0) return remote;
+      return 0;
+    },
+    [localDisputeDeadlineById]
   );
 
   type GameProfile = {
@@ -238,6 +263,9 @@ export default function Showcase() {
     setConfirmBusy(true);
     try {
       await confirmAction.action();
+    } catch (error) {
+      setChainToast(formatErrorMessage(error, "操作失败"));
+      setTimeout(() => setChainToast(null), 3000);
     } finally {
       setConfirmBusy(false);
       setConfirmAction(null);
@@ -535,6 +563,7 @@ export default function Showcase() {
     () => chainOrders.find((o) => o.orderId === disputeOrderId) || null,
     [chainOrders, disputeOrderId]
   );
+  const disputeDeadline = disputeOrder ? resolveDisputeDeadline(disputeOrder) : 0;
 
   const hydrateOrderMeta = useCallback(
     async (orderId: string, options: { toastOnError?: boolean } = {}) => {
@@ -618,6 +647,15 @@ export default function Showcase() {
     if (!digest) return "";
     if (digest.length <= 12) return digest;
     return `${digest.slice(0, 6)}...${digest.slice(-4)}`;
+  };
+  const renderActionLabel = (key: string, label: string) => {
+    if (chainAction !== key) return label;
+    return (
+      <span className="inline-flex items-center gap-1">
+        <Loader2 className="h-3.5 w-3.5 spin" />
+        处理中
+      </span>
+    );
   };
 
   const runChainAction = async (
@@ -717,7 +755,7 @@ export default function Showcase() {
               disabled={chainLoading}
               title={chainLoading ? "刷新中..." : "刷新订单"}
             >
-              <span style={{ fontSize: 12 }}>链</span>
+              {chainLoading ? <Loader2 className="h-4 w-4 spin" /> : <span style={{ fontSize: 12 }}>链</span>}
             </button>
           )}
           <button
@@ -727,7 +765,7 @@ export default function Showcase() {
             disabled={publicLoading}
             title={publicLoading ? "刷新中..." : "刷新公开订单"}
           >
-            <span style={{ fontSize: 12 }}>公</span>
+            {publicLoading ? <Loader2 className="h-4 w-4 spin" /> : <span style={{ fontSize: 12 }}>公</span>}
           </button>
           <button className="dl-icon-circle" onClick={clearAll} aria-label="清空订单">
             <span style={{ fontSize: 12 }}>清</span>
@@ -738,7 +776,7 @@ export default function Showcase() {
       {isChainOrdersEnabled() && (
         <div className="space-y-3 mb-6">
           <div className="dl-card text-xs text-gray-500">
-            <div>公开链上订单（{chainAddress ? "已登录" : "未登录"}）</div>
+            <div>未接单的公开链单（{chainAddress ? "已登录" : "未登录"}）</div>
             <div className="mt-1">上次刷新：{chainUpdatedAt ? new Date(chainUpdatedAt).toLocaleTimeString() : "-"}</div>
             {chainLoading && <div className="mt-1 text-amber-600">加载中…</div>}
             {chainError && <div className="mt-1 text-rose-500">{chainError}</div>}
@@ -768,10 +806,12 @@ export default function Showcase() {
                 const isUser = chainAddress && o.user === chainAddress;
                 const isCompanion = chainAddress && o.companion === chainAddress;
                 const now = Date.now();
-                const deadline = Number(o.disputeDeadline);
+                const deadline = resolveDisputeDeadline(o);
                 const effectiveStatus = resolveChainStatus(o);
-                const canFinalize = effectiveStatus === 3 && Number.isFinite(deadline) && now > deadline;
-                const canDispute = effectiveStatus === 3 && Number.isFinite(deadline) && now <= deadline;
+                const hasDeadline = Number.isFinite(deadline) && deadline > 0;
+                const inDisputeWindow = hasDeadline && now <= deadline;
+                const canDispute = effectiveStatus === 3 && inDisputeWindow;
+                const canFinalize = effectiveStatus === 3 && (isUser ? true : hasDeadline && !inDisputeWindow);
                 const meta = orderMetaById.get(o.orderId) || null;
                 const gameProfile = (meta?.gameProfile || null) as { gameName?: string; gameId?: string } | null;
                 const companionEndedAt = (meta as { companionEndedAt?: number | string } | null)?.companionEndedAt;
@@ -838,11 +878,11 @@ export default function Showcase() {
                       状态：{statusLabel(effectiveStatus)} · 押金 ¥{formatAmount(o.deposit)}
                     </div>
                     <div className="mt-2 text-xs text-gray-500">
-                      创建时间：{formatTime(o.createdAt)} · 争议截止：{formatTime(o.disputeDeadline)}
+                      创建时间：{formatTime(o.createdAt)} · 争议截止：{formatTime(String(deadline || 0))}
                     </div>
                     {effectiveStatus === 3 && (
                       <div className="mt-1 text-xs text-amber-700">
-                        争议剩余：{formatRemaining(o.disputeDeadline)}
+                        争议剩余：{formatRemaining(String(deadline || 0))}
                       </div>
                     )}
                     <div className="mt-3 flex gap-2 flex-wrap">
@@ -860,7 +900,7 @@ export default function Showcase() {
                             )
                           }
                         >
-                          支付撮合费
+                          {renderActionLabel(`pay-${o.orderId}`, "支付撮合费")}
                         </button>
                       )}
                       {isUser && (effectiveStatus === 0 || effectiveStatus === 1) && (
@@ -877,7 +917,7 @@ export default function Showcase() {
                             )
                           }
                         >
-                          取消订单
+                          {renderActionLabel(`cancel-${o.orderId}`, "取消订单")}
                         </button>
                       )}
                       {isCompanion && effectiveStatus === 1 && (
@@ -958,7 +998,7 @@ export default function Showcase() {
                             });
                           }}
                         >
-                          付押金接单
+                          {renderActionLabel(`deposit-${o.orderId}`, "付押金接单")}
                         </button>
                       )}
                       {isCompanion && effectiveStatus === 2 && (
@@ -980,7 +1020,7 @@ export default function Showcase() {
                             confirmMarkCompleted(o.orderId);
                           }}
                         >
-                          确认完成
+                          {renderActionLabel(`complete-${o.orderId}`, "确认完成")}
                         </button>
                       )}
                       {(isUser || isCompanion) && canDispute && (
@@ -990,7 +1030,7 @@ export default function Showcase() {
                           disabled={chainAction === `dispute-${o.orderId}`}
                           onClick={() => setDisputeOpen({ orderId: o.orderId, evidence: "" })}
                         >
-                          发起争议
+                          {renderActionLabel(`dispute-${o.orderId}`, "发起争议")}
                         </button>
                       )}
                       {(isUser || isCompanion) && canFinalize && (
@@ -998,16 +1038,25 @@ export default function Showcase() {
                           className="dl-tab-btn"
                           style={{ padding: "8px 10px" }}
                           disabled={chainAction === `finalize-${o.orderId}`}
-                          onClick={() =>
+                          onClick={() => {
+                            if (isUser && inDisputeWindow) {
+                              const deadlineText = hasDeadline ? new Date(deadline).toLocaleString() : "";
+                              const ok = window.confirm(
+                                deadlineText
+                                  ? `确认放弃争议期并立即结算？争议截止：${deadlineText}`
+                                  : "确认放弃争议期并立即结算？"
+                              );
+                              if (!ok) return;
+                            }
                             runChainAction(
                               `finalize-${o.orderId}`,
                               () => finalizeNoDisputeOnChain(o.orderId),
                               "订单已结算",
                               o.orderId
-                            )
-                          }
+                            );
+                          }}
                         >
-                          无争议结算
+                          {renderActionLabel(`finalize-${o.orderId}`, "无争议结算")}
                         </button>
                       )}
                     </div>
@@ -1221,7 +1270,7 @@ export default function Showcase() {
               />
               {disputeOrder?.disputeDeadline ? (
                 <div className="text-xs text-gray-500 mt-2">
-                  争议截止：{formatTime(disputeOrder.disputeDeadline)}（剩余 {formatRemaining(disputeOrder.disputeDeadline)}）
+                  争议截止：{formatTime(String(disputeDeadline || 0))}（剩余 {formatRemaining(String(disputeDeadline || 0))}）
                 </div>
               ) : null}
             </div>
@@ -1296,7 +1345,14 @@ export default function Showcase() {
                 onClick={runConfirmAction}
                 disabled={confirmBusy}
               >
-                {confirmBusy ? "处理中..." : confirmAction.confirmLabel}
+                {confirmBusy ? (
+                  <span className="inline-flex items-center gap-1">
+                    <Loader2 className="h-3.5 w-3.5 spin" />
+                    处理中
+                  </span>
+                ) : (
+                  confirmAction.confirmLabel
+                )}
               </button>
             </div>
           </div>

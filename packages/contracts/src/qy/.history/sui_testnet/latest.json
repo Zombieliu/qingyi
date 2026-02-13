@@ -1,10 +1,10 @@
 {
   "projectName": "qy",
   "network": "testnet",
-  "startCheckpoint": "296179315",
-  "packageId": "0x566f2d639a29ac29c64fb5bb1a87415ec5ae45fcbcb5d9066539bff5801fd934",
+  "startCheckpoint": "296979197",
+  "packageId": "0x656852b28b4e7a4b3e0c2d1aa33c74142da0620b375de5d2474fb5c4d1d6a148",
   "dappHub": "0xfef203de9d3a2980429e91df535a0503ccf8d3c05aa3815936984243dc96f19f",
-  "upgradeCap": "0xabb8d68f2be23786f0666ecd6767cb839f32434824af595c769bd00d11efe211",
+  "upgradeCap": "0xc646bc4b553a72299ed52d0bef37efc86e4defb8a74fd81ca9c68ec832f9803d",
   "version": 1,
   "components": {},
   "resources": {

@@ -23,6 +23,8 @@
     "test:admin:e2e": "PW_PROFILE=admin playwright test --config playwright.config.ts",
     "test:admin:full": "PW_PROFILE=admin E2E_MANTOU_WITHDRAW=1 playwright test --config playwright.config.ts",
     "test:flow": "node scripts/flow-test.mjs",
+    "chain:init-dapp": "node scripts/chain-init-dapp.mjs",
+    "chain:init-ruleset": "node scripts/chain-init-ruleset.mjs",
     "db:push": "npm run db:push --workspace app",
     "db:seed": "npm run db:seed --workspace app",
     "db:deploy": "npm run db:deploy --workspace app",

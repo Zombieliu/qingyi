@@ -1,19 +1,20 @@
 # 情谊电竞链上落地状态（testnet）
 
-更新时间：2026-02-11
+更新时间：2026-02-13
 
 ## 1) 合约部署状态
 - 已发布 qy 包（testnet）  
-  - PACKAGE_ID: 0x566f2d639a29ac29c64fb5bb1a87415ec5ae45fcbcb5d9066539bff5801fd934
-  - UpgradeCap: 0xabb8d68f2be23786f0666ecd6767cb839f32434824af595c769bd00d11efe211
-  - Publish Tx: B21hLoYvQsvdFjFbQcHuwdu7P6QmUDuLytinXEkeAoQy
-  - Deploy Hook Tx: EFQqRPW8FCGt8xmy3LysJyfXbL2sMS3gtaR5CQW1n7FD
+  - PACKAGE_ID: 0x656852b28b4e7a4b3e0c2d1aa33c74142da0620b375de5d2474fb5c4d1d6a148
+  - UpgradeCap: 0xc646bc4b553a72299ed52d0bef37efc86e4defb8a74fd81ca9c68ec832f9803d
+  - Publish Tx: AyTiqgpKFKxaLq2n88ymNwBW5CZnuXHUEAdTsyQracvj
+  - Deploy Hook Tx: CHQcSA1qrAuxeF6eFbaqSF115afTnTQ5yodeX2rN8h3X
+  - Genesis Init Tx: HKZsxy88tcsqHPxqCGhCq6u2PbNi9YujumEjK4nhVKtV
 - DappHub（Dubhe）  
-  - DAPP_HUB_ID: 0xb65df6ea777f1ed0fb9a0d9173eec6b43f2ae1da4346af1b48f678d8af796379
-  - DAPP_HUB_INITIAL_SHARED_VERSION: 593960969
+  - DAPP_HUB_ID: 0xfef203de9d3a2980429e91df535a0503ccf8d3c05aa3815936984243dc96f19f
+  - DAPP_HUB_INITIAL_SHARED_VERSION: 640107062
 - ruleset 已初始化  
   - rule_set_id=1, rule_hash="v1", dispute_window_ms=86400000, platform_fee_bps=1500
-  - Init Tx: GaCvZgeiqJQTT23RGy1Ypczm6tVjws32Svp2F8oiMFqb
+  - Init Tx: 7RHXfAXsXPXQnFWQDS51HRyc9Tzhho7o3bDgbtHBdjxo
 
 ## 2) 前端链上接入现状
 - 已接入链上下单（Passkey 签名）

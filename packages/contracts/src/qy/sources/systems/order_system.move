@@ -184,13 +184,16 @@ module qy::order_system {
     events::emit_order_disputed(order_id, caller, ev);
   }
 
-  /// 争议期后可结算（收平台费） / Anyone can finalize after dispute window; applies platform fee.
+  /// 结算无争议订单（用户可放弃争议期） / Finalize without dispute (user may waive dispute window).
   public fun finalize_no_dispute(dapp_hub: &mut DappHub, order_id: u64, clock: &Clock, ctx: &mut TxContext) {
     order::ensure_has(dapp_hub, dapp_key::to_string(), order_id);
     let mut ord = order::get_struct(dapp_hub, dapp_key::to_string(), order_id);
     assert!(order::status(&ord) == STATUS_COMPLETED, E_BAD_STATUS);
     let now = clock::timestamp_ms(clock);
-    assert!(now > order::dispute_deadline(&ord), E_DISPUTE_WINDOW);
+    if (now <= order::dispute_deadline(&ord)) {
+      // 争议期内仅允许用户主动放弃争议窗口结算
+      assert!(order::user(&ord) == ctx.sender(), E_NOT_OWNER);
+    };
 
     let platform_fee = (order::vault_service(&ord) * order::platform_fee_bps(&ord)) / 10000;
     let companion_service = order::vault_service(&ord) - platform_fee;

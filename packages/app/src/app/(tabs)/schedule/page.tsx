@@ -461,8 +461,18 @@ export default function Schedule() {
   }, [localChainStatus, chainCurrentOrder, currentOrder]);
   const chainCurrentDisplay = useMemo(() => {
     if (!chainCurrentOrder) return null;
-    if (currentOrder && chainCurrentOrder.orderId === currentOrder.id && typeof chainCurrentStatus === "number") {
-      return { ...chainCurrentOrder, status: chainCurrentStatus };
+    if (currentOrder && chainCurrentOrder.orderId === currentOrder.id) {
+      const meta = (currentOrder.meta || {}) as { chain?: { disputeDeadline?: number | string } };
+      const rawDeadline = meta.chain?.disputeDeadline;
+      const localDeadline = typeof rawDeadline === "string" ? Number(rawDeadline) : Number(rawDeadline ?? 0);
+      const mergedDeadline =
+        Number.isFinite(localDeadline) && localDeadline > 0
+          ? String(localDeadline)
+          : chainCurrentOrder.disputeDeadline;
+      if (typeof chainCurrentStatus === "number") {
+        return { ...chainCurrentOrder, status: chainCurrentStatus, disputeDeadline: mergedDeadline };
+      }
+      return { ...chainCurrentOrder, disputeDeadline: mergedDeadline };
     }
     return chainCurrentOrder;
   }, [chainCurrentOrder, currentOrder, chainCurrentStatus]);
@@ -559,6 +569,24 @@ export default function Schedule() {
     if (!digest) return "";
     if (digest.length <= 12) return digest;
     return `${digest.slice(0, 6)}...${digest.slice(-4)}`;
+  };
+  const renderActionLabel = (key: string, label: string) => {
+    if (chainAction !== key) return label;
+    return (
+      <span className="inline-flex items-center gap-1">
+        <Loader2 className="h-3.5 w-3.5 spin" />
+        处理中
+      </span>
+    );
+  };
+  const renderLoadingLabel = (loading: boolean, label: string, loadingLabel = "处理中") => {
+    if (!loading) return label;
+    return (
+      <span className="inline-flex items-center gap-1">
+        <Loader2 className="h-3.5 w-3.5 spin" />
+        {loadingLabel}
+      </span>
+    );
   };
 
   const runChainAction = async (
@@ -831,9 +859,11 @@ export default function Schedule() {
                 </>
               )}
             </div>
-          </div>
-          <div className="ride-driver-actions">
-            <button className="dl-tab-btn" onClick={cancelOrder}>取消订单</button>
+        </div>
+        <div className="ride-driver-actions">
+            <button className="dl-tab-btn" onClick={cancelOrder}>
+              {currentOrder ? renderActionLabel(`cancel-${currentOrder.id}`, "取消订单") : "取消订单"}
+            </button>
             <button className="dl-tab-btn">安全中心</button>
             {canConfirmCompletion && (
               <button
@@ -873,7 +903,7 @@ export default function Schedule() {
                   setMode("pending-settlement");
                 }}
               >
-                确认完成
+                {currentOrder ? renderActionLabel(`complete-${currentOrder.id}`, "确认完成") : "确认完成"}
               </button>
             )}
             <button className="dl-tab-btn" style={{ background: "#f97316", color: "#fff" }}>
@@ -898,6 +928,14 @@ export default function Schedule() {
         : null;
     const effectiveStatus = mergeChainStatus(localChainStatus, chainOrder?.status);
     const canSettle = effectiveStatus === 3;
+    const localDeadline =
+      (currentOrder.meta as { chain?: { disputeDeadline?: number | string } } | undefined)?.chain?.disputeDeadline;
+    const deadlineRaw = typeof localDeadline === "string" ? Number(localDeadline) : Number(localDeadline ?? chainOrder?.disputeDeadline ?? 0);
+    const disputeDeadline = Number.isFinite(deadlineRaw) && deadlineRaw > 0 ? deadlineRaw : null;
+    const now = Date.now();
+    const inDisputeWindow = disputeDeadline ? now <= disputeDeadline : false;
+    const canDispute = Boolean(canSettle && inDisputeWindow);
+    const canFinalize = Boolean(canSettle);
     return (
       <div className="ride-shell">
         <div className="ride-map-large">
@@ -924,15 +962,24 @@ export default function Schedule() {
             </div>
             <div className="ml-auto text-right">
               <div className="text-emerald-600 font-semibold text-sm">待结算</div>
-              <div className="text-xs text-gray-500">可发起争议</div>
+              <div className="text-xs text-gray-500">
+                {inDisputeWindow ? "可发起争议" : "争议期已结束"}
+              </div>
             </div>
           </div>
           <div className="ride-driver-actions">
             <button
               className="dl-tab-btn"
               onClick={() => {
-                if (!canSettle || !currentOrder) {
-                  setToast("当前状态无法发起争议");
+                if (!currentOrder) return;
+                if (!canDispute) {
+                  if (!disputeDeadline) {
+                    setToast("争议截止时间未同步，请稍后刷新");
+                  } else if (!inDisputeWindow) {
+                    setToast("争议期已结束，无法发起争议");
+                  } else {
+                    setToast("当前状态无法发起争议");
+                  }
                   return;
                 }
                 const evidence = window.prompt("请输入争议说明或证据哈希（可留空）") || "";
@@ -944,15 +991,25 @@ export default function Schedule() {
                 );
               }}
             >
-              发起争议
+              {currentOrder ? renderActionLabel(`dispute-${currentOrder.id}`, "发起争议") : "发起争议"}
             </button>
             <button
               className="dl-tab-btn"
               style={{ background: "#0f172a", color: "#fff" }}
               onClick={() => {
-                if (!canSettle || !currentOrder) {
+                if (!currentOrder) return;
+                if (!canFinalize) {
                   setToast("当前状态无法结算");
                   return;
+                }
+                if (inDisputeWindow) {
+                  const deadlineText = disputeDeadline ? new Date(disputeDeadline).toLocaleString() : "";
+                  const ok = window.confirm(
+                    deadlineText
+                      ? `确认放弃争议期并立即结算？争议截止：${deadlineText}`
+                      : "确认放弃争议期并立即结算？"
+                  );
+                  if (!ok) return;
                 }
                 runChainAction(
                   `finalize-${currentOrder.id}`,
@@ -962,12 +1019,17 @@ export default function Schedule() {
                 );
               }}
             >
-              无争议结算
+              {currentOrder ? renderActionLabel(`finalize-${currentOrder.id}`, "无争议结算") : "无争议结算"}
             </button>
             <button className="dl-tab-btn" style={{ background: "#f97316", color: "#fff" }}>
               联系打手
             </button>
           </div>
+          {disputeDeadline && (
+            <div className="text-xs text-gray-500 mt-2 text-right">
+              争议截止：{new Date(disputeDeadline).toLocaleString()}
+            </div>
+          )}
           <div className="text-xs text-gray-500 mt-2">订单：{currentOrder.item}</div>
         </div>
         {toast && <div className="ride-toast">{toast}</div>}
@@ -1154,7 +1216,7 @@ export default function Schedule() {
               onClick={loadChain}
               disabled={chainLoading}
             >
-              {chainLoading ? "刷新中..." : "刷新"}
+              {renderLoadingLabel(chainLoading, "刷新", "刷新中")}
             </button>
           </div>
           <div className="text-xs text-gray-500 mt-2">
@@ -1179,7 +1241,7 @@ export default function Schedule() {
               actions={
                 chainLoading ? null : (
                   <button className="dl-tab-btn" onClick={loadChain} disabled={chainLoading}>
-                    刷新
+                    {renderLoadingLabel(chainLoading, "刷新", "刷新中")}
                   </button>
                 )
               }
@@ -1206,7 +1268,7 @@ export default function Schedule() {
                       )
                     }
                   >
-                    支付托管费
+                    {renderActionLabel(`pay-${chainCurrentDisplay.orderId}`, "支付托管费")}
                   </button>
                 )}
                 {(chainCurrentDisplay.status === 0 || chainCurrentDisplay.status === 1) && (
@@ -1223,7 +1285,7 @@ export default function Schedule() {
                       )
                     }
                   >
-                    取消订单
+                    {renderActionLabel(`cancel-${chainCurrentDisplay.orderId}`, "取消订单")}
                   </button>
                 )}
                 {chainCurrentDisplay.status === 2 && (
@@ -1240,7 +1302,7 @@ export default function Schedule() {
                       )
                     }
                   >
-                    确认完成
+                    {renderActionLabel(`complete-${chainCurrentDisplay.orderId}`, "确认完成")}
                   </button>
                 )}
                 {chainCurrentDisplay.status === 3 && (
@@ -1259,22 +1321,29 @@ export default function Schedule() {
                         );
                       }}
                     >
-                      发起争议
+                      {renderActionLabel(`dispute-${chainCurrentDisplay.orderId}`, "发起争议")}
                     </button>
                     <button
                       className="dl-tab-btn"
                       style={{ padding: "6px 10px" }}
                       disabled={chainAction === `finalize-${chainCurrentDisplay.orderId}`}
-                      onClick={() =>
+                      onClick={() => {
+                        const deadline = Number(chainCurrentDisplay.disputeDeadline);
+                        if (Number.isFinite(deadline) && deadline > Date.now()) {
+                          const ok = window.confirm(
+                            `确认放弃争议期并立即结算？争议截止：${new Date(deadline).toLocaleString()}`
+                          );
+                          if (!ok) return;
+                        }
                         runChainAction(
                           `finalize-${chainCurrentDisplay.orderId}`,
                           () => finalizeNoDisputeOnChain(chainCurrentDisplay.orderId),
                           "订单已结算",
                           chainCurrentDisplay.orderId
-                        )
-                      }
+                        );
+                      }}
                     >
-                      无争议结算
+                      {renderActionLabel(`finalize-${chainCurrentDisplay.orderId}`, "无争议结算")}
                     </button>
                   </>
                 )}
@@ -1337,8 +1406,13 @@ export default function Schedule() {
                     钻石余额不足，请先充值
                   </div>
                 )}
-                <button className="dl-tab-btn" style={{ marginTop: 8 }} onClick={refreshBalance}>
-                  刷新余额
+                <button
+                  className="dl-tab-btn"
+                  style={{ marginTop: 8 }}
+                  onClick={refreshBalance}
+                  disabled={balanceLoading}
+                >
+                  {renderLoadingLabel(balanceLoading, "刷新余额", "刷新中")}
                 </button>
                 <label className="ride-status-toggle" style={{ marginTop: 10 }}>
                   <input
@@ -1442,8 +1516,9 @@ export default function Schedule() {
                     style={{ padding: "4px 8px" }}
                     onClick={loadPlayers}
                     type="button"
+                    disabled={playersLoading}
                   >
-                    {playersLoading ? "加载中..." : "刷新"}
+                    {renderLoadingLabel(playersLoading, "刷新", "加载中")}
                   </button>
                 </div>
               </div>
@@ -1457,8 +1532,8 @@ export default function Schedule() {
                     title="打手列表加载失败"
                     description={playersError}
                     actions={
-                      <button className="dl-tab-btn" onClick={loadPlayers} type="button">
-                        重新加载
+                      <button className="dl-tab-btn" onClick={loadPlayers} type="button" disabled={playersLoading}>
+                        {renderLoadingLabel(playersLoading, "重新加载", "加载中")}
                       </button>
                     }
                   />

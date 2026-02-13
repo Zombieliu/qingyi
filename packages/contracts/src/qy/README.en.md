@@ -11,6 +11,14 @@ This package implements a **ledger-based** flow (no on-chain coins). It stores b
 - `genesis`: initialize tables
 - `events`: domain events
 
+## Deploy / Init
+
+- After publishing, call `qy::genesis::run` (params: shared `DappHub` + `Clock`).
+- Then create ruleset via `qy::ruleset_system::create_ruleset`.
+- Recommended scripts (run at repo root):
+  - `pnpm chain:init-dapp`
+  - `pnpm chain:init-ruleset`
+
 ## State Machine
 
 ```
@@ -108,4 +116,5 @@ tx.moveCall({
 
 - This is a **ledger** model (no on-chain coins). All QR payments are confirmed off-chain and then credited on-chain by admin.
 - Disputes must be raised within `dispute_window_ms`.
+- During the dispute window, only the user can call `finalize_no_dispute` to waive disputes; after the window ends, it can be finalized directly.
 - For production, prefer `credit_balance_with_receipt` to avoid duplicate credits.
