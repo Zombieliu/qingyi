@@ -159,7 +159,7 @@ export async function POST(req: Request, { params }: RouteContext) {
     if (!isValidSuiAddress(normalized)) {
       return NextResponse.json({ error: "invalid userAddress" }, { status: 400 });
     }
-    if (chain.user !== normalized) {
+    if (chain.user !== normalized && chain.companion !== normalized) {
       return NextResponse.json({ error: "forbidden" }, { status: 403 });
     }
 

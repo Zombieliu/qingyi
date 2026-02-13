@@ -507,6 +507,15 @@ export default function Schedule() {
         return `未知状态(${status})`;
     }
   };
+  const chainStatusHint = useMemo(() => {
+    if (!isChainOrdersEnabled()) return null;
+    if (!currentOrder) return null;
+    const chainOrder = chainOrders.find((order) => order.orderId === currentOrder.id) || null;
+    const meta = (currentOrder.meta || {}) as { chain?: { status?: number } };
+    const status = chainOrder?.status ?? currentOrder.chainStatus ?? meta.chain?.status;
+    if (typeof status !== "number") return "链上状态：未同步";
+    return `链上状态：${statusLabel(status)}`;
+  }, [chainOrders, currentOrder]);
 
   const formatAmount = (value: string) => {
     const num = Number(value);
@@ -707,6 +716,9 @@ export default function Schedule() {
               联系打手
             </button>
           </div>
+          {chainStatusHint && (
+            <div className="text-xs text-gray-500 mt-2 text-right">{chainStatusHint}</div>
+          )}
           <div className="text-xs text-gray-500 mt-2">订单：{currentOrder.item}</div>
         </div>
 
@@ -754,6 +766,7 @@ export default function Schedule() {
         {canConfirmCompletion && (
           <div className="ride-tip" style={{ marginTop: 0 }}>
             打手已结束服务，请确认完成后进入结算/争议期
+            {chainStatusHint && <div className="mt-1 text-xs text-gray-500">{chainStatusHint}</div>}
           </div>
         )}
         <div className="ride-driver-card dl-card">
@@ -815,7 +828,7 @@ export default function Schedule() {
                       return;
                     }
                     if (chainOrder.status !== 2) {
-                      setToast("当前状态无法确认完成");
+                      setToast(`当前链上状态：${statusLabel(chainOrder.status)}，需“押金已锁定”后才能确认完成`);
                       return;
                     }
                     await runChainAction(
