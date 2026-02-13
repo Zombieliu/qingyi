@@ -55,6 +55,14 @@ export default function Showcase() {
   const ORDER_SOURCE =
     process.env.NEXT_PUBLIC_ORDER_SOURCE || (process.env.NEXT_PUBLIC_CHAIN_ORDERS === "1" ? "server" : "local");
   const showOrderSourceWarning = isChainOrdersEnabled() && ORDER_SOURCE !== "server";
+  const myAcceptedOrders = useMemo(() => {
+    const address = chainAddress || getCurrentAddress();
+    return myOrders.filter((order) => {
+      if (!address || !order.companionAddress) return false;
+      if (order.companionAddress !== address) return false;
+      return !order.status.includes("完成") && !order.status.includes("取消");
+    });
+  }, [chainAddress, myOrders]);
 
   type GameProfile = {
     gameName: string;
@@ -608,12 +616,6 @@ export default function Showcase() {
   });
 
   const visibleOrders = orders.filter((o) => !o.status.includes("完成") && !o.status.includes("取消"));
-  const myAcceptedOrders = myOrders.filter((o) => {
-    const address = chainAddress || getCurrentAddress();
-    if (!address || !o.companionAddress) return false;
-    if (o.companionAddress !== address) return false;
-    return !o.status.includes("完成") && !o.status.includes("取消");
-  });
 
   return (
     <div className="dl-shell">
