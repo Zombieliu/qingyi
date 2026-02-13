@@ -61,7 +61,7 @@ function buildChainMeta(existing: AdminOrder | null, chain: ChainOrder) {
 function normalizeCompanionAddress(chainCompanion: string) {
   const normalized = normalizeSuiAddress(chainCompanion);
   if (!isValidSuiAddress(normalized)) return null;
-  if (normalized === "0x0") return null;
+  if (normalized === normalizeSuiAddress("0x0")) return null;
   const defaultRaw = process.env.NEXT_PUBLIC_QY_DEFAULT_COMPANION || "";
   if (defaultRaw) {
     const defaultNormalized = normalizeSuiAddress(defaultRaw);
@@ -80,9 +80,19 @@ export async function upsertChainOrder(chain: ChainOrder) {
   const amount = existing?.amount ?? Number((serviceFee + deposit).toFixed(2));
   const meta = buildChainMeta(existing, chain);
   const existingMeta = (existing?.meta || {}) as Record<string, unknown>;
-  const preserveCompanion = existingMeta.publicPool === true;
   const preserveAmounts = existingMeta.paymentMode === "diamond_escrow";
   const companionAddress = normalizeCompanionAddress(chain.companion);
+  const existingCompanion = existing?.companionAddress
+    ? normalizeCompanionAddress(existing.companionAddress)
+    : null;
+  const hasLocalCompanion = Boolean(existingCompanion);
+  const preserveCompanion = hasLocalCompanion && companionAddress === null;
+
+  if (companionAddress === null) {
+    meta.publicPool = !hasLocalCompanion;
+  } else {
+    meta.publicPool = false;
+  }
 
   if (existing) {
     const patch: Partial<AdminOrder> = {
@@ -93,7 +103,7 @@ export async function upsertChainOrder(chain: ChainOrder) {
       meta,
     };
     if (!preserveCompanion) {
-      patch.companionAddress = companionAddress ?? undefined;
+      patch.companionAddress = companionAddress;
     }
     if (!preserveAmounts) {
       patch.serviceFee = serviceFee;

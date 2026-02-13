@@ -16,6 +16,27 @@ type RouteContext = {
   params: Promise<{ orderId: string }>;
 };
 
+type LocalOrderRecord = Awaited<ReturnType<typeof getOrderById>>;
+
+function toChainAmount(value?: number | null) {
+  if (typeof value !== "number" || !Number.isFinite(value)) return undefined;
+  return String(Math.round(value * 100));
+}
+
+function buildDigestFallback(orderId: string, order: LocalOrderRecord | null | undefined) {
+  if (!order) return undefined;
+  const chainMeta = (order.meta as { chain?: { ruleSetId?: string | number } } | undefined)?.chain;
+  return {
+    orderId,
+    user: order.userAddress || undefined,
+    companion: order.companionAddress || undefined,
+    ruleSetId: chainMeta?.ruleSetId !== undefined ? String(chainMeta.ruleSetId) : undefined,
+    serviceFee: toChainAmount(order.serviceFee),
+    deposit: toChainAmount(order.deposit),
+    createdAt: order.createdAt ? String(order.createdAt) : undefined,
+  };
+}
+
 /**
  * 链上订单同步 API
  *
@@ -49,6 +70,13 @@ export async function POST(req: Request, { params }: RouteContext) {
   const digestFromQuery = url.searchParams.get("digest")?.trim();
   const digestFromBody = typeof body.digest === "string" ? body.digest.trim() : "";
   const digest = digestFromQuery || digestFromBody;
+  let cachedLocalOrder: LocalOrderRecord | null | undefined;
+  const loadLocalOrder = async () => {
+    if (cachedLocalOrder === undefined) {
+      cachedLocalOrder = await getOrderById(orderId);
+    }
+    return cachedLocalOrder;
+  };
 
   // 智能重试查找链上订单
   // 应对场景：订单刚创建，Dubhe 索引器还未完成索引
@@ -75,7 +103,8 @@ export async function POST(req: Request, { params }: RouteContext) {
 
     if (!chain && digest) {
       // 兜底：直接从交易 digest 解析事件
-      const byDigest = await findChainOrderFromDigest(digest);
+      const fallback = buildDigestFallback(orderId, await loadLocalOrder());
+      const byDigest = await findChainOrderFromDigest(digest, fallback);
       if (byDigest && byDigest.orderId === orderId) {
         chain = byDigest;
       }
@@ -84,7 +113,7 @@ export async function POST(req: Request, { params }: RouteContext) {
     if (!chain) {
       // 所有重试失败，返回详细错误信息
       const cacheStats = getChainOrderCacheStats();
-      const localOrder = await getOrderById(orderId);
+      const localOrder = await loadLocalOrder();
 
       const errorDetail = {
         error: "chain_order_not_found",
@@ -145,7 +174,8 @@ export async function POST(req: Request, { params }: RouteContext) {
   const synced = await upsertChainOrder(chain);
   if (digest && !synced.chainDigest) {
     try {
-      const byDigest = await findChainOrderFromDigest(digest);
+      const fallback = buildDigestFallback(orderId, await loadLocalOrder());
+      const byDigest = await findChainOrderFromDigest(digest, fallback);
       if (byDigest && byDigest.orderId === orderId) {
         await updateOrder(orderId, { chainDigest: digest });
       }

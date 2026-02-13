@@ -11,6 +11,7 @@ const DEFAULT_SPONSOR_GAS_BUDGET = 50_000_000;
 const ALLOWED_TARGETS = new Set([
   `${normalizeSuiAddress(PACKAGE_ID)}::order_system::create_order`,
   `${normalizeSuiAddress(PACKAGE_ID)}::order_system::pay_service_fee`,
+  `${normalizeSuiAddress(PACKAGE_ID)}::order_system::claim_order`,
   `${normalizeSuiAddress(PACKAGE_ID)}::order_system::lock_deposit`,
   `${normalizeSuiAddress(PACKAGE_ID)}::order_system::mark_completed`,
   `${normalizeSuiAddress(PACKAGE_ID)}::order_system::raise_dispute`,

@@ -237,7 +237,26 @@ function readHexField(obj: Record<string, unknown> | undefined, key: string) {
   return "0x";
 }
 
-export async function findChainOrderFromDigest(digest: string): Promise<ChainOrder | null> {
+type ChainOrderFallback = {
+  orderId?: string;
+  user?: string;
+  companion?: string;
+  ruleSetId?: string;
+  serviceFee?: string;
+  deposit?: string;
+  createdAt?: string;
+};
+
+function readOrderIdFromEvent(event: ParsedEvent | undefined) {
+  const parsed = event?.parsedJson as Record<string, unknown> | undefined;
+  if (!parsed) return "";
+  return readStringField(parsed, "order_id", "");
+}
+
+export async function findChainOrderFromDigest(
+  digest: string,
+  fallback?: ChainOrderFallback
+): Promise<ChainOrder | null> {
   const { pkg } = ensureChainEnv();
   if (!digest) return null;
   const client = new SuiClient({ url: getRpcUrl() });
@@ -251,22 +270,89 @@ export async function findChainOrderFromDigest(digest: string): Promise<ChainOrd
   if (!events.length) return null;
   const prefix = `${pkg}::events::`;
   const createdEvent = events.find((event) => event.type === `${prefix}OrderCreated`);
-  if (!createdEvent?.parsedJson) return null;
-  const created = createdEvent.parsedJson;
-  const orderId = readStringField(created, "order_id", "");
+  const claimedEvent = events.find((event) => event.type === `${prefix}OrderClaimed`);
+  const paidEvent = events.find((event) => event.type === `${prefix}OrderPaid`);
+  const depositEvent = events.find((event) => event.type === `${prefix}DepositLocked`);
+  const completedEvent = events.find((event) => event.type === `${prefix}OrderCompleted`);
+  const disputedEvent = events.find((event) => event.type === `${prefix}OrderDisputed`);
+  const resolvedEvent = events.find((event) => event.type === `${prefix}OrderResolved`);
+  const finalizedEvent = events.find((event) => event.type === `${prefix}OrderFinalized`);
+  const hasOrderEvent = Boolean(
+    createdEvent ||
+      claimedEvent ||
+      paidEvent ||
+      depositEvent ||
+      completedEvent ||
+      disputedEvent ||
+      resolvedEvent ||
+      finalizedEvent
+  );
+  if (!hasOrderEvent) return null;
+
+  const created = createdEvent?.parsedJson as Record<string, unknown> | undefined;
+  const claimed = claimedEvent?.parsedJson as Record<string, unknown> | undefined;
+  const paid = paidEvent?.parsedJson as Record<string, unknown> | undefined;
+  const depositLocked = depositEvent?.parsedJson as Record<string, unknown> | undefined;
+  const completed = completedEvent?.parsedJson as Record<string, unknown> | undefined;
+  const disputed = disputedEvent?.parsedJson as Record<string, unknown> | undefined;
+  const resolved = resolvedEvent?.parsedJson as Record<string, unknown> | undefined;
+  const finalized = finalizedEvent?.parsedJson as Record<string, unknown> | undefined;
+  let orderId =
+    readStringField(created, "order_id", "") ||
+    readOrderIdFromEvent(claimedEvent) ||
+    readOrderIdFromEvent(paidEvent) ||
+    readOrderIdFromEvent(depositEvent) ||
+    readOrderIdFromEvent(completedEvent) ||
+    readOrderIdFromEvent(disputedEvent) ||
+    readOrderIdFromEvent(resolvedEvent) ||
+    readOrderIdFromEvent(finalizedEvent) ||
+    fallback?.orderId ||
+    "";
   if (!orderId) return null;
-  const serviceFee = readStringField(created, "service_fee", "0");
-  const deposit = readStringField(created, "deposit", "0");
+
+  const serviceFee =
+    readStringField(created, "service_fee", "") ||
+    readStringField(paid, "service_fee", "") ||
+    readStringField(depositLocked, "service_fee", "") ||
+    fallback?.serviceFee ||
+    "0";
+  const deposit =
+    readStringField(created, "deposit", "") ||
+    readStringField(depositLocked, "deposit", "") ||
+    fallback?.deposit ||
+    "0";
+  const user = created
+    ? readAddressField(created, "user")
+    : paid
+      ? readAddressField(paid, "user")
+      : completed
+        ? readAddressField(completed, "user")
+        : fallback?.user
+          ? normalizeSuiAddress(fallback.user)
+          : "0x0";
+  const companion = created
+    ? readAddressField(created, "companion")
+    : claimed
+      ? readAddressField(claimed, "companion")
+      : depositLocked
+        ? readAddressField(depositLocked, "companion")
+        : fallback?.companion
+          ? normalizeSuiAddress(fallback.companion)
+          : "0x0";
+  const ruleSetId =
+    readStringField(created, "rule_set_id", "") ||
+    fallback?.ruleSetId ||
+    "0";
   const chain: ChainOrder = {
     orderId,
-    user: readAddressField(created, "user"),
-    companion: readAddressField(created, "companion"),
-    ruleSetId: readStringField(created, "rule_set_id", "0"),
+    user,
+    companion,
+    ruleSetId,
     serviceFee,
     deposit,
     platformFeeBps: "0",
     status: 0,
-    createdAt: String(tx.timestampMs || Date.now()),
+    createdAt: fallback?.createdAt || String(tx.timestampMs || Date.now()),
     finishAt: "0",
     disputeDeadline: "0",
     vaultService: "0",
@@ -276,17 +362,6 @@ export async function findChainOrderFromDigest(digest: string): Promise<ChainOrd
     resolvedBy: "0x0",
     resolvedAt: "0",
   };
-
-  const getEvent = (name: string) =>
-    events.find((event) => event.type === `${prefix}${name}`)?.parsedJson as
-      | Record<string, unknown>
-      | undefined;
-  const paid = getEvent("OrderPaid");
-  const depositLocked = getEvent("DepositLocked");
-  const completed = getEvent("OrderCompleted");
-  const disputed = getEvent("OrderDisputed");
-  const resolved = getEvent("OrderResolved");
-  const finalized = getEvent("OrderFinalized");
 
   if (paid) {
     chain.status = 1;
