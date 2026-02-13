@@ -24,6 +24,20 @@ import { MotionCard } from "@/components/ui/motion";
 import { StateBlock } from "@/app/components/state-block";
 import { extractErrorMessage, formatErrorMessage } from "@/app/components/error-utils";
 
+function getLocalChainStatus(order?: LocalOrder | null) {
+  if (!order) return undefined;
+  const meta = (order.meta || {}) as { chain?: { status?: number } };
+  const status = order.chainStatus ?? meta.chain?.status;
+  return typeof status === "number" ? status : undefined;
+}
+
+function mergeChainStatus(local?: number, remote?: number) {
+  if (typeof local === "number" && typeof remote === "number") {
+    return Math.max(local, remote);
+  }
+  return typeof local === "number" ? local : remote;
+}
+
 export default function Showcase() {
   const [orders, setOrders] = useState<LocalOrder[]>([]);
   const [chainOrders, setChainOrders] = useState<ChainOrder[]>([]);
@@ -64,6 +78,24 @@ export default function Showcase() {
       return !order.status.includes("完成") && !order.status.includes("取消");
     });
   }, [chainAddress, myOrders]);
+  const localChainStatusById = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const order of [...orders, ...myOrders]) {
+      const status = getLocalChainStatus(order);
+      if (typeof status !== "number") continue;
+      const prev = map.get(order.id);
+      map.set(order.id, typeof prev === "number" ? Math.max(prev, status) : status);
+    }
+    return map;
+  }, [orders, myOrders]);
+  const resolveChainStatus = useCallback(
+    (order: ChainOrder) => {
+      const local = localChainStatusById.get(order.orderId);
+      const merged = mergeChainStatus(local, order.status);
+      return typeof merged === "number" ? merged : order.status;
+    },
+    [localChainStatusById]
+  );
 
   type GameProfile = {
     gameName: string;
@@ -311,12 +343,13 @@ export default function Showcase() {
         setTimeout(() => setChainToast(null), 3000);
         return;
       }
-      if (chainOrder.status === 0) {
+      const effectiveStatus = resolveChainStatus(chainOrder);
+      if (effectiveStatus === 0) {
         setChainToast("链上订单未托管费用，无法接单");
         setTimeout(() => setChainToast(null), 3000);
         return;
       }
-      if (chainOrder.status >= 2) {
+      if (effectiveStatus >= 2) {
         setChainToast("押金已锁定，订单已被接走");
         setTimeout(() => setChainToast(null), 3000);
         return;
@@ -325,7 +358,7 @@ export default function Showcase() {
         const ok = await runChainAction(`claim-${id}`, () => claimOrderOnChain(id), "已认领订单", id);
         if (!ok) return;
       }
-      if (chainOrder.status === 1) {
+      if (effectiveStatus === 1) {
         const ok = await runChainAction(`deposit-${id}`, () => lockDepositOnChain(id), "押金已锁定", id);
         if (!ok) return;
       }
@@ -407,7 +440,8 @@ export default function Showcase() {
     const isChainOrder = isChainOrdersEnabled() && hasChain;
     if (isChainOrder) {
       const chainOrder = chainOrders.find((order) => order.orderId === id) || null;
-      if (chainOrder && chainOrder.status >= 2) {
+      const effectiveStatus = chainOrder ? resolveChainStatus(chainOrder) : undefined;
+      if (typeof effectiveStatus === "number" && effectiveStatus >= 2) {
         setChainToast("押金已锁定，无法取消，请走争议/客服处理");
         setTimeout(() => setChainToast(null), 3000);
         return;
@@ -656,7 +690,8 @@ export default function Showcase() {
     }
   }
   const visibleChainOrders = chainOrders.filter((order) => {
-    if (order.status === 6) return false;
+    const effectiveStatus = resolveChainStatus(order);
+    if (effectiveStatus === 6) return false;
     if (!defaultCompanion) return true;
     return order.companion === defaultCompanion;
   });
@@ -734,8 +769,9 @@ export default function Showcase() {
                 const isCompanion = chainAddress && o.companion === chainAddress;
                 const now = Date.now();
                 const deadline = Number(o.disputeDeadline);
-                const canFinalize = o.status === 3 && Number.isFinite(deadline) && now > deadline;
-                const canDispute = o.status === 3 && Number.isFinite(deadline) && now <= deadline;
+                const effectiveStatus = resolveChainStatus(o);
+                const canFinalize = effectiveStatus === 3 && Number.isFinite(deadline) && now > deadline;
+                const canDispute = effectiveStatus === 3 && Number.isFinite(deadline) && now <= deadline;
                 const meta = orderMetaById.get(o.orderId) || null;
                 const gameProfile = (meta?.gameProfile || null) as { gameName?: string; gameId?: string } | null;
                 const companionEndedAt = (meta as { companionEndedAt?: number | string } | null)?.companionEndedAt;
@@ -750,7 +786,7 @@ export default function Showcase() {
                     <div className="mt-2 text-xs text-gray-500">
                       用户 {shortAddr(o.user)} · 陪玩 {shortAddr(o.companion)}
                     </div>
-                    {isCompanion && o.status >= 2 && (
+                    {isCompanion && effectiveStatus >= 2 && (
                       <div className="mt-2 flex items-center justify-between gap-2 text-xs text-emerald-700">
                         <span>
                           {gameProfile?.gameName && gameProfile?.gameId
@@ -799,18 +835,18 @@ export default function Showcase() {
                       </div>
                     )}
                     <div className="mt-2 text-xs text-gray-500">
-                      状态：{statusLabel(o.status)} · 押金 ¥{formatAmount(o.deposit)}
+                      状态：{statusLabel(effectiveStatus)} · 押金 ¥{formatAmount(o.deposit)}
                     </div>
                     <div className="mt-2 text-xs text-gray-500">
                       创建时间：{formatTime(o.createdAt)} · 争议截止：{formatTime(o.disputeDeadline)}
                     </div>
-                    {o.status === 3 && (
+                    {effectiveStatus === 3 && (
                       <div className="mt-1 text-xs text-amber-700">
                         争议剩余：{formatRemaining(o.disputeDeadline)}
                       </div>
                     )}
                     <div className="mt-3 flex gap-2 flex-wrap">
-                      {isUser && o.status === 0 && (
+                      {isUser && effectiveStatus === 0 && (
                         <button
                           className="dl-tab-btn"
                           style={{ padding: "8px 10px" }}
@@ -827,7 +863,7 @@ export default function Showcase() {
                           支付撮合费
                         </button>
                       )}
-                      {isUser && (o.status === 0 || o.status === 1) && (
+                      {isUser && (effectiveStatus === 0 || effectiveStatus === 1) && (
                         <button
                           className="dl-tab-btn"
                           style={{ padding: "8px 10px" }}
@@ -844,7 +880,7 @@ export default function Showcase() {
                           取消订单
                         </button>
                       )}
-                      {isCompanion && o.status === 1 && (
+                      {isCompanion && effectiveStatus === 1 && (
                         <button
                           className="dl-tab-btn"
                           style={{ padding: "8px 10px" }}
@@ -925,7 +961,7 @@ export default function Showcase() {
                           付押金接单
                         </button>
                       )}
-                      {isCompanion && o.status === 2 && (
+                      {isCompanion && effectiveStatus === 2 && (
                         <button
                           className="dl-tab-btn"
                           style={{ padding: "8px 10px" }}
@@ -935,7 +971,7 @@ export default function Showcase() {
                           {companionEnded ? "已结束服务" : "结束服务"}
                         </button>
                       )}
-                      {isUser && o.status === 2 && (
+                      {isUser && effectiveStatus === 2 && (
                         <button
                           className="dl-tab-btn"
                           style={{ padding: "8px 10px" }}

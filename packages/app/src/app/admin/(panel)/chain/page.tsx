@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { RefreshCw } from "lucide-react";
 import { readCache, writeCache } from "@/app/components/client-cache";
 import * as chainOrderUtils from "@/lib/chain-order-utils";
@@ -15,6 +15,8 @@ type ChainOrder = {
   status: number;
   createdAt: string;
   disputeDeadline: string;
+  localStatus?: number | null;
+  effectiveStatus?: number | null;
 };
 
 export default function ChainPage() {
@@ -117,9 +119,15 @@ export default function ChainPage() {
     return (num / 100).toFixed(2);
   };
 
+  const resolveStatus = useCallback((order: ChainOrder) => {
+    if (typeof order.effectiveStatus === "number") return order.effectiveStatus;
+    if (typeof order.localStatus === "number") return Math.max(order.localStatus, order.status);
+    return order.status;
+  }, []);
+
   const disputedOrders = useMemo(
-    () => chainOrders.filter((order) => order.status === 4),
-    [chainOrders]
+    () => chainOrders.filter((order) => resolveStatus(order) === 4),
+    [chainOrders, resolveStatus]
   );
 
   const resolveDispute = async (orderId: string) => {
@@ -415,16 +423,23 @@ export default function ChainPage() {
               <tbody>
                 {chainOrders.map((order) => {
                   const createdAt = Number(order.createdAt);
-                  const canCancel = chainOrderUtils.isChainOrderCancelable(order.status);
+                  const effectiveStatus = resolveStatus(order);
+                  const canCancel = chainOrderUtils.isChainOrderCancelable(effectiveStatus);
                   const isExpired =
-                    autoCancelMs !== null && chainOrderUtils.isChainOrderAutoCancelable(order, Date.now(), autoCancelMs);
+                    autoCancelMs !== null &&
+                    chainOrderUtils.isChainOrderAutoCancelable({ ...order, status: effectiveStatus }, Date.now(), autoCancelMs);
                   return (
                     <tr key={order.orderId}>
                       <td data-label="订单号">{order.orderId}</td>
                       <td data-label="状态">
-                        <span className={statusBadgeClass(order.status)}>
-                          {statusLabel(order.status)}
+                        <span className={statusBadgeClass(effectiveStatus)}>
+                          {statusLabel(effectiveStatus)}
                         </span>
+                        {typeof order.localStatus === "number" && order.localStatus > order.status ? (
+                          <span className="admin-badge warm" style={{ marginLeft: 8 }}>
+                            本地较新
+                          </span>
+                        ) : null}
                         {isExpired ? (
                           <span className="admin-badge warm" style={{ marginLeft: 8 }}>
                             超期

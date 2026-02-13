@@ -84,6 +84,19 @@ export async function POST(req: Request, { params }: RouteContext) {
     clearChainOrderCache();
   }
   let chain = await findChainOrder(orderId, force);
+  if (digest) {
+    try {
+      const fallback = buildDigestFallback(orderId, await loadLocalOrder());
+      const byDigest = await findChainOrderFromDigest(digest, fallback);
+      if (byDigest && byDigest.orderId === orderId) {
+        if (!chain || byDigest.status > chain.status) {
+          chain = byDigest;
+        }
+      }
+    } catch {
+      // ignore digest parse errors here
+    }
+  }
 
   if (!chain) {
     const delays = [1000, 2000, 4000, 8000];

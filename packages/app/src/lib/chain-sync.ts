@@ -78,8 +78,28 @@ export async function upsertChainOrder(chain: ChainOrder) {
   const serviceFee = toCny(chain.serviceFee);
   const deposit = toCny(chain.deposit);
   const amount = existing?.amount ?? Number((serviceFee + deposit).toFixed(2));
-  const meta = buildChainMeta(existing, chain);
   const existingMeta = (existing?.meta || {}) as Record<string, unknown>;
+  const existingChainMeta = (existingMeta.chain as Record<string, unknown> | undefined) || undefined;
+  const existingMetaStatusRaw = existingChainMeta?.status;
+  const existingStatus =
+    typeof existing?.chainStatus === "number"
+      ? existing.chainStatus
+      : typeof existingMetaStatusRaw === "number"
+        ? existingMetaStatusRaw
+        : undefined;
+  const effectiveStatus =
+    typeof existingStatus === "number" && existingStatus > chain.status ? existingStatus : chain.status;
+  const shouldPreserveChainMeta = typeof existingStatus === "number" && existingStatus > chain.status;
+  let meta = buildChainMeta(existing, chain);
+  if (shouldPreserveChainMeta) {
+    meta = {
+      ...existingMeta,
+      chain: {
+        ...(existingChainMeta || {}),
+        status: existingStatus,
+      },
+    } as Record<string, unknown>;
+  }
   const preserveAmounts = existingMeta.paymentMode === "diamond_escrow";
   const companionAddress = normalizeCompanionAddress(chain.companion);
   const existingCompanion = existing?.companionAddress
@@ -97,9 +117,9 @@ export async function upsertChainOrder(chain: ChainOrder) {
   if (existing) {
     const patch: Partial<AdminOrder> = {
       userAddress: chain.user,
-      chainStatus: chain.status,
-      paymentStatus: mapPaymentStatus(chain.status),
-      stage: mapStage(chain.status),
+      chainStatus: effectiveStatus,
+      paymentStatus: mapPaymentStatus(effectiveStatus),
+      stage: mapStage(effectiveStatus),
       meta,
     };
     if (!preserveCompanion) {
