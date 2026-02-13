@@ -101,6 +101,7 @@ export async function GET(req: Request) {
         currency: item.currency,
         paymentStatus: undefined,
         stage: item.stage,
+        chainDigest: item.chainDigest ?? undefined,
         chainStatus: item.chainStatus ?? undefined,
         serviceFee: undefined,
         deposit: undefined,

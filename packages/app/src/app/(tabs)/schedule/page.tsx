@@ -293,8 +293,8 @@ export default function Schedule() {
     const digest = (() => {
       const order = currentOrder;
       if (!order || order.id !== orderId) return undefined;
-      const meta = (order.meta || {}) as { chainDigest?: string };
-      return order.chainDigest || meta.chainDigest || undefined;
+      const meta = (order.meta || {}) as { chainDigest?: string; lastChainDigest?: string };
+      return order.chainDigest || meta.lastChainDigest || meta.chainDigest || undefined;
     })();
     // 第一步：尝试从本地链上订单列表查找
     let list = await fetchChainOrders();
@@ -306,13 +306,42 @@ export default function Schedule() {
 
     // 第二步：同步到服务端查询（服务端会自动重试3次，共等待3秒）
     try {
-      await syncChainOrder(orderId, chainAddress || undefined, digest);
+      const synced = await syncChainOrder(orderId, chainAddress || undefined, digest);
 
       // 第三步：重新获取链上订单列表
       list = await fetchChainOrders();
       setChainOrders(list);
       found = list.find((order) => order.orderId === orderId) || null;
       if (found) return found;
+
+      if (synced?.order && typeof synced.chainStatus === "number") {
+        const serviceFeeCny = typeof synced.order.serviceFee === "number" ? synced.order.serviceFee : 0;
+        const depositCny = typeof synced.order.deposit === "number" ? synced.order.deposit : 0;
+        return {
+          orderId,
+          user: synced.order.userAddress || "0x0",
+          companion: synced.order.companionAddress || "0x0",
+          ruleSetId: String(
+            (synced.order.meta as { chain?: { ruleSetId?: string | number } } | undefined)?.chain?.ruleSetId ?? "0"
+          ),
+          serviceFee: String(Math.round(serviceFeeCny * 100)),
+          deposit: String(Math.round(depositCny * 100)),
+          platformFeeBps: "0",
+          status: synced.chainStatus,
+          createdAt: String(synced.order.createdAt || Date.now()),
+          finishAt: "0",
+          disputeDeadline: String(
+            (synced.order.meta as { chain?: { disputeDeadline?: string | number } } | undefined)?.chain
+              ?.disputeDeadline ?? "0"
+          ),
+          vaultService: "0",
+          vaultDeposit: "0",
+          evidenceHash: "0x",
+          disputeStatus: 0,
+          resolvedBy: "0x0",
+          resolvedAt: "0",
+        } as ChainOrder;
+      }
 
       // 第四步：如果还是找不到，等待1秒后再试一次（应对极端延迟）
       await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -490,6 +519,11 @@ export default function Schedule() {
     if (!Number.isFinite(num) || num <= 0) return "-";
     return new Date(num).toLocaleString();
   };
+  const shortDigest = (digest?: string | null) => {
+    if (!digest) return "";
+    if (digest.length <= 12) return digest;
+    return `${digest.slice(0, 6)}...${digest.slice(-4)}`;
+  };
 
   const runChainAction = async (
     key: string,
@@ -499,12 +533,14 @@ export default function Schedule() {
   ) => {
     try {
       setChainAction(key);
-      await action();
-      setChainToast(success);
+      const result = await action();
+      const digest = result?.digest;
+      const successMsg = digest ? `${success}（tx: ${shortDigest(digest)}）` : success;
+      setChainToast(successMsg);
       await loadChain();
       if (syncOrderId) {
         try {
-          await syncChainOrder(syncOrderId, getCurrentAddress());
+          await syncChainOrder(syncOrderId, getCurrentAddress(), digest);
           await refreshOrders();
         } catch (e) {
           const detail = extractErrorMessage(e);

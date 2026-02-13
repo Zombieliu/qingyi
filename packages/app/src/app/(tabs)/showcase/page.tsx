@@ -212,7 +212,7 @@ export default function Showcase() {
     }
   };
 
-  const fetchOrSyncChainOrder = async (orderId: string) => {
+  const fetchOrSyncChainOrder = async (orderId: string, digest?: string) => {
     // 第一步：尝试从本地链上订单列表查找
     let list = await fetchChainOrders();
     let found = list.find((order) => order.orderId === orderId) || null;
@@ -223,13 +223,42 @@ export default function Showcase() {
 
     // 第二步：同步到服务端查询（服务端会自动重试3次，共等待3秒）
     try {
-      await syncChainOrder(orderId, chainAddress || undefined);
+      const synced = await syncChainOrder(orderId, chainAddress || undefined, digest);
 
       // 第三步：重新获取链上订单列表
       list = await fetchChainOrders();
       setChainOrders(list);
       found = list.find((order) => order.orderId === orderId) || null;
       if (found) return found;
+
+      if (synced?.order && typeof synced.chainStatus === "number") {
+        const serviceFeeCny = typeof synced.order.serviceFee === "number" ? synced.order.serviceFee : 0;
+        const depositCny = typeof synced.order.deposit === "number" ? synced.order.deposit : 0;
+        return {
+          orderId,
+          user: synced.order.userAddress || "0x0",
+          companion: synced.order.companionAddress || "0x0",
+          ruleSetId: String(
+            (synced.order.meta as { chain?: { ruleSetId?: string | number } } | undefined)?.chain?.ruleSetId ?? "0"
+          ),
+          serviceFee: String(Math.round(serviceFeeCny * 100)),
+          deposit: String(Math.round(depositCny * 100)),
+          platformFeeBps: "0",
+          status: synced.chainStatus,
+          createdAt: String(synced.order.createdAt || Date.now()),
+          finishAt: "0",
+          disputeDeadline: String(
+            (synced.order.meta as { chain?: { disputeDeadline?: string | number } } | undefined)?.chain
+              ?.disputeDeadline ?? "0"
+          ),
+          vaultService: "0",
+          vaultDeposit: "0",
+          evidenceHash: "0x",
+          disputeStatus: 0,
+          resolvedBy: "0x0",
+          resolvedAt: "0",
+        } as ChainOrder;
+      }
 
       // 第四步：如果还是找不到，等待1秒后再试一次（应对极端延迟）
       await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -256,6 +285,10 @@ export default function Showcase() {
       return;
     }
     const localOrder = orders.find((order) => order.id === id);
+    const digest =
+      localOrder?.chainDigest ||
+      (localOrder?.meta as { lastChainDigest?: string; chainDigest?: string } | undefined)?.lastChainDigest ||
+      (localOrder?.meta as { chainDigest?: string } | undefined)?.chainDigest;
     const hasChainMarker =
       Boolean(localOrder?.chainDigest) ||
       localOrder?.chainStatus !== undefined ||
@@ -266,7 +299,7 @@ export default function Showcase() {
       chainOrder = chainOrders.find((order) => order.orderId === id) || null;
       if (!chainOrder) {
         try {
-          chainOrder = await fetchOrSyncChainOrder(id);
+          chainOrder = await fetchOrSyncChainOrder(id, digest);
         } catch (e) {
           setChainToast(formatErrorMessage(e, "链上订单加载失败，请检查链上配置"));
           setTimeout(() => setChainToast(null), 3000);
@@ -547,6 +580,11 @@ export default function Showcase() {
     if (!addr) return "-";
     return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
   };
+  const shortDigest = (digest?: string | null) => {
+    if (!digest) return "";
+    if (digest.length <= 12) return digest;
+    return `${digest.slice(0, 6)}...${digest.slice(-4)}`;
+  };
 
   const runChainAction = async (
     key: string,
@@ -556,12 +594,14 @@ export default function Showcase() {
   ) => {
     try {
       setChainAction(key);
-      await action();
-      setChainToast(success);
+      const result = await action();
+      const digest = result?.digest;
+      const successMsg = digest ? `${success}（tx: ${shortDigest(digest)}）` : success;
+      setChainToast(successMsg);
       await loadChain();
       if (syncOrderId) {
         try {
-          await syncChainOrder(syncOrderId, getCurrentAddress());
+          await syncChainOrder(syncOrderId, getCurrentAddress(), digest);
           await refreshOrders();
         } catch (e) {
           const detail = extractErrorMessage(e);
