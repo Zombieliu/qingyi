@@ -50,6 +50,9 @@ export default function Showcase() {
   const [orderMetaLoading, setOrderMetaLoading] = useState<Record<string, boolean>>({});
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
   const GAME_PROFILE_KEY = "qy_game_profile_v1";
+  const ORDER_SOURCE =
+    process.env.NEXT_PUBLIC_ORDER_SOURCE || (process.env.NEXT_PUBLIC_CHAIN_ORDERS === "1" ? "server" : "local");
+  const showOrderSourceWarning = isChainOrdersEnabled() && ORDER_SOURCE !== "server";
 
   type GameProfile = {
     gameName: string;
@@ -645,6 +648,11 @@ export default function Showcase() {
             {chainLoading && <div className="mt-1 text-amber-600">加载中…</div>}
             {chainError && <div className="mt-1 text-rose-500">{chainError}</div>}
             {chainToast && <div className="mt-1 text-emerald-600">{chainToast}</div>}
+            {showOrderSourceWarning && (
+              <div className="mt-1 text-rose-500">
+                订单来源配置为 local，公开订单不会从服务端拉取，请改为 server。
+              </div>
+            )}
           </div>
           {visibleChainOrders.length === 0 ? (
             <StateBlock

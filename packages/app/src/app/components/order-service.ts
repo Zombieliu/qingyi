@@ -4,8 +4,17 @@ import { addOrder, loadOrders, removeOrder, updateOrder, type LocalOrder } from 
 import { readCache, writeCache } from "./client-cache";
 import { getCurrentAddress, isChainOrdersEnabled, signAuthIntent } from "@/lib/qy-chain";
 
-const ORDER_SOURCE =
-  process.env.NEXT_PUBLIC_ORDER_SOURCE || (process.env.NEXT_PUBLIC_CHAIN_ORDERS === "1" ? "server" : "local");
+const ORDER_SOURCE = (() => {
+  const explicit = process.env.NEXT_PUBLIC_ORDER_SOURCE;
+  const chainEnabled = process.env.NEXT_PUBLIC_CHAIN_ORDERS === "1";
+  if (explicit) {
+    if (chainEnabled && explicit !== "server") {
+      return "server";
+    }
+    return explicit;
+  }
+  return chainEnabled ? "server" : "local";
+})();
 
 type ServerOrder = {
   id: string;
