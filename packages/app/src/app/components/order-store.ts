@@ -10,6 +10,7 @@ export type LocalOrder = {
   status: string;
   time: string; // ISO
   chainDigest?: string;
+  chainStatus?: number;
   serviceFee?: number;
   serviceFeePaid?: boolean;
   depositPaid?: boolean;

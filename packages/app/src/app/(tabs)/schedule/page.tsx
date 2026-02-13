@@ -22,6 +22,7 @@ import {
 } from "@/lib/qy-chain";
 import { resolveDisputePolicy } from "@/lib/risk-policy";
 import { StateBlock } from "@/app/components/state-block";
+import { extractErrorMessage, formatErrorMessage } from "@/app/components/error-utils";
 
 type RideItem = {
   name: string;
@@ -289,6 +290,12 @@ export default function Schedule() {
   }, []);
 
   const fetchOrSyncChainOrder = async (orderId: string) => {
+    const digest = (() => {
+      const order = currentOrder;
+      if (!order || order.id !== orderId) return undefined;
+      const meta = (order.meta || {}) as { chainDigest?: string };
+      return order.chainDigest || meta.chainDigest || undefined;
+    })();
     // 第一步：尝试从本地链上订单列表查找
     let list = await fetchChainOrders();
     let found = list.find((order) => order.orderId === orderId) || null;
@@ -299,7 +306,7 @@ export default function Schedule() {
 
     // 第二步：同步到服务端查询（服务端会自动重试3次，共等待3秒）
     try {
-      await syncChainOrder(orderId, chainAddress || undefined);
+      await syncChainOrder(orderId, chainAddress || undefined, digest);
 
       // 第三步：重新获取链上订单列表
       list = await fetchChainOrders();
@@ -314,7 +321,7 @@ export default function Schedule() {
       found = list.find((order) => order.orderId === orderId) || null;
       if (found) return found;
     } catch (error) {
-      const errorMsg = (error as Error).message || "链上订单同步失败";
+      const errorMsg = formatErrorMessage(error, "链上订单同步失败");
       // 如果是 chain order not found 错误，提供更友好的提示
       if (errorMsg.includes("not found") || errorMsg.includes("未找到")) {
         throw new Error("链上订单暂未索引完成，请稍后再试（通常需要等待3-10秒）");
@@ -337,7 +344,7 @@ export default function Schedule() {
       setChainOrders(list);
       setChainUpdatedAt(Date.now());
     } catch (e) {
-      setChainError((e as Error).message || "链上订单加载失败，请检查链上配置");
+      setChainError(formatErrorMessage(e, "链上订单加载失败，请检查链上配置"));
     } finally {
       if (!visualTest) {
         setChainLoading(false);
@@ -368,7 +375,7 @@ export default function Schedule() {
       setPlayers(next);
       writeCache(cacheKey, next);
     } catch (e) {
-      setPlayersError((e as Error).message || "加载打手失败");
+      setPlayersError(formatErrorMessage(e, "加载打手失败"));
     } finally {
       setPlayersLoading(false);
     }
@@ -415,11 +422,19 @@ export default function Schedule() {
     return Math.max(Number((currentOrder.amount - fee).toFixed(2)), 0);
   }, [currentOrder]);
   const escrowFeeDisplay = currentOrder ? currentOrder.amount : locked.total;
+  const isChainLocalOrder = (order?: LocalOrder | null) => {
+    if (!order) return false;
+    const meta = (order.meta || {}) as { chain?: { status?: number } };
+    return (
+      Boolean(order.chainDigest) ||
+      order.chainStatus !== undefined ||
+      meta.chain?.status !== undefined
+    );
+  };
 
   const cancelOrder = async () => {
     if (!currentOrder) return;
-    const meta = (currentOrder.meta || {}) as Record<string, unknown>;
-    const isChainOrder = Boolean(currentOrder.chainDigest || meta.chain);
+    const isChainOrder = isChainLocalOrder(currentOrder);
     if (isChainOrder) {
       const chainOrder =
         chainCurrentOrder && chainCurrentOrder.orderId === currentOrder.id ? chainCurrentOrder : null;
@@ -492,12 +507,13 @@ export default function Schedule() {
           await syncChainOrder(syncOrderId, getCurrentAddress());
           await refreshOrders();
         } catch (e) {
-          setChainToast(`订单已完成，但同步失败：${(e as Error).message || "未知错误"}`);
+          const detail = extractErrorMessage(e);
+          setChainToast(`订单已完成，但同步失败${detail ? `：${detail}` : ""}`);
         }
       }
       return true;
     } catch (e) {
-      setChainToast((e as Error).message || "操作失败");
+      setChainToast(formatErrorMessage(e, "操作失败"));
       return false;
     } finally {
       setChainAction(null);
@@ -747,15 +763,14 @@ export default function Schedule() {
                 className="dl-tab-btn"
                 onClick={async () => {
                   if (!currentOrder) return;
-                  const meta = (currentOrder.meta || {}) as Record<string, unknown>;
-                  const isChainOrder = Boolean(currentOrder.chainDigest || meta.chain);
+                  const isChainOrder = isChainLocalOrder(currentOrder);
                   if (isChainOrder) {
                     let chainOrder = chainOrders.find((order) => order.orderId === currentOrder.id) || null;
                     if (!chainOrder) {
                       try {
                         chainOrder = await fetchOrSyncChainOrder(currentOrder.id);
                       } catch (error) {
-                        setToast((error as Error).message || "链上订单加载失败，请检查链上配置");
+                      setToast(formatErrorMessage(error, "链上订单加载失败，请检查链上配置"));
                         return;
                       }
                     }
@@ -1035,7 +1050,7 @@ export default function Schedule() {
         setToast(chainDigest ? "已提交并派单" : "托管费用已记录，正在派单");
       }
     } catch (e) {
-      const message = (e as Error).message || "创建订单失败";
+      const message = formatErrorMessage(e, "创建订单失败");
       trackEvent("order_create_failed", {
         error: message,
         total: locked.total,

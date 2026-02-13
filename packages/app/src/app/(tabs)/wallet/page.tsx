@@ -7,6 +7,7 @@ import { useEffect, useMemo, useState } from "react";
 import { getCurrentAddress } from "@/lib/qy-chain";
 import { useBalance } from "@/app/components/balance-provider";
 import { StateBlock } from "@/app/components/state-block";
+import { formatErrorMessage } from "@/app/components/error-utils";
 
 type Option = { amount: number; price: number };
 type PayChannel = "alipay" | "wechat_pay";
@@ -209,7 +210,7 @@ export default function Wallet() {
         }
       }
     } catch (error) {
-      setStatus({ tone: "danger", title: (error as Error).message || "网络错误，请稍后重试" });
+      setStatus({ tone: "danger", title: formatErrorMessage(error, "网络错误，请稍后重试") });
     } finally {
       setLoading(false);
     }

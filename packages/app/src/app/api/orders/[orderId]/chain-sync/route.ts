@@ -10,7 +10,7 @@ import {
 } from "@/lib/chain-sync";
 import { isValidSuiAddress, normalizeSuiAddress } from "@mysten/sui/utils";
 import { requireUserAuth } from "@/lib/user-auth";
-import { getOrderById } from "@/lib/admin-store";
+import { getOrderById, updateOrder } from "@/lib/admin-store";
 
 type RouteContext = {
   params: Promise<{ orderId: string }>;
@@ -143,6 +143,16 @@ export async function POST(req: Request, { params }: RouteContext) {
   }
 
   const synced = await upsertChainOrder(chain);
+  if (digest && !synced.chainDigest) {
+    try {
+      const byDigest = await findChainOrderFromDigest(digest);
+      if (byDigest && byDigest.orderId === orderId) {
+        await updateOrder(orderId, { chainDigest: digest });
+      }
+    } catch {
+      // ignore digest persistence failures
+    }
+  }
 
   return NextResponse.json({
     success: true,

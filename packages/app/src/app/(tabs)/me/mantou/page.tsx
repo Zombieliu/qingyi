@@ -7,6 +7,7 @@ import { getCurrentAddress } from "@/lib/qy-chain";
 import { useMantouBalance } from "@/app/components/mantou-provider";
 import { readCache, writeCache } from "@/app/components/client-cache";
 import { StateBlock } from "@/app/components/state-block";
+import { formatErrorMessage } from "@/app/components/error-utils";
 
 type WithdrawItem = {
   id: string;
@@ -114,6 +115,8 @@ export default function MantouPage() {
       setAmount(0);
       setNote("");
       setStatus({ tone: "success", title: "已提交提现申请，等待后台审核" });
+    } catch (error) {
+      setStatus({ tone: "danger", title: formatErrorMessage(error, "提交失败") });
     } finally {
       setSubmitting(false);
     }

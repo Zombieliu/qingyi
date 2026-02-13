@@ -22,6 +22,7 @@ import {
 } from "@/lib/qy-chain";
 import { MotionCard } from "@/components/ui/motion";
 import { StateBlock } from "@/app/components/state-block";
+import { extractErrorMessage, formatErrorMessage } from "@/app/components/error-utils";
 
 export default function Showcase() {
   const [orders, setOrders] = useState<LocalOrder[]>([]);
@@ -173,7 +174,7 @@ export default function Showcase() {
       setChainOrders(list);
       setChainUpdatedAt(Date.now());
     } catch (e) {
-      setChainError((e as Error).message || "链上订单加载失败，请检查链上配置");
+      setChainError(formatErrorMessage(e, "链上订单加载失败，请检查链上配置"));
     } finally {
       if (!visualTest) {
         setChainLoading(false);
@@ -237,7 +238,7 @@ export default function Showcase() {
       found = list.find((order) => order.orderId === orderId) || null;
       if (found) return found;
     } catch (error) {
-      const errorMsg = (error as Error).message || "链上订单同步失败";
+      const errorMsg = formatErrorMessage(error, "链上订单同步失败");
       // 如果是 chain order not found 错误，提供更友好的提示
       if (errorMsg.includes("not found") || errorMsg.includes("未找到")) {
         throw new Error("链上订单暂未索引完成，请稍后再试（通常需要等待3-10秒）");
@@ -255,7 +256,11 @@ export default function Showcase() {
       return;
     }
     const localOrder = orders.find((order) => order.id === id);
-    const needsChain = isChainOrdersEnabled() && !isVisualTestMode() && Boolean(localOrder?.chainDigest);
+    const hasChainMarker =
+      Boolean(localOrder?.chainDigest) ||
+      localOrder?.chainStatus !== undefined ||
+      (localOrder?.meta as { chain?: { status?: number } } | undefined)?.chain?.status !== undefined;
+    const needsChain = isChainOrdersEnabled() && !isVisualTestMode() && hasChainMarker;
     let chainOrder: ChainOrder | null = null;
     if (needsChain) {
       chainOrder = chainOrders.find((order) => order.orderId === id) || null;
@@ -263,7 +268,7 @@ export default function Showcase() {
         try {
           chainOrder = await fetchOrSyncChainOrder(id);
         } catch (e) {
-          setChainToast((e as Error).message || "链上订单加载失败，请检查链上配置");
+          setChainToast(formatErrorMessage(e, "链上订单加载失败，请检查链上配置"));
           setTimeout(() => setChainToast(null), 3000);
           return;
         }
@@ -476,7 +481,7 @@ export default function Showcase() {
         return detail;
       } catch (error) {
         if (options.toastOnError) {
-          setChainToast((error as Error).message || "加载用户信息失败");
+          setChainToast(formatErrorMessage(error, "加载用户信息失败"));
           setTimeout(() => setChainToast(null), 3000);
         }
       } finally {
@@ -559,12 +564,13 @@ export default function Showcase() {
           await syncChainOrder(syncOrderId, getCurrentAddress());
           await refreshOrders();
         } catch (e) {
-          setChainToast(`订单已完成，但同步失败：${(e as Error).message || "未知错误"}`);
+          const detail = extractErrorMessage(e);
+          setChainToast(`订单已完成，但同步失败${detail ? `：${detail}` : ""}`);
         }
       }
       return true;
     } catch (e) {
-      setChainToast((e as Error).message || "操作失败");
+      setChainToast(formatErrorMessage(e, "操作失败"));
       return false;
     } finally {
       setChainAction(null);
@@ -595,7 +601,7 @@ export default function Showcase() {
       }
       setChainToast(isChain ? "已标记服务完成，等待用户确认" : "已结束服务，等待结算");
     } catch (error) {
-      setChainToast((error as Error).message || "结束服务失败");
+      setChainToast(formatErrorMessage(error, "结束服务失败"));
     } finally {
       setTimeout(() => setChainToast(null), 3000);
     }
@@ -841,7 +847,7 @@ export default function Showcase() {
                                     setPendingScrollToAccepted(true);
                                   }
                                 } catch (error) {
-                                  setChainToast((error as Error).message || "接单信息同步失败");
+                                  setChainToast(formatErrorMessage(error, "接单信息同步失败"));
                                 }
                                 await hydrateOrderMeta(o.orderId, { toastOnError: true });
                                 try {
@@ -868,7 +874,7 @@ export default function Showcase() {
                                     setChainToast(data?.error || "馒头转换失败");
                                   }
                                 } catch (error) {
-                                  setChainToast((error as Error).message || "馒头转换失败");
+                                  setChainToast(formatErrorMessage(error, "馒头转换失败"));
                                 } finally {
                                   setTimeout(() => setChainToast(null), 3000);
                                 }

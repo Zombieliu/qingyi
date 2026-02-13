@@ -57,6 +57,7 @@ function normalizeOrder(order: ServerOrder): LocalOrder {
     status: status || "待处理",
     time,
     chainDigest: order.chainDigest || (meta.chainDigest as string | undefined),
+    chainStatus: order.chainStatus ?? (chainMeta?.status ?? undefined),
     serviceFee: typeof order.serviceFee === "number" ? order.serviceFee : (meta.serviceFee as number | undefined),
     serviceFeePaid: meta.serviceFeePaid as boolean | undefined,
     depositPaid: meta.depositPaid as boolean | undefined,
@@ -288,11 +289,16 @@ export async function patchOrder(
   if (patch.companionAddress && address && patch.companionAddress !== address) {
     throw new Error("companionAddress mismatch");
   }
-  await fetchWithUserAuth(`/api/orders/${orderId}`, {
+  const res = await fetchWithUserAuth(`/api/orders/${orderId}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body,
   }, address);
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    const detail = data?.message || data?.error;
+    throw new Error(detail ? `${detail} (HTTP ${res.status})` : `order patch failed (HTTP ${res.status})`);
+  }
 }
 
 export async function deleteOrder(orderId: string, userAddress?: string) {
@@ -312,12 +318,12 @@ export async function deleteOrder(orderId: string, userAddress?: string) {
   }, address);
 }
 
-export async function syncChainOrder(orderId: string, userAddress?: string) {
+export async function syncChainOrder(orderId: string, userAddress?: string, digest?: string) {
   if (ORDER_SOURCE !== "server") {
     return;
   }
   const address = getCurrentAddress();
-  const body = JSON.stringify({ userAddress: userAddress || address });
+  const body = JSON.stringify({ userAddress: userAddress || address, digest });
   if (userAddress && address && userAddress !== address) {
     throw new Error("userAddress mismatch");
   }
@@ -328,7 +334,8 @@ export async function syncChainOrder(orderId: string, userAddress?: string) {
   }, address);
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
-    throw new Error(data?.error || "chain sync failed");
+    const detail = data?.message || data?.error;
+    throw new Error(detail ? `${detail} (HTTP ${res.status})` : `chain sync failed (HTTP ${res.status})`);
   }
   return res.json();
 }

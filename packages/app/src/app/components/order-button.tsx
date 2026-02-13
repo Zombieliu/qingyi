@@ -10,6 +10,7 @@ import {
 import { trackEvent } from "@/app/components/analytics";
 import { Button } from "@/components/ui/button";
 import { StateBlock } from "@/app/components/state-block";
+import { formatErrorMessage } from "@/app/components/error-utils";
 
 interface Props {
   user: string;
@@ -122,7 +123,7 @@ export default function OrderButton({ user, item, amount, note }: Props) {
       }
     } catch (e) {
       trackEvent("order_create_failed", { source: "home_card", user, item, amount, reason: "exception" });
-      setStatus({ tone: "danger", title: (e as Error).message || "下单失败" });
+      setStatus({ tone: "danger", title: formatErrorMessage(e, "下单失败") });
     } finally {
       setLoading(false);
       setTimeout(() => setStatus(null), 3000);
