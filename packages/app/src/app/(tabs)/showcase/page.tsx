@@ -48,7 +48,9 @@ export default function Showcase() {
   const [myOrdersLoading, setMyOrdersLoading] = useState(false);
   const [orderMetaOverrides, setOrderMetaOverrides] = useState<Record<string, Record<string, unknown>>>({});
   const [orderMetaLoading, setOrderMetaLoading] = useState<Record<string, boolean>>({});
+  const [pendingScrollToAccepted, setPendingScrollToAccepted] = useState(false);
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
+  const acceptedRef = useRef<HTMLDivElement | null>(null);
   const GAME_PROFILE_KEY = "qy_game_profile_v1";
   const ORDER_SOURCE =
     process.env.NEXT_PUBLIC_ORDER_SOURCE || (process.env.NEXT_PUBLIC_CHAIN_ORDERS === "1" ? "server" : "local");
@@ -123,6 +125,15 @@ export default function Showcase() {
     }, 20_000);
     return () => window.clearInterval(timer);
   }, [refreshMyOrders]);
+
+  useEffect(() => {
+    if (!pendingScrollToAccepted) return;
+    if (myAcceptedOrders.length === 0) return;
+    setPendingScrollToAccepted(false);
+    if (acceptedRef.current) {
+      acceptedRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [pendingScrollToAccepted, myAcceptedOrders.length]);
 
   useEffect(() => {
     if (!loadMoreRef.current) return;
@@ -283,7 +294,7 @@ export default function Showcase() {
           }
         : null;
     await patchOrder(id, {
-      status: "已接单",
+      status: needsChain ? undefined : "已接单",
       depositPaid: true,
       driver: {
         name: "护航·刘师傅",
@@ -300,6 +311,7 @@ export default function Showcase() {
     });
     await refreshOrders(true);
     await refreshMyOrders(true);
+    setPendingScrollToAccepted(true);
     setChainToast("接单成功，已移至「我已接的订单」");
     setTimeout(() => setChainToast(null), 3000);
   };
@@ -805,6 +817,30 @@ export default function Showcase() {
                                   o.orderId
                                 );
                                 if (!ok) return;
+                                try {
+                                  const companionProfile = chainAddress ? loadGameProfile(chainAddress) : null;
+                                  const profilePayload =
+                                    companionProfile && (companionProfile.gameName || companionProfile.gameId)
+                                      ? {
+                                          gameName: companionProfile.gameName,
+                                          gameId: companionProfile.gameId,
+                                          updatedAt: companionProfile.updatedAt,
+                                        }
+                                      : null;
+                                  if (chainAddress) {
+                                    await patchOrder(o.orderId, {
+                                      companionAddress: chainAddress,
+                                      depositPaid: true,
+                                      meta: {
+                                        companionProfile: profilePayload,
+                                      },
+                                    });
+                                    await refreshMyOrders(true);
+                                    setPendingScrollToAccepted(true);
+                                  }
+                                } catch (error) {
+                                  setChainToast((error as Error).message || "接单信息同步失败");
+                                }
                                 await hydrateOrderMeta(o.orderId, { toastOnError: true });
                                 try {
                                   const creditBody = JSON.stringify({ orderId: o.orderId, address: chainAddress });
@@ -900,7 +936,7 @@ export default function Showcase() {
       )}
 
       {myAcceptedOrders.length > 0 || myOrdersLoading ? (
-        <div className="space-y-3 mb-6 motion-stack">
+        <div ref={acceptedRef} className="space-y-3 mb-6 motion-stack">
           <div className="dl-card text-xs text-gray-500">
             <div>我已接的订单</div>
             {myOrdersLoading && <div className="mt-1 text-amber-600">加载中…</div>}
