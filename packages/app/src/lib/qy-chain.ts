@@ -185,12 +185,24 @@ export function getDefaultCompanionAddress(): string {
   return getDefaultCompanion();
 }
 
+function resolveDappHubId() {
+  return String(process.env.NEXT_PUBLIC_SUI_DAPP_HUB_ID || DAPP_HUB_ID || "");
+}
+
+function resolveDappHubInitialSharedVersion() {
+  return String(process.env.NEXT_PUBLIC_SUI_DAPP_HUB_INITIAL_SHARED_VERSION || DAPP_HUB_INITIAL_SHARED_VERSION || "");
+}
+
+function resolvePackageId() {
+  return String(process.env.NEXT_PUBLIC_SUI_PACKAGE_ID || PACKAGE_ID || "");
+}
+
 function getDappHubSharedRef() {
-  const dappHubId = String(DAPP_HUB_ID || "");
+  const dappHubId = resolveDappHubId();
   if (!dappHubId || dappHubId === "0x0") {
     throw new Error("合约未部署：缺少 DAPP_HUB_ID");
   }
-  const sharedVersion = String(DAPP_HUB_INITIAL_SHARED_VERSION || "");
+  const sharedVersion = resolveDappHubInitialSharedVersion();
   if (!sharedVersion || sharedVersion === "0") {
     throw new Error("合约未部署：缺少 DAPP_HUB_INITIAL_SHARED_VERSION");
   }
@@ -213,7 +225,7 @@ async function getDubhePackageId(client: SuiClient): Promise<string> {
 }
 
 function ensurePackageId() {
-  const packageId = String(PACKAGE_ID || "");
+  const packageId = resolvePackageId();
   if (!packageId || packageId === "0x0") {
     throw new Error("合约未部署：缺少 PACKAGE_ID");
   }
@@ -392,9 +404,12 @@ export function isChainOrdersEnabled(): boolean {
 
 export function getChainDebugInfo() {
   return {
-    packageId: PACKAGE_ID,
-    dappHubId: DAPP_HUB_ID,
-    dappHubInitialSharedVersion: DAPP_HUB_INITIAL_SHARED_VERSION,
+    packageId: resolvePackageId(),
+    dappHubId: resolveDappHubId(),
+    dappHubInitialSharedVersion: resolveDappHubInitialSharedVersion(),
+    rawPackageId: PACKAGE_ID,
+    rawDappHubId: DAPP_HUB_ID,
+    rawDappHubInitialSharedVersion: DAPP_HUB_INITIAL_SHARED_VERSION,
     network: process.env.NEXT_PUBLIC_SUI_NETWORK || "",
     rpcUrl: process.env.NEXT_PUBLIC_SUI_RPC_URL || "",
     chainOrdersEnabled: isChainOrdersEnabled(),
