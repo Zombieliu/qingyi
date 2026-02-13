@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
-import { addPaymentEvent, getOrderById, updateOrder } from "@/lib/admin-store";
+import { addPaymentEvent, getOrderById, updateOrder, upsertLedgerRecord } from "@/lib/admin-store";
 import { recordAudit } from "@/lib/admin-audit";
 
 const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
@@ -90,10 +90,11 @@ export async function POST(req: Request) {
     }
   }
 
+  let creditOk = false;
   if (isPaid && userAddress && diamondAmount && process.env.LEDGER_ADMIN_TOKEN && paymentIntentId) {
     try {
       const url = new URL("/api/ledger/credit", req.url);
-      await fetch(url, {
+      const res = await fetch(url, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -103,11 +104,42 @@ export async function POST(req: Request) {
           user: userAddress,
           amount: diamondAmount,
           receiptId: `stripe_pi_${paymentIntentId}`,
+          orderId,
+          amountCny: typeof amountRaw === "number" ? amountRaw / 100 : undefined,
+          currency: "CNY",
+          source: "stripe",
           note: "stripe webhook credit",
         }),
       });
+      creditOk = res.ok;
     } catch {
       // ignore credit errors to avoid blocking webhook response
+    }
+  }
+
+  if (isPaid && userAddress && diamondAmount && orderId) {
+    const parsedAmount = Number(diamondAmount);
+    if (Number.isFinite(parsedAmount) && parsedAmount > 0) {
+      try {
+        await upsertLedgerRecord({
+          id: orderId,
+          userAddress,
+          diamondAmount: parsedAmount,
+          amount: typeof amountRaw === "number" ? amountRaw / 100 : undefined,
+          currency: "CNY",
+          status: creditOk ? "credited" : "paid",
+          orderId,
+          receiptId: paymentIntentId ? `stripe_pi_${paymentIntentId}` : undefined,
+          source: "stripe",
+          meta: {
+            eventType,
+            paymentIntentId,
+            status,
+          },
+        });
+      } catch {
+        // ignore ledger record failures to avoid blocking webhook response
+      }
     }
   }
 

@@ -3,6 +3,7 @@ import { Dubhe, Transaction, type NetworkType, type SuiMoveNormalizedModules } f
 import { Inputs } from "@mysten/sui/transactions";
 import { isValidSuiAddress, normalizeSuiAddress } from "@mysten/sui/utils";
 import contractMetadata from "contracts/metadata.json";
+import { upsertLedgerRecord } from "@/lib/admin-store";
 
 const REQUIRED_ENVS = [
   "SUI_RPC_URL",
@@ -59,6 +60,10 @@ export async function POST(req: Request) {
       amount?: string | number;
       receiptId?: string;
       note?: string;
+      orderId?: string;
+      amountCny?: number;
+      currency?: string;
+      source?: string;
     };
     const user = body.user ? normalizeSuiAddress(body.user) : "";
     if (!user || !isValidSuiAddress(user)) {
@@ -139,6 +144,25 @@ export async function POST(req: Request) {
     }
     if (!result) {
       throw lastError || new Error("credit failed");
+    }
+
+    const recordId = body.orderId?.trim() || receiptId;
+    try {
+      await upsertLedgerRecord({
+        id: recordId,
+        userAddress: user,
+        diamondAmount: Number(amountStr),
+        amount: typeof body.amountCny === "number" ? body.amountCny : undefined,
+        currency: body.currency,
+        channel: body.source === "stripe" ? undefined : "manual",
+        status: "credited",
+        orderId: body.orderId?.trim() || undefined,
+        receiptId,
+        source: body.source || "manual",
+        note: body.note,
+      });
+    } catch {
+      // ignore ledger record failures to avoid blocking credit success
     }
 
     return NextResponse.json({

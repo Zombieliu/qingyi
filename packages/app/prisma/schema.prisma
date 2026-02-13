@@ -128,6 +128,27 @@ model AdminPaymentEvent {
   @@index([orderNo])
 }
 
+model LedgerRecord {
+  id            String   @id
+  userAddress   String
+  diamondAmount Int
+  amount        Float?
+  currency      String?
+  channel       String?
+  status        String
+  orderId       String?
+  receiptId     String?
+  source        String?
+  note          String?
+  meta          Json?
+  createdAt     DateTime
+  updatedAt     DateTime?
+
+  @@index([userAddress, createdAt])
+  @@index([orderId])
+  @@index([receiptId])
+}
+
 model GrowthEvent {
   id         String   @id
   event      String

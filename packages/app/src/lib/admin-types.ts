@@ -54,6 +54,23 @@ export interface AdminPaymentEvent {
   raw?: Record<string, unknown>;
 }
 
+export interface LedgerRecord {
+  id: string;
+  userAddress: string;
+  diamondAmount: number;
+  amount?: number;
+  currency?: string;
+  channel?: string;
+  status: string;
+  orderId?: string;
+  receiptId?: string;
+  source?: string;
+  note?: string;
+  meta?: Record<string, unknown>;
+  createdAt: number;
+  updatedAt?: number;
+}
+
 export interface GrowthEvent {
   id: string;
   event: string;

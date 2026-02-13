@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
+import { upsertLedgerRecord } from "@/lib/admin-store";
 
 const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
 const stripe = stripeSecretKey ? new Stripe(stripeSecretKey) : null;
@@ -136,6 +137,28 @@ export async function POST(req: Request) {
           data?: string;
         };
       } | undefined)?.wechat_pay_display_qr_code || null;
+
+    const recordStatus = intent.status === "succeeded" ? "paid" : "pending";
+    try {
+      await upsertLedgerRecord({
+        id: orderId,
+        userAddress,
+        diamondAmount,
+        amount,
+        currency: "CNY",
+        channel,
+        status: recordStatus,
+        orderId,
+        source: "stripe",
+        meta: {
+          paymentIntentId: intent.id,
+          status: intent.status,
+        },
+        createdAt: Date.now(),
+      });
+    } catch {
+      // ignore ledger record failures to avoid blocking payment flow
+    }
 
     return NextResponse.json({
       paymentIntentId: intent.id,

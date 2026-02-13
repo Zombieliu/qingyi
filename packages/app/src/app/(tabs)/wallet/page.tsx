@@ -223,7 +223,7 @@ export default function Wallet() {
           <ArrowLeft size={20} />
         </Link>
         <span className="pay-title">钻石充值</span>
-        <Link href="#" className="pay-link">
+        <Link href="/wallet/records" className="pay-link">
           明细
         </Link>
       </header>
