@@ -30,6 +30,7 @@ tests/visual.spec.ts-snapshots/
 # misc
 .DS_Store
 *.pem
+.tmp.*
 
 # debug
 npm-debug.log*
