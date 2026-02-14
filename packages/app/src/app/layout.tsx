@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Space_Grotesk, Space_Mono } from "next/font/google";
 import RegisterPWA from "./register-pwa";
 import PwaUpdateToast from "./components/pwa-update-toast";
+import FetchThrottle from "./components/fetch-throttle";
 import { BalanceProvider } from "./components/balance-provider";
 import { MantouProvider } from "./components/mantou-provider";
 import AnalyticsProvider from "./components/analytics-provider";
@@ -68,6 +69,7 @@ export default async function RootLayout({
         <Suspense fallback={null}>
           <AnalyticsProvider />
         </Suspense>
+        <FetchThrottle />
         <RegisterPWA />
         <PwaUpdateToast />
         <BalanceProvider>

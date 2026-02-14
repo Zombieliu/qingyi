@@ -101,7 +101,7 @@ export default function MantouPage() {
         setStatus({ tone: "danger", title: data?.error || "提交失败" });
         return;
       }
-      await refresh();
+      await refresh({ force: true });
       const addressNext = getCurrentAddress();
       if (addressNext) {
         const res = await fetch(`/api/mantou/withdraw?address=${addressNext}&page=1&pageSize=10`);

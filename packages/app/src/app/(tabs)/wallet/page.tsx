@@ -94,7 +94,7 @@ export default function Wallet() {
     }
     const fetchBalance = async () => {
       try {
-        const next = await refresh();
+        const next = await refresh({ force: redirectStatus === "succeeded" });
         if (next !== null) {
           if (redirectStatus === "succeeded") {
             setStatus({

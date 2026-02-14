@@ -5,6 +5,8 @@ import { Inputs, Transaction } from "@mysten/sui/transactions";
 import { isValidSuiAddress, normalizeSuiAddress } from "@mysten/sui/utils";
 
 const REQUIRED_ENVS = ["SUI_RPC_URL", "SUI_PACKAGE_ID", "SUI_DAPP_HUB_ID", "SUI_DAPP_HUB_INITIAL_SHARED_VERSION"] as const;
+const BALANCE_CACHE_TTL_MS = 10_000;
+const balanceCache = new Map<string, { value: string; updatedAt: number; inflight?: Promise<string> }>();
 
 function getEnv() {
   const missing = REQUIRED_ENVS.filter((key) => !process.env[key]);
@@ -48,33 +50,68 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: "invalid address" }, { status: 400 });
     }
 
+    const now = Date.now();
+    const cached = balanceCache.get(address);
+    if (cached && now - cached.updatedAt < BALANCE_CACHE_TTL_MS) {
+      return NextResponse.json(
+        { ok: true, balance: cached.value, cached: true },
+        { headers: { "Cache-Control": "public, max-age=2, s-maxage=10, stale-while-revalidate=30" } }
+      );
+    }
+    if (cached?.inflight) {
+      const value = await cached.inflight;
+      return NextResponse.json(
+        { ok: true, balance: value, cached: true },
+        { headers: { "Cache-Control": "public, max-age=2, s-maxage=10, stale-while-revalidate=30" } }
+      );
+    }
+
     const { rpcUrl, packageId, dappHubId, dappHubInitialVersion } = getEnv();
-    const client = new SuiClient({ url: rpcUrl });
-    const tx = new Transaction();
-    tx.moveCall({
-      target: `${packageId}::ledger_system::get_balance`,
-      arguments: [
-        tx.object(
-          Inputs.SharedObjectRef({
-            objectId: dappHubId,
-            initialSharedVersion: dappHubInitialVersion.trim(),
-            mutable: false,
-          })
-        ),
-        tx.pure.address(address),
-      ],
-    });
+    const task = (async () => {
+      const client = new SuiClient({ url: rpcUrl });
+      const tx = new Transaction();
+      tx.moveCall({
+        target: `${packageId}::ledger_system::get_balance`,
+        arguments: [
+          tx.object(
+            Inputs.SharedObjectRef({
+              objectId: dappHubId,
+              initialSharedVersion: dappHubInitialVersion.trim(),
+              mutable: false,
+            })
+          ),
+          tx.pure.address(address),
+        ],
+      });
 
-    const result = await client.devInspectTransactionBlock({
-      sender: address,
-      transactionBlock: tx,
-    });
+      const result = await client.devInspectTransactionBlock({
+        sender: address,
+        transactionBlock: tx,
+      });
 
-    const returnValues = result.results?.[0]?.returnValues || [];
-    const rawValue = returnValues[0]?.[0];
-    const balance = decodeU64(rawValue);
+      const returnValues = result.results?.[0]?.returnValues || [];
+      const rawValue = returnValues[0]?.[0];
+      return decodeU64(rawValue);
+    })();
 
-    return NextResponse.json({ ok: true, balance });
+    balanceCache.set(address, { value: cached?.value ?? "0", updatedAt: cached?.updatedAt ?? 0, inflight: task });
+    try {
+      const balance = await task;
+      balanceCache.set(address, { value: balance, updatedAt: Date.now() });
+      return NextResponse.json(
+        { ok: true, balance },
+        { headers: { "Cache-Control": "public, max-age=2, s-maxage=10, stale-while-revalidate=30" } }
+      );
+    } catch (error) {
+      balanceCache.delete(address);
+      if (cached?.value !== undefined) {
+        return NextResponse.json(
+          { ok: true, balance: cached.value, cached: true, fallback: true },
+          { headers: { "Cache-Control": "public, max-age=2, s-maxage=10, stale-while-revalidate=30" } }
+        );
+      }
+      throw error;
+    }
   } catch (error) {
     return NextResponse.json({ error: (error as Error).message || "balance query failed" }, { status: 500 });
   }
