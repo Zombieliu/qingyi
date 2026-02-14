@@ -29,7 +29,8 @@
     "db:seed": "npm run db:seed --workspace app",
     "db:deploy": "npm run db:deploy --workspace app",
     "db:maintain": "node scripts/admin-maintenance.mjs",
-    "test:chain:script": "node scripts/chain-e2e.mjs"
+    "test:chain:script": "node scripts/chain-e2e.mjs",
+    "vercel:env:clear": "node scripts/vercel-env-clear.mjs"
   },
   "devDependencies": {
     "@playwright/test": "^1.50.1"
