@@ -7,6 +7,9 @@ import { normalizeSuiAddress } from "@mysten/sui/utils";
 const args = new Set(process.argv.slice(2));
 const useDispute = !args.has("--no-dispute");
 const syncAfter = args.has("--sync");
+const doInit = args.has("--init");
+const doCredit = args.has("--credit");
+const skipSync = args.has("--skip-sync") || process.env.E2E_SKIP_SYNC === "1";
 
 const rpcUrl = process.env.SUI_RPC_URL || process.env.NEXT_PUBLIC_SUI_RPC_URL || getFullnodeUrl("testnet");
 const packageId = process.env.SUI_PACKAGE_ID || process.env.NEXT_PUBLIC_SUI_PACKAGE_ID || "";
@@ -32,6 +35,9 @@ if (!userKey || !companionKey) {
 const ruleSetId = process.env.NEXT_PUBLIC_QY_RULESET_ID || "1";
 const serviceFee = Number(process.env.E2E_ORDER_SERVICE_FEE || "1");
 const deposit = Number(process.env.E2E_ORDER_DEPOSIT || "1");
+const creditAmount = Number(process.env.E2E_LEDGER_CREDIT || "100");
+const retryAttempts = Number(process.env.E2E_CHAIN_RETRY_ATTEMPTS || "5");
+const retryDelayMs = Number(process.env.E2E_CHAIN_RETRY_DELAY_MS || "2000");
 
 const client = new SuiClient({ url: rpcUrl });
 
@@ -70,8 +76,82 @@ async function signAndExecute(signer, tx, label) {
     transaction: tx,
     options: { showEffects: true },
   });
+  const status = result.effects?.status?.status;
+  if (status && status !== "success") {
+    const error = result.effects?.status?.error || "chain tx failed";
+    throw new Error(error);
+  }
   console.log(`[chain-e2e] ${label}:`, result.digest);
   return result.digest;
+}
+
+async function initDapp() {
+  if (!adminSigner) throw new Error("Missing admin key for init");
+  const tx = new Transaction();
+  const hub = dappHubRef(tx);
+  tx.moveCall({
+    target: `${packageId}::genesis::run`,
+    arguments: [hub, tx.object("0x6")],
+  });
+  try {
+    await signAndExecute(adminSigner, tx, "genesis::run");
+  } catch (error) {
+    const msg = (error && error.message) || "";
+    if (msg.includes("Dapp already initialized")) {
+      console.log("[chain-e2e] genesis already initialized");
+      return;
+    }
+    throw error;
+  }
+}
+
+async function creditBalance(address, amount, label) {
+  if (!adminSigner) throw new Error("Missing admin key for credit_balance");
+  if (!Number.isFinite(amount) || amount <= 0) return;
+  const tx = new Transaction();
+  const hub = dappHubRef(tx);
+  tx.moveCall({
+    target: `${packageId}::ledger_system::credit_balance`,
+    arguments: [
+      hub,
+      tx.pure.address(normalizeSuiAddress(address)),
+      tx.pure.u64(toChainAmount(amount)),
+    ],
+  });
+  await signAndExecute(adminSigner, tx, `credit_balance ${label}`);
+}
+
+async function creditBalances() {
+  if (!Number.isFinite(creditAmount) || creditAmount <= 0) {
+    console.log("[chain-e2e] skip credit (amount <= 0)");
+    return;
+  }
+  await creditBalance(userAddress, creditAmount, "user");
+  if (normalizeSuiAddress(companionAddress) !== normalizeSuiAddress(userAddress)) {
+    await creditBalance(companionAddress, creditAmount, "companion");
+  }
+}
+
+async function retryChain(label, action) {
+  let lastError = null;
+  for (let attempt = 1; attempt <= retryAttempts; attempt += 1) {
+    try {
+      return await action();
+    } catch (error) {
+      lastError = error;
+      const message = (error && error.message) || "";
+      const isNotFound =
+        message.includes("ensure_has_record") ||
+        message.includes("EInvalidKey") ||
+        message.includes("not found");
+      if (!isNotFound || attempt === retryAttempts) {
+        throw error;
+      }
+      console.warn(`[chain-e2e] ${label} retry ${attempt}/${retryAttempts} after ${retryDelayMs}ms: ${message}`);
+      await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
+    }
+  }
+  if (lastError) throw lastError;
 }
 
 async function createAndPay() {
@@ -184,16 +264,26 @@ async function syncOrder() {
 
 async function main() {
   console.log(`[chain-e2e] user=${userAddress} companion=${companionAddress} order=${orderId}`);
-  await createAndPay();
-  await lockDeposit();
-  await markCompleted();
-  if (useDispute) {
-    await raiseDispute();
-    await resolveDispute();
-  } else {
-    await finalizeNoDispute();
+  if (doInit) {
+    await initDapp();
   }
-  await syncOrder();
+  if (doCredit) {
+    await creditBalances();
+  }
+  await createAndPay();
+  await retryChain("lock_deposit", lockDeposit);
+  await retryChain("mark_completed", markCompleted);
+  if (useDispute) {
+    await retryChain("raise_dispute", raiseDispute);
+    await retryChain("resolve_dispute", resolveDispute);
+  } else {
+    await retryChain("finalize_no_dispute", finalizeNoDispute);
+  }
+  if (!skipSync) {
+    await syncOrder();
+  } else {
+    console.log("[chain-e2e] skip order sync");
+  }
   console.log("[chain-e2e] done");
 }
 

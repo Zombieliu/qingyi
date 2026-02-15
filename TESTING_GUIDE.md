@@ -137,6 +137,9 @@ E2E_ORDER_DEPOSIT=1
 ```
 node scripts/chain-e2e.mjs --no-dispute
 node scripts/chain-e2e.mjs --sync
+node scripts/chain-e2e.mjs --init
+node scripts/chain-e2e.mjs --credit
+node scripts/chain-e2e.mjs --skip-sync
 ```
 
 ## 7. 支付回调（可选）

@@ -219,6 +219,13 @@ export default function Schedule() {
   const [playersLoading, setPlayersLoading] = useState(false);
   const [playersError, setPlayersError] = useState<string | null>(null);
   const [selectedPlayerId, setSelectedPlayerId] = useState<string>("");
+  const [confirmAction, setConfirmAction] = useState<{
+    title: string;
+    description?: string;
+    confirmLabel?: string;
+    action: () => Promise<void>;
+  } | null>(null);
+  const [confirmBusy, setConfirmBusy] = useState(false);
   const [userAddress, setUserAddress] = useState(() => getCurrentAddress());
   const cacheTtlMs = 60_000;
 
@@ -587,6 +594,24 @@ export default function Schedule() {
         {loadingLabel}
       </span>
     );
+  };
+
+  const openConfirm = (payload: { title: string; description?: string; confirmLabel?: string; action: () => Promise<void> }) => {
+    setConfirmAction(payload);
+  };
+
+  const runConfirmAction = async () => {
+    if (!confirmAction) return;
+    setConfirmBusy(true);
+    try {
+      await confirmAction.action();
+    } catch (error) {
+      setChainToast(formatErrorMessage(error, "操作失败"));
+      setTimeout(() => setChainToast(null), 3000);
+    } finally {
+      setConfirmBusy(false);
+      setConfirmAction(null);
+    }
   };
 
   const runChainAction = async (
@@ -1004,12 +1029,20 @@ export default function Schedule() {
                 }
                 if (inDisputeWindow) {
                   const deadlineText = disputeDeadline ? new Date(disputeDeadline).toLocaleString() : "";
-                  const ok = window.confirm(
-                    deadlineText
-                      ? `确认放弃争议期并立即结算？争议截止：${deadlineText}`
-                      : "确认放弃争议期并立即结算？"
-                  );
-                  if (!ok) return;
+                  openConfirm({
+                    title: "确认放弃争议期并立即结算？",
+                    description: deadlineText ? `争议截止：${deadlineText}` : "争议期内放弃争议将立即结算。",
+                    confirmLabel: "确认结算",
+                    action: async () => {
+                      await runChainAction(
+                        `finalize-${currentOrder.id}`,
+                        () => finalizeNoDisputeOnChain(currentOrder.id),
+                        "订单已结算",
+                        currentOrder.id
+                      );
+                    },
+                  });
+                  return;
                 }
                 runChainAction(
                   `finalize-${currentOrder.id}`,
@@ -1330,10 +1363,20 @@ export default function Schedule() {
                       onClick={() => {
                         const deadline = Number(chainCurrentDisplay.disputeDeadline);
                         if (Number.isFinite(deadline) && deadline > Date.now()) {
-                          const ok = window.confirm(
-                            `确认放弃争议期并立即结算？争议截止：${new Date(deadline).toLocaleString()}`
-                          );
-                          if (!ok) return;
+                          openConfirm({
+                            title: "确认放弃争议期并立即结算？",
+                            description: `争议截止：${new Date(deadline).toLocaleString()}`,
+                            confirmLabel: "确认结算",
+                            action: async () => {
+                              await runChainAction(
+                                `finalize-${chainCurrentDisplay.orderId}`,
+                                () => finalizeNoDisputeOnChain(chainCurrentDisplay.orderId),
+                                "订单已结算",
+                                chainCurrentDisplay.orderId
+                              );
+                            },
+                          });
+                          return;
                         }
                         runChainAction(
                           `finalize-${chainCurrentDisplay.orderId}`,
@@ -1465,6 +1508,38 @@ export default function Schedule() {
             <div className="ride-modal-actions">
               <button className="dl-tab-btn" onClick={() => setDebugOpen(false)}>
                 关闭
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {confirmAction && (
+        <div className="ride-modal-mask" role="dialog" aria-modal="true" aria-label={confirmAction.title}>
+          <div className="ride-modal">
+            <div className="ride-modal-head">
+              <div>
+                <div className="ride-modal-title">{confirmAction.title}</div>
+                {confirmAction.description ? (
+                  <div className="ride-modal-sub">{confirmAction.description}</div>
+                ) : null}
+              </div>
+              <div className="ride-modal-amount">确认</div>
+            </div>
+            <div className="ride-modal-actions">
+              <button className="dl-tab-btn" onClick={() => setConfirmAction(null)} disabled={confirmBusy}>
+                取消
+              </button>
+              <button
+                className="dl-tab-btn"
+                style={{ background: "#0f172a", color: "#fff" }}
+                onClick={runConfirmAction}
+                disabled={confirmBusy}
+              >
+                {confirmBusy ? <Loader2 size={16} className="spin" /> : null}
+                <span style={{ marginLeft: confirmBusy ? 6 : 0 }}>
+                  {confirmAction.confirmLabel || "确认"}
+                </span>
               </button>
             </div>
           </div>
