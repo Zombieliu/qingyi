@@ -22,6 +22,7 @@ import {
 } from "@/lib/qy-chain";
 import { resolveDisputePolicy } from "@/lib/risk-policy";
 import { StateBlock } from "@/app/components/state-block";
+import { ConfirmDialog, PromptDialog } from "@/app/components/confirm-dialog";
 import { extractErrorMessage, formatErrorMessage } from "@/app/components/error-utils";
 
 type RideItem = {
@@ -226,6 +227,15 @@ export default function Schedule() {
     action: () => Promise<void>;
   } | null>(null);
   const [confirmBusy, setConfirmBusy] = useState(false);
+  const [promptAction, setPromptAction] = useState<{
+    title: string;
+    description?: string;
+    placeholder?: string;
+    confirmLabel?: string;
+    action: (value: string) => Promise<void>;
+  } | null>(null);
+  const [promptValue, setPromptValue] = useState("");
+  const [promptBusy, setPromptBusy] = useState(false);
   const [userAddress, setUserAddress] = useState(() => getCurrentAddress());
   const cacheTtlMs = 60_000;
 
@@ -600,6 +610,17 @@ export default function Schedule() {
     setConfirmAction(payload);
   };
 
+  const openPrompt = (payload: {
+    title: string;
+    description?: string;
+    placeholder?: string;
+    confirmLabel?: string;
+    action: (value: string) => Promise<void>;
+  }) => {
+    setPromptValue("");
+    setPromptAction(payload);
+  };
+
   const runConfirmAction = async () => {
     if (!confirmAction) return;
     setConfirmBusy(true);
@@ -611,6 +632,20 @@ export default function Schedule() {
     } finally {
       setConfirmBusy(false);
       setConfirmAction(null);
+    }
+  };
+
+  const runPromptAction = async () => {
+    if (!promptAction) return;
+    setPromptBusy(true);
+    try {
+      await promptAction.action(promptValue.trim());
+    } catch (error) {
+      setChainToast(formatErrorMessage(error, "操作失败"));
+      setTimeout(() => setChainToast(null), 3000);
+    } finally {
+      setPromptBusy(false);
+      setPromptAction(null);
     }
   };
 
@@ -793,7 +828,7 @@ export default function Schedule() {
           </div>
           <div className="ride-driver-actions">
             <button className="dl-tab-btn" onClick={cancelOrder}>取消订单</button>
-            <button className="dl-tab-btn" style={{ background: "#f97316", color: "#fff" }}>
+            <button className="dl-tab-btn accent">
               联系打手
             </button>
           </div>
@@ -814,8 +849,7 @@ export default function Schedule() {
           <div className="ride-pay-actions">
             <button className="dl-tab-btn" onClick={cancelOrder}>取消订单</button>
             <button
-              className="dl-tab-btn"
-              style={{ background: "#0f172a", color: "#fff" }}
+              className="dl-tab-btn primary"
               onClick={async () => {
                 if (!currentOrder) return;
                 await patchOrder(currentOrder.id, { playerPaid: true, status: "打手费已托管", userAddress: getCurrentAddress() });
@@ -931,7 +965,7 @@ export default function Schedule() {
                 {currentOrder ? renderActionLabel(`complete-${currentOrder.id}`, "确认完成") : "确认完成"}
               </button>
             )}
-            <button className="dl-tab-btn" style={{ background: "#f97316", color: "#fff" }}>
+            <button className="dl-tab-btn accent">
               联系打手
             </button>
           </div>
@@ -1007,20 +1041,25 @@ export default function Schedule() {
                   }
                   return;
                 }
-                const evidence = window.prompt("请输入争议说明或证据哈希（可留空）") || "";
-                runChainAction(
-                  `dispute-${currentOrder.id}`,
-                  () => raiseDisputeOnChain(currentOrder.id, evidence),
-                  "已提交争议",
-                  currentOrder.id
-                );
+                openPrompt({
+                  title: "发起争议",
+                  description: "请填写争议说明或证据哈希（可留空）",
+                  confirmLabel: "提交争议",
+                  action: async (value) => {
+                    await runChainAction(
+                      `dispute-${currentOrder.id}`,
+                      () => raiseDisputeOnChain(currentOrder.id, value),
+                      "已提交争议",
+                      currentOrder.id
+                    );
+                  },
+                });
               }}
             >
               {currentOrder ? renderActionLabel(`dispute-${currentOrder.id}`, "发起争议") : "发起争议"}
             </button>
             <button
-              className="dl-tab-btn"
-              style={{ background: "#0f172a", color: "#fff" }}
+              className="dl-tab-btn primary"
               onClick={() => {
                 if (!currentOrder) return;
                 if (!canFinalize) {
@@ -1054,7 +1093,7 @@ export default function Schedule() {
             >
               {currentOrder ? renderActionLabel(`finalize-${currentOrder.id}`, "无争议结算") : "无争议结算"}
             </button>
-            <button className="dl-tab-btn" style={{ background: "#f97316", color: "#fff" }}>
+            <button className="dl-tab-btn accent">
               联系打手
             </button>
           </div>
@@ -1345,13 +1384,19 @@ export default function Schedule() {
                       style={{ padding: "6px 10px" }}
                       disabled={chainAction === `dispute-${chainCurrentDisplay.orderId}`}
                       onClick={() => {
-                        const evidence = window.prompt("请输入争议说明或证据哈希（可留空）") || "";
-                        runChainAction(
-                          `dispute-${chainCurrentDisplay.orderId}`,
-                          () => raiseDisputeOnChain(chainCurrentDisplay.orderId, evidence),
-                          "已提交争议",
-                          chainCurrentDisplay.orderId
-                        );
+                        openPrompt({
+                          title: "发起争议",
+                          description: "请填写争议说明或证据哈希（可留空）",
+                          confirmLabel: "提交争议",
+                          action: async (value) => {
+                            await runChainAction(
+                              `dispute-${chainCurrentDisplay.orderId}`,
+                              () => raiseDisputeOnChain(chainCurrentDisplay.orderId, value),
+                              "已提交争议",
+                              chainCurrentDisplay.orderId
+                            );
+                          },
+                        });
                       }}
                     >
                       {renderActionLabel(`dispute-${chainCurrentDisplay.orderId}`, "发起争议")}
@@ -1474,8 +1519,7 @@ export default function Schedule() {
                 取消
               </button>
               <button
-                className="dl-tab-btn"
-                style={{ background: "#0f172a", color: "#fff" }}
+                className="dl-tab-btn primary"
                 onClick={callOrder}
                 disabled={calling || !hasEnoughDiamonds}
               >
@@ -1514,37 +1558,28 @@ export default function Schedule() {
         </div>
       )}
 
-      {confirmAction && (
-        <div className="ride-modal-mask" role="dialog" aria-modal="true" aria-label={confirmAction.title}>
-          <div className="ride-modal">
-            <div className="ride-modal-head">
-              <div>
-                <div className="ride-modal-title">{confirmAction.title}</div>
-                {confirmAction.description ? (
-                  <div className="ride-modal-sub">{confirmAction.description}</div>
-                ) : null}
-              </div>
-              <div className="ride-modal-amount">确认</div>
-            </div>
-            <div className="ride-modal-actions">
-              <button className="dl-tab-btn" onClick={() => setConfirmAction(null)} disabled={confirmBusy}>
-                取消
-              </button>
-              <button
-                className="dl-tab-btn"
-                style={{ background: "#0f172a", color: "#fff" }}
-                onClick={runConfirmAction}
-                disabled={confirmBusy}
-              >
-                {confirmBusy ? <Loader2 size={16} className="spin" /> : null}
-                <span style={{ marginLeft: confirmBusy ? 6 : 0 }}>
-                  {confirmAction.confirmLabel || "确认"}
-                </span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmDialog
+        open={!!confirmAction}
+        title={confirmAction?.title ?? ""}
+        description={confirmAction?.description}
+        confirmLabel={confirmAction?.confirmLabel}
+        busy={confirmBusy}
+        onConfirm={runConfirmAction}
+        onClose={() => setConfirmAction(null)}
+      />
+
+      <PromptDialog
+        open={!!promptAction}
+        title={promptAction?.title ?? ""}
+        description={promptAction?.description}
+        placeholder={promptAction?.placeholder}
+        confirmLabel={promptAction?.confirmLabel}
+        value={promptValue}
+        busy={promptBusy}
+        onChange={setPromptValue}
+        onConfirm={runPromptAction}
+        onClose={() => setPromptAction(null)}
+      />
 
       <div className="ride-tip" style={{ marginTop: 0 }}>
         本单含多种特惠计价，点击查看详情

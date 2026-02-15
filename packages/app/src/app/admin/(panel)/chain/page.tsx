@@ -5,6 +5,7 @@ import { RefreshCw } from "lucide-react";
 import { readCache, writeCache } from "@/app/components/client-cache";
 import * as chainOrderUtils from "@/lib/chain-order-utils";
 import { StateBlock } from "@/app/components/state-block";
+import { ConfirmDialog } from "@/app/components/confirm-dialog";
 
 type ChainOrder = {
   orderId: string;
@@ -37,6 +38,13 @@ export default function ChainPage() {
   const [manualDigest, setManualDigest] = useState("");
   const [manualSyncing, setManualSyncing] = useState(false);
   const [manualSyncResult, setManualSyncResult] = useState<string | null>(null);
+  const [confirmAction, setConfirmAction] = useState<{
+    title: string;
+    description?: string;
+    confirmLabel?: string;
+    action: () => Promise<void>;
+  } | null>(null);
+  const [confirmBusy, setConfirmBusy] = useState(false);
   const cacheTtlMs = 60_000;
 
   const loadData = async () => {
@@ -154,52 +162,80 @@ export default function ChainPage() {
     }
   };
 
-  const forceCancel = async (orderId: string) => {
-    if (!window.confirm("确认强制取消该订单？仅限未锁押金的链上订单。")) {
-      return;
-    }
-    setCancelingOrderId(orderId);
+  const openConfirm = (payload: {
+    title: string;
+    description?: string;
+    confirmLabel?: string;
+    action: () => Promise<void>;
+  }) => {
+    setConfirmAction(payload);
+  };
+
+  const runConfirmAction = async () => {
+    if (!confirmAction) return;
+    setConfirmBusy(true);
     try {
-      const res = await fetch("/api/admin/chain/cancel", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ orderId }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        setError(data?.error || "取消失败");
-      } else {
-        await loadData();
-      }
+      await confirmAction.action();
     } finally {
-      setCancelingOrderId(null);
+      setConfirmBusy(false);
+      setConfirmAction(null);
     }
   };
 
+  const forceCancel = async (orderId: string) => {
+    openConfirm({
+      title: "确认强制取消该订单？",
+      description: "仅限未锁押金的链上订单。",
+      confirmLabel: "确认取消",
+      action: async () => {
+        setCancelingOrderId(orderId);
+        try {
+          const res = await fetch("/api/admin/chain/cancel", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ orderId }),
+          });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) {
+            setError(data?.error || "取消失败");
+          } else {
+            await loadData();
+          }
+        } finally {
+          setCancelingOrderId(null);
+        }
+      },
+    });
+  };
+
   const runAutoCancel = async () => {
-    if (!window.confirm("确认执行超期自动取消？仅会处理未锁押金订单。")) {
-      return;
-    }
-    setAutoCanceling(true);
-    setAutoCancelResult(null);
-    try {
-      const res = await fetch("/api/admin/chain/auto-cancel", { method: "POST" });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        setError(data?.error || "执行失败");
-        return;
-      }
-      if (!data?.enabled) {
-        setAutoCancelResult("自动取消未启用");
-      } else {
-        setAutoCancelResult(
-          `已取消 ${data?.canceled ?? 0} / ${data?.candidates ?? 0}，失败 ${data?.failures?.length ?? 0}`
-        );
-      }
-      await loadData();
-    } finally {
-      setAutoCanceling(false);
-    }
+    openConfirm({
+      title: "确认执行超期自动取消？",
+      description: "仅会处理未锁押金订单。",
+      confirmLabel: "确认执行",
+      action: async () => {
+        setAutoCanceling(true);
+        setAutoCancelResult(null);
+        try {
+          const res = await fetch("/api/admin/chain/auto-cancel", { method: "POST" });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) {
+            setError(data?.error || "执行失败");
+            return;
+          }
+          if (!data?.enabled) {
+            setAutoCancelResult("自动取消未启用");
+          } else {
+            setAutoCancelResult(
+              `已取消 ${data?.canceled ?? 0} / ${data?.candidates ?? 0}，失败 ${data?.failures?.length ?? 0}`
+            );
+          }
+          await loadData();
+        } finally {
+          setAutoCanceling(false);
+        }
+      },
+    });
   };
 
   const runManualSync = async () => {
@@ -236,27 +272,27 @@ export default function ChainPage() {
 
   const cleanupMissingChain = async () => {
     if (missingChain.length === 0) return;
-    if (
-      !window.confirm(
-        `确认删除本地缺链订单？共 ${missingChain.length} 条，仅影响数据库，不会动链上。`
-      )
-    ) {
-      return;
-    }
-    setCleanupMissing(true);
-    setCleanupResult(null);
-    try {
-      const res = await fetch("/api/admin/chain/cleanup-missing", { method: "POST" });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        setError(data?.error || "清理失败");
-        return;
-      }
-      setCleanupResult(`已清理 ${data?.deleted ?? 0} / ${data?.candidates ?? 0} 条`);
-      await loadData();
-    } finally {
-      setCleanupMissing(false);
-    }
+    openConfirm({
+      title: "确认删除本地缺链订单？",
+      description: `共 ${missingChain.length} 条，仅影响数据库，不会动链上。`,
+      confirmLabel: "确认清理",
+      action: async () => {
+        setCleanupMissing(true);
+        setCleanupResult(null);
+        try {
+          const res = await fetch("/api/admin/chain/cleanup-missing", { method: "POST" });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) {
+            setError(data?.error || "清理失败");
+            return;
+          }
+          setCleanupResult(`已清理 ${data?.deleted ?? 0} / ${data?.candidates ?? 0} 条`);
+          await loadData();
+        } finally {
+          setCleanupMissing(false);
+        }
+      },
+    });
   };
 
   const autoCancelMs = useMemo(() => {
@@ -519,6 +555,16 @@ export default function ChainPage() {
           </div>
         )}
       </div>
+
+      <ConfirmDialog
+        open={!!confirmAction}
+        title={confirmAction?.title ?? ""}
+        description={confirmAction?.description}
+        confirmLabel={confirmAction?.confirmLabel}
+        busy={confirmBusy}
+        onConfirm={runConfirmAction}
+        onClose={() => setConfirmAction(null)}
+      />
     </div>
   );
 }

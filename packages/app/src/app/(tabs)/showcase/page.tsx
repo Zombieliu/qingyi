@@ -22,6 +22,7 @@ import {
 } from "@/lib/qy-chain";
 import { MotionCard } from "@/components/ui/motion";
 import { StateBlock } from "@/app/components/state-block";
+import { ConfirmDialog } from "@/app/components/confirm-dialog";
 import { extractErrorMessage, formatErrorMessage } from "@/app/components/error-utils";
 
 function getLocalChainStatus(order?: LocalOrder | null) {
@@ -1038,15 +1039,23 @@ export default function Showcase() {
                           className="dl-tab-btn"
                           style={{ padding: "8px 10px" }}
                           disabled={chainAction === `finalize-${o.orderId}`}
-                          onClick={() => {
+                        onClick={() => {
                             if (isUser && inDisputeWindow) {
                               const deadlineText = hasDeadline ? new Date(deadline).toLocaleString() : "";
-                              const ok = window.confirm(
-                                deadlineText
-                                  ? `确认放弃争议期并立即结算？争议截止：${deadlineText}`
-                                  : "确认放弃争议期并立即结算？"
-                              );
-                              if (!ok) return;
+                              openConfirm({
+                                title: "确认放弃争议期并立即结算？",
+                                description: deadlineText ? `争议截止：${deadlineText}` : "争议期内放弃争议将立即结算。",
+                                confirmLabel: "确认结算",
+                                action: async () => {
+                                  await runChainAction(
+                                    `finalize-${o.orderId}`,
+                                    () => finalizeNoDisputeOnChain(o.orderId),
+                                    "订单已结算",
+                                    o.orderId
+                                  );
+                                },
+                              });
+                              return;
                             }
                             runChainAction(
                               `finalize-${o.orderId}`,
@@ -1183,7 +1192,7 @@ export default function Showcase() {
                   <button className="dl-tab-btn" style={{ padding: "8px 10px" }} onClick={() => complete(o.id)}>
                     完成
                   </button>
-                  <button className="dl-tab-btn" style={{ padding: "8px 10px", background: "#f97316", color: "#fff" }}>
+                  <button className="dl-tab-btn accent" style={{ padding: "8px 10px" }}>
                     联系打手
                   </button>
                 </div>
@@ -1260,16 +1269,15 @@ export default function Showcase() {
               </div>
               <div className="ride-modal-amount">#{disputeOpen.orderId}</div>
             </div>
-            <div className="ride-qr-inline">
+            <div className="ride-modal-body">
               <textarea
-                className="admin-input"
-                style={{ width: "100%", minHeight: 120 }}
+                className="dl-textarea"
                 placeholder="请输入争议说明或证据哈希"
                 value={disputeEvidence}
                 onChange={(e) => setDisputeOpen({ orderId: disputeOpen.orderId, evidence: e.target.value })}
               />
               {disputeOrder?.disputeDeadline ? (
-                <div className="text-xs text-gray-500 mt-2">
+                <div className="text-xs text-gray-500">
                   争议截止：{formatTime(String(disputeDeadline || 0))}（剩余 {formatRemaining(String(disputeDeadline || 0))}）
                 </div>
               ) : null}
@@ -1279,8 +1287,7 @@ export default function Showcase() {
                 取消
               </button>
               <button
-                className="dl-tab-btn"
-                style={{ background: "#0f172a", color: "#fff" }}
+                className="dl-tab-btn primary"
                 onClick={() => {
                   const orderId = disputeOpen.orderId;
                   const evidence = disputeOpen.evidence.trim();
@@ -1325,39 +1332,15 @@ export default function Showcase() {
           </div>
         </div>
       )}
-      {confirmAction && (
-        <div className="ride-modal-mask" role="dialog" aria-modal="true" aria-label={confirmAction.title}>
-          <div className="ride-modal">
-            <div className="ride-modal-head">
-              <div>
-                <div className="ride-modal-title">{confirmAction.title}</div>
-                <div className="ride-modal-sub">{confirmAction.description}</div>
-              </div>
-              <div className="ride-modal-amount">确认</div>
-            </div>
-            <div className="ride-modal-actions">
-              <button className="dl-tab-btn" onClick={() => setConfirmAction(null)} disabled={confirmBusy}>
-                取消
-              </button>
-              <button
-                className="dl-tab-btn"
-                style={{ background: "#0f172a", color: "#fff" }}
-                onClick={runConfirmAction}
-                disabled={confirmBusy}
-              >
-                {confirmBusy ? (
-                  <span className="inline-flex items-center gap-1">
-                    <Loader2 className="h-3.5 w-3.5 spin" />
-                    处理中
-                  </span>
-                ) : (
-                  confirmAction.confirmLabel
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmDialog
+        open={!!confirmAction}
+        title={confirmAction?.title ?? ""}
+        description={confirmAction?.description}
+        confirmLabel={confirmAction?.confirmLabel}
+        busy={confirmBusy}
+        onConfirm={runConfirmAction}
+        onClose={() => setConfirmAction(null)}
+      />
       <div className="text-xs text-gray-500 mt-6">
         订单来自服务端；可执行押金/结算流程。
       </div>
