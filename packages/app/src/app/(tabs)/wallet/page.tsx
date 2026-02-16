@@ -8,6 +8,7 @@ import { getCurrentAddress } from "@/lib/qy-chain";
 import { useBalance } from "@/app/components/balance-provider";
 import { StateBlock } from "@/app/components/state-block";
 import { formatErrorMessage } from "@/app/components/error-utils";
+import { fetchWithUserAuth } from "@/app/components/user-auth-client";
 
 type Option = { amount: number; price: number };
 type PayChannel = "alipay" | "wechat_pay";
@@ -166,7 +167,7 @@ export default function Wallet() {
     setOrderId(nextOrderId);
 
     try {
-      const res = await fetch("/api/pay", {
+      const res = await fetchWithUserAuth("/api/pay", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -179,7 +180,7 @@ export default function Wallet() {
           body: `钻石充值 ${selected.amount} 钻石`,
           returnUrl: typeof window !== "undefined" ? `${window.location.origin}/wallet` : undefined,
         }),
-      });
+      }, address);
       const data = (await res.json()) as PayResponse & { error?: string };
       if (!res.ok) {
         setStatus({ tone: "danger", title: data.error || "支付创建失败" });

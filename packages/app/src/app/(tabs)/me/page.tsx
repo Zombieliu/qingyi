@@ -173,13 +173,13 @@ export default function Me() {
         </div>
       </section>
 
-      <section className="member-card">
+      <Link href="/vip" className="member-card">
         <div className="member-top">
           <div>
             <div className="member-grade">V8 会员</div>
             <div className="member-progress">还需 4236 里程值可保级至 V8</div>
           </div>
-          <button className="member-btn">会员中心</button>
+          <span className="member-btn">会员中心</span>
         </div>
         <div className="member-actions">
           {[
@@ -194,7 +194,7 @@ export default function Me() {
             </div>
           ))}
         </div>
-      </section>
+      </Link>
 
       <section className="dl-card">
         <div className="dl-section-title">更多功能</div>

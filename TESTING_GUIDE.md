@@ -143,10 +143,15 @@ node scripts/chain-e2e.mjs --skip-sync
 ```
 
 ## 7. 支付回调（可选）
-模拟 Ping++ 回调：
+模拟 Stripe 回调：
 - POST `/api/pay/webhook`
-- 可使用 `PINGPP_WEBHOOK_TOKEN` 或签名校验
+- 推荐配置 `STRIPE_WEBHOOK_SECRET` 进行签名校验
 - 触发后可在后台“支付事件”查看记录
+
+## 7.1 支付对账（可选）
+执行对账（默认 dry-run）：
+- GET `/api/cron/pay/reconcile`
+- 加 `apply=1` 执行补账/修复
 
 ## 8. 常见问题
 - **Prisma 找不到 DATABASE_URL**

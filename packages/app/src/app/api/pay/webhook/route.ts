@@ -10,6 +10,9 @@ export async function POST(req: Request) {
   const rawBody = await req.text();
   const signature = req.headers.get("stripe-signature") || "";
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+  if (!webhookSecret && process.env.NODE_ENV === "production") {
+    return NextResponse.json({ error: "webhook_secret_required" }, { status: 503 });
+  }
 
   let event: Stripe.Event;
   let verified = false;

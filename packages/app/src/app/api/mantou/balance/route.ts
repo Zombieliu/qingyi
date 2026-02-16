@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { isValidSuiAddress, normalizeSuiAddress } from "@mysten/sui/utils";
 import { getMantouWallet } from "@/lib/admin-store";
+import { requireUserAuth } from "@/lib/user-auth";
 
 const MANTOU_BALANCE_CACHE_TTL_MS = 10_000;
 const mantouCache = new Map<string, { value: { balance: number; frozen: number }; updatedAt: number; inflight?: Promise<{ balance: number; frozen: number }> }>();
@@ -22,43 +23,46 @@ export async function GET(req: Request) {
   if (!address || !isValidSuiAddress(address)) {
     return NextResponse.json({ error: "invalid address" }, { status: 400 });
   }
+  const auth = await requireUserAuth(req, { intent: "mantou:balance:read", address });
+  if (!auth.ok) return auth.response;
+  const resolvedAddress = auth.address;
   const now = Date.now();
-  const cached = mantouCache.get(address);
+  const cached = mantouCache.get(resolvedAddress);
   if (cached && now - cached.updatedAt < MANTOU_BALANCE_CACHE_TTL_MS) {
     return NextResponse.json(
       { ok: true, balance: cached.value.balance, frozen: cached.value.frozen, cached: true },
-      { headers: { "Cache-Control": "public, max-age=2, s-maxage=10, stale-while-revalidate=30" } }
+      { headers: { "Cache-Control": "private, max-age=2, stale-while-revalidate=30" } }
     );
   }
   if (cached?.inflight) {
     const value = await cached.inflight;
     return NextResponse.json(
       { ok: true, balance: value.balance, frozen: value.frozen, cached: true },
-      { headers: { "Cache-Control": "public, max-age=2, s-maxage=10, stale-while-revalidate=30" } }
+      { headers: { "Cache-Control": "private, max-age=2, stale-while-revalidate=30" } }
     );
   }
   const task = (async () => {
-    const wallet = await getMantouWallet(address);
+    const wallet = await getMantouWallet(resolvedAddress);
     return { balance: wallet.balance, frozen: wallet.frozen };
   })();
-  mantouCache.set(address, {
+  mantouCache.set(resolvedAddress, {
     value: cached?.value ?? { balance: 0, frozen: 0 },
     updatedAt: cached?.updatedAt ?? 0,
     inflight: task,
   });
   try {
     const value = await task;
-    mantouCache.set(address, { value, updatedAt: Date.now() });
+    mantouCache.set(resolvedAddress, { value, updatedAt: Date.now() });
     return NextResponse.json(
       { ok: true, balance: value.balance, frozen: value.frozen },
-      { headers: { "Cache-Control": "public, max-age=2, s-maxage=10, stale-while-revalidate=30" } }
+      { headers: { "Cache-Control": "private, max-age=2, stale-while-revalidate=30" } }
     );
   } catch (error) {
-    mantouCache.delete(address);
+    mantouCache.delete(resolvedAddress);
     if (cached?.value) {
       return NextResponse.json(
         { ok: true, balance: cached.value.balance, frozen: cached.value.frozen, cached: true, fallback: true },
-        { headers: { "Cache-Control": "public, max-age=2, s-maxage=10, stale-while-revalidate=30" } }
+        { headers: { "Cache-Control": "private, max-age=2, stale-while-revalidate=30" } }
       );
     }
     throw error;

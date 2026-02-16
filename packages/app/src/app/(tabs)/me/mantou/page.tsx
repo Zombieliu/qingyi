@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { getCurrentAddress } from "@/lib/qy-chain";
 import { useMantouBalance } from "@/app/components/mantou-provider";
 import { readCache, writeCache } from "@/app/components/client-cache";
+import { fetchWithUserAuth } from "@/app/components/user-auth-client";
 import { StateBlock } from "@/app/components/state-block";
 import { formatErrorMessage } from "@/app/components/error-utils";
 
@@ -53,21 +54,25 @@ export default function MantouPage() {
       if (cachedTx) {
         setTransactions(Array.isArray(cachedTx.value) ? cachedTx.value : []);
       }
-      const [withdrawRes, txRes] = await Promise.all([
-        fetch(`/api/mantou/withdraw?address=${address}&page=1&pageSize=10`),
-        fetch(`/api/mantou/transactions?address=${address}&page=1&pageSize=10`),
-      ]);
-      if (withdrawRes.ok) {
-        const data = await withdrawRes.json();
-        const next = Array.isArray(data?.items) ? data.items : [];
-        setWithdraws(next);
-        writeCache(withdrawCacheKey, next);
-      }
-      if (txRes.ok) {
-        const data = await txRes.json();
-        const next = Array.isArray(data?.items) ? data.items : [];
-        setTransactions(next);
-        writeCache(txCacheKey, next);
+      try {
+        const [withdrawRes, txRes] = await Promise.all([
+          fetchWithUserAuth(`/api/mantou/withdraw?address=${address}&page=1&pageSize=10`, {}, address),
+          fetchWithUserAuth(`/api/mantou/transactions?address=${address}&page=1&pageSize=10`, {}, address),
+        ]);
+        if (withdrawRes.ok) {
+          const data = await withdrawRes.json();
+          const next = Array.isArray(data?.items) ? data.items : [];
+          setWithdraws(next);
+          writeCache(withdrawCacheKey, next);
+        }
+        if (txRes.ok) {
+          const data = await txRes.json();
+          const next = Array.isArray(data?.items) ? data.items : [];
+          setTransactions(next);
+          writeCache(txCacheKey, next);
+        }
+      } catch {
+        // ignore load errors
       }
     };
     load();
@@ -91,11 +96,11 @@ export default function MantouPage() {
     setSubmitting(true);
     setStatus(null);
     try {
-      const res = await fetch("/api/mantou/withdraw", {
+      const res = await fetchWithUserAuth("/api/mantou/withdraw", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ address, amount, account: account.trim(), note: note.trim() }),
-      });
+      }, address);
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         setStatus({ tone: "danger", title: data?.error || "提交失败" });
@@ -104,7 +109,11 @@ export default function MantouPage() {
       await refresh({ force: true });
       const addressNext = getCurrentAddress();
       if (addressNext) {
-        const res = await fetch(`/api/mantou/withdraw?address=${addressNext}&page=1&pageSize=10`);
+        const res = await fetchWithUserAuth(
+          `/api/mantou/withdraw?address=${addressNext}&page=1&pageSize=10`,
+          {},
+          addressNext
+        );
         if (res.ok) {
           const data = await res.json();
           const next = Array.isArray(data?.items) ? data.items : [];

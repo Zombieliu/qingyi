@@ -5,6 +5,7 @@ import { ArrowLeft, Crown, Shield } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { PASSKEY_STORAGE_KEY } from "@/app/components/passkey-wallet";
 import { readCache, writeCache } from "@/app/components/client-cache";
+import { fetchWithUserAuth } from "@/app/components/user-auth-client";
 import type { AdminMember, AdminMembershipTier } from "@/lib/admin-types";
 import { isVisualTestMode } from "@/lib/qy-chain";
 import { StateBlock } from "@/app/components/state-block";
@@ -69,7 +70,9 @@ export default function Vip() {
         }
         const [tiersRes, memberRes] = await Promise.all([
           fetch("/api/vip/tiers"),
-          walletAddress ? fetch(`/api/vip/status?userAddress=${walletAddress}`) : Promise.resolve(null),
+          walletAddress
+            ? fetchWithUserAuth(`/api/vip/status?userAddress=${walletAddress}`, {}, walletAddress)
+            : Promise.resolve(null),
         ]);
         if (tiersRes.ok) {
           const data = await tiersRes.json();
@@ -127,7 +130,7 @@ export default function Vip() {
     setSubmitting(true);
     setHint(null);
     try {
-      const res = await fetch("/api/vip/request", {
+      const res = await fetchWithUserAuth("/api/vip/request", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -136,7 +139,7 @@ export default function Vip() {
           contact: contact.trim(),
           tierId: selectedTier.id,
         }),
-      });
+      }, walletAddress);
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         setHint(data?.error || "提交失败，请稍后重试");

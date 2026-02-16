@@ -1,11 +1,14 @@
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { upsertLedgerRecord } from "@/lib/admin-store";
+import { isValidSuiAddress, normalizeSuiAddress } from "@mysten/sui/utils";
+import { requireUserAuth } from "@/lib/user-auth";
 
 const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
 const stripe = stripeSecretKey ? new Stripe(stripeSecretKey) : null;
 
 export async function POST(req: Request) {
+  let rawBody = "";
   let payload: {
     amount: number;
     subject?: string;
@@ -17,7 +20,8 @@ export async function POST(req: Request) {
     returnUrl?: string;
   };
   try {
-    payload = await req.json();
+    rawBody = await req.text();
+    payload = rawBody ? (JSON.parse(rawBody) as typeof payload) : ({} as typeof payload);
   } catch {
     return NextResponse.json({ error: "invalid json" }, { status: 400 });
   }
@@ -47,6 +51,16 @@ export async function POST(req: Request) {
   if (!userAddress) {
     return NextResponse.json({ error: "userAddress required" }, { status: 400 });
   }
+  const normalizedAddress = normalizeSuiAddress(userAddress);
+  if (!isValidSuiAddress(normalizedAddress)) {
+    return NextResponse.json({ error: "invalid userAddress" }, { status: 400 });
+  }
+  const auth = await requireUserAuth(req, {
+    intent: `pay:create:${orderId}`,
+    address: normalizedAddress,
+    body: rawBody,
+  });
+  if (!auth.ok) return auth.response;
   if (!diamondAmount || !Number.isFinite(diamondAmount) || diamondAmount <= 0) {
     return NextResponse.json({ error: "diamondAmount required" }, { status: 400 });
   }
@@ -69,7 +83,7 @@ export async function POST(req: Request) {
       description: body,
       metadata: {
         orderId,
-        userAddress,
+        userAddress: auth.address,
         diamondAmount: String(diamondAmount),
         subject,
       },
@@ -85,7 +99,7 @@ export async function POST(req: Request) {
           : undefined,
       confirm: true,
       return_url: resolvedReturnUrl || undefined,
-    });
+    }, { idempotencyKey: `pay:${orderId}` });
 
     if (intent.next_action?.type === "wechat_pay_display_qr_code") {
       const wechat = (intent.next_action as {
@@ -142,7 +156,7 @@ export async function POST(req: Request) {
     try {
       await upsertLedgerRecord({
         id: orderId,
-        userAddress,
+        userAddress: auth.address,
         diamondAmount,
         amount,
         currency: "CNY",

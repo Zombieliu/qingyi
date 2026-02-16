@@ -5,6 +5,7 @@ import { type LocalOrder } from "@/app/components/order-store";
 import { createOrder, deleteOrder, fetchOrders, patchOrder, syncChainOrder } from "@/app/components/order-service";
 import { readCache, writeCache } from "@/app/components/client-cache";
 import { trackEvent } from "@/app/components/analytics";
+import { fetchWithUserAuth } from "@/app/components/user-auth-client";
 import {
   type ChainOrder,
   cancelOrderOnChain,
@@ -297,7 +298,7 @@ export default function Schedule() {
     }
     setVipLoading(true);
     try {
-      const res = await fetch(`/api/vip/status?userAddress=${addr}`);
+      const res = await fetchWithUserAuth(`/api/vip/status?userAddress=${addr}`, {}, addr);
       const data = await res.json();
       if (data?.tier) {
         setVipTier({ level: data.tier.level, name: data.tier.name });

@@ -2,8 +2,11 @@ import { NextResponse } from "next/server";
 import crypto from "crypto";
 import { addMembershipRequest, getMembershipTierById, listActiveMembershipTiers } from "@/lib/admin-store";
 import type { AdminMembershipRequest, MembershipRequestStatus } from "@/lib/admin-types";
+import { isValidSuiAddress, normalizeSuiAddress } from "@mysten/sui/utils";
+import { requireUserAuth } from "@/lib/user-auth";
 
 export async function POST(req: Request) {
+  let rawBody = "";
   let body: {
     userAddress?: string;
     userName?: string;
@@ -11,15 +14,22 @@ export async function POST(req: Request) {
     tierId?: string;
   } = {};
   try {
-    body = (await req.json()) as typeof body;
+    rawBody = await req.text();
+    body = rawBody ? (JSON.parse(rawBody) as typeof body) : {};
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const userAddress = body.userAddress?.trim();
+  const userAddressRaw = body.userAddress?.trim() || "";
+  const userAddress = normalizeSuiAddress(userAddressRaw);
   if (!userAddress) {
     return NextResponse.json({ error: "userAddress required" }, { status: 400 });
   }
+  if (!isValidSuiAddress(userAddress)) {
+    return NextResponse.json({ error: "invalid userAddress" }, { status: 400 });
+  }
+  const auth = await requireUserAuth(req, { intent: "vip:request:create", address: userAddress, body: rawBody });
+  if (!auth.ok) return auth.response;
 
   let tierId = body.tierId?.trim() || "";
   let tier = tierId ? await getMembershipTierById(tierId) : null;
@@ -34,7 +44,7 @@ export async function POST(req: Request) {
 
   const request: AdminMembershipRequest = {
     id: `VIP-${Date.now()}-${crypto.randomInt(1000, 9999)}`,
-    userAddress,
+    userAddress: auth.address,
     userName: body.userName?.trim(),
     contact: body.contact?.trim(),
     tierId: tierId,

@@ -86,6 +86,7 @@ pnpm prisma migrate resolve --applied 20260201_init_admin_store
 ## 定时任务（生产）
 - `/api/cron/maintenance`
 - `/api/cron/chain-sync`
+- `/api/cron/pay/reconcile`
 建议配置 `CRON_SECRET`，使用 `?token=` 或 `x-cron-secret` 调用。
 
 ## CI（GitHub Actions）
@@ -112,6 +113,6 @@ jobs:
 ```
 
 ## 注意
-- 订单目前存 localStorage；后续可切换为后端/链上接口，复用 `addOrder/updateOrder`/`removeOrder`。  
+- 订单默认走 localStorage；设置 `NEXT_PUBLIC_ORDER_SOURCE=server` 或启用链上订单后改为服务端订单流（Passkey 签名 + Session）。  
 - 图片远程域需加到 `next.config.ts` 的 `images.remotePatterns` 才可用。  
 - 如需接地图 SDK，请在公共布局注入对应 script，并添加 API key。

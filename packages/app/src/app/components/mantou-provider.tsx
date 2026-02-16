@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { getCurrentAddress } from "@/lib/qy-chain";
 import { PASSKEY_STORAGE_KEY } from "./passkey-wallet";
 import { readCache, writeCache } from "./client-cache";
+import { fetchWithUserAuth } from "./user-auth-client";
 
 type MantouContextValue = {
   balance: string;
@@ -58,7 +59,7 @@ export function MantouProvider({ children }: { children: React.ReactNode }) {
     setLoading(true);
     try {
       const task = (async () => {
-        const res = await fetch(`/api/mantou/balance?address=${address}`);
+        const res = await fetchWithUserAuth(`/api/mantou/balance?address=${address}`, {}, address);
         const data = await res.json();
         if (data?.balance !== undefined) {
           const nextBalance = String(data.balance ?? "0");

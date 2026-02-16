@@ -1,4 +1,4 @@
-# 情谊电竞 / Delta Monorepo — Codebase Summary (generated 2026-02-01)
+# 情谊电竞 / Delta Monorepo — Codebase Summary (generated 2026-02-16)
 
 ## 1) Quick overview
 - **Repo type**: npm workspaces monorepo with a single Next.js app in `packages/app`.
@@ -8,30 +8,40 @@
 ## 2) Key user flows (logic-level)
 - **Passkey 登录/注册**: `/` 登录页（`page.tsx`）-> `PasskeyLoginButton` 触发 WebAuthn/Sui Passkey 创建或登录 -> 本地存储 `qy_passkey_wallet_v3` -> 跳转 `/home`。
 - **Passkey Gate**: `(tabs)/layout.tsx` 使用 `PasskeyGate` 检查 `qy_passkey_wallet_v3`，未登录则展示 `PasskeyWallet` 注册/找回页面。
-- **下单 & 推送**: `OrderButton` POST `/api/orders` -> 企业微信机器人（`WECHAT_WEBHOOK_URL`）发 Markdown 消息 -> 写入本地订单 `dl_orders`。
-- **派单/支付流程**: `/schedule` 选择服务并支付撮合费（二维码）-> 写订单到本地（含撮合费/打手费字段）-> 订单状态驱动 UI 三段式流程。
-- **订单展示**: `/showcase` 读取 `dl_orders` 展示接单大厅状态、司机信息、取消/完成。
-- **充值**: `/wallet` 双二维码分账手工支付 + 勾选确认（无后端校验）。
+- **下单 & 推送**: `createOrder` 依据 `NEXT_PUBLIC_ORDER_SOURCE` / `NEXT_PUBLIC_CHAIN_ORDERS` 决定走服务端或本地；服务端模式调用 `/api/orders`（Passkey 签名 + Session）并触发企业微信机器人推送。
+- **派单/支付流程**: `/schedule` 选择服务 -> 写订单（server/local）-> 撮合费/打手费流程 -> 状态驱动 UI；链上订单可选。
+- **订单展示**: `/showcase` 通过 `fetchOrders` 读取 server/local 订单并展示阶段/链上状态。
+- **充值**: `/wallet` 调用 `/api/pay`（Stripe）创建 PaymentIntent，支付宝/微信支付；`/wallet/records` 展示充值明细。
+- **会员中心**: `/vip` 展示等级与申请；`/me` 入口进入会员中心。
+- **Mantou 提现**: `/me/mantou` 查询余额/申请提现；后台审核在 `/admin/mantou`。
 - **PWA**: Serwist service worker + `PwaUpdateToast` 提示更新，支持离线缓存与安装提示（`InstallBanner` 目前未使用）。
 
 ## 3) Storage & events
 - **localStorage keys**:
   - `qy_passkey_wallet_v3`: Passkey 钱包（Sui 地址 + base64 公钥）。
-  - `dl_orders`: 本地订单列表（最多 20 条）。
+  - `dl_orders`: 本地订单列表（仅 local 模式）。
+  - `qy_game_profile_v1`: 游戏昵称/ID。
+  - `qy_first_order_discount_used_v1`: 首单优惠使用标记。
 - **custom events**:
   - `passkey-updated`: Passkey 状态更新时广播。
   - `orders-updated`: 订单变更时广播。
 
 ## 4) Backend/API (Next.js route handlers)
+- `POST /api/auth/session` → 用户 Session（Passkey 签名换取 Cookie）。
 - `GET/POST /api/orders` → 服务端订单读写 + 企业微信机器人推送。需要 `WECHAT_WEBHOOK_URL`。
-- `PATCH /api/orders/[orderId]` → 用户端状态写回（需 userAddress）。
-- `POST /api/pay` → Ping++ 预生成支付 charge。需要 `PINGPP_API_KEY` 与 `PINGPP_APP_ID`。
-  - 注意：当前前端未调用 `/api/pay`。
-- `POST /api/ledger/credit` → 管理员记账上链（Dubhe SDK）。需要链上相关环境变量。
-- `POST /api/pay/webhook` → 支付回调记录与校验（Ping++ 签名或自定义 token）。
+- `GET/PATCH /api/orders/[orderId]` → 用户/陪玩状态写回（需 userAddress + 签名/Session）。
+- `POST /api/orders/[orderId]/chain-sync` → 链上订单同步。
+- `POST /api/pay` → Stripe PaymentIntent（alipay/wechat_pay）。
+- `POST /api/pay/webhook` → Stripe 回调记录与校验，写入支付事件与账本。
+- `GET /api/ledger/records` → 充值明细列表。
+- `POST /api/ledger/credit` → 管理员记账上链（Dubhe SDK）。
+- `/api/vip/*` → 会员等级/状态/申请；`/api/admin/vip/*` → 后台会员管理。
+- `/api/mantou/*` → 馒头余额/明细/提现；`/api/admin/mantou/*` → 后台审核。
 - `/api/admin/*` → 运营后台接口（登录、会话、订单、打手、公告、链上对账、支付事件、审计、导出）。
 - `/api/cron/maintenance` → 维护裁剪审计/支付事件。
 - `/api/cron/chain-sync` → 链上订单同步到数据库。
+- `/api/cron/chain/*` → auto-cancel / auto-finalize / cleanup-missing。
+- `/api/cron/pay/reconcile` → 支付事件与账本对账（可选拉取 Stripe API + 告警）。
 
 ## 5) PWA & Service Worker
 - Serwist InjectManifest: `src/app/sw.ts` 作为 SW 源文件，构建输出到 `public/sw.js`。
@@ -44,26 +54,23 @@
 ## 6) Environment variables
 - **Server-side**
   - `WECHAT_WEBHOOK_URL`: 订单推送企业微信机器人
-  - `PINGPP_API_KEY`, `PINGPP_APP_ID`: Ping++ 支付
-  - `SUI_RPC_URL`: Sui RPC
-  - `SUI_NETWORK`: 网络标识（testnet/mainnet/devnet/localnet，可选）
-  - `SUI_ADMIN_PRIVATE_KEY`: 管理员私钥
-  - `SUI_PACKAGE_ID`: qy 合约 package id
-  - `SUI_DAPP_HUB_ID`: DappHub shared object id
-  - `SUI_DAPP_HUB_INITIAL_SHARED_VERSION`: DappHub shared version
+  - `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`: Stripe 支付
+  - `SUI_RPC_URL`, `SUI_NETWORK`, `SUI_ADMIN_PRIVATE_KEY`
+  - `SUI_PACKAGE_ID`, `SUI_DAPP_HUB_ID`, `SUI_DAPP_HUB_INITIAL_SHARED_VERSION`
   - `LEDGER_ADMIN_TOKEN`: 记账接口管理员 token
   - `ADMIN_DASH_TOKEN`, `ADMIN_TOKENS`, `ADMIN_TOKENS_JSON`: 后台密钥（角色）
   - `ADMIN_SESSION_TTL_HOURS`, `ADMIN_RATE_LIMIT_MAX`, `ADMIN_LOGIN_RATE_LIMIT_MAX`: 后台会话/限流
   - `ADMIN_AUDIT_LOG_LIMIT`, `ADMIN_PAYMENT_EVENT_LIMIT`, `ADMIN_CHAIN_EVENT_LIMIT`: 后台存储上限
+  - `USER_SESSION_TTL_HOURS`, `AUTH_MAX_SKEW_MS`, `AUTH_NONCE_TTL_MS`: 用户签名/会话
+  - `ORDER_RATE_LIMIT_WINDOW_MS`, `ORDER_RATE_LIMIT_MAX`, `PUBLIC_ORDER_RATE_LIMIT_MAX`
   - `CRON_SECRET`: 定时任务密钥
-  - `PINGPP_WEBHOOK_PUBLIC_KEY`, `PINGPP_WEBHOOK_SECRET`, `PINGPP_WEBHOOK_TOKEN`: webhook 校验
   - `E2E_SUI_USER_PRIVATE_KEY`, `E2E_SUI_COMPANION_PRIVATE_KEY`: 链上脚本测试
-  - `NEXT_PUBLIC_ORDER_SOURCE`: 订单来源（server/local）
 - **Client-side (NEXT_PUBLIC_*)**
-  - `NEXT_PUBLIC_QR_PLATFORM_FEE`: 平台撮合费二维码
-  - `NEXT_PUBLIC_QR_PLAYER_FEE`: 打手费用二维码
-  - `NEXT_PUBLIC_QR_COMPANION`: 陪玩收款码
-  - `NEXT_PUBLIC_QR_ESPORTS`: 赛事/平台收款码
+  - `NEXT_PUBLIC_ORDER_SOURCE`: 订单来源（server/local）
+  - `NEXT_PUBLIC_CHAIN_ORDERS`: 启用链上订单
+  - `NEXT_PUBLIC_CHAIN_SPONSOR`: 赞助 gas（auto/on/off）
+  - `NEXT_PUBLIC_QR_PLATFORM_FEE`, `NEXT_PUBLIC_QR_PLAYER_FEE`, `NEXT_PUBLIC_QR_COMPANION`, `NEXT_PUBLIC_QR_ESPORTS`
+  - `NEXT_PUBLIC_QY_RULESET_ID`, `NEXT_PUBLIC_QY_DEFAULT_COMPANION`, `NEXT_PUBLIC_QY_EVENT_LIMIT`
 
 ## 7) UI/CSS structure
 - Tailwind 基础 + 大量自定义 class（`dl-*`, `lc-*`, `ride-*`, `pay-*`, `vip-*`, `settings-*`, `member-*`, `glass`, `login-*`, `auth-overlay` 等）集中在 `globals.css`。
@@ -100,10 +107,14 @@
 - `packages/app/src/app/favicon.ico` — favicon。
 
 ### API routes
+- `packages/app/src/app/api/auth/session/route.ts` — 用户 Session（Passkey 签名换取 Cookie）。
 - `packages/app/src/app/api/orders/route.ts` — 订单推送企业微信。
-- `packages/app/src/app/api/pay/route.ts` — Ping++ charge 生成。
+- `packages/app/src/app/api/pay/route.ts` — Stripe PaymentIntent（alipay/wechat_pay）。
 - `packages/app/src/app/api/ledger/credit/route.ts` — 管理员记账上链（Sui SDK）。
-- `packages/app/src/app/api/pay/webhook/route.ts` — 支付回调接收。
+- `packages/app/src/app/api/ledger/records/route.ts` — 充值明细查询。
+- `packages/app/src/app/api/pay/webhook/route.ts` — Stripe 回调接收。
+- `packages/app/src/app/api/vip/*` — 会员等级/状态/申请。
+- `packages/app/src/app/api/mantou/*` — 馒头余额/提现/明细。
 - `packages/app/src/app/api/admin/*` — 运营后台 API。
 
 ### Shared components
@@ -143,11 +154,13 @@
 ### Tabs layout & pages
 - `packages/app/src/app/(tabs)/layout.tsx` — Tab 导航布局 + PasskeyGate。
 - `packages/app/src/app/(tabs)/home/page.tsx` — 陪玩达人列表与下单入口。
-- `packages/app/src/app/(tabs)/showcase/page.tsx` — 接单大厅（本地订单演示）。
-- `packages/app/src/app/(tabs)/schedule/page.tsx` — 服务选择 + 撮合费/打手费流程。
+- `packages/app/src/app/(tabs)/showcase/page.tsx` — 接单大厅（server/local 订单展示）。
+- `packages/app/src/app/(tabs)/schedule/page.tsx` — 服务选择 + 撮合费/打手费流程（支持链上订单）。
 - `packages/app/src/app/(tabs)/news/page.tsx` — 资讯列表（静态）。
 - `packages/app/src/app/(tabs)/me/page.tsx` — 个人中心 + 进入设置/钱包。
-- `packages/app/src/app/(tabs)/wallet/page.tsx` — 钻石充值（双二维码手动支付）。
+- `packages/app/src/app/(tabs)/me/mantou/page.tsx` — 馒头余额与提现申请。
+- `packages/app/src/app/(tabs)/wallet/page.tsx` — 钻石充值（Stripe 支付）。
+- `packages/app/src/app/(tabs)/wallet/records/page.tsx` — 充值明细。
 - `packages/app/src/app/(tabs)/vip/page.tsx` — VIP 等级展示。
 - `packages/app/src/app/admin/(panel)/*` — 运营后台页面（订单/打手/公告/链上/支付/审计）。
 
@@ -166,6 +179,6 @@
 
 ## Notes / gotchas
 - **包管理**: 根 README 建议 npm workspaces；app README 建议 pnpm。需要统一实际使用方式。
-- **/api/pay 未被前端调用**: 若需真实支付流程可在 `/wallet` 接入。
+- **/api/pay 已被 `/wallet` 调用**: 需配置 Stripe 密钥；未配置会报错。
 - **部分组件未引用**: `Hero`, `Features`, `MatchList`, `InstallBanner` 等目前无路由使用。
-- **本地存储为主**: 订单与钱包均在 localStorage，暂无真实后端状态同步。
+- **订单来源可切换**: `NEXT_PUBLIC_ORDER_SOURCE=server` 才走服务端订单，否则仍使用本地订单。

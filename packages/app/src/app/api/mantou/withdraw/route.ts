@@ -1,11 +1,14 @@
 import { NextResponse } from "next/server";
 import { isValidSuiAddress, normalizeSuiAddress } from "@mysten/sui/utils";
 import { queryMantouWithdraws, requestMantouWithdraw } from "@/lib/admin-store";
+import { requireUserAuth } from "@/lib/user-auth";
 
 export async function POST(req: Request) {
+  let rawBody = "";
   let payload: { address?: string; amount?: number; account?: string; note?: string } = {};
   try {
-    payload = (await req.json()) as { address?: string; amount?: number; account?: string; note?: string };
+    rawBody = await req.text();
+    payload = rawBody ? (JSON.parse(rawBody) as { address?: string; amount?: number; account?: string; note?: string }) : {};
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
@@ -14,6 +17,8 @@ export async function POST(req: Request) {
   if (!address || !isValidSuiAddress(address)) {
     return NextResponse.json({ error: "invalid address" }, { status: 400 });
   }
+  const auth = await requireUserAuth(req, { intent: "mantou:withdraw:create", address, body: rawBody });
+  if (!auth.ok) return auth.response;
   const amount = Number(payload.amount || 0);
   if (!Number.isFinite(amount) || amount <= 0) {
     return NextResponse.json({ error: "amount must be positive integer" }, { status: 400 });
@@ -25,7 +30,7 @@ export async function POST(req: Request) {
 
   try {
     const result = await requestMantouWithdraw({
-      address,
+      address: auth.address,
       amount,
       account,
       note: payload.note ? String(payload.note).trim() : undefined,
@@ -42,8 +47,10 @@ export async function GET(req: Request) {
   if (!address || !isValidSuiAddress(address)) {
     return NextResponse.json({ error: "invalid address" }, { status: 400 });
   }
+  const auth = await requireUserAuth(req, { intent: "mantou:withdraw:read", address });
+  if (!auth.ok) return auth.response;
   const page = Math.max(1, Number(searchParams.get("page") || "1"));
   const pageSize = Math.min(50, Math.max(5, Number(searchParams.get("pageSize") || "20")));
-  const result = await queryMantouWithdraws({ page, pageSize, address });
+  const result = await queryMantouWithdraws({ page, pageSize, address: auth.address });
   return NextResponse.json(result);
 }

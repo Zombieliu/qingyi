@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ArrowLeft, RefreshCw } from "lucide-react";
 import { useEffect, useState } from "react";
 import { getCurrentAddress } from "@/lib/qy-chain";
+import { fetchWithUserAuth } from "@/app/components/user-auth-client";
 import { StateBlock } from "@/app/components/state-block";
 import { formatErrorMessage } from "@/app/components/error-utils";
 
@@ -68,7 +69,11 @@ export default function WalletRecords() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/ledger/records?address=${address}&page=${pageNo}&pageSize=20`);
+      const res = await fetchWithUserAuth(
+        `/api/ledger/records?address=${address}&page=${pageNo}&pageSize=20`,
+        {},
+        address
+      );
       const data = await res.json();
       if (!res.ok) {
         throw new Error(data?.error || "加载失败");
