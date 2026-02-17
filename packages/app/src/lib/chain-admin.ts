@@ -157,14 +157,32 @@ function getAdminSigner() {
 }
 
 export async function fetchChainOrdersAdmin(): Promise<ChainOrder[]> {
+  const result = await fetchChainOrdersAdminInternal();
+  return result.orders;
+}
+
+type FetchChainOrdersResult = {
+  orders: ChainOrder[];
+  latestCursor: EventId | null;
+  latestEventMs: number | null;
+};
+
+async function fetchChainOrdersAdminInternal(options?: {
+  cursor?: EventId | null;
+  limit?: number;
+  order?: "ascending" | "descending";
+}): Promise<FetchChainOrdersResult> {
   const { pkg } = ensureChainEnv();
   const client = new SuiClient({ url: getRpcUrl() });
   const dubhePackageId = await getDubhePackageId(client);
   const eventType = `${dubhePackageId}::dubhe_events::Dubhe_Store_SetRecord`;
   const targetKey = normalizeDappKey(`${strip0x(pkg)}::dapp_key::DappKey`);
   const orders = new Map<string, ChainOrder>();
-  let cursor: EventId | null = null;
-  let remaining = Number.isFinite(EVENT_LIMIT) ? EVENT_LIMIT : 200;
+  let cursor: EventId | null = options?.cursor ?? null;
+  let remaining = Number.isFinite(options?.limit) ? Number(options?.limit) : Number.isFinite(EVENT_LIMIT) ? EVENT_LIMIT : 200;
+  const orderDirection = options?.order || "descending";
+  let latestCursor: EventId | null = null;
+  let latestEventMs: number | null = null;
 
   while (remaining > 0) {
     let page: Awaited<ReturnType<typeof client.queryEvents>>;
@@ -175,7 +193,7 @@ export async function fetchChainOrdersAdmin(): Promise<ChainOrder[]> {
           client.queryEvents({
             query: { MoveEventType: eventType },
             limit: Math.min(50, remaining),
-            order: "descending",
+            order: orderDirection,
             cursor,
           })
         );
@@ -183,6 +201,20 @@ export async function fetchChainOrdersAdmin(): Promise<ChainOrder[]> {
       } catch (err) {
         attempt += 1;
         if (attempt > 5) throw err;
+      }
+    }
+    if (page.data.length > 0) {
+      if (orderDirection === "descending") {
+        if (!latestCursor) {
+          latestCursor = page.data[0].id ?? null;
+          const ts = Number(page.data[0].timestampMs || 0);
+          latestEventMs = ts || null;
+        }
+      } else {
+        const lastEvent = page.data[page.data.length - 1];
+        latestCursor = lastEvent.id ?? latestCursor;
+        const ts = Number(lastEvent.timestampMs || 0);
+        if (ts) latestEventMs = ts;
       }
     }
     for (const event of page.data) {
@@ -195,17 +227,31 @@ export async function fetchChainOrdersAdmin(): Promise<ChainOrder[]> {
       if (!parsed || parsed.table_id !== "order") continue;
       const dappKey = normalizeDappKey(parsed.dapp_key || "");
       if (dappKey !== targetKey) continue;
-      const order = decodeOrderFromTuple(parsed.key_tuple || [], parsed.value_tuple || []);
-      if (!order || orders.has(order.orderId)) continue;
-      order.lastUpdatedMs = Number(event.timestampMs || 0);
-      orders.set(order.orderId, order);
+      const chainOrder = decodeOrderFromTuple(parsed.key_tuple || [], parsed.value_tuple || []);
+      if (!chainOrder) continue;
+      chainOrder.lastUpdatedMs = Number(event.timestampMs || 0);
+      if (orderDirection === "ascending" || !orders.has(chainOrder.orderId)) {
+        orders.set(chainOrder.orderId, chainOrder);
+      }
     }
     remaining -= page.data.length;
     if (!page.hasNextPage) break;
     cursor = page.nextCursor ?? null;
   }
 
-  return Array.from(orders.values()).sort((a, b) => Number(b.createdAt) - Number(a.createdAt));
+  return {
+    orders: Array.from(orders.values()).sort((a, b) => Number(b.createdAt) - Number(a.createdAt)),
+    latestCursor,
+    latestEventMs,
+  };
+}
+
+export async function fetchChainOrdersAdminWithCursor(options?: {
+  cursor?: EventId | null;
+  limit?: number;
+  order?: "ascending" | "descending";
+}): Promise<FetchChainOrdersResult> {
+  return fetchChainOrdersAdminInternal(options);
 }
 
 type ParsedEvent = {

@@ -100,6 +100,9 @@ npm run test:admin:e2e
 ```
 说明：
 - 需要 `.env.local` 中配置 `ADMIN_DASH_TOKEN` 或 `LEDGER_ADMIN_TOKEN`
+- 如需校验多角色权限矩阵：
+  - 优先在后台“密钥管理”生成 viewer/ops/finance/admin token（推荐）
+  - 或配置 `ADMIN_TOKENS` / `ADMIN_TOKENS_JSON`（包含 viewer/ops/finance/admin），缺失角色将自动跳过
 - 会自动启动/复用本地 dev server，并在后台完成订单/公告/打手的完整操作
 
 ## 6. 链上流程（可选）

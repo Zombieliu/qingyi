@@ -6,6 +6,7 @@ import {
   enforceLoginRateLimit,
   getAdminRoleForToken,
 } from "@/lib/admin-auth";
+import { touchAccessTokenByHash } from "@/lib/admin-store";
 import { recordAudit } from "@/lib/admin-audit";
 
 export async function POST(req: Request) {
@@ -28,9 +29,12 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "密钥错误" }, { status: 401 });
   }
 
-  const roleEntry = getAdminRoleForToken(token);
+  const roleEntry = await getAdminRoleForToken(token);
   if (!roleEntry) {
     return NextResponse.json({ error: "密钥错误" }, { status: 401 });
+  }
+  if (roleEntry.source === "db" && roleEntry.tokenHash) {
+    await touchAccessTokenByHash(roleEntry.tokenHash);
   }
 
   let sessionResult: Awaited<ReturnType<typeof createAdminSession>>;

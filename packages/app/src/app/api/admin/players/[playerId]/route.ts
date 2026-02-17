@@ -1,8 +1,21 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin-auth";
-import { removePlayer, updatePlayer } from "@/lib/admin-store";
+import { getPlayerByAddress, removePlayer, updatePlayer } from "@/lib/admin-store";
 import { recordAudit } from "@/lib/admin-audit";
 import type { AdminPlayer, PlayerStatus } from "@/lib/admin-types";
+import { isValidSuiAddress, normalizeSuiAddress } from "@mysten/sui/utils";
+
+function normalizePlayerAddress(raw?: string | null) {
+  const trimmed = (raw || "").trim();
+  if (!trimmed) return "";
+  try {
+    const normalized = normalizeSuiAddress(trimmed);
+    if (!isValidSuiAddress(normalized)) return null;
+    return normalized;
+  } catch {
+    return null;
+  }
+}
 
 type RouteContext = {
   params: Promise<{ playerId: string }>;
@@ -31,7 +44,22 @@ export async function PATCH(
   if (typeof body.name === "string") patch.name = body.name;
   if (typeof body.role === "string") patch.role = body.role;
   if (typeof body.contact === "string") patch.contact = body.contact;
-  if (typeof body.address === "string") patch.address = body.address;
+  if (typeof body.address === "string") {
+    const rawAddress = body.address.trim();
+    if (!rawAddress) {
+      patch.address = "";
+    } else {
+      const normalized = normalizePlayerAddress(rawAddress);
+      if (!normalized) {
+        return NextResponse.json({ error: "invalid_address" }, { status: 400 });
+      }
+      const existing = await getPlayerByAddress(normalized);
+      if (existing.conflict || (existing.player && existing.player.id !== playerId)) {
+        return NextResponse.json({ error: "address_in_use" }, { status: 409 });
+      }
+      patch.address = normalized;
+    }
+  }
   if (typeof body.wechatQr === "string") patch.wechatQr = body.wechatQr;
   if (typeof body.alipayQr === "string") patch.alipayQr = body.alipayQr;
   if (typeof body.depositBase === "number") patch.depositBase = body.depositBase;

@@ -17,6 +17,8 @@ export const MANTOU_WITHDRAW_STATUS_OPTIONS: MantouWithdrawStatus[] = [
   "已退回",
 ];
 export type AdminRole = "admin" | "ops" | "finance" | "viewer";
+export type AdminTokenStatus = "active" | "disabled";
+export const ADMIN_TOKEN_STATUS_OPTIONS: AdminTokenStatus[] = ["active", "disabled"];
 
 export interface AdminSession {
   id: string;
@@ -28,6 +30,18 @@ export interface AdminSession {
   lastSeenAt?: number;
   ip?: string;
   userAgent?: string;
+}
+
+export interface AdminAccessToken {
+  id: string;
+  tokenHash: string;
+  tokenPrefix: string;
+  role: AdminRole;
+  label?: string;
+  status: AdminTokenStatus;
+  createdAt: number;
+  updatedAt?: number;
+  lastUsedAt?: number;
 }
 
 export interface AdminAuditLog {

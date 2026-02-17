@@ -1,6 +1,6 @@
 import "server-only";
 import { fetchChainOrdersAdmin, markCompletedAdmin, finalizeNoDisputeAdmin, type ChainOrder } from "./chain-admin";
-import { listOrders } from "./admin-store";
+import { listChainOrdersForAutoFinalize } from "./admin-store";
 import { syncChainOrder } from "./chain-sync";
 import { isChainOrder } from "./order-guard";
 
@@ -120,7 +120,7 @@ function pickAutoFinalizeOrders(orders: ChainOrder[], nowMs: number, limit: numb
 }
 
 async function buildCompanionEndedAtMap() {
-  const orders = await listOrders();
+  const orders = await listChainOrdersForAutoFinalize();
   const map = new Map<string, number>();
   for (const order of orders) {
     if (!isChainOrder(order)) continue;

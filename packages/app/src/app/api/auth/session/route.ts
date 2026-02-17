@@ -8,6 +8,10 @@ import {
   requireUserSignature,
   setUserSessionCookie,
 } from "@/lib/user-auth";
+import { rateLimit } from "@/lib/rate-limit";
+
+const AUTH_SESSION_RATE_LIMIT_WINDOW_MS = Number(process.env.AUTH_SESSION_RATE_LIMIT_WINDOW_MS || "60000");
+const AUTH_SESSION_RATE_LIMIT_MAX = Number(process.env.AUTH_SESSION_RATE_LIMIT_MAX || "20");
 
 function getClientIp(req: Request): string {
   const forwarded = req.headers.get("x-forwarded-for");
@@ -16,6 +20,9 @@ function getClientIp(req: Request): string {
 }
 
 export async function POST(req: Request) {
+  if (!(await rateLimit(`auth:session:${getClientIp(req)}`, AUTH_SESSION_RATE_LIMIT_MAX, AUTH_SESSION_RATE_LIMIT_WINDOW_MS))) {
+    return NextResponse.json({ error: "rate_limited" }, { status: 429 });
+  }
   let rawBody = "";
   let payload: { address?: string } = {};
   try {

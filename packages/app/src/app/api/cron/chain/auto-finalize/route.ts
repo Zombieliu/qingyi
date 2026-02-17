@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
 import { autoFinalizeChainOrdersSummary } from "@/lib/chain-auto-finalize";
+import { acquireCronLock } from "@/lib/cron-lock";
+
+const CRON_LOCK_TTL_MS = Number(process.env.CRON_LOCK_TTL_MS || "600000");
 
 function isAuthorized(req: Request) {
   const secret = process.env.CRON_SECRET;
@@ -16,6 +19,9 @@ function isAuthorized(req: Request) {
 export async function GET(req: Request) {
   if (!isAuthorized(req)) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
+  if (!(await acquireCronLock("chain-auto-finalize", CRON_LOCK_TTL_MS))) {
+    return NextResponse.json({ error: "locked" }, { status: 429 });
   }
   try {
     const result = await autoFinalizeChainOrdersSummary();

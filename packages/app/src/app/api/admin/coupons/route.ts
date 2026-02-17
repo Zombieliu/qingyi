@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import crypto from "crypto";
 import { requireAdmin } from "@/lib/admin-auth";
-import { addCoupon, queryCoupons } from "@/lib/admin-store";
+import { addCoupon, queryCoupons, queryCouponsCursor } from "@/lib/admin-store";
 import { recordAudit } from "@/lib/admin-audit";
 import type { AdminCoupon, CouponStatus } from "@/lib/admin-types";
+import { decodeCursorParam, encodeCursorParam } from "@/lib/cursor-utils";
 
 function parseDate(value?: string | number | null) {
   if (!value) return undefined;
@@ -20,6 +21,21 @@ export async function GET(req: Request) {
   const pageSize = Math.min(200, Math.max(5, Number(searchParams.get("pageSize") || "20")));
   const status = searchParams.get("status") || "";
   const q = searchParams.get("q") || "";
+  const cursorRaw = searchParams.get("cursor");
+  const cursor = decodeCursorParam(cursorRaw);
+  const useCursor = !searchParams.has("page") || cursorRaw !== null;
+  if (useCursor) {
+    const result = await queryCouponsCursor({
+      pageSize,
+      status: status || undefined,
+      q: q || undefined,
+      cursor: cursor || undefined,
+    });
+    return NextResponse.json({
+      items: result.items,
+      nextCursor: encodeCursorParam(result.nextCursor),
+    });
+  }
 
   const result = await queryCoupons({ page, pageSize, status, q });
   return NextResponse.json(result);

@@ -19,37 +19,65 @@ type PaymentEvent = {
 export default function PaymentsPage() {
   const [events, setEvents] = useState<PaymentEvent[]>([]);
   const [loading, setLoading] = useState(true);
+  const [cacheHint, setCacheHint] = useState<string | null>(null);
   const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
+  const [cursor, setCursor] = useState<string | null>(null);
+  const [prevCursors, setPrevCursors] = useState<Array<string | null>>([]);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const pageSize = 30;
   const cacheTtlMs = 60_000;
 
-  const load = useCallback(async (nextPage: number) => {
+  const load = useCallback(async (cursorValue: string | null, nextPage: number) => {
     setLoading(true);
     try {
-      const cacheKey = `cache:admin:payments:page:${nextPage}`;
-      const cached = readCache<{ items: PaymentEvent[]; page?: number; totalPages?: number }>(cacheKey, cacheTtlMs, true);
+      setCacheHint(null);
+      const params = new URLSearchParams();
+      params.set("pageSize", String(pageSize));
+      if (cursorValue) params.set("cursor", cursorValue);
+      const cacheKey = `cache:admin:payments:${params.toString()}`;
+      const cached = readCache<{ items: PaymentEvent[]; nextCursor?: string | null }>(cacheKey, cacheTtlMs, true);
       if (cached) {
         setEvents(Array.isArray(cached.value?.items) ? cached.value.items : []);
-        setPage(cached.value?.page || nextPage);
-        setTotalPages(cached.value?.totalPages || 1);
+        setPage(nextPage);
+        setNextCursor(cached.value?.nextCursor || null);
+        setCacheHint(cached.fresh ? null : "显示缓存数据，正在刷新…");
       }
-      const res = await fetch(`/api/admin/payments?page=${nextPage}`);
+      const res = await fetch(`/api/admin/payments?${params.toString()}`);
       if (res.ok) {
         const data = await res.json();
         const next = Array.isArray(data?.items) ? data.items : [];
         setEvents(next);
-        setPage(data?.page || nextPage);
-        setTotalPages(data?.totalPages || 1);
-        writeCache(cacheKey, { items: next, page: data?.page || nextPage, totalPages: data?.totalPages || 1 });
+        setPage(nextPage);
+        setNextCursor(data?.nextCursor || null);
+        setCacheHint(null);
+        writeCache(cacheKey, { items: next, nextCursor: data?.nextCursor || null });
       }
     } finally {
       setLoading(false);
     }
-  }, [cacheTtlMs]);
+  }, [cacheTtlMs, pageSize]);
 
   useEffect(() => {
-    load(1);
-  }, [load]);
+    load(cursor, page);
+  }, [load, cursor, page]);
+
+  const goPrev = () => {
+    setPrevCursors((prev) => {
+      if (prev.length === 0) return prev;
+      const nextPrev = prev.slice(0, -1);
+      const prevCursor = prev[prev.length - 1] ?? null;
+      setCursor(prevCursor);
+      setPage((value) => Math.max(1, value - 1));
+      return nextPrev;
+    });
+  };
+
+  const goNext = () => {
+    if (!nextCursor) return;
+    setPrevCursors((prev) => [...prev, cursor]);
+    setCursor(nextCursor);
+    setPage((value) => value + 1);
+  };
 
   return (
     <div className="admin-section">
@@ -60,7 +88,14 @@ export default function PaymentsPage() {
             <p>展示支付回调事件与核验状态。</p>
           </div>
           <div className="admin-card-actions">
-            <button className="admin-btn ghost" onClick={() => load(1)}>
+            <button
+              className="admin-btn ghost"
+              onClick={() => {
+                setPrevCursors([]);
+                setCursor(null);
+                setPage(1);
+              }}
+            >
               <RefreshCw size={16} style={{ marginRight: 6 }} />
               刷新
             </button>
@@ -73,6 +108,7 @@ export default function PaymentsPage() {
           <h3>事件列表</h3>
           <div className="admin-card-actions">
             <span className="admin-pill">共 {events.length} 条</span>
+            {cacheHint ? <span className="admin-pill">{cacheHint}</span> : null}
           </div>
         </div>
         {loading ? (
@@ -120,13 +156,13 @@ export default function PaymentsPage() {
           </div>
         )}
         <div className="admin-pagination">
-          <button className="admin-btn ghost" disabled={page <= 1} onClick={() => load(page - 1)}>
+          <button className="admin-btn ghost" disabled={prevCursors.length === 0} onClick={goPrev}>
             上一页
           </button>
           <div className="admin-meta">
-            第 {page} / {totalPages} 页
+            第 {page} 页
           </div>
-          <button className="admin-btn ghost" disabled={page >= totalPages} onClick={() => load(page + 1)}>
+          <button className="admin-btn ghost" disabled={!nextCursor} onClick={goNext}>
             下一页
           </button>
         </div>

@@ -17,12 +17,37 @@ import type {
   AdminPlayer,
   AdminSupportTicket,
   AdminSession,
+  AdminAccessToken,
 } from "./admin-types";
 import { prisma } from "./db";
 import { Prisma } from "@prisma/client";
+import { getCache, setCache } from "./server-cache";
 
 const MAX_AUDIT_LOGS = Number(process.env.ADMIN_AUDIT_LOG_LIMIT || "1000");
 const MAX_PAYMENT_EVENTS = Number(process.env.ADMIN_PAYMENT_EVENT_LIMIT || "1000");
+
+type CursorPayload = { createdAt: number; id: string };
+
+function buildCursorPayload(row: { id: string; createdAt: Date }): CursorPayload {
+  return { id: row.id, createdAt: row.createdAt.getTime() };
+}
+
+function appendCursorWhere(where: { AND?: unknown }, cursor?: CursorPayload) {
+  if (!cursor) return;
+  const cursorDate = new Date(cursor.createdAt);
+  const condition = {
+    OR: [
+      { createdAt: { lt: cursorDate } },
+      { createdAt: cursorDate, id: { lt: cursor.id } },
+    ],
+  };
+  if (where.AND) {
+    const existing = Array.isArray(where.AND) ? where.AND : [where.AND];
+    where.AND = [...existing, condition];
+  } else {
+    where.AND = [condition];
+  }
+}
 
 function mapOrder(row: {
   id: string;
@@ -410,6 +435,30 @@ function mapSession(row: {
   };
 }
 
+function mapAccessToken(row: {
+  id: string;
+  tokenHash: string;
+  tokenPrefix: string;
+  role: string;
+  label: string | null;
+  status: string;
+  createdAt: Date;
+  updatedAt: Date | null;
+  lastUsedAt: Date | null;
+}): AdminAccessToken {
+  return {
+    id: row.id,
+    tokenHash: row.tokenHash,
+    tokenPrefix: row.tokenPrefix,
+    role: row.role as AdminAccessToken["role"],
+    label: row.label || undefined,
+    status: row.status as AdminAccessToken["status"],
+    createdAt: row.createdAt.getTime(),
+    updatedAt: row.updatedAt ? row.updatedAt.getTime() : undefined,
+    lastUsedAt: row.lastUsedAt ? row.lastUsedAt.getTime() : undefined,
+  };
+}
+
 function mapAudit(row: {
   id: string;
   actorRole: string;
@@ -497,9 +546,67 @@ export async function listOrders() {
   return rows.map(mapOrder);
 }
 
-export async function queryOrders(params: {
-  page: number;
-  pageSize: number;
+const CHAIN_ORDER_WHERE: Prisma.AdminOrderWhereInput = {
+  OR: [{ chainDigest: { not: null } }, { chainStatus: { not: null } }, { source: "chain" }],
+};
+
+export async function listChainOrdersForAdmin() {
+  const rows = await prisma.adminOrder.findMany({
+    where: CHAIN_ORDER_WHERE,
+    select: {
+      id: true,
+      chainStatus: true,
+      chainDigest: true,
+      source: true,
+      meta: true,
+    },
+  });
+  return rows.map((row) => ({
+    id: row.id,
+    chainStatus: row.chainStatus ?? undefined,
+    chainDigest: row.chainDigest ?? undefined,
+    source: row.source ?? undefined,
+    meta: (row.meta as Record<string, unknown> | null) || undefined,
+  }));
+}
+
+export async function listChainOrdersForAutoFinalize() {
+  const rows = await prisma.adminOrder.findMany({
+    where: CHAIN_ORDER_WHERE,
+    select: {
+      id: true,
+      chainStatus: true,
+      chainDigest: true,
+      source: true,
+      meta: true,
+    },
+  });
+  return rows.map((row) => ({
+    id: row.id,
+    chainStatus: row.chainStatus ?? undefined,
+    chainDigest: row.chainDigest ?? undefined,
+    source: row.source ?? undefined,
+    meta: (row.meta as Record<string, unknown> | null) || undefined,
+  }));
+}
+
+export async function listChainOrdersForCleanup() {
+  const rows = await prisma.adminOrder.findMany({
+    where: { source: "chain" },
+    select: {
+      id: true,
+      source: true,
+      createdAt: true,
+    },
+  });
+  return rows.map((row) => ({
+    id: row.id,
+    source: row.source ?? undefined,
+    createdAt: row.createdAt.getTime(),
+  }));
+}
+
+function buildOrderWhere(params: {
   stage?: string;
   q?: string;
   paymentStatus?: string;
@@ -508,9 +615,8 @@ export async function queryOrders(params: {
   address?: string;
   companionMissing?: boolean;
   excludeStages?: string[];
-}) {
-  const { page, pageSize, stage, q, paymentStatus, assignedTo, userAddress, address, companionMissing, excludeStages } =
-    params;
+}): Prisma.AdminOrderWhereInput {
+  const { stage, q, paymentStatus, assignedTo, userAddress, address, companionMissing, excludeStages } = params;
   const keyword = (q || "").trim();
   const where: Prisma.AdminOrderWhereInput = {};
   const andConditions: Prisma.AdminOrderWhereInput[] = [];
@@ -537,16 +643,39 @@ export async function queryOrders(params: {
   }
   if (keyword) {
     andConditions.push({
-      OR: [
-      { user: { contains: keyword } },
-      { item: { contains: keyword } },
-      { id: { contains: keyword } },
-      ],
+      OR: [{ user: { contains: keyword } }, { item: { contains: keyword } }, { id: { contains: keyword } }],
     });
   }
   if (andConditions.length > 0) {
     where.AND = andConditions;
   }
+  return where;
+}
+
+export async function queryOrders(params: {
+  page: number;
+  pageSize: number;
+  stage?: string;
+  q?: string;
+  paymentStatus?: string;
+  assignedTo?: string;
+  userAddress?: string;
+  address?: string;
+  companionMissing?: boolean;
+  excludeStages?: string[];
+}) {
+  const { page, pageSize, stage, q, paymentStatus, assignedTo, userAddress, address, companionMissing, excludeStages } =
+    params;
+  const where = buildOrderWhere({
+    stage,
+    q,
+    paymentStatus,
+    assignedTo,
+    userAddress,
+    address,
+    companionMissing,
+    excludeStages,
+  });
 
   const total = await prisma.adminOrder.count({ where });
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
@@ -564,6 +693,45 @@ export async function queryOrders(params: {
     page: clampedPage,
     pageSize,
     totalPages,
+  };
+}
+
+export async function queryOrdersCursor(params: {
+  pageSize: number;
+  stage?: string;
+  q?: string;
+  paymentStatus?: string;
+  assignedTo?: string;
+  userAddress?: string;
+  address?: string;
+  companionMissing?: boolean;
+  excludeStages?: string[];
+  cursor?: CursorPayload;
+}) {
+  const { pageSize, stage, q, paymentStatus, assignedTo, userAddress, address, companionMissing, excludeStages, cursor } =
+    params;
+  const where = buildOrderWhere({
+    stage,
+    q,
+    paymentStatus,
+    assignedTo,
+    userAddress,
+    address,
+    companionMissing,
+    excludeStages,
+  });
+  appendCursorWhere(where, cursor);
+
+  const rows = await prisma.adminOrder.findMany({
+    where,
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    take: pageSize + 1,
+  });
+  const hasMore = rows.length > pageSize;
+  const sliced = hasMore ? rows.slice(0, pageSize) : rows;
+  return {
+    items: sliced.map(mapOrder),
+    nextCursor: hasMore ? buildCursorPayload(sliced[sliced.length - 1]) : null,
   };
 }
 
@@ -790,15 +958,16 @@ export async function upsertOrder(order: AdminOrder) {
 export async function listPlayers() {
   const rows = await prisma.adminPlayer.findMany({ orderBy: { createdAt: "desc" } });
   const players = rows.map(mapPlayer);
-  const activeOrders = await prisma.adminOrder.findMany({
-    where: { stage: { notIn: ["已完成", "已取消"] } },
-    select: { assignedTo: true, amount: true, id: true },
+  const activeOrders = await prisma.adminOrder.groupBy({
+    by: ["assignedTo"],
+    where: { stage: { notIn: ["已完成", "已取消"] }, assignedTo: { not: null } },
+    _sum: { amount: true },
   });
   const exposure = new Map<string, number>();
   for (const order of activeOrders) {
     const key = (order.assignedTo || "").trim();
     if (!key) continue;
-    exposure.set(key, (exposure.get(key) || 0) + (order.amount || 0));
+    exposure.set(key, Number(order._sum.amount || 0));
   }
 
   const DIAMOND_RATE = 10;
@@ -817,6 +986,66 @@ export async function listPlayers() {
       availableCredit: available,
     };
   });
+}
+
+export async function listPlayersPublic() {
+  const rows = await prisma.adminPlayer.findMany({
+    select: {
+      id: true,
+      name: true,
+      role: true,
+      status: true,
+      depositBase: true,
+      depositLocked: true,
+    },
+    orderBy: { createdAt: "desc" },
+  });
+  return rows.map((row) => ({
+    id: row.id,
+    name: row.name,
+    role: row.role || undefined,
+    status: row.status as AdminPlayer["status"],
+    depositBase: row.depositBase ?? undefined,
+    depositLocked: row.depositLocked ?? undefined,
+  }));
+}
+
+function normalizePlayerAddress(address: string) {
+  return (address || "").trim();
+}
+
+export async function getPlayerByAddress(address: string) {
+  const normalized = normalizePlayerAddress(address);
+  if (!normalized) return { player: null, conflict: false };
+  const rows = await prisma.adminPlayer.findMany({
+    where: { address: { equals: normalized, mode: "insensitive" } },
+    orderBy: { createdAt: "desc" },
+    take: 2,
+  });
+  if (rows.length === 0) return { player: null, conflict: false };
+  if (rows.length > 1) return { player: null, conflict: true };
+  return { player: mapPlayer(rows[0]), conflict: false };
+}
+
+export async function updatePlayerStatusByAddress(address: string, status: AdminPlayer["status"]) {
+  const normalized = normalizePlayerAddress(address);
+  if (!normalized) return { player: null, conflict: false };
+  const rows = await prisma.adminPlayer.findMany({
+    where: { address: { equals: normalized, mode: "insensitive" } },
+    orderBy: { createdAt: "desc" },
+    take: 2,
+  });
+  if (rows.length === 0) return { player: null, conflict: false };
+  if (rows.length > 1) return { player: null, conflict: true };
+  try {
+    const row = await prisma.adminPlayer.update({
+      where: { id: rows[0].id },
+      data: { status, updatedAt: new Date() },
+    });
+    return { player: mapPlayer(row), conflict: false };
+  } catch {
+    return { player: null, conflict: false };
+  }
 }
 
 export async function addPlayer(player: AdminPlayer) {
@@ -940,11 +1169,18 @@ export async function listPublicAnnouncements() {
   if (process.env.NEXT_PUBLIC_VISUAL_TEST === "1" || process.env.VISUAL_TEST === "1") {
     return [];
   }
+  const cacheKey = "public:announcements";
+  const cached = getCache<AdminAnnouncement[]>(cacheKey);
+  if (cached) {
+    return cached.value;
+  }
   const rows = await prisma.adminAnnouncement.findMany({
     where: { status: "published" },
     orderBy: [{ updatedAt: "desc" }, { createdAt: "desc" }],
   });
-  return rows.map(mapAnnouncement);
+  const items = rows.map(mapAnnouncement);
+  setCache(cacheKey, items, 10_000);
+  return items;
 }
 
 export async function querySupportTickets(params: { page: number; pageSize: number; status?: string; q?: string }) {
@@ -976,6 +1212,39 @@ export async function querySupportTickets(params: { page: number; pageSize: numb
     page: clampedPage,
     pageSize,
     totalPages,
+  };
+}
+
+export async function querySupportTicketsCursor(params: {
+  pageSize: number;
+  status?: string;
+  q?: string;
+  cursor?: CursorPayload;
+}) {
+  const { pageSize, status, q, cursor } = params;
+  const keyword = (q || "").trim();
+  const where: Prisma.AdminSupportTicketWhereInput = {};
+  if (status && status !== "全部") where.status = status;
+  if (keyword) {
+    where.OR = [
+      { userName: { contains: keyword } },
+      { contact: { contains: keyword } },
+      { topic: { contains: keyword } },
+      { message: { contains: keyword } },
+      { id: { contains: keyword } },
+    ];
+  }
+  appendCursorWhere(where, cursor);
+  const rows = await prisma.adminSupportTicket.findMany({
+    where,
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    take: pageSize + 1,
+  });
+  const hasMore = rows.length > pageSize;
+  const sliced = hasMore ? rows.slice(0, pageSize) : rows;
+  return {
+    items: sliced.map(mapSupportTicket),
+    nextCursor: hasMore ? buildCursorPayload(sliced[sliced.length - 1]) : null,
   };
 }
 
@@ -1047,6 +1316,33 @@ export async function queryCoupons(params: { page: number; pageSize: number; sta
     page: clampedPage,
     pageSize,
     totalPages,
+  };
+}
+
+export async function queryCouponsCursor(params: {
+  pageSize: number;
+  status?: string;
+  q?: string;
+  cursor?: CursorPayload;
+}) {
+  const { pageSize, status, q, cursor } = params;
+  const keyword = (q || "").trim();
+  const where: Prisma.AdminCouponWhereInput = {};
+  if (status && status !== "全部") where.status = status;
+  if (keyword) {
+    where.OR = [{ title: { contains: keyword } }, { code: { contains: keyword } }, { id: { contains: keyword } }];
+  }
+  appendCursorWhere(where, cursor);
+  const rows = await prisma.adminCoupon.findMany({
+    where,
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    take: pageSize + 1,
+  });
+  const hasMore = rows.length > pageSize;
+  const sliced = hasMore ? rows.slice(0, pageSize) : rows;
+  return {
+    items: sliced.map(mapCoupon),
+    nextCursor: hasMore ? buildCursorPayload(sliced[sliced.length - 1]) : null,
   };
 }
 
@@ -1151,6 +1447,38 @@ export async function queryInvoiceRequests(params: { page: number; pageSize: num
   };
 }
 
+export async function queryInvoiceRequestsCursor(params: {
+  pageSize: number;
+  status?: string;
+  q?: string;
+  cursor?: CursorPayload;
+}) {
+  const { pageSize, status, q, cursor } = params;
+  const keyword = (q || "").trim();
+  const where: Prisma.AdminInvoiceRequestWhereInput = {};
+  if (status && status !== "全部") where.status = status;
+  if (keyword) {
+    where.OR = [
+      { title: { contains: keyword } },
+      { taxId: { contains: keyword } },
+      { orderId: { contains: keyword } },
+      { id: { contains: keyword } },
+    ];
+  }
+  appendCursorWhere(where, cursor);
+  const rows = await prisma.adminInvoiceRequest.findMany({
+    where,
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    take: pageSize + 1,
+  });
+  const hasMore = rows.length > pageSize;
+  const sliced = hasMore ? rows.slice(0, pageSize) : rows;
+  return {
+    items: sliced.map(mapInvoiceRequest),
+    nextCursor: hasMore ? buildCursorPayload(sliced[sliced.length - 1]) : null,
+  };
+}
+
 export async function addInvoiceRequest(request: AdminInvoiceRequest) {
   const row = await prisma.adminInvoiceRequest.create({
     data: {
@@ -1231,6 +1559,48 @@ export async function queryGuardianApplications(params: { page: number; pageSize
   };
 }
 
+export async function queryGuardianApplicationsCursor(params: {
+  pageSize: number;
+  status?: string;
+  q?: string;
+  cursor?: CursorPayload;
+}) {
+  const { pageSize, status, q, cursor } = params;
+  const keyword = (q || "").trim();
+  const where: Prisma.AdminGuardianApplicationWhereInput = {};
+  if (status && status !== "全部") where.status = status;
+  if (keyword) {
+    where.OR = [
+      { user: { contains: keyword } },
+      { games: { contains: keyword } },
+      { contact: { contains: keyword } },
+      { experience: { contains: keyword } },
+      { id: { contains: keyword } },
+    ];
+  }
+  appendCursorWhere(where, cursor);
+  const rows = await prisma.adminGuardianApplication.findMany({
+    where,
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    take: pageSize + 1,
+  });
+  const hasMore = rows.length > pageSize;
+  const sliced = hasMore ? rows.slice(0, pageSize) : rows;
+  return {
+    items: sliced.map(mapGuardianApplication),
+    nextCursor: hasMore ? buildCursorPayload(sliced[sliced.length - 1]) : null,
+  };
+}
+
+export async function isApprovedGuardianAddress(address: string) {
+  if (!address) return false;
+  const row = await prisma.adminGuardianApplication.findFirst({
+    where: { userAddress: { equals: address, mode: "insensitive" }, status: "已通过" },
+    select: { id: true },
+  });
+  return Boolean(row);
+}
+
 export async function addGuardianApplication(application: AdminGuardianApplication) {
   const row = await prisma.adminGuardianApplication.create({
     data: {
@@ -1299,6 +1669,33 @@ export async function queryMembershipTiers(params: { page: number; pageSize: num
     page: clampedPage,
     pageSize,
     totalPages,
+  };
+}
+
+export async function queryMembershipTiersCursor(params: {
+  pageSize: number;
+  status?: string;
+  q?: string;
+  cursor?: CursorPayload;
+}) {
+  const { pageSize, status, q, cursor } = params;
+  const keyword = (q || "").trim();
+  const where: Prisma.AdminMembershipTierWhereInput = {};
+  if (status && status !== "全部") where.status = status;
+  if (keyword) {
+    where.OR = [{ name: { contains: keyword } }, { id: { contains: keyword } }];
+  }
+  appendCursorWhere(where, cursor);
+  const rows = await prisma.adminMembershipTier.findMany({
+    where,
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    take: pageSize + 1,
+  });
+  const hasMore = rows.length > pageSize;
+  const sliced = hasMore ? rows.slice(0, pageSize) : rows;
+  return {
+    items: sliced.map(mapMembershipTier),
+    nextCursor: hasMore ? buildCursorPayload(sliced[sliced.length - 1]) : null,
   };
 }
 
@@ -1409,6 +1806,38 @@ export async function queryMembers(params: { page: number; pageSize: number; sta
   };
 }
 
+export async function queryMembersCursor(params: {
+  pageSize: number;
+  status?: string;
+  q?: string;
+  cursor?: CursorPayload;
+}) {
+  const { pageSize, status, q, cursor } = params;
+  const keyword = (q || "").trim();
+  const where: Prisma.AdminMemberWhereInput = {};
+  if (status && status !== "全部") where.status = status;
+  if (keyword) {
+    where.OR = [
+      { userName: { contains: keyword } },
+      { userAddress: { contains: keyword } },
+      { tierName: { contains: keyword } },
+      { id: { contains: keyword } },
+    ];
+  }
+  appendCursorWhere(where, cursor);
+  const rows = await prisma.adminMember.findMany({
+    where,
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    take: pageSize + 1,
+  });
+  const hasMore = rows.length > pageSize;
+  const sliced = hasMore ? rows.slice(0, pageSize) : rows;
+  return {
+    items: sliced.map(mapMember),
+    nextCursor: hasMore ? buildCursorPayload(sliced[sliced.length - 1]) : null,
+  };
+}
+
 export async function getMemberByAddress(userAddress: string) {
   if (process.env.NEXT_PUBLIC_VISUAL_TEST === "1" || process.env.VISUAL_TEST === "1") {
     return null;
@@ -1498,6 +1927,38 @@ export async function queryMembershipRequests(params: { page: number; pageSize: 
     page: clampedPage,
     pageSize,
     totalPages,
+  };
+}
+
+export async function queryMembershipRequestsCursor(params: {
+  pageSize: number;
+  status?: string;
+  q?: string;
+  cursor?: CursorPayload;
+}) {
+  const { pageSize, status, q, cursor } = params;
+  const keyword = (q || "").trim();
+  const where: Prisma.AdminMembershipRequestWhereInput = {};
+  if (status && status !== "全部") where.status = status;
+  if (keyword) {
+    where.OR = [
+      { userName: { contains: keyword } },
+      { userAddress: { contains: keyword } },
+      { tierName: { contains: keyword } },
+      { id: { contains: keyword } },
+    ];
+  }
+  appendCursorWhere(where, cursor);
+  const rows = await prisma.adminMembershipRequest.findMany({
+    where,
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    take: pageSize + 1,
+  });
+  const hasMore = rows.length > pageSize;
+  const sliced = hasMore ? rows.slice(0, pageSize) : rows;
+  return {
+    items: sliced.map(mapMembershipRequest),
+    nextCursor: hasMore ? buildCursorPayload(sliced[sliced.length - 1]) : null,
   };
 }
 
@@ -1628,6 +2089,33 @@ export async function queryAuditLogs(params: { page: number; pageSize: number; q
   };
 }
 
+export async function queryAuditLogsCursor(params: { pageSize: number; q?: string; cursor?: CursorPayload }) {
+  const { pageSize, q, cursor } = params;
+  const keyword = (q || "").trim();
+  const where: Prisma.AdminAuditLogWhereInput = {};
+  if (keyword) {
+    where.OR = [
+      { action: { contains: keyword } },
+      { targetId: { contains: keyword } },
+      { targetType: { contains: keyword } },
+      { actorRole: { contains: keyword } },
+      { id: { contains: keyword } },
+    ];
+  }
+  appendCursorWhere(where, cursor);
+  const rows = await prisma.adminAuditLog.findMany({
+    where,
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    take: pageSize + 1,
+  });
+  const hasMore = rows.length > pageSize;
+  const sliced = hasMore ? rows.slice(0, pageSize) : rows;
+  return {
+    items: sliced.map(mapAudit),
+    nextCursor: hasMore ? buildCursorPayload(sliced[sliced.length - 1]) : null,
+  };
+}
+
 export async function addPaymentEvent(entry: AdminPaymentEvent) {
   const row = await prisma.adminPaymentEvent.create({
     data: {
@@ -1746,6 +2234,23 @@ export async function queryPaymentEvents(params: { page: number; pageSize: numbe
   };
 }
 
+export async function queryPaymentEventsCursor(params: { pageSize: number; cursor?: CursorPayload }) {
+  const { pageSize, cursor } = params;
+  const where: Prisma.AdminPaymentEventWhereInput = {};
+  appendCursorWhere(where, cursor);
+  const rows = await prisma.adminPaymentEvent.findMany({
+    where,
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    take: pageSize + 1,
+  });
+  const hasMore = rows.length > pageSize;
+  const sliced = hasMore ? rows.slice(0, pageSize) : rows;
+  return {
+    items: sliced.map(mapPayment),
+    nextCursor: hasMore ? buildCursorPayload(sliced[sliced.length - 1]) : null,
+  };
+}
+
 export async function createSession(session: AdminSession) {
   const row = await prisma.adminSession.create({
     data: {
@@ -1790,6 +2295,78 @@ export async function updateSessionByHash(tokenHash: string, patch: Partial<Admi
 export async function removeSessionByHash(tokenHash: string) {
   try {
     await prisma.adminSession.delete({ where: { tokenHash } });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function listAccessTokens() {
+  const rows = await prisma.adminAccessToken.findMany({
+    orderBy: { createdAt: "desc" },
+  });
+  return rows.map(mapAccessToken);
+}
+
+export async function getAccessTokenByHash(tokenHash: string) {
+  try {
+    const row = await prisma.adminAccessToken.findUnique({ where: { tokenHash } });
+    return row ? mapAccessToken(row) : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function addAccessToken(token: AdminAccessToken) {
+  const row = await prisma.adminAccessToken.create({
+    data: {
+      id: token.id,
+      tokenHash: token.tokenHash,
+      tokenPrefix: token.tokenPrefix,
+      role: token.role,
+      label: token.label ?? null,
+      status: token.status,
+      createdAt: new Date(token.createdAt),
+      updatedAt: token.updatedAt ? new Date(token.updatedAt) : null,
+      lastUsedAt: token.lastUsedAt ? new Date(token.lastUsedAt) : null,
+    },
+  });
+  return mapAccessToken(row);
+}
+
+export async function updateAccessToken(tokenId: string, patch: Partial<AdminAccessToken>) {
+  try {
+    const row = await prisma.adminAccessToken.update({
+      where: { id: tokenId },
+      data: {
+        role: patch.role,
+        label: patch.label === "" ? null : patch.label ?? undefined,
+        status: patch.status,
+        updatedAt: new Date(),
+        lastUsedAt: patch.lastUsedAt ? new Date(patch.lastUsedAt) : undefined,
+      },
+    });
+    return mapAccessToken(row);
+  } catch {
+    return null;
+  }
+}
+
+export async function touchAccessTokenByHash(tokenHash: string) {
+  try {
+    await prisma.adminAccessToken.update({
+      where: { tokenHash },
+      data: { lastUsedAt: new Date(), updatedAt: new Date() },
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function removeAccessToken(tokenId: string) {
+  try {
+    await prisma.adminAccessToken.delete({ where: { id: tokenId } });
     return true;
   } catch {
     return false;
@@ -1932,6 +2509,30 @@ export async function queryMantouWithdraws(params: {
     page: clampedPage,
     pageSize,
     totalPages,
+  };
+}
+
+export async function queryMantouWithdrawsCursor(params: {
+  pageSize: number;
+  status?: string;
+  address?: string;
+  cursor?: CursorPayload;
+}) {
+  const { pageSize, status, address, cursor } = params;
+  const where: Prisma.MantouWithdrawRequestWhereInput = {};
+  if (status && status !== "全部") where.status = status;
+  if (address) where.address = address;
+  appendCursorWhere(where, cursor);
+  const rows = await prisma.mantouWithdrawRequest.findMany({
+    where,
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    take: pageSize + 1,
+  });
+  const hasMore = rows.length > pageSize;
+  const sliced = hasMore ? rows.slice(0, pageSize) : rows;
+  return {
+    items: sliced.map(mapMantouWithdrawRequest),
+    nextCursor: hasMore ? buildCursorPayload(sliced[sliced.length - 1]) : null,
   };
 }
 

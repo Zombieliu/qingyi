@@ -61,10 +61,14 @@ export default function VipAdminPage() {
   const [requests, setRequests] = useState<AdminMembershipRequest[]>([]);
   const [members, setMembers] = useState<AdminMember[]>([]);
   const [loading, setLoading] = useState(true);
+  const [cacheHint, setCacheHint] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("全部");
   const [saving, setSaving] = useState<Record<string, boolean>>({});
   const [page, setPage] = useState(1);
+  const [cursor, setCursor] = useState<string | null>(null);
+  const [prevCursors, setPrevCursors] = useState<Array<string | null>>([]);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
   const pageSize = 20;
   const cacheTtlMs = 60_000;
 
@@ -110,27 +114,36 @@ export default function VipAdminPage() {
     }
   }, [cacheTtlMs]);
 
-  const loadRequests = useCallback(async (nextPage: number) => {
+  const loadRequests = useCallback(async (cursorValue: string | null, nextPage: number) => {
     setLoading(true);
     try {
+      setCacheHint(null);
       const params = new URLSearchParams();
-      params.set("page", String(nextPage));
       params.set("pageSize", String(pageSize));
+      if (cursorValue) params.set("cursor", cursorValue);
       if (statusFilter && statusFilter !== "全部") params.set("status", statusFilter);
       if (query.trim()) params.set("q", query.trim());
       const cacheKey = `cache:admin:vip:requests:${params.toString()}`;
-      const cached = readCache<{ items: AdminMembershipRequest[]; page?: number }>(cacheKey, cacheTtlMs, true);
+      const cached = readCache<{ items: AdminMembershipRequest[]; nextCursor?: string | null }>(
+        cacheKey,
+        cacheTtlMs,
+        true
+      );
       if (cached) {
         setRequests(Array.isArray(cached.value?.items) ? cached.value.items : []);
-        setPage(cached.value?.page || nextPage);
+        setPage(nextPage);
+        setNextCursor(cached.value?.nextCursor || null);
+        setCacheHint(cached.fresh ? null : "显示缓存数据，正在刷新…");
       }
       const res = await fetch(`/api/admin/vip/requests?${params.toString()}`);
       if (res.ok) {
         const data = await res.json();
         const next = Array.isArray(data?.items) ? data.items : [];
         setRequests(next);
-        setPage(data?.page || nextPage);
-        writeCache(cacheKey, { items: next, page: data?.page || nextPage });
+        setPage(nextPage);
+        setNextCursor(data?.nextCursor || null);
+        setCacheHint(null);
+        writeCache(cacheKey, { items: next, nextCursor: data?.nextCursor || null });
       }
     } finally {
       setLoading(false);
@@ -158,13 +171,17 @@ export default function VipAdminPage() {
   }, [loadMembers, loadTiers]);
 
   useEffect(() => {
-    const handle = setTimeout(() => loadRequests(1), 300);
+    const handle = setTimeout(() => {
+      setPrevCursors([]);
+      setCursor(null);
+      setPage(1);
+    }, 300);
     return () => clearTimeout(handle);
-  }, [loadRequests]);
+  }, [query, statusFilter]);
 
   useEffect(() => {
-    loadRequests(page);
-  }, [loadRequests, page]);
+    loadRequests(cursor, page);
+  }, [loadRequests, cursor, page]);
 
   const createTier = async () => {
     if (!form.name.trim() || !form.level) return;
@@ -229,11 +246,11 @@ export default function VipAdminPage() {
         setRequests((prev) => {
           const next = prev.map((r) => (r.id === requestId ? data : r));
           const params = new URLSearchParams();
-          params.set("page", String(page));
           params.set("pageSize", String(pageSize));
+          if (cursor) params.set("cursor", cursor);
           if (statusFilter && statusFilter !== "全部") params.set("status", statusFilter);
           if (query.trim()) params.set("q", query.trim());
-          writeCache(`cache:admin:vip:requests:${params.toString()}`, { items: next, page });
+          writeCache(`cache:admin:vip:requests:${params.toString()}`, { items: next, nextCursor });
           return next;
         });
         await loadMembers();
@@ -241,6 +258,24 @@ export default function VipAdminPage() {
     } finally {
       setSaving((prev) => ({ ...prev, [requestId]: false }));
     }
+  };
+
+  const goPrev = () => {
+    setPrevCursors((prev) => {
+      if (prev.length === 0) return prev;
+      const nextPrev = prev.slice(0, -1);
+      const prevCursor = prev[prev.length - 1] ?? null;
+      setCursor(prevCursor);
+      setPage((value) => Math.max(1, value - 1));
+      return nextPrev;
+    });
+  };
+
+  const goNext = () => {
+    if (!nextCursor) return;
+    setPrevCursors((prev) => [...prev, cursor]);
+    setCursor(nextCursor);
+    setPage((value) => value + 1);
   };
 
   const updateMember = async (memberId: string, patch: Partial<AdminMember>) => {
@@ -383,7 +418,14 @@ export default function VipAdminPage() {
               </option>
             ))}
           </select>
-          <button className="admin-btn ghost" onClick={() => loadRequests(1)}>
+          <button
+            className="admin-btn ghost"
+            onClick={() => {
+              setPrevCursors([]);
+              setCursor(null);
+              setPage(1);
+            }}
+          >
             <RefreshCw size={16} style={{ marginRight: 6 }} />
             刷新申请
           </button>
@@ -518,6 +560,15 @@ export default function VipAdminPage() {
             </table>
           </div>
         )}
+        <div className="admin-pagination">
+          <button className="admin-btn ghost" disabled={prevCursors.length === 0} onClick={goPrev}>
+            上一页
+          </button>
+          <div className="admin-meta">第 {page} 页</div>
+          <button className="admin-btn ghost" disabled={!nextCursor} onClick={goNext}>
+            下一页
+          </button>
+        </div>
       </div>
 
       <div className="admin-card">
@@ -525,6 +576,7 @@ export default function VipAdminPage() {
           <h3>会员申请</h3>
           <div className="admin-card-actions">
             <span className="admin-pill">本页 {requests.length} 条</span>
+            {cacheHint ? <span className="admin-pill">{cacheHint}</span> : null}
           </div>
         </div>
         {loading ? (

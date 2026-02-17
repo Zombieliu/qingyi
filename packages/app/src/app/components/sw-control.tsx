@@ -17,6 +17,7 @@ type StatusKey =
   | "no-sw"
   | "unsupported"
   | "forcing"
+  | "clearing"
   | "error";
 
 function shortScript(url?: string) {
@@ -120,6 +121,27 @@ export default function SwControl() {
     }
   };
 
+  const clearCache = async () => {
+    setStatus("clearing");
+    setMessage("");
+    try {
+      if ("caches" in window) {
+        const keys = await caches.keys();
+        await Promise.all(keys.map((key) => caches.delete(key)));
+      }
+      const reg = await navigator.serviceWorker.getRegistration();
+      if (reg) {
+        await reg.update();
+      }
+      setMessage("已清理缓存，请刷新确认");
+    } catch {
+      setStatus("error");
+      setMessage("清理失败");
+    } finally {
+      setStatus((prev) => (prev === "error" ? prev : "idle"));
+    }
+  };
+
   const label = useMemo(() => {
     if (!state.supported) return "浏览器不支持";
     if (status === "no-sw") return "未注册";
@@ -131,13 +153,20 @@ export default function SwControl() {
       <div className="admin-meta">SW：{label}</div>
       {message ? <div className="admin-meta-faint" style={{ marginTop: 4 }}>{message}</div> : null}
       <div className="admin-actions" style={{ marginTop: 8, justifyContent: "flex-start" }}>
-        <button className="admin-btn ghost" onClick={checkUpdate} disabled={status === "checking" || status === "forcing"}>
+        <button
+          className="admin-btn ghost"
+          onClick={checkUpdate}
+          disabled={status === "checking" || status === "forcing" || status === "clearing"}
+        >
           <RefreshCw size={14} />
           {status === "checking" ? "检查中..." : "检查更新"}
         </button>
-        <button className="admin-btn secondary" onClick={forceUpdate} disabled={status === "checking" || status === "forcing"}>
+        <button className="admin-btn secondary" onClick={forceUpdate} disabled={status === "checking" || status === "forcing" || status === "clearing"}>
           <ArrowUpCircle size={14} />
           {status === "forcing" ? "更新中..." : "强制更新"}
+        </button>
+        <button className="admin-btn ghost" onClick={clearCache} disabled={status === "checking" || status === "forcing" || status === "clearing"}>
+          {status === "clearing" ? "清理中..." : "清理缓存"}
         </button>
       </div>
     </div>

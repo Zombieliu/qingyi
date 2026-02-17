@@ -12,13 +12,15 @@ import PasskeyGate from "../components/passkey-gate";
 import AutoTranslate from "../components/auto-translate";
 import { useI18n } from "@/lib/i18n-client";
 import { PageTransition } from "@/components/ui/motion";
+import { useGuardianStatus } from "../components/guardian-role";
 
 export default function TabsLayout({ children }: { children: React.ReactNode }) {
   const { t } = useI18n();
   const pathname = usePathname();
+  const { isGuardian } = useGuardianStatus();
   const items = [
     { label: t("首页"), href: "/home", icon: HomeIcon },
-    { label: t("展示"), href: "/showcase", icon: Diamond },
+    ...(isGuardian ? [{ label: t("展示"), href: "/showcase", icon: Diamond }] : []),
     { label: t("安排"), href: "/schedule", icon: CalendarCheck },
     { label: t("资讯"), href: "/news", icon: MessageCircle },
     { label: t("我的"), href: "/me", icon: User },

@@ -21,7 +21,7 @@ SUI_PACKAGE_ID=部署后的 qy 包地址
 SUI_DAPP_HUB_ID=Dubhe DappHub 共享对象 ID
 SUI_DAPP_HUB_INITIAL_SHARED_VERSION=DappHub 初始 shared 版本号
 LEDGER_ADMIN_TOKEN=后台记账接口鉴权 token
-ADMIN_DASH_TOKEN=管理后台登录密钥（未配置时回退 LEDGER_ADMIN_TOKEN）
+ADMIN_DASH_TOKEN=管理后台登录密钥（未配置时回退 LEDGER_ADMIN_TOKEN，建议保留作应急）
 ADMIN_TOKENS=admin:token,ops:token,finance:token（可选，按角色分配）
 ADMIN_TOKENS_JSON={"admin":["token1"],"finance":["token2"]}（可选）
 ADMIN_SESSION_TTL_HOURS=12
@@ -51,8 +51,8 @@ NEXT_PUBLIC_ORDER_SOURCE=server
 - 功能：调用 `qy::ledger_system::credit_balance_with_receipt` 写入链上余额（幂等）
 
 ## 轻量管理后台
-- 入口：`/admin/login`（使用 `ADMIN_DASH_TOKEN` 登录）
-- 模块：订单调度 / 打手管理 / 公告资讯 / 链上记账 / 链上对账 / 支付事件 / 审计日志
+- 入口：`/admin/login`（使用后台密钥登录）
+- 模块：订单调度 / 打手管理 / 公告资讯 / 链上记账 / 链上对账 / 支付事件 / 审计日志 / 密钥管理
 - 数据：存储在 Postgres（`DATABASE_URL`）
 
 ## 支付回调（可选）

@@ -2320,6 +2320,10 @@ button,
 
 /* 会员横幅 */
 .member-card {
+  display: block;
+  text-decoration: none;
+  background-color: #1f1b2e;
+  background-image: linear-gradient(135deg, #1f1b2e 0%, #2a1f3f 100%);
   background: linear-gradient(135deg, #1f1b2e 0%, #2a1f3f 100%);
   color: #f8fafc;
   border-radius: 20px;
@@ -2327,6 +2331,7 @@ button,
   box-shadow: 0 16px 30px rgba(0, 0, 0, 0.18);
   border: 1px solid rgba(255, 255, 255, 0.06);
   margin-bottom: 14px;
+  isolation: isolate;
   transition: transform var(--motion-base) var(--motion-ease), box-shadow var(--motion-base) var(--motion-ease);
 }
 .member-card:hover {
@@ -2398,6 +2403,33 @@ button,
   margin-top: 4px;
   font-size: 11px;
   color: #e2e8f0;
+}
+
+.member-card[data-theme="light"],
+.member-card.is-light {
+  background-color: #ffffff;
+  background-image: linear-gradient(180deg, #ffffff 0%, #f5f8ff 100%);
+  color: #0f172a;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  box-shadow: var(--shadow-md);
+}
+.member-card[data-theme="light"] .member-progress,
+.member-card.is-light .member-progress {
+  color: #64748b;
+}
+.member-card[data-theme="light"] .member-item,
+.member-card.is-light .member-item {
+  background: rgba(15, 23, 42, 0.04);
+  border-color: rgba(15, 23, 42, 0.08);
+  box-shadow: none;
+}
+.member-card[data-theme="light"] .member-item-label,
+.member-card.is-light .member-item-label {
+  color: #0f172a;
+}
+.member-card[data-theme="light"] .member-item-desc,
+.member-card.is-light .member-item-desc {
+  color: #64748b;
 }
 
 /* 设置页 */

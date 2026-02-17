@@ -1,8 +1,11 @@
 #!/usr/bin/env node
 import { spawn } from "node:child_process";
+import { createHash, randomBytes } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
+import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
+import { isValidSuiAddress, normalizeSuiAddress } from "@mysten/sui/utils";
 
 const args = new Set(process.argv.slice(2));
 
@@ -21,6 +24,8 @@ Options:
 Env:
   FLOW_BASE_URL / PLAYWRIGHT_BASE_URL (default http://127.0.0.1:3000)
   ADMIN_DASH_TOKEN or LEDGER_ADMIN_TOKEN (for admin API checks)
+  E2E_SUI_USER_PRIVATE_KEY / E2E_USER_PRIVATE_KEY (optional, for user auth)
+  E2E_PLAYER_ADDRESS (optional, for admin player create)
   E2E_LEDGER_USER (target address for ledger credit test)
 `);
   process.exit(0);
@@ -57,6 +62,9 @@ const fail = (msg) => {
 
 let serverProcess = null;
 let serverStarted = false;
+let lastPlayerAddress = "";
+
+const AUTH_MESSAGE_VERSION = "qy-auth-v2";
 
 process.on("SIGINT", () => {
   if (serverProcess) serverProcess.kill("SIGTERM");
@@ -84,13 +92,26 @@ try {
 
   if (runApi) {
     log("running API smoke checks...");
-    const orderRes = await postJson("/api/orders", {
+    const { signer: userSigner, address: userAddress, source: userSource } = getUserAuthSigner();
+    if (userSource === "generated") {
+      warn("E2E_SUI_USER_PRIVATE_KEY not set, using a generated keypair for user auth");
+    }
+    const orderPayload = {
       user: "flow-test-user",
       item: "E2E Test Order",
       amount: 88,
       note: "flow-test",
       status: "已支付",
+      userAddress,
+    };
+    const orderBody = JSON.stringify(orderPayload);
+    const authHeaders = await signAuthHeaders({
+      intent: "orders:create",
+      address: userAddress,
+      body: orderBody,
+      signer: userSigner,
     });
+    const orderRes = await postJson("/api/orders", orderBody, undefined, authHeaders);
     if (!orderRes.ok) {
       fail(`POST /api/orders failed: ${orderRes.status} ${orderRes.text}`);
     } else {
@@ -162,7 +183,7 @@ try {
 
           const player = await postJson(
             "/api/admin/players",
-            { name: "Flow Test Player", status: "可接单" },
+            { name: "Flow Test Player", status: "可接单", address: resolvePlayerAddress() },
             cookie
           );
           if (player.ok && player.json?.id) {
@@ -171,7 +192,21 @@ try {
             if (playerPatch.ok) ok("admin player updated");
             else warn(`player patch failed: ${playerPatch.status} ${playerPatch.text}`);
           } else {
-            warn(`player create failed: ${player.status} ${player.text}`);
+            if (player.status === 409) {
+              const players = await getJson("/api/admin/players", cookie);
+              const list = Array.isArray(players.json) ? players.json : [];
+              const target = list.find((entry) => entry?.address === lastPlayerAddress);
+              if (target?.id) {
+                ok("admin player already exists");
+                const playerPatch = await patchJson(`/api/admin/players/${target.id}`, { status: "忙碌" }, cookie);
+                if (playerPatch.ok) ok("admin player updated");
+                else warn(`player patch failed: ${playerPatch.status} ${playerPatch.text}`);
+              } else {
+                warn(`player create failed: ${player.status} ${player.text}`);
+              }
+            } else {
+              warn(`player create failed: ${player.status} ${player.text}`);
+            }
           }
         }
       }
@@ -323,6 +358,7 @@ async function requestJson(method, path, body, cookie, extraHeaders = {}) {
     ...extraHeaders,
   };
   if (cookie) headers.cookie = cookie;
+  const bodyText = body === undefined ? undefined : typeof body === "string" ? body : JSON.stringify(body);
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 15_000);
   let res;
@@ -332,7 +368,7 @@ async function requestJson(method, path, body, cookie, extraHeaders = {}) {
     res = await fetch(url, {
       method,
       headers,
-      body: body === undefined ? undefined : JSON.stringify(body),
+      body: bodyText,
       signal: controller.signal,
     });
     text = await res.text();
@@ -356,4 +392,79 @@ function extractCookie(res, name) {
   const parts = raw.split(";")[0];
   if (!parts.startsWith(`${name}=`)) return parts;
   return parts;
+}
+
+function getUserAuthSigner() {
+  const key = process.env.E2E_SUI_USER_PRIVATE_KEY || process.env.E2E_USER_PRIVATE_KEY || "";
+  if (key) {
+    try {
+      const signer = Ed25519Keypair.fromSecretKey(key);
+      return { signer, address: signer.getPublicKey().toSuiAddress(), source: "env" };
+    } catch (err) {
+      warn(`invalid E2E_SUI_USER_PRIVATE_KEY, fallback to generated keypair: ${String(err)}`);
+    }
+  }
+  const signer = Ed25519Keypair.generate();
+  return { signer, address: signer.getPublicKey().toSuiAddress(), source: "generated" };
+}
+
+function resolvePlayerAddress() {
+  const explicit = (process.env.E2E_PLAYER_ADDRESS || "").trim();
+  if (explicit) {
+    try {
+      const normalized = normalizeSuiAddress(explicit);
+      if (isValidSuiAddress(normalized)) {
+        lastPlayerAddress = normalized;
+        return normalized;
+      }
+    } catch {
+      // fallthrough to generated address
+    }
+    warn("invalid E2E_PLAYER_ADDRESS, fallback to generated player address");
+  }
+
+  const key =
+    process.env.E2E_SUI_COMPANION_PRIVATE_KEY ||
+    process.env.E2E_SUI_USER_PRIVATE_KEY ||
+    process.env.E2E_USER_PRIVATE_KEY ||
+    "";
+  if (key) {
+    try {
+      const signer = Ed25519Keypair.fromSecretKey(key);
+      lastPlayerAddress = signer.getPublicKey().toSuiAddress();
+      return lastPlayerAddress;
+    } catch (err) {
+      warn(`invalid E2E_SUI_*_PRIVATE_KEY for player, fallback to generated address: ${String(err)}`);
+    }
+  }
+
+  const signer = Ed25519Keypair.generate();
+  lastPlayerAddress = signer.getPublicKey().toSuiAddress();
+  log("E2E_PLAYER_ADDRESS not set, using generated player address");
+  return lastPlayerAddress;
+}
+
+function hashBodyBase64(body) {
+  return createHash("sha256").update(body).digest("base64");
+}
+
+function buildAuthMessage({ intent, address, timestamp, nonce, bodyHash }) {
+  const normalized = address.trim().toLowerCase();
+  const cleanHash = (bodyHash || "").trim();
+  return `${AUTH_MESSAGE_VERSION}|${intent}|${normalized}|${timestamp}|${nonce}|${cleanHash}`;
+}
+
+async function signAuthHeaders({ intent, address, body, signer }) {
+  const timestamp = Date.now();
+  const nonce = randomBytes(16).toString("base64");
+  const bodyHash = body ? hashBodyBase64(body) : "";
+  const message = buildAuthMessage({ intent, address, timestamp, nonce, bodyHash });
+  const signed = await signer.signPersonalMessage(new TextEncoder().encode(message));
+  return {
+    "x-auth-address": address,
+    "x-auth-signature": signed.signature,
+    "x-auth-timestamp": String(timestamp),
+    "x-auth-nonce": nonce,
+    "x-auth-body-sha256": bodyHash,
+  };
 }

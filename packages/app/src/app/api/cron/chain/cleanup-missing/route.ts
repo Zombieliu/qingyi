@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 import { fetchChainOrdersAdmin } from "@/lib/chain-admin";
-import { listOrders, removeOrders } from "@/lib/admin-store";
+import { listChainOrdersForCleanup, removeOrders } from "@/lib/admin-store";
 import { computeMissingChainCleanup } from "@/lib/chain-missing-utils";
+import { acquireCronLock } from "@/lib/cron-lock";
+
+const CRON_LOCK_TTL_MS = Number(process.env.CRON_LOCK_TTL_MS || "600000");
 
 function isAuthorized(req: Request) {
   const secret = process.env.CRON_SECRET;
@@ -19,6 +22,9 @@ export async function GET(req: Request) {
   if (!isAuthorized(req)) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
+  if (!(await acquireCronLock("chain-cleanup-missing", CRON_LOCK_TTL_MS))) {
+    return NextResponse.json({ error: "locked" }, { status: 429 });
+  }
 
   const enabled = process.env.CHAIN_MISSING_CLEANUP_ENABLED === "1";
   const maxAgeHours = Number(process.env.CHAIN_MISSING_CLEANUP_MAX_AGE_HOURS || "0");
@@ -28,7 +34,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ ok: true, enabled, deleted: 0 });
   }
 
-  const [chainOrders, localOrders] = await Promise.all([fetchChainOrdersAdmin(), listOrders()]);
+  const [chainOrders, localOrders] = await Promise.all([fetchChainOrdersAdmin(), listChainOrdersForCleanup()]);
   const { ids, missing, eligible, cutoff, limit } = computeMissingChainCleanup({
     chainOrders,
     localOrders,

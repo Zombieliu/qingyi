@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import type { ElementType } from "react";
 import {
   LayoutGrid,
@@ -15,6 +15,7 @@ import {
   FileCheck,
   UserCheck,
   Crown,
+  KeyRound,
   LogOut,
   Menu,
   Link2,
@@ -26,16 +27,18 @@ import { useI18n } from "@/lib/i18n-client";
 import AutoTranslate from "@/app/components/auto-translate";
 import SwControl from "@/app/components/sw-control";
 import { PageTransition, Stagger, StaggerItem } from "@/components/ui/motion";
-
-type AdminRole = "admin" | "ops" | "finance" | "viewer";
+import { StateBlock } from "@/app/components/state-block";
+import AdminToast from "./admin-toast";
+import { AdminSessionProvider, type AdminRole, roleRank } from "./admin-session";
 
 type AdminSessionSnapshot = {
   role: AdminRole;
   needsLogin: boolean;
+  ready: boolean;
 };
 
-const SERVER_SNAPSHOT: AdminSessionSnapshot = { role: "viewer", needsLogin: false };
-let sessionSnapshot: AdminSessionSnapshot = { role: "viewer", needsLogin: false };
+const SERVER_SNAPSHOT: AdminSessionSnapshot = { role: "viewer", needsLogin: false, ready: false };
+let sessionSnapshot: AdminSessionSnapshot = { role: "viewer", needsLogin: false, ready: false };
 let sessionLoading: Promise<void> | null = null;
 const sessionSubscribers = new Set<() => void>();
 
@@ -51,17 +54,21 @@ async function refreshSession() {
       sessionSnapshot = {
         role: (data?.role as AdminRole) || sessionSnapshot.role,
         needsLogin: false,
+        ready: true,
       };
       const expiresAt = Number(data?.expiresAt || 0);
       if (expiresAt && expiresAt - Date.now() < 30 * 60 * 1000) {
         await fetch("/api/admin/refresh", { method: "POST" });
       }
     } else if (res.status === 401) {
-      sessionSnapshot = { role: "viewer", needsLogin: true };
+      sessionSnapshot = { role: "viewer", needsLogin: true, ready: true };
     }
   } catch {
     // Ignore transient session errors.
   } finally {
+    if (!sessionSnapshot.ready) {
+      sessionSnapshot = { ...sessionSnapshot, ready: true };
+    }
     notifySession();
   }
 }
@@ -80,24 +87,32 @@ function subscribeSession(callback: () => void) {
   return () => sessionSubscribers.delete(callback);
 }
 
+function shouldNotifyAdminError(res: Response, url: string) {
+  if (res.ok) return false;
+  if (res.status === 401 || res.status === 403) return false;
+  if (!url.includes("/api/")) return false;
+  return true;
+}
+
 type NavItem = { href: string; label: string; icon: ElementType; minRole: AdminRole };
 
 const navItems: NavItem[] = [
   { href: "/admin", label: "运营概览", icon: LayoutGrid, minRole: "viewer" },
-  { href: "/admin/orders", label: "订单调度", icon: ClipboardList, minRole: "ops" },
+  { href: "/admin/orders", label: "订单调度", icon: ClipboardList, minRole: "viewer" },
   { href: "/admin/support", label: "客服工单", icon: Headset, minRole: "ops" },
   { href: "/admin/coupons", label: "优惠卡券", icon: TicketPercent, minRole: "ops" },
   { href: "/admin/vip", label: "会员管理", icon: Crown, minRole: "ops" },
-  { href: "/admin/players", label: "打手管理", icon: Users, minRole: "ops" },
+  { href: "/admin/players", label: "打手管理", icon: Users, minRole: "viewer" },
   { href: "/admin/guardians", label: "护航申请", icon: UserCheck, minRole: "ops" },
-  { href: "/admin/announcements", label: "公告资讯", icon: Megaphone, minRole: "ops" },
-  { href: "/admin/analytics", label: "增长数据", icon: TrendingUp, minRole: "ops" },
+  { href: "/admin/announcements", label: "公告资讯", icon: Megaphone, minRole: "viewer" },
+  { href: "/admin/analytics", label: "增长数据", icon: TrendingUp, minRole: "admin" },
   { href: "/admin/ledger", label: "记账中心", icon: Wallet, minRole: "finance" },
   { href: "/admin/mantou", label: "馒头提现", icon: Wallet, minRole: "finance" },
   { href: "/admin/invoices", label: "发票申请", icon: FileCheck, minRole: "finance" },
   { href: "/admin/chain", label: "订单对账", icon: Link2, minRole: "finance" },
   { href: "/admin/payments", label: "支付事件", icon: CreditCard, minRole: "finance" },
   { href: "/admin/audit", label: "审计日志", icon: FileText, minRole: "admin" },
+  { href: "/admin/tokens", label: "密钥管理", icon: KeyRound, minRole: "admin" },
 ];
 
 const navSections: Array<{ label: string; items: string[] }> = [
@@ -119,7 +134,7 @@ const navSections: Array<{ label: string; items: string[] }> = [
     label: "财务结算",
     items: ["/admin/ledger", "/admin/mantou", "/admin/invoices", "/admin/chain", "/admin/payments"],
   },
-  { label: "系统", items: ["/admin/audit"] },
+  { label: "系统", items: ["/admin/tokens", "/admin/audit"] },
 ];
 
 const navLookup = new Map(navItems.map((item) => [item.href, item]));
@@ -140,20 +155,8 @@ const subtitles: Record<string, string> = {
   "/admin/chain": "订单对账与争议裁决",
   "/admin/payments": "支付回调记录与核验",
   "/admin/audit": "后台关键操作审计",
+  "/admin/tokens": "后台密钥创建与权限控制",
 };
-
-function roleRank(role: AdminRole) {
-  switch (role) {
-    case "admin":
-      return 4;
-    case "finance":
-      return 3;
-    case "ops":
-      return 2;
-    default:
-      return 1;
-  }
-}
 
 const roleLabels: Record<AdminRole, string> = {
   admin: "超级管理员",
@@ -165,6 +168,10 @@ const roleLabels: Record<AdminRole, string> = {
 export default function AdminShell({ children }: { children: React.ReactNode }) {
   const { locale, setLocale, t } = useI18n();
   const pathname = usePathname();
+  const [routePath, setRoutePath] = useState(() =>
+    pathname || (typeof window !== "undefined" ? window.location.pathname : "/admin")
+  );
+  const routePathRef = useRef(routePath);
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const session = useSyncExternalStore(
@@ -178,12 +185,23 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
     () => navItems.filter((item) => roleRank(role) >= roleRank(item.minRole)),
     [role]
   );
+  const requiredItem = useMemo(() => {
+    if (!routePath) return null;
+    const matches = navItems.filter(
+      (item) => routePath === item.href || routePath.startsWith(`${item.href}/`)
+    );
+    if (matches.length === 0) return null;
+    return matches.sort((a, b) => b.href.length - a.href.length)[0];
+  }, [routePath]);
+  const requiredRole = requiredItem?.minRole;
+  const hasAccess = !requiredRole || roleRank(role) >= roleRank(requiredRole);
+  const fallbackHref = visibleNav[0]?.href || "/admin";
   const active = useMemo(
     () =>
       visibleNav.find(
-        (item) => pathname === item.href || pathname.startsWith(`${item.href}/`)
+      (item) => routePath === item.href || routePath.startsWith(`${item.href}/`)
       ) || visibleNav[0] || navItems[0],
-    [pathname, visibleNav]
+    [routePath, visibleNav]
   );
 
   useEffect(() => {
@@ -191,6 +209,37 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
       router.push("/admin/login");
     }
   }, [router, session.needsLogin]);
+
+  useEffect(() => {
+    routePathRef.current = routePath;
+  }, [routePath]);
+
+  useEffect(() => {
+    if (pathname && pathname !== routePath) {
+      setRoutePath(pathname);
+    }
+  }, [pathname, routePath]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const tick = () => {
+      const nextPath = window.location.pathname || "";
+      if (nextPath && nextPath !== routePathRef.current) {
+        setRoutePath(nextPath);
+      }
+    };
+    const interval = window.setInterval(tick, 200);
+    return () => window.clearInterval(interval);
+  }, []);
+
+  // routePath is derived from client history to avoid stale labels on App Router transitions.
+
+  useEffect(() => {
+    if (!session.ready || session.needsLogin) return;
+    if (requiredRole && !hasAccess && routePath !== fallbackHref) {
+      router.replace(fallbackHref);
+    }
+  }, [fallbackHref, hasAccess, routePath, requiredRole, router, session.needsLogin, session.ready]);
 
   useEffect(() => {
     if (!sidebarOpen) return;
@@ -201,6 +250,40 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
     };
   }, [sidebarOpen]);
 
+  useEffect(() => {
+    const originalFetch = window.fetch.bind(window);
+    window.fetch = async (...args) => {
+      try {
+        const res = await originalFetch(...args);
+        try {
+          const input = args[0];
+          const url = typeof input === "string" ? input : input instanceof Request ? input.url : "";
+          if (shouldNotifyAdminError(res, url)) {
+            const traceId = res.headers.get("x-trace-id");
+            window.dispatchEvent(
+              new CustomEvent("admin:toast", {
+                detail: { message: `请求失败（${res.status}）`, traceId },
+              })
+            );
+          }
+        } catch {
+          // ignore toast errors
+        }
+        return res;
+      } catch (error) {
+        window.dispatchEvent(
+          new CustomEvent("admin:toast", {
+            detail: { message: "网络错误，请稍后重试" },
+          })
+        );
+        throw error;
+      }
+    };
+    return () => {
+      window.fetch = originalFetch;
+    };
+  }, []);
+
   const handleLogout = async () => {
     await fetch("/api/admin/logout", { method: "POST" });
     router.push("/admin/login");
@@ -208,6 +291,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
 
   return (
     <div className="admin-grid">
+      <AdminToast />
       {sidebarOpen ? (
         <button
           aria-label={t("关闭侧边栏")}
@@ -238,7 +322,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
                 <Stagger>
                   {items.map((item) => {
                     const Icon = item.icon;
-                    const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
+                    const isActive = routePath === item.href || routePath.startsWith(`${item.href}/`);
                     return (
                       <StaggerItem key={item.href}>
                         <Link
@@ -270,7 +354,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
           </button>
         </div>
       </aside>
-      <main className="admin-main">
+      <main className="admin-main" data-route={routePath}>
         <div className="admin-topbar">
           <div className="admin-topbar-main">
             <h2 className="admin-title">{active?.label ? t(active.label) : t("管理后台")}</h2>
@@ -302,9 +386,31 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
             </button>
           </div>
         </div>
-        <AutoTranslate>
-          <PageTransition routeKey={pathname}>{children}</PageTransition>
-        </AutoTranslate>
+        <AdminSessionProvider value={{ role, ready: session.ready }}>
+          <AutoTranslate>
+            {!session.ready ? (
+              <div className="admin-section">
+                <StateBlock tone="loading" size="compact" title="权限加载中" />
+              </div>
+            ) : requiredRole && !hasAccess ? (
+              <div className="admin-section">
+                <StateBlock
+                  tone="warning"
+                  size="compact"
+                  title="无权限访问该页面"
+                  description="请联系管理员调整权限"
+                  actions={
+                    <Link className="admin-btn ghost" href={fallbackHref}>
+                      返回可用页面
+                    </Link>
+                  }
+                />
+              </div>
+            ) : (
+              <PageTransition routeKey={routePath}>{children}</PageTransition>
+            )}
+          </AutoTranslate>
+        </AdminSessionProvider>
       </main>
     </div>
   );

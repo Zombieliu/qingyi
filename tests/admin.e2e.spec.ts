@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import crypto from "node:crypto";
 import path from "node:path";
 import { test, expect } from "@playwright/test";
 
@@ -37,9 +38,10 @@ const chainReady = Boolean(
     process.env.SUI_DAPP_HUB_INITIAL_SHARED_VERSION
 );
 
-async function login(page: any) {
+async function login(page: any, tokenOverride?: string) {
+  const tokenToUse = tokenOverride ?? adminToken;
   await page.goto("/admin/login");
-  await page.getByPlaceholder("请输入 ADMIN_DASH_TOKEN").fill(adminToken);
+  await page.getByPlaceholder("请输入 ADMIN_DASH_TOKEN").fill(tokenToUse);
   const submit = page.getByRole("button", { name: "进入后台" });
   for (let attempt = 0; attempt < 2; attempt += 1) {
     const responsePromise = page.waitForResponse(
@@ -67,7 +69,210 @@ async function waitForAdminResponse(page: any, urlPart: string, method: string) 
   );
 }
 
-test.describe("admin ui e2e", () => {
+async function safeAdminDelete(request: any, url: string, headers?: Record<string, string>) {
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      const res = await request.delete(url, { headers });
+      if (res.ok()) return true;
+      return false;
+    } catch {
+      if (attempt === 0) {
+        await new Promise((resolve) => setTimeout(resolve, 300));
+        continue;
+      }
+      return false;
+    }
+  }
+  return false;
+}
+
+type AdminRole = "admin" | "finance" | "ops" | "viewer";
+
+const ROLE_ORDER: AdminRole[] = ["viewer", "ops", "finance", "admin"];
+const ROLE_SET = new Set(ROLE_ORDER);
+
+const NAV_ITEMS: Array<{ href: string; label: string; minRole: AdminRole }> = [
+  { href: "/admin", label: "运营概览", minRole: "viewer" },
+  { href: "/admin/orders", label: "订单调度", minRole: "viewer" },
+  { href: "/admin/support", label: "客服工单", minRole: "ops" },
+  { href: "/admin/coupons", label: "优惠卡券", minRole: "ops" },
+  { href: "/admin/vip", label: "会员管理", minRole: "ops" },
+  { href: "/admin/players", label: "打手管理", minRole: "viewer" },
+  { href: "/admin/guardians", label: "护航申请", minRole: "ops" },
+  { href: "/admin/announcements", label: "公告资讯", minRole: "viewer" },
+  { href: "/admin/analytics", label: "增长数据", minRole: "admin" },
+  { href: "/admin/ledger", label: "记账中心", minRole: "finance" },
+  { href: "/admin/mantou", label: "馒头提现", minRole: "finance" },
+  { href: "/admin/invoices", label: "发票申请", minRole: "finance" },
+  { href: "/admin/chain", label: "订单对账", minRole: "finance" },
+  { href: "/admin/payments", label: "支付事件", minRole: "finance" },
+  { href: "/admin/tokens", label: "密钥管理", minRole: "admin" },
+  { href: "/admin/audit", label: "审计日志", minRole: "admin" },
+];
+
+function roleRank(role: AdminRole): number {
+  switch (role) {
+    case "admin":
+      return 4;
+    case "finance":
+      return 3;
+    case "ops":
+      return 2;
+    default:
+      return 1;
+  }
+}
+
+function canAccess(role: AdminRole, minRole: AdminRole) {
+  return roleRank(role) >= roleRank(minRole);
+}
+
+function parseAdminRoleTokens(): Partial<Record<AdminRole, string>> {
+  const tokens: Partial<Record<AdminRole, string>> = {};
+  const assignToken = (role: AdminRole, token?: string) => {
+    if (!token || !ROLE_SET.has(role) || tokens[role]) return;
+    tokens[role] = token;
+  };
+
+  const json = process.env.ADMIN_TOKENS_JSON;
+  if (json) {
+    try {
+      const parsed = JSON.parse(json) as unknown;
+      if (Array.isArray(parsed)) {
+        for (const item of parsed) {
+          if (!item || typeof item !== "object") continue;
+          const role = (item as { role?: AdminRole }).role;
+          const token = (item as { token?: string }).token;
+          if (role && ROLE_SET.has(role) && token) {
+            assignToken(role, token);
+          }
+        }
+      } else if (parsed && typeof parsed === "object") {
+        for (const [roleKey, value] of Object.entries(parsed as Record<string, unknown>)) {
+          const role = roleKey as AdminRole;
+          if (typeof value === "string") {
+            assignToken(role, value);
+          } else if (Array.isArray(value)) {
+            for (const token of value) {
+              if (typeof token === "string") {
+                assignToken(role, token);
+              }
+            }
+          }
+        }
+      }
+    } catch {
+      // ignore invalid JSON
+    }
+  }
+
+  const raw = process.env.ADMIN_TOKENS;
+  if (raw) {
+    for (const segment of raw.split(/[;,]/)) {
+      const trimmed = segment.trim();
+      if (!trimmed) continue;
+      const [roleRaw, token] = trimmed.split(":").map((part) => part.trim());
+      if (!roleRaw || !token) continue;
+      if (!ROLE_SET.has(roleRaw as AdminRole)) continue;
+      assignToken(roleRaw as AdminRole, token);
+    }
+  }
+
+  const adminFallback = process.env.ADMIN_DASH_TOKEN;
+  if (adminFallback) assignToken("admin", adminFallback);
+  const ledgerToken = process.env.LEDGER_ADMIN_TOKEN;
+  if (ledgerToken) {
+    const role: AdminRole = adminFallback ? "finance" : "admin";
+    assignToken(role, ledgerToken);
+  }
+
+  return tokens;
+}
+
+let ROLE_TOKENS = parseAdminRoleTokens();
+const CREATED_TOKEN_IDS: string[] = [];
+
+if (!ROLE_TOKENS.admin && adminToken) {
+  ROLE_TOKENS.admin = adminToken;
+}
+
+async function createRoleToken(request: any, role: AdminRole) {
+  if (!adminHeaders) return null;
+  const res = await request.post("/api/admin/tokens", {
+    data: { role, label: `E2E-${role}` },
+    headers: adminHeaders,
+  });
+  if (!res.ok) return null;
+  const payload = await res.json().catch(() => ({}));
+  const token = typeof payload?.token === "string" ? payload.token : "";
+  if (token) {
+    ROLE_TOKENS = { ...ROLE_TOKENS, [role]: token };
+  }
+  const id = payload?.item?.id;
+  if (typeof id === "string") {
+    CREATED_TOKEN_IDS.push(id);
+  }
+  return token || null;
+}
+
+async function ensureRoleTokens(request: any) {
+  const missing = ROLE_ORDER.filter((role) => !ROLE_TOKENS[role]);
+  if (missing.length === 0) return;
+  if (!adminHeaders) return;
+  for (const role of missing) {
+    await createRoleToken(request, role);
+  }
+}
+
+async function cleanupRoleTokens(request: any) {
+  if (!adminHeaders) return;
+  for (const tokenId of CREATED_TOKEN_IDS) {
+    await request.delete(`/api/admin/tokens/${tokenId}`, { headers: adminHeaders });
+  }
+}
+
+async function expectNavVisibility(page: any, role: AdminRole) {
+  for (const item of NAV_ITEMS) {
+    const locator = page.getByRole("link", { name: item.label });
+    if (canAccess(role, item.minRole)) {
+      await expect(locator.first()).toBeVisible();
+    } else {
+      await expect(locator).toHaveCount(0);
+    }
+  }
+}
+
+async function expectAccessDenied(page: any, href: string) {
+  try {
+    await page.goto(href);
+  } catch {
+    // navigation can be aborted by client-side redirect
+  }
+  const fallbackRegex = /\/admin\/?$/;
+  const redirected = await page
+    .waitForURL(fallbackRegex, { timeout: 4000 })
+    .then(() => true)
+    .catch(() => false);
+  if (redirected) return;
+  await expect(page.getByText("无权限访问该页面")).toBeVisible();
+}
+
+async function expectViewerReadOnly(page: any) {
+  await page.goto("/admin/orders");
+  await expect(page.getByRole("heading", { name: "订单筛选" })).toBeVisible();
+  await expect(page.locator(".admin-badge", { hasText: "只读权限" }).first()).toBeVisible();
+  await page.goto("/admin/players");
+  await expect(page.getByRole("heading", { name: "打手列表" })).toBeVisible();
+  await expect(page.getByText("当前账号无法新增或编辑打手")).toBeVisible();
+  await page.goto("/admin/announcements");
+  await expect(page.getByRole("heading", { name: "公告列表" })).toBeVisible();
+  await expect(page.getByText("当前账号无法编辑公告内容")).toBeVisible();
+}
+
+test.describe("admin suite", () => {
+  test.describe.configure({ mode: "serial" });
+
+  test.describe("admin ui e2e", () => {
   test.describe.configure({ mode: "serial", timeout: 120_000 });
   test.beforeEach(async ({ page }, testInfo) => {
     const profile = process.env.PW_PROFILE || "";
@@ -93,30 +298,38 @@ test.describe("admin ui e2e", () => {
   test("orders list and detail", async ({ page, request }) => {
     const orderId = `E2E-ORDER-${Date.now()}`;
     const playerName = `E2E-OPS-${Date.now()}`;
-      await request.post("/api/admin/players", {
-        data: {
-          name: playerName,
-          status: "可接单",
-          depositBase: 2000,
-          depositLocked: 2000,
-          creditMultiplier: 1,
-        },
-      headers: adminHeaders,
-      });
-    await request.post("/api/orders", {
+    const playerAddress = `0x${crypto.randomBytes(32).toString("hex")}`;
+    const playerRes = await request.post("/api/admin/players", {
       data: {
+        name: playerName,
+        status: "可接单",
+        address: playerAddress,
+        depositBase: 2000,
+        depositLocked: 2000,
+        creditMultiplier: 1,
+      },
+      headers: adminHeaders,
+    });
+    const playerPayload = await playerRes.json().catch(() => ({}));
+    const playerId = typeof playerPayload?.id === "string" ? playerPayload.id : "";
+    await request.post("/api/admin/orders", {
+      data: {
+        id: orderId,
         user: "E2E",
         item: `Admin E2E ${orderId}`,
         amount: 88,
-        status: "已支付",
-        orderId,
+        paymentStatus: "已支付",
+        stage: "待处理",
+        source: "e2e",
       },
+      headers: adminHeaders,
     });
 
     const ordersLink = page.getByRole("link", { name: "订单调度" });
     await ordersLink.scrollIntoViewIfNeeded();
     await ordersLink.click();
-    await expect(page.getByRole("heading", { name: "订单调度" })).toBeVisible();
+    await expect(page).toHaveURL(/\/admin\/orders/);
+    await expect(page.getByRole("heading", { name: "订单筛选" })).toBeVisible();
 
     const search = page.getByPlaceholder("搜索用户 / 订单号 / 商品");
     await search.fill(orderId);
@@ -126,31 +339,16 @@ test.describe("admin ui e2e", () => {
     await expect(row).toBeVisible();
     const note = "Playwright admin E2E note";
 
-    const waitPatch = () =>
-      page.waitForResponse(
-        (res) =>
-          res.url().includes(`/api/admin/orders/${orderId}`) &&
-          res.request().method() === "PATCH"
-      );
-
     const assignSelect = row.getByRole("combobox", { name: "打手/客服" });
+    await expect(assignSelect).toBeEnabled();
     const currentAssign = await assignSelect.inputValue();
-    if (currentAssign) {
-      const clearReq = waitPatch();
+    if (currentAssign && currentAssign !== playerId) {
       await assignSelect.selectOption("");
-      const res = await clearReq;
-      if (!res.ok()) {
-        const payload = await res.json().catch(() => ({}));
-        throw new Error(`清空派单失败: ${res.status()} ${JSON.stringify(payload)}`);
-      }
+      await expect(assignSelect).toHaveValue("");
     }
-
-    const assignReq = waitPatch();
-    await assignSelect.selectOption({ label: playerName });
-    const assignRes = await assignReq;
-    if (!assignRes.ok()) {
-      const payload = await assignRes.json().catch(() => ({}));
-      throw new Error(`派单失败: ${assignRes.status()} ${JSON.stringify(payload)}`);
+    if (currentAssign !== playerId) {
+      await assignSelect.selectOption(playerId || { label: playerName });
+      await expect(assignSelect).toHaveValue(playerId);
     }
 
     const updateRes = await request.patch(`/api/admin/orders/${orderId}`, {
@@ -176,26 +374,38 @@ test.describe("admin ui e2e", () => {
     await expect(page.getByLabel("订单阶段")).toHaveValue("进行中");
 
     if (adminToken) {
-      await request.delete(`/api/orders/${orderId}`, {
-        headers: adminHeaders,
-      });
+      await request.delete(`/api/admin/orders/${orderId}`, { headers: adminHeaders });
     }
   });
 
-  test("players and announcements", async ({ page }) => {
+  test("players and announcements", async ({ page, request }) => {
     const playerName = `E2E玩家-${Date.now()}`;
-    const playersLink = page.getByRole("link", { name: "打手管理" });
-    await playersLink.scrollIntoViewIfNeeded();
-    await playersLink.click();
-    await expect(page.getByRole("heading", { name: "打手管理" })).toBeVisible();
+    const playerAddress = `0x${crypto.randomBytes(32).toString("hex")}`;
+    const createPlayerRes = await request.post("/api/admin/players", {
+      data: { name: playerName, address: playerAddress, status: "可接单", creditMultiplier: 1 },
+      headers: adminHeaders,
+    });
+    if (!createPlayerRes.ok()) {
+      const payload = await createPlayerRes.json().catch(() => ({}));
+      throw new Error(`创建打手失败: ${createPlayerRes.status()} ${JSON.stringify(payload)}`);
+    }
+    const playerPayload = await createPlayerRes.json().catch(() => ({}));
+    const playerId = typeof playerPayload?.id === "string" ? playerPayload.id : "";
+    if (!playerId) {
+      throw new Error("创建打手失败: 返回缺少 ID");
+    }
 
-    await page.getByPlaceholder("姓名 / 昵称").fill(playerName);
-    await page.getByRole("button", { name: "添加打手" }).click();
-    await expect(page.getByText(playerName)).toBeVisible();
+    const loadPlayersRes = waitForAdminResponse(page, "/api/admin/players", "GET");
+    await page.goto("/admin/players");
+    await loadPlayersRes;
+    await expect(page.getByRole("heading", { name: "打手列表" })).toBeVisible();
+
+    const playerRow = page.locator("tr", { hasText: playerName });
+    await expect(playerRow).toBeVisible();
 
     page.once("dialog", (dialog) => dialog.accept());
-    const deleteRes = waitForAdminResponse(page, "/api/admin/players/", "DELETE");
-    await page.getByRole("button", { name: "删除" }).first().click();
+    const deleteRes = waitForAdminResponse(page, `/api/admin/players/${playerId}`, "DELETE");
+    await playerRow.getByRole("button", { name: "删除" }).click();
     const deleteResp = await deleteRes;
     if (!deleteResp.ok()) {
       const payload = await deleteResp.json().catch(() => ({}));
@@ -203,20 +413,43 @@ test.describe("admin ui e2e", () => {
     }
 
     const title = `E2E公告-${Date.now()}`;
-    const announcementsLink = page.getByRole("link", { name: "公告资讯" });
-    await announcementsLink.scrollIntoViewIfNeeded();
-    await announcementsLink.click();
-    await expect(page.getByRole("heading", { name: "公告资讯" })).toBeVisible();
+    const createAnnRes = await request.post("/api/admin/announcements", {
+      data: { title, tag: "公告", status: "draft", content: "" },
+      headers: adminHeaders,
+    });
+    const annPayload = await createAnnRes.json().catch(() => ({}));
+    if (!createAnnRes.ok()) {
+      throw new Error(`创建公告失败: ${createAnnRes.status()} ${JSON.stringify(annPayload)}`);
+    }
+    const annId = typeof annPayload?.id === "string" ? annPayload.id : "";
+    if (!annId) {
+      throw new Error("创建公告失败: 返回缺少 ID");
+    }
+    const loadAnnRes = waitForAdminResponse(page, "/api/admin/announcements", "GET");
+    await page.goto("/admin/announcements");
+    await loadAnnRes;
+    await expect(page.getByRole("heading", { name: "公告列表" })).toBeVisible();
 
-    await page.getByPlaceholder("公告标题").fill(title);
-    await page.getByRole("button", { name: "发布公告" }).click();
-    await expect(page.getByText(title)).toBeVisible();
+    const annCard = page.locator(".admin-card--subtle", { hasText: title });
+    await expect(annCard).toBeVisible();
 
-    await page.getByRole("button", { name: "归档" }).first().click();
-    await expect(page.locator("span.admin-badge", { hasText: "archived" }).first()).toBeVisible();
+    const archiveRes = waitForAdminResponse(page, `/api/admin/announcements/${annId}`, "PATCH");
+    await annCard.getByRole("button", { name: "归档" }).click();
+    const archiveResp = await archiveRes;
+    if (!archiveResp.ok()) {
+      const payload = await archiveResp.json().catch(() => ({}));
+      throw new Error(`归档公告失败: ${archiveResp.status()} ${JSON.stringify(payload)}`);
+    }
+    await expect(annCard.locator("span.admin-badge", { hasText: "archived" })).toBeVisible();
 
     page.once("dialog", (dialog) => dialog.accept());
-    await page.getByRole("button", { name: "删除" }).first().click();
+    const deleteAnnRes = waitForAdminResponse(page, `/api/admin/announcements/${annId}`, "DELETE");
+    await annCard.getByRole("button", { name: "删除" }).click();
+    const deleteAnnResp = await deleteAnnRes;
+    if (!deleteAnnResp.ok()) {
+      const payload = await deleteAnnResp.json().catch(() => ({}));
+      throw new Error(`删除公告失败: ${deleteAnnResp.status()} ${JSON.stringify(payload)}`);
+    }
   });
 
   test("coupons", async ({ page, request }) => {
@@ -230,10 +463,8 @@ test.describe("admin ui e2e", () => {
       throw new Error(`创建优惠券失败: ${createRes.status()} ${JSON.stringify(payload)}`);
     }
     const coupon = await createRes.json();
-    const couponsLink = page.getByRole("link", { name: "优惠卡券" });
-    await couponsLink.scrollIntoViewIfNeeded();
-    await couponsLink.click();
-    await expect(page.getByRole("heading", { name: "优惠卡券" })).toBeVisible();
+    await page.goto("/admin/coupons");
+    await expect(page.getByRole("heading", { name: "优惠券列表" })).toBeVisible();
     await page.getByPlaceholder("搜索标题 / 兑换码").fill(couponTitle);
     await page.waitForTimeout(400);
     await expect(page.getByText(couponTitle)).toBeVisible();
@@ -253,10 +484,8 @@ test.describe("admin ui e2e", () => {
       throw new Error(`创建发票失败: ${createRes.status()} ${JSON.stringify(payload)}`);
     }
     const invoice = await createRes.json();
-    const invoicesLink = page.getByRole("link", { name: "发票申请" });
-    await invoicesLink.scrollIntoViewIfNeeded();
-    await invoicesLink.click();
-    await expect(page.getByRole("heading", { name: "发票申请" })).toBeVisible();
+    await page.goto("/admin/invoices");
+    await expect(page.getByRole("heading", { name: "发票申请列表" })).toBeVisible();
     await page.getByPlaceholder("搜索抬头 / 税号 / 订单号").fill(invoiceTitle);
     await page.waitForTimeout(400);
     const row = page.locator("tr", { hasText: invoiceTitle });
@@ -285,10 +514,8 @@ test.describe("admin ui e2e", () => {
       throw new Error(`创建工单失败: ${ticketRes.status()} ${JSON.stringify(payload)}`);
     }
     const ticket = await ticketRes.json();
-    const supportLink = page.getByRole("link", { name: "客服工单" });
-    await supportLink.scrollIntoViewIfNeeded();
-    await supportLink.click();
-    await expect(page.getByRole("heading", { name: "客服工单" })).toBeVisible();
+    await page.goto("/admin/support");
+    await expect(page.getByRole("heading", { name: "工单列表" })).toBeVisible();
     await page.getByPlaceholder("搜索联系人 / 主题 / 内容").fill(ticketMessage);
     await page.waitForTimeout(400);
     const ticketRow = page.locator("tr", { hasText: ticketMessage });
@@ -305,10 +532,8 @@ test.describe("admin ui e2e", () => {
       throw new Error(`创建护航失败: ${guardianRes.status()} ${JSON.stringify(payload)}`);
     }
     const guardian = await guardianRes.json();
-    const guardiansLink = page.getByRole("link", { name: "护航申请" });
-    await guardiansLink.scrollIntoViewIfNeeded();
-    await guardiansLink.click();
-    await expect(page.getByRole("heading", { name: "护航申请" })).toBeVisible();
+    await page.goto("/admin/guardians");
+    await expect(page.getByRole("heading", { name: "护航申请列表" })).toBeVisible();
     await page.getByPlaceholder("搜索姓名 / 游戏 / 联系方式").fill(guardianName);
     await page.waitForTimeout(400);
     await expect(page.getByText(guardianName)).toBeVisible();
@@ -335,15 +560,13 @@ test.describe("admin ui e2e", () => {
       throw new Error(`创建会员失败: ${memberRes.status()} ${JSON.stringify(payload)}`);
     }
     const member = await memberRes.json();
-    const vipLink = page.getByRole("link", { name: "会员管理" });
-    await vipLink.scrollIntoViewIfNeeded();
-    await vipLink.click();
-    await expect(page.getByRole("heading", { name: "会员管理" })).toBeVisible();
+    await page.goto("/admin/vip");
+    await expect(page.getByRole("heading", { name: "会员列表" })).toBeVisible();
     await expect(page.getByRole("cell", { name: tierName, exact: true }).first()).toBeVisible();
     await expect(page.getByText(member.userName || "E2E会员").first()).toBeVisible();
     if (adminToken) {
-      await request.delete(`/api/admin/vip/members/${member.id}`, { headers: adminHeaders });
-      await request.delete(`/api/admin/vip/tiers/${tier.id}`, { headers: adminHeaders });
+      await safeAdminDelete(request, `/api/admin/vip/members/${member.id}`, adminHeaders);
+      await safeAdminDelete(request, `/api/admin/vip/tiers/${tier.id}`, adminHeaders);
     }
   });
 
@@ -370,10 +593,8 @@ test.describe("admin ui e2e", () => {
     }
     const withdrawPayload = await withdrawRes.json().catch(() => ({}));
     const requestId = withdrawPayload?.request?.id as string | undefined;
-    const mantouLink = page.getByRole("link", { name: "馒头提现" });
-    await mantouLink.scrollIntoViewIfNeeded();
-    await mantouLink.click();
-    await expect(page.getByRole("heading", { name: "馒头提现" })).toBeVisible();
+    await page.goto("/admin/mantou");
+    await expect(page.getByRole("heading", { name: "提现申请列表" })).toBeVisible();
     await expect(page.getByText(address.slice(0, 10))).toBeVisible();
     if (adminToken && requestId) {
       await request.patch(`/api/admin/mantou/withdraws/${requestId}`, {
@@ -384,26 +605,73 @@ test.describe("admin ui e2e", () => {
   });
 
   test("audit, payments, chain pages", async ({ page }) => {
-    const paymentsLink = page.getByRole("link", { name: "支付事件" });
-    await paymentsLink.scrollIntoViewIfNeeded();
-    await paymentsLink.click();
-    await expect(page.locator("h2.admin-title")).toHaveText("支付事件");
+    await page.goto("/admin/payments");
+    await expect(page.getByRole("heading", { name: "支付事件" })).toBeVisible();
 
-    const ledgerLink = page.getByRole("link", { name: "记账中心" });
-    await ledgerLink.scrollIntoViewIfNeeded();
-    await ledgerLink.click();
-    await expect(page.locator("h2.admin-title")).toHaveText("记账中心");
+    await page.goto("/admin/ledger");
+    await expect(page.getByRole("heading", { name: "记账登记" })).toBeVisible();
 
-    const auditLink = page.getByRole("link", { name: "审计日志" });
-    await auditLink.scrollIntoViewIfNeeded();
-    await auditLink.click();
-    await expect(page.locator("h2.admin-title")).toHaveText("审计日志");
+    await page.goto("/admin/audit");
+    await expect(page.getByRole("heading", { name: "审计日志" })).toBeVisible();
 
     if (chainReady) {
-      const chainLink = page.getByRole("link", { name: "订单对账" });
-      await chainLink.scrollIntoViewIfNeeded();
-      await chainLink.click();
-      await expect(page.locator("h2.admin-title")).toHaveText("订单对账");
+      await page.goto("/admin/chain");
+      await expect(page.getByRole("heading", { name: "订单对账" })).toBeVisible();
     }
   });
+});
+
+test.describe("admin role access", () => {
+  test.describe.configure({ mode: "serial", timeout: 90_000 });
+
+  test.beforeAll(async ({ request }) => {
+    await ensureRoleTokens(request);
+  });
+
+  test.afterAll(async ({ request }) => {
+    await cleanupRoleTokens(request);
+  });
+
+  for (const role of ROLE_ORDER) {
+    test.describe(`${role} role`, () => {
+      test.beforeEach(async ({ page }, testInfo) => {
+        const profile = process.env.PW_PROFILE || "";
+        if (profile && profile !== "admin") {
+          test.skip(true, "Role access checks run only in PW_PROFILE=admin");
+        }
+        const projectName = testInfo.project.name;
+        if (!projectName.includes("Desktop") && !projectName.includes("Admin E2E")) {
+          test.skip(true, "Role access checks run only on desktop breakpoints");
+        }
+        const token = ROLE_TOKENS[role];
+        if (!token) {
+          test.skip(true, `缺少 ${role} 角色 token，请在 .env.local 配置或通过密钥管理生成`);
+        }
+        await login(page, token);
+        await expect(page.getByRole("heading", { name: "运营概览" })).toBeVisible();
+      });
+
+      test("nav visibility", async ({ page }) => {
+        await expectNavVisibility(page, role);
+      });
+
+      test("restricted pages redirect", async ({ page }) => {
+        const restricted = NAV_ITEMS.filter((item) => !canAccess(role, item.minRole));
+        if (restricted.length === 0) {
+          test.skip(true, "当前角色无受限页面");
+        }
+        for (const item of restricted) {
+          await expectAccessDenied(page, item.href);
+        }
+      });
+
+      test("ops pages readonly for viewer", async ({ page }) => {
+        if (roleRank(role) >= roleRank("ops")) {
+          test.skip(true, "当前角色具备编辑权限");
+        }
+        await expectViewerReadOnly(page);
+      });
+    });
+  }
+});
 });

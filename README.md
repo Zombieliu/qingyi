@@ -3,6 +3,7 @@
 This repository is now a workspace root. The Next.js app lives in `packages/app`.
 
 ## Useful commands
+- Node version: use 22.x (`.nvmrc` provided).
 - `npm run dev` – start the app workspace (`packages/app`)
 - `npm run build` – build the app
 - `npm run lint` – lint the app

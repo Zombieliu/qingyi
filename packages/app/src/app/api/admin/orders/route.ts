@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import crypto from "crypto";
 import { requireAdmin } from "@/lib/admin-auth";
-import { addOrder, queryOrders } from "@/lib/admin-store";
+import { addOrder, queryOrders, queryOrdersCursor } from "@/lib/admin-store";
 import { recordAudit } from "@/lib/admin-audit";
 import type { AdminOrder, OrderStage } from "@/lib/admin-types";
+import { decodeCursorParam, encodeCursorParam } from "@/lib/cursor-utils";
 
 export async function GET(req: Request) {
   const auth = await requireAdmin(req, { role: "viewer" });
@@ -15,6 +16,16 @@ export async function GET(req: Request) {
   const q = searchParams.get("q") || undefined;
   const paymentStatus = searchParams.get("paymentStatus") || undefined;
   const assignedTo = searchParams.get("assignedTo") || undefined;
+  const cursorRaw = searchParams.get("cursor");
+  const cursor = decodeCursorParam(cursorRaw);
+  const useCursor = !searchParams.has("page") || cursorRaw !== null;
+  if (useCursor) {
+    const result = await queryOrdersCursor({ pageSize, stage, q, paymentStatus, assignedTo, cursor: cursor || undefined });
+    return NextResponse.json({
+      items: result.items,
+      nextCursor: encodeCursorParam(result.nextCursor),
+    });
+  }
   const result = await queryOrders({ page, pageSize, stage, q, paymentStatus, assignedTo });
   return NextResponse.json(result);
 }

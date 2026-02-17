@@ -1,9 +1,12 @@
-import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin-auth";
 import { prisma } from "@/lib/db";
+import { getCache, setCache, computeJsonEtag } from "@/lib/server-cache";
+import { getIfNoneMatch, jsonWithEtag, notModified } from "@/lib/http-cache";
 
 const DEFAULT_DAYS = 7;
 const MAX_DAYS = 90;
+const ADMIN_ANALYTICS_CACHE_TTL_MS = 10_000;
+const ADMIN_ANALYTICS_CACHE_CONTROL = "private, max-age=10, stale-while-revalidate=30";
 
 function clampDays(value: number) {
   if (!Number.isFinite(value)) return DEFAULT_DAYS;
@@ -16,6 +19,21 @@ export async function GET(req: Request) {
 
   const { searchParams } = new URL(req.url);
   const days = clampDays(Number(searchParams.get("days") || DEFAULT_DAYS));
+  const cacheKey = `api:admin:analytics:${days}`;
+  const cached = getCache<{
+    rangeDays: number;
+    totalEvents: number;
+    events: Array<{ event: string; count: number; unique: number }>;
+    funnel: Array<{ step: string; unique: number; conversionFromPrev: number }>;
+    topPaths: Array<{ path: string; count: number }>;
+  }>(cacheKey);
+  if (cached?.etag) {
+    const ifNoneMatch = getIfNoneMatch(req);
+    if (ifNoneMatch === cached.etag) {
+      return notModified(cached.etag, ADMIN_ANALYTICS_CACHE_CONTROL);
+    }
+    return jsonWithEtag(cached.value, cached.etag, ADMIN_ANALYTICS_CACHE_CONTROL);
+  }
   const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
 
   const rows = await prisma.growthEvent.findMany({
@@ -61,11 +79,14 @@ export async function GET(req: Request) {
     .sort((a, b) => b.count - a.count)
     .slice(0, 10);
 
-  return NextResponse.json({
+  const payload = {
     rangeDays: days,
     totalEvents: rows.length,
     events,
     funnel,
     topPaths,
-  });
+  };
+  const etag = computeJsonEtag(payload);
+  setCache(cacheKey, payload, ADMIN_ANALYTICS_CACHE_TTL_MS, etag);
+  return jsonWithEtag(payload, etag, ADMIN_ANALYTICS_CACHE_CONTROL);
 }

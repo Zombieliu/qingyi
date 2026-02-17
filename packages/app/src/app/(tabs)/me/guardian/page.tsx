@@ -5,6 +5,7 @@ import { ArrowLeft, ShieldCheck, Send } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { PASSKEY_STORAGE_KEY } from "@/app/components/passkey-wallet";
 import { StateBlock } from "@/app/components/state-block";
+import { fetchWithUserAuth } from "@/app/components/user-auth-client";
 
 const STORAGE_KEY = "qy_guardian_applications_v1";
 
@@ -64,22 +65,30 @@ export default function GuardianPage() {
       setHint("请填写姓名与联系方式");
       return;
     }
+    if (!walletAddress) {
+      setHint("请先登录账号再提交申请");
+      return;
+    }
     setSubmitting(true);
     setHint(null);
     try {
-      const res = await fetch("/api/guardians", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: form.name.trim(),
-          contact: form.contact.trim(),
-          games: form.games.trim(),
-          experience: form.experience.trim(),
-          availability: form.availability.trim(),
-          note: form.note.trim(),
-          userAddress: walletAddress,
-        }),
-      });
+      const res = await fetchWithUserAuth(
+        "/api/guardians",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: form.name.trim(),
+            contact: form.contact.trim(),
+            games: form.games.trim(),
+            experience: form.experience.trim(),
+            availability: form.availability.trim(),
+            note: form.note.trim(),
+            userAddress: walletAddress,
+          }),
+        },
+        walletAddress
+      );
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         setHint(data?.error || "提交失败，请稍后重试");

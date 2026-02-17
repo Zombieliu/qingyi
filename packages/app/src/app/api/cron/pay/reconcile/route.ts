@@ -3,6 +3,9 @@ import Stripe from "stripe";
 import { prisma } from "@/lib/db";
 import { upsertLedgerRecord } from "@/lib/admin-store";
 import { recordAudit } from "@/lib/admin-audit";
+import { acquireCronLock } from "@/lib/cron-lock";
+
+const CRON_LOCK_TTL_MS = Number(process.env.CRON_LOCK_TTL_MS || "600000");
 
 const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
 const stripe = stripeSecretKey ? new Stripe(stripeSecretKey) : null;
@@ -147,6 +150,9 @@ function buildAlertMarkdown(params: {
 export async function GET(req: Request) {
   if (!isAuthorized(req)) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
+  if (!(await acquireCronLock("pay-reconcile", CRON_LOCK_TTL_MS))) {
+    return NextResponse.json({ error: "locked" }, { status: 429 });
   }
 
   const url = new URL(req.url);

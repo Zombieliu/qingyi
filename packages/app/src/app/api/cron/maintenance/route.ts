@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { acquireCronLock } from "@/lib/cron-lock";
+
+const CRON_LOCK_TTL_MS = Number(process.env.CRON_LOCK_TTL_MS || "600000");
 
 type PrunableModel = {
   count: () => Promise<number>;
@@ -43,6 +46,9 @@ async function prune(model: PrunableModel, max: number) {
 export async function GET(req: Request) {
   if (!isAuthorized(req)) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
+  if (!(await acquireCronLock("maintenance", CRON_LOCK_TTL_MS))) {
+    return NextResponse.json({ error: "locked" }, { status: 429 });
   }
   const maxAudit = Number(process.env.ADMIN_AUDIT_LOG_LIMIT || "1000");
   const maxPayments = Number(process.env.ADMIN_PAYMENT_EVENT_LIMIT || "1000");

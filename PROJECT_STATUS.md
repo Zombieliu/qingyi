@@ -15,6 +15,7 @@
 - 链上维护 cron 增加 auto-cancel / auto-finalize / cleanup-missing
 - 轻量运营后台完善（支付事件、审计、链上对账/争议）
 - 新增支付对账 cron（支持 Stripe API 补账与告警）
+- 后台/公共接口增加短 TTL 缓存 + ETag，cron 增加防重入锁，API 增加 traceId
 
 ## 3) 合约状态
 - 合约包路径：`packages/contracts/src/qy`
@@ -67,6 +68,9 @@
 - 重新触发 Vercel 部署，验证 workspace/lockfile 选择与构建告警
 - 部署 Dubhe + qy 合约，获取 package id 与 DappHub shared 版本号
 - 生产环境执行 Prisma 迁移（`db:deploy`）并按需 seed
+- 索引优化迁移 `20260216_01_perf_indexes` 待执行（需可用 DB 后再跑 `npm run db:deploy`）
+- 后台“密钥管理”已改为数据库存储，迁移 `20260216_00_admin_access_tokens` 待执行（当前 `.env` 指向的 Supabase 连接不可达，需切换可用 DB 后再跑 `npm run db:deploy`）
+- 后台权限矩阵自动化校验（`npm run test:admin:e2e`）待跑
 - 若启用 Stripe 充值，配置 `STRIPE_SECRET_KEY` 与 webhook secret
 - 若启用链上自动维护，配置 `CRON_SECRET` 并计划触发 `/api/cron/chain/*`
 - 若要完全切到服务端订单，确保 `NEXT_PUBLIC_ORDER_SOURCE=server` 并配置用户 Session

@@ -7,6 +7,7 @@ import type { AdminOrder, AdminPlayer, OrderStage } from "@/lib/admin-types";
 import { ORDER_STAGE_OPTIONS } from "@/lib/admin-types";
 import { readCache, writeCache } from "@/app/components/client-cache";
 import { StateBlock } from "@/app/components/state-block";
+import { roleRank, useAdminSession } from "../admin-session";
 
 function formatTime(ts: number) {
   return new Date(ts).toLocaleString("zh-CN", {
@@ -18,8 +19,11 @@ function formatTime(ts: number) {
 }
 
 export default function OrdersPage() {
+  const { role } = useAdminSession();
+  const canEdit = roleRank(role) >= roleRank("ops");
   const [orders, setOrders] = useState<AdminOrder[]>([]);
   const [loading, setLoading] = useState(true);
+  const [cacheHint, setCacheHint] = useState<string | null>(null);
   const [players, setPlayers] = useState<AdminPlayer[]>([]);
   const [playersLoading, setPlayersLoading] = useState(true);
   const [query, setQuery] = useState("");
@@ -27,38 +31,42 @@ export default function OrdersPage() {
   const [saving, setSaving] = useState<Record<string, boolean>>({});
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
+  const [cursor, setCursor] = useState<string | null>(null);
+  const [prevCursors, setPrevCursors] = useState<Array<string | null>>([]);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [cleaningE2e, setCleaningE2e] = useState(false);
   const [cleanResult, setCleanResult] = useState<string | null>(null);
   const pageSize = 20;
   const cacheTtlMs = 60_000;
 
-  const loadOrders = useCallback(async (nextPage: number) => {
+  const loadOrders = useCallback(async (cursorValue: string | null, nextPage: number) => {
     setLoading(true);
     try {
+      setCacheHint(null);
       const params = new URLSearchParams();
-      params.set("page", String(nextPage));
       params.set("pageSize", String(pageSize));
+      if (cursorValue) params.set("cursor", cursorValue);
       if (stageFilter && stageFilter !== "全部") params.set("stage", stageFilter);
       if (query.trim()) params.set("q", query.trim());
       const cacheKey = `cache:admin:orders:${params.toString()}`;
-      const cached = readCache<{ items: AdminOrder[]; page?: number; totalPages?: number }>(cacheKey, cacheTtlMs, true);
+      const cached = readCache<{ items: AdminOrder[]; nextCursor?: string | null }>(cacheKey, cacheTtlMs, true);
       if (cached) {
         setOrders(Array.isArray(cached.value?.items) ? cached.value.items : []);
-        setPage(cached.value?.page || nextPage);
-        setTotalPages(cached.value?.totalPages || 1);
+        setPage(nextPage);
+        setNextCursor(cached.value?.nextCursor || null);
+        setCacheHint(cached.fresh ? null : "显示缓存数据，正在刷新…");
       }
       const res = await fetch(`/api/admin/orders?${params.toString()}`);
       if (res.ok) {
         const data = await res.json();
         setOrders(Array.isArray(data?.items) ? data.items : []);
-        setPage(data?.page || nextPage);
-        setTotalPages(data?.totalPages || 1);
+        setPage(nextPage);
+        setNextCursor(data?.nextCursor || null);
+        setCacheHint(null);
         setSelectedIds([]);
         writeCache(cacheKey, {
           items: Array.isArray(data?.items) ? data.items : [],
-          page: data?.page || nextPage,
-          totalPages: data?.totalPages || 1,
+          nextCursor: data?.nextCursor || null,
         });
       }
     } finally {
@@ -97,20 +105,23 @@ export default function OrdersPage() {
 
   useEffect(() => {
     const handle = setTimeout(() => {
-      loadOrders(1);
+      setPrevCursors([]);
+      setCursor(null);
+      setPage(1);
     }, 300);
     return () => clearTimeout(handle);
-  }, [loadOrders]);
+  }, [query, stageFilter]);
 
   useEffect(() => {
-    loadOrders(page);
-  }, [loadOrders, page]);
+    loadOrders(cursor, page);
+  }, [loadOrders, cursor, page]);
 
   useEffect(() => {
     loadPlayers();
   }, [loadPlayers]);
 
   const updateOrder = async (orderId: string, patch: Partial<AdminOrder>) => {
+    if (!canEdit) return;
     setSaving((prev) => ({ ...prev, [orderId]: true }));
     try {
       const res = await fetch(`/api/admin/orders/${orderId}`, {
@@ -123,14 +134,13 @@ export default function OrdersPage() {
         setOrders((prev) => {
           const next = prev.map((order) => (order.id === orderId ? data : order));
           const params = new URLSearchParams();
-          params.set("page", String(page));
           params.set("pageSize", String(pageSize));
+          if (cursor) params.set("cursor", cursor);
           if (stageFilter && stageFilter !== "全部") params.set("stage", stageFilter);
           if (query.trim()) params.set("q", query.trim());
           writeCache(`cache:admin:orders:${params.toString()}`, {
             items: next,
-            page,
-            totalPages,
+            nextCursor,
           });
           return next;
         });
@@ -147,14 +157,17 @@ export default function OrdersPage() {
   };
 
   const toggleSelect = (id: string) => {
+    if (!canEdit) return;
     setSelectedIds((prev) => (prev.includes(id) ? prev.filter((itemId) => itemId !== id) : [...prev, id]));
   };
 
   const toggleSelectAll = (checked: boolean) => {
+    if (!canEdit) return;
     setSelectedIds(checked ? orders.map((item) => item.id) : []);
   };
 
   const bulkDelete = async () => {
+    if (!canEdit) return;
     if (selectedIds.length === 0) return;
     if (!confirm(`确定要删除选中的 ${selectedIds.length} 条订单吗？`)) return;
     const res = await fetch("/api/admin/orders/bulk-delete", {
@@ -164,7 +177,7 @@ export default function OrdersPage() {
     });
     if (res.ok) {
       setSelectedIds([]);
-      await loadOrders(page);
+      await loadOrders(cursor, page);
     } else {
       const data = await res.json().catch(() => ({}));
       alert(data?.error || "批量删除失败");
@@ -172,6 +185,7 @@ export default function OrdersPage() {
   };
 
   const cleanupE2e = async () => {
+    if (!canEdit) return;
     if (!confirm("确认清理所有 E2E 测试订单？")) return;
     setCleaningE2e(true);
     setCleanResult(null);
@@ -187,10 +201,30 @@ export default function OrdersPage() {
         return;
       }
       setCleanResult(`已清理 ${data?.deleted ?? 0} / ${data?.candidates ?? 0} 条`);
-      await loadOrders(1);
+      setPrevCursors([]);
+      setCursor(null);
+      setPage(1);
     } finally {
       setCleaningE2e(false);
     }
+  };
+
+  const goPrev = () => {
+    setPrevCursors((prev) => {
+      if (prev.length === 0) return prev;
+      const nextPrev = prev.slice(0, -1);
+      const prevCursor = prev[prev.length - 1] ?? null;
+      setCursor(prevCursor);
+      setPage((value) => Math.max(1, value - 1));
+      return nextPrev;
+    });
+  };
+
+  const goNext = () => {
+    if (!nextCursor) return;
+    setPrevCursors((prev) => [...prev, cursor]);
+    setCursor(nextCursor);
+    setPage((value) => value + 1);
   };
 
   return (
@@ -224,24 +258,39 @@ export default function OrdersPage() {
               </option>
             ))}
           </select>
-          <button className="admin-btn ghost" onClick={() => loadOrders(1)}>
+          <button
+            className="admin-btn ghost"
+            onClick={() => {
+              setPrevCursors([]);
+              setCursor(null);
+              setPage(1);
+            }}
+          >
             <RefreshCw size={16} style={{ marginRight: 6 }} />
             刷新
           </button>
-          <button className="admin-btn ghost" disabled={selectedIds.length === 0} onClick={bulkDelete}>
-            删除选中{selectedIds.length > 0 ? `（${selectedIds.length}）` : ""}
-          </button>
-          <button className="admin-btn ghost" disabled={cleaningE2e} onClick={cleanupE2e}>
-            {cleaningE2e ? "清理中..." : "清理 E2E"}
-          </button>
-          <a
-            className="admin-btn ghost"
-            href={`/api/admin/orders/export?format=csv&stage=${encodeURIComponent(stageFilter)}&q=${encodeURIComponent(
-              query.trim()
-            )}`}
-          >
-            导出 CSV
-          </a>
+          {canEdit ? (
+            <button className="admin-btn ghost" disabled={selectedIds.length === 0} onClick={bulkDelete}>
+              删除选中{selectedIds.length > 0 ? `（${selectedIds.length}）` : ""}
+            </button>
+          ) : null}
+          {canEdit ? (
+            <button className="admin-btn ghost" disabled={cleaningE2e} onClick={cleanupE2e}>
+              {cleaningE2e ? "清理中..." : "清理 E2E"}
+            </button>
+          ) : null}
+          {canEdit ? (
+            <a
+              className="admin-btn ghost"
+              href={`/api/admin/orders/export?format=csv&stage=${encodeURIComponent(stageFilter)}&q=${encodeURIComponent(
+                query.trim()
+              )}`}
+            >
+              导出 CSV
+            </a>
+          ) : (
+            <span className="admin-badge neutral">只读权限</span>
+          )}
         </div>
         {cleanResult ? (
           <div className="admin-badge" style={{ marginTop: 12 }}>
@@ -258,6 +307,7 @@ export default function OrdersPage() {
             {selectedIds.length > 0 ? (
               <span className="admin-pill">已选 {selectedIds.length} 条</span>
             ) : null}
+            {cacheHint ? <span className="admin-pill">{cacheHint}</span> : null}
           </div>
         </div>
         {loading ? (
@@ -275,7 +325,7 @@ export default function OrdersPage() {
                         type="checkbox"
                         checked={orders.length > 0 && selectedIds.length === orders.length}
                         onChange={(event) => toggleSelectAll(event.target.checked)}
-                        disabled={orders.length === 0}
+                        disabled={orders.length === 0 || !canEdit}
                       />
                       选择
                     </label>
@@ -309,6 +359,7 @@ export default function OrdersPage() {
                         type="checkbox"
                         checked={selectedIds.includes(order.id)}
                         onChange={() => toggleSelect(order.id)}
+                        disabled={!canEdit}
                       />
                     </td>
                     <td data-label="订单信息">
@@ -328,12 +379,12 @@ export default function OrdersPage() {
                       </div>
                     </td>
                     <td data-label="付款状态">
-                      {isChainOrder ? (
+                      {isChainOrder || !canEdit ? (
                         <input
                           className="admin-input"
                           readOnly
                           value={order.paymentStatus || ""}
-                          title="订单状态由系统同步"
+                          title={isChainOrder ? "订单状态由系统同步" : "只读权限"}
                         />
                       ) : (
                         <input
@@ -359,10 +410,10 @@ export default function OrdersPage() {
                         className="admin-select"
                         value={order.stage}
                         aria-label="订单阶段"
-                        disabled={isChainOrder}
-                        title={isChainOrder ? "订单阶段由系统同步" : ""}
+                        disabled={isChainOrder || !canEdit}
+                        title={isChainOrder ? "订单阶段由系统同步" : !canEdit ? "只读权限" : ""}
                         onChange={(event) => {
-                          if (isChainOrder) return;
+                          if (isChainOrder || !canEdit) return;
                           const nextStage = event.target.value as OrderStage;
                           setOrders((prev) =>
                             prev.map((item) =>
@@ -385,7 +436,9 @@ export default function OrdersPage() {
                           className="admin-select"
                           value={selectValue}
                           aria-label="打手/客服"
+                          disabled={!canEdit}
                           onChange={(event) => {
+                            if (!canEdit) return;
                             const nextValue = event.target.value;
                             const selectedPlayer = players.find((player) => player.id === nextValue);
                             const assignedTo = selectedPlayer ? selectedPlayer.name : nextValue;
@@ -425,18 +478,21 @@ export default function OrdersPage() {
                         className="admin-input"
                         placeholder="备注"
                         value={order.note || ""}
-                        onChange={(event) =>
+                        readOnly={!canEdit}
+                        onChange={(event) => {
+                          if (!canEdit) return;
                           setOrders((prev) =>
                             prev.map((item) =>
                               item.id === order.id
                                 ? { ...item, note: event.target.value }
                                 : item
                             )
-                          )
-                        }
-                        onBlur={(event) =>
-                          updateOrder(order.id, { note: event.target.value })
-                        }
+                          );
+                        }}
+                        onBlur={(event) => {
+                          if (!canEdit) return;
+                          updateOrder(order.id, { note: event.target.value });
+                        }}
                       />
                     </td>
                     <td data-label="更新">
@@ -459,18 +515,18 @@ export default function OrdersPage() {
         <div className="admin-pagination">
           <button
             className="admin-btn ghost"
-            disabled={page <= 1}
-            onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+            disabled={prevCursors.length === 0}
+            onClick={goPrev}
           >
             上一页
           </button>
           <div className="admin-meta">
-            第 {page} / {totalPages} 页
+            第 {page} 页
           </div>
           <button
             className="admin-btn ghost"
-            disabled={page >= totalPages}
-            onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
+            disabled={!nextCursor}
+            onClick={goNext}
           >
             下一页
           </button>

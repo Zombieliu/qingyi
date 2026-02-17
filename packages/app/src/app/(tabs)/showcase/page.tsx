@@ -1,7 +1,16 @@
 "use client";
 import { useCallback, useEffect, useMemo, useState, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { type LocalOrder } from "@/app/components/order-store";
-import { deleteOrder, fetchOrderDetail, fetchOrders, fetchPublicOrders, patchOrder, syncChainOrder } from "@/app/components/order-service";
+import {
+  deleteOrder,
+  fetchOrderDetail,
+  fetchOrdersWithMeta,
+  fetchPublicOrders,
+  fetchPublicOrdersWithMeta,
+  patchOrder,
+  syncChainOrder,
+} from "@/app/components/order-service";
 import { Activity, Clock3, Car, MapPin, Loader2 } from "lucide-react";
 import {
   type ChainOrder,
@@ -20,10 +29,12 @@ import {
   getChainDebugInfo,
   getDefaultCompanionAddress,
 } from "@/lib/qy-chain";
+import { useBackoffPoll } from "@/app/components/use-backoff-poll";
 import { MotionCard } from "@/components/ui/motion";
 import { StateBlock } from "@/app/components/state-block";
 import { ConfirmDialog } from "@/app/components/confirm-dialog";
 import { extractErrorMessage, formatErrorMessage } from "@/app/components/error-utils";
+import { useGuardianStatus } from "@/app/components/guardian-role";
 
 function getLocalChainStatus(order?: LocalOrder | null) {
   if (!order) return undefined;
@@ -40,6 +51,9 @@ function mergeChainStatus(local?: number, remote?: number) {
 }
 
 export default function Showcase() {
+  const router = useRouter();
+  const { state: guardianState, isGuardian } = useGuardianStatus();
+  const canAccessShowcase = isGuardian;
   const [orders, setOrders] = useState<LocalOrder[]>([]);
   const [chainOrders, setChainOrders] = useState<ChainOrder[]>([]);
   const [chainLoading, setChainLoading] = useState(false);
@@ -145,27 +159,32 @@ export default function Showcase() {
   };
 
   const refreshOrders = async (force = false) => {
+    if (!canAccessShowcase) return true;
     setPublicLoading(true);
     try {
-      const result = await fetchPublicOrders(undefined, { force });
+      const result = await fetchPublicOrdersWithMeta(undefined, { force });
       setOrders(result.items);
       setPublicCursor(result.nextCursor || null);
+      return !result.meta.error;
     } finally {
       setPublicLoading(false);
     }
   };
 
   const refreshMyOrders = useCallback(async (force = false) => {
+    if (!canAccessShowcase) return true;
     setMyOrdersLoading(true);
     try {
-      const list = await fetchOrders({ force });
-      setMyOrders(list);
+      const result = await fetchOrdersWithMeta({ force });
+      setMyOrders(result.items);
+      return !result.meta.error;
     } finally {
       setMyOrdersLoading(false);
     }
-  }, []);
+  }, [canAccessShowcase]);
 
   const loadMoreOrders = useCallback(async () => {
+    if (!canAccessShowcase) return;
     if (!publicCursor || publicLoading) return;
     setPublicLoading(true);
     try {
@@ -175,23 +194,34 @@ export default function Showcase() {
     } finally {
       setPublicLoading(false);
     }
-  }, [publicCursor, publicLoading]);
+  }, [canAccessShowcase, publicCursor, publicLoading]);
 
   useEffect(() => {
+    if (!canAccessShowcase) return;
     refreshOrders();
-  }, []);
+  }, [canAccessShowcase]);
 
   useEffect(() => {
+    if (!canAccessShowcase) return;
     refreshMyOrders();
-  }, [refreshMyOrders]);
+  }, [canAccessShowcase, refreshMyOrders]);
+
+  useBackoffPoll({
+    enabled: canAccessShowcase,
+    baseMs: 20_000,
+    maxMs: 120_000,
+    onPoll: async () => {
+      const [okPublic, okMine] = await Promise.all([refreshOrders(true), refreshMyOrders(true)]);
+      return okPublic && okMine;
+    },
+  });
 
   useEffect(() => {
-    const timer = window.setInterval(() => {
-      refreshOrders(true);
-      refreshMyOrders(true);
-    }, 20_000);
-    return () => window.clearInterval(timer);
-  }, [refreshMyOrders]);
+    if (guardianState === "checking") return;
+    if (!canAccessShowcase) {
+      router.replace("/home");
+    }
+  }, [guardianState, canAccessShowcase, router]);
 
   useEffect(() => {
     if (!pendingScrollToAccepted) return;
@@ -220,6 +250,7 @@ export default function Showcase() {
   }, [publicCursor, loadMoreOrders]);
 
   const loadChain = useCallback(async () => {
+    if (!canAccessShowcase) return;
     if (!isChainOrdersEnabled()) return;
     const visualTest = isVisualTestMode();
     try {
@@ -238,12 +269,12 @@ export default function Showcase() {
         setChainLoading(false);
       }
     }
-  }, []);
+  }, [canAccessShowcase]);
 
   const refreshAll = useCallback(async () => {
     await Promise.all([refreshOrders(true), refreshMyOrders(true)]);
     await loadChain();
-  }, [loadChain, refreshMyOrders]);
+  }, [loadChain, refreshMyOrders, refreshOrders]);
 
   useEffect(() => {
     if (!isChainOrdersEnabled()) return;
@@ -736,6 +767,22 @@ export default function Showcase() {
   });
 
   const visibleOrders = orders.filter((o) => !o.status.includes("完成") && !o.status.includes("取消"));
+
+  if (guardianState === "checking") {
+    return (
+      <div className="dl-main">
+        <StateBlock tone="loading" size="compact" title="权限校验中" description="正在确认访问权限" />
+      </div>
+    );
+  }
+
+  if (!canAccessShowcase) {
+    return (
+      <div className="dl-main">
+        <StateBlock tone="empty" size="compact" title="暂无权限访问" description="请使用护航账号访问接单大厅" />
+      </div>
+    );
+  }
 
   return (
     <div className="dl-shell">

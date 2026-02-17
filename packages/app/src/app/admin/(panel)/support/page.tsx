@@ -19,41 +19,47 @@ function formatTime(ts: number) {
 export default function SupportPage() {
   const [tickets, setTickets] = useState<AdminSupportTicket[]>([]);
   const [loading, setLoading] = useState(true);
+  const [cacheHint, setCacheHint] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("全部");
   const [saving, setSaving] = useState<Record<string, boolean>>({});
   const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
+  const [cursor, setCursor] = useState<string | null>(null);
+  const [prevCursors, setPrevCursors] = useState<Array<string | null>>([]);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
   const pageSize = 20;
   const cacheTtlMs = 60_000;
 
-  const load = useCallback(async (nextPage: number) => {
+  const load = useCallback(async (cursorValue: string | null, nextPage: number) => {
     setLoading(true);
     try {
+      setCacheHint(null);
       const params = new URLSearchParams();
-      params.set("page", String(nextPage));
       params.set("pageSize", String(pageSize));
+      if (cursorValue) params.set("cursor", cursorValue);
       if (statusFilter && statusFilter !== "全部") params.set("status", statusFilter);
       if (query.trim()) params.set("q", query.trim());
       const cacheKey = `cache:admin:support:${params.toString()}`;
-      const cached = readCache<{ items: AdminSupportTicket[]; page?: number; totalPages?: number }>(
+      const cached = readCache<{ items: AdminSupportTicket[]; nextCursor?: string | null }>(
         cacheKey,
         cacheTtlMs,
         true
       );
       if (cached) {
         setTickets(Array.isArray(cached.value?.items) ? cached.value.items : []);
-        setPage(cached.value?.page || nextPage);
-        setTotalPages(cached.value?.totalPages || 1);
+        setPage(nextPage);
+        setNextCursor(cached.value?.nextCursor || null);
+        setCacheHint(cached.fresh ? null : "显示缓存数据，正在刷新…");
       }
       const res = await fetch(`/api/admin/support?${params.toString()}`);
       if (res.ok) {
         const data = await res.json();
         const next = Array.isArray(data?.items) ? data.items : [];
         setTickets(next);
-        setPage(data?.page || nextPage);
-        setTotalPages(data?.totalPages || 1);
-        writeCache(cacheKey, { items: next, page: data?.page || nextPage, totalPages: data?.totalPages || 1 });
+        setPage(nextPage);
+        setNextCursor(data?.nextCursor || null);
+        setCacheHint(null);
+        writeCache(cacheKey, { items: next, nextCursor: data?.nextCursor || null });
       }
     } finally {
       setLoading(false);
@@ -61,13 +67,17 @@ export default function SupportPage() {
   }, [cacheTtlMs, pageSize, query, statusFilter]);
 
   useEffect(() => {
-    const handle = setTimeout(() => load(1), 300);
+    const handle = setTimeout(() => {
+      setPrevCursors([]);
+      setCursor(null);
+      setPage(1);
+    }, 300);
     return () => clearTimeout(handle);
-  }, [load]);
+  }, [query, statusFilter]);
 
   useEffect(() => {
-    load(page);
-  }, [load, page]);
+    load(cursor, page);
+  }, [load, cursor, page]);
 
   const updateTicket = async (ticketId: string, patch: Partial<AdminSupportTicket>) => {
     setSaving((prev) => ({ ...prev, [ticketId]: true }));
@@ -82,14 +92,13 @@ export default function SupportPage() {
         setTickets((prev) => {
           const next = prev.map((t) => (t.id === ticketId ? data : t));
           const params = new URLSearchParams();
-          params.set("page", String(page));
           params.set("pageSize", String(pageSize));
+          if (cursor) params.set("cursor", cursor);
           if (statusFilter && statusFilter !== "全部") params.set("status", statusFilter);
           if (query.trim()) params.set("q", query.trim());
           writeCache(`cache:admin:support:${params.toString()}`, {
             items: next,
-            page,
-            totalPages,
+            nextCursor,
           });
           return next;
         });
@@ -97,6 +106,24 @@ export default function SupportPage() {
     } finally {
       setSaving((prev) => ({ ...prev, [ticketId]: false }));
     }
+  };
+
+  const goPrev = () => {
+    setPrevCursors((prev) => {
+      if (prev.length === 0) return prev;
+      const nextPrev = prev.slice(0, -1);
+      const prevCursor = prev[prev.length - 1] ?? null;
+      setCursor(prevCursor);
+      setPage((value) => Math.max(1, value - 1));
+      return nextPrev;
+    });
+  };
+
+  const goNext = () => {
+    if (!nextCursor) return;
+    setPrevCursors((prev) => [...prev, cursor]);
+    setCursor(nextCursor);
+    setPage((value) => value + 1);
   };
 
   return (
@@ -130,7 +157,14 @@ export default function SupportPage() {
               </option>
             ))}
           </select>
-          <button className="admin-btn ghost" onClick={() => load(1)}>
+          <button
+            className="admin-btn ghost"
+            onClick={() => {
+              setPrevCursors([]);
+              setCursor(null);
+              setPage(1);
+            }}
+          >
             <RefreshCw size={16} style={{ marginRight: 6 }} />
             刷新
           </button>
@@ -142,6 +176,7 @@ export default function SupportPage() {
           <h3>工单列表</h3>
           <div className="admin-card-actions">
             <span className="admin-pill">共 {tickets.length} 条</span>
+            {cacheHint ? <span className="admin-pill">{cacheHint}</span> : null}
           </div>
         </div>
         {loading ? (
@@ -225,18 +260,18 @@ export default function SupportPage() {
         <div className="admin-pagination">
           <button
             className="admin-btn ghost"
-            disabled={page <= 1}
-            onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+            disabled={prevCursors.length === 0}
+            onClick={goPrev}
           >
             上一页
           </button>
           <div className="admin-meta">
-            第 {page} / {totalPages} 页
+            第 {page} 页
           </div>
           <button
             className="admin-btn ghost"
-            disabled={page >= totalPages}
-            onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
+            disabled={!nextCursor}
+            onClick={goNext}
           >
             下一页
           </button>

@@ -55,7 +55,7 @@ export default function AdminLoginPage() {
         </div>
         <div className="admin-chip" style={{ marginBottom: 14 }}>
           <ShieldCheck size={14} />
-          ADMIN_DASH_TOKEN / LEDGER_ADMIN_TOKEN / ADMIN_TOKENS
+          后台密钥（数据库或环境变量）
         </div>
         <form className="admin-form" onSubmit={handleSubmit}>
           <label className="admin-field">
@@ -85,8 +85,7 @@ export default function AdminLoginPage() {
           </Button>
         </form>
         <div className="admin-helper">
-          提示：在 `.env.local` 中设置 `ADMIN_DASH_TOKEN` 或 `ADMIN_TOKENS`。
-          如未设置，将回退使用 `LEDGER_ADMIN_TOKEN`。
+          提示：可在“密钥管理”中创建后台密钥；也可在 `.env.local` 中设置 `ADMIN_DASH_TOKEN` 或 `ADMIN_TOKENS`。
         </div>
         <div style={{ marginTop: 16 }}>
           <SwControl />

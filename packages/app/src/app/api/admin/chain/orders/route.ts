@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin-auth";
-import { listOrders } from "@/lib/admin-store";
+import { listChainOrdersForAdmin } from "@/lib/admin-store";
 import { fetchChainOrdersAdmin } from "@/lib/chain-admin";
 import { getAutoCancelConfig } from "@/lib/chain-auto-cancel";
 
-type LocalOrder = Awaited<ReturnType<typeof listOrders>>[number];
+type LocalOrder = Awaited<ReturnType<typeof listChainOrdersForAdmin>>[number];
 
 function readLocalChainStatus(order: LocalOrder) {
   const meta = (order.meta as { chain?: { status?: number } } | undefined)?.chain;
@@ -16,7 +16,7 @@ export async function GET(req: Request) {
   const auth = await requireAdmin(req, { role: "finance" });
   if (!auth.ok) return auth.response;
   const chainOrders = await fetchChainOrdersAdmin();
-  const localOrders = await listOrders();
+  const localOrders = await listChainOrdersForAdmin();
   const autoCancel = getAutoCancelConfig();
 
   const chainById = new Map(chainOrders.map((order) => [order.orderId, order]));

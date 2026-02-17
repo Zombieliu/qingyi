@@ -9,6 +9,8 @@ import { readCache, writeCache } from "@/app/components/client-cache";
 import { fetchWithUserAuth } from "@/app/components/user-auth-client";
 import { StateBlock } from "@/app/components/state-block";
 import { formatErrorMessage } from "@/app/components/error-utils";
+import { useGuardianStatus } from "@/app/components/guardian-role";
+import { PLAYER_STATUS_OPTIONS, type PlayerStatus } from "@/lib/admin-types";
 
 type WithdrawItem = {
   id: string;
@@ -29,6 +31,7 @@ type TxItem = {
 
 export default function MantouPage() {
   const { balance, frozen, refresh } = useMantouBalance();
+  const { isGuardian, state: guardianState, address: guardianAddress } = useGuardianStatus();
   const [amount, setAmount] = useState(0);
   const [account, setAccount] = useState("");
   const [note, setNote] = useState("");
@@ -36,6 +39,11 @@ export default function MantouPage() {
   const [status, setStatus] = useState<{ tone: "success" | "warning" | "danger"; title: string } | null>(null);
   const [withdraws, setWithdraws] = useState<WithdrawItem[]>([]);
   const [transactions, setTransactions] = useState<TxItem[]>([]);
+  const [playerStatus, setPlayerStatus] = useState<PlayerStatus | null>(null);
+  const [statusLoading, setStatusLoading] = useState(false);
+  const [statusSaving, setStatusSaving] = useState(false);
+  const [statusHint, setStatusHint] = useState<string | null>(null);
+  const [statusHintTone, setStatusHintTone] = useState<"success" | "warning">("warning");
   const cacheTtlMs = 60_000;
 
   const available = useMemo(() => Number(balance || 0), [balance]);
@@ -77,6 +85,83 @@ export default function MantouPage() {
     };
     load();
   }, []);
+
+  useEffect(() => {
+    const loadStatus = async () => {
+      if (guardianState === "checking") return;
+      const address = guardianAddress;
+      if (!address) {
+        setPlayerStatus(null);
+        setStatusHint("请先登录账号");
+        return;
+      }
+      if (!isGuardian) {
+        setPlayerStatus(null);
+        setStatusHint("未通过护航审核，暂不可设置状态");
+        return;
+      }
+      setStatusLoading(true);
+      setStatusHint(null);
+      try {
+        const res = await fetchWithUserAuth(`/api/players/me/status?address=${address}`, {}, address);
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          if (res.status === 404) {
+            setStatusHint("未绑定打手档案，请联系运营");
+          } else if (res.status === 403) {
+            setStatusHint("未通过护航审核，暂不可设置状态");
+          } else {
+            setStatusHint(data?.error || "状态加载失败");
+          }
+          setPlayerStatus(null);
+          return;
+        }
+        const data = await res.json().catch(() => ({}));
+        setPlayerStatus((data?.status as PlayerStatus) || null);
+      } catch {
+        setStatusHint("状态加载失败");
+      } finally {
+        setStatusLoading(false);
+      }
+    };
+    loadStatus();
+  }, [guardianAddress, guardianState, isGuardian]);
+
+  const updateStatus = async (nextStatus: PlayerStatus) => {
+    if (statusSaving) return;
+    const address = guardianAddress;
+    if (!address) {
+      setStatusHint("请先登录账号");
+      return;
+    }
+    setStatusSaving(true);
+    setStatusHint(null);
+    try {
+      const res = await fetchWithUserAuth(
+        "/api/players/me/status",
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ address, status: nextStatus }),
+        },
+        address
+      );
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setStatusHintTone("warning");
+        setStatusHint(data?.error || "状态更新失败");
+        return;
+      }
+      setPlayerStatus((data?.status as PlayerStatus) || nextStatus);
+      setStatusHintTone("success");
+      setStatusHint("状态已更新");
+      setTimeout(() => setStatusHint(null), 2000);
+    } catch (error) {
+      setStatusHint(formatErrorMessage(error, "状态更新失败"));
+    } finally {
+      setStatusSaving(false);
+    }
+  };
 
   const submit = async () => {
     if (submitting) return;
@@ -152,6 +237,55 @@ export default function MantouPage() {
         <div className="text-sm font-semibold text-gray-900">我的馒头</div>
         <div className="mt-2 text-2xl font-bold text-emerald-600">{balance}</div>
         <div className="mt-1 text-xs text-slate-500">冻结中：{frozen}</div>
+      </section>
+
+      <section className="dl-card" style={{ padding: 16, marginTop: 12 }}>
+        <div className="text-sm font-semibold text-gray-900">接单状态</div>
+        <div className="mt-2 text-xs text-slate-500">仅护航账号可设置接单状态</div>
+        {guardianState === "checking" || statusLoading ? (
+          <div className="mt-3">
+            <StateBlock tone="loading" size="compact" title="状态加载中" />
+          </div>
+        ) : !guardianAddress ? (
+          <div className="mt-3">
+            <StateBlock tone="warning" size="compact" title="请先登录账号" description="登录后可设置接单状态" />
+          </div>
+        ) : !isGuardian ? (
+          <div className="mt-3">
+            <StateBlock tone="warning" size="compact" title="未通过护航审核" description="通过审核后可设置状态" />
+          </div>
+        ) : playerStatus ? (
+          <div className="mt-3">
+            <div className="text-xs text-slate-500">当前状态：{playerStatus}</div>
+            <div className="lc-tabs" style={{ marginTop: 8 }}>
+              {PLAYER_STATUS_OPTIONS.map((option) => (
+                <button
+                  key={option}
+                  type="button"
+                  className={`lc-tab-btn ${playerStatus === option ? "is-active" : ""}`}
+                  onClick={() => updateStatus(option)}
+                  disabled={statusSaving || playerStatus === option}
+                >
+                  {statusSaving && playerStatus === option ? "更新中..." : option}
+                </button>
+              ))}
+            </div>
+            {statusHint && (
+              <div className="mt-3">
+                <StateBlock tone={statusHintTone} size="compact" title={statusHint} />
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="mt-3">
+            <StateBlock
+              tone="warning"
+              size="compact"
+              title={statusHint || "暂无可用状态"}
+              description="请联系运营绑定打手档案"
+            />
+          </div>
+        )}
       </section>
 
       <section className="dl-card" style={{ padding: 16, marginTop: 12 }}>

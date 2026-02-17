@@ -3,7 +3,14 @@ import crypto from "crypto";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import type { AdminRole } from "./admin-types";
-import { createSession, getSessionByHash, removeSessionByHash, updateSessionByHash } from "./admin-store";
+import {
+  createSession,
+  getAccessTokenByHash,
+  getSessionByHash,
+  removeSessionByHash,
+  touchAccessTokenByHash,
+  updateSessionByHash,
+} from "./admin-store";
 import { rateLimit } from "./rate-limit";
 import { isIpAllowed, normalizeClientIp } from "./admin-ip-utils";
 
@@ -16,7 +23,14 @@ const LOGIN_RATE_LIMIT_MAX = Number(process.env.ADMIN_LOGIN_RATE_LIMIT_MAX || "1
 const ADMIN_IP_ALLOWLIST = (process.env.ADMIN_IP_ALLOWLIST || "").trim();
 const ADMIN_REQUIRE_SESSION = process.env.ADMIN_REQUIRE_SESSION === "1";
 
-type AdminTokenEntry = { token: string; role: AdminRole; label?: string };
+type AdminTokenEntry = {
+  token: string;
+  role: AdminRole;
+  label?: string;
+  source?: "env" | "db";
+  tokenHash?: string;
+  id?: string;
+};
 
 type RequireOptions = {
   role?: AdminRole;
@@ -116,10 +130,23 @@ function parseAdminTokens(): AdminTokenEntry[] {
   });
 }
 
-function getRoleForToken(token?: string | null): AdminTokenEntry | null {
+async function getRoleForToken(token?: string | null): Promise<AdminTokenEntry | null> {
   if (!token) return null;
+  const tokenHash = hashToken(token);
+  const dbEntry = await getAccessTokenByHash(tokenHash);
+  if (dbEntry && dbEntry.status === "active") {
+    return {
+      token,
+      role: dbEntry.role,
+      label: dbEntry.label || dbEntry.tokenPrefix,
+      source: "db",
+      tokenHash,
+      id: dbEntry.id,
+    };
+  }
   const entries = parseAdminTokens();
-  return entries.find((entry) => entry.token === token) || null;
+  const envEntry = entries.find((entry) => entry.token === token);
+  return envEntry ? { ...envEntry, source: "env" } : null;
 }
 
 function getClientIp(req: Request): string {
@@ -214,7 +241,7 @@ export async function getAdminSession() {
   const legacyCookieStore = await cookies();
   const legacyToken = legacyCookieStore.get(LEGACY_ADMIN_COOKIE)?.value;
   if (legacyToken) {
-    const entry = getRoleForToken(legacyToken);
+    const entry = await getRoleForToken(legacyToken);
     if (entry) {
       return {
         id: "legacy",
@@ -274,8 +301,11 @@ export async function requireAdmin(req: Request, options: RequireOptions = {}): 
   const legacyCookieStore = await cookies();
   const legacyToken = legacyCookieStore.get(LEGACY_ADMIN_COOKIE)?.value;
   if (!ADMIN_REQUIRE_SESSION && legacyToken) {
-    const entry = getRoleForToken(legacyToken);
+    const entry = await getRoleForToken(legacyToken);
     if (entry && roleRank(entry.role) >= roleRank(role)) {
+      if (entry.source === "db" && entry.tokenHash) {
+        await touchAccessTokenByHash(entry.tokenHash);
+      }
       return { ok: true, role: entry.role, tokenLabel: entry.label, authType: "legacy" };
     }
   }
@@ -285,8 +315,11 @@ export async function requireAdmin(req: Request, options: RequireOptions = {}): 
     const alt = req.headers.get("x-admin-token") || "";
     const bearer = header.startsWith("Bearer ") ? header.slice(7) : "";
     const token = bearer || alt;
-    const entry = getRoleForToken(token);
+    const entry = await getRoleForToken(token);
     if (entry && roleRank(entry.role) >= roleRank(role)) {
+      if (entry.source === "db" && entry.tokenHash) {
+        await touchAccessTokenByHash(entry.tokenHash);
+      }
       return { ok: true, role: entry.role, tokenLabel: entry.label, authType: "token" };
     }
   }
@@ -301,7 +334,7 @@ export async function enforceLoginRateLimit(req: Request) {
   return enforceRateLimit(req, LOGIN_RATE_LIMIT_MAX, RATE_LIMIT_WINDOW_MS);
 }
 
-export function getAdminRoleForToken(token?: string | null) {
+export async function getAdminRoleForToken(token?: string | null) {
   return getRoleForToken(token);
 }
 

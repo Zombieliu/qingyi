@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { RefreshCw, Search } from "lucide-react";
+import { Check, Copy, RefreshCw, Search } from "lucide-react";
 import type { AdminGuardianApplication, GuardianStatus } from "@/lib/admin-types";
 import { GUARDIAN_STATUS_OPTIONS } from "@/lib/admin-types";
 import { readCache, writeCache } from "@/app/components/client-cache";
@@ -19,41 +19,182 @@ function formatTime(ts: number) {
 export default function GuardiansPage() {
   const [applications, setApplications] = useState<AdminGuardianApplication[]>([]);
   const [loading, setLoading] = useState(true);
+  const [cacheHint, setCacheHint] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("全部");
   const [saving, setSaving] = useState<Record<string, boolean>>({});
   const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
+  const [cursor, setCursor] = useState<string | null>(null);
+  const [prevCursors, setPrevCursors] = useState<Array<string | null>>([]);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [exporting, setExporting] = useState(false);
+  const [exportHint, setExportHint] = useState<string | null>(null);
+  const [exportScope, setExportScope] = useState<"current" | "filtered">("filtered");
   const pageSize = 20;
   const cacheTtlMs = 60_000;
 
-  const load = useCallback(async (nextPage: number) => {
+  const maskAddress = (address?: string) => {
+    if (!address) return "-";
+    if (address.length <= 12) return address;
+    return `${address.slice(0, 6)}...${address.slice(-4)}`;
+  };
+
+  const copyAddress = async (applicationId: string, address?: string) => {
+    if (!address) return;
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(address);
+      } else {
+        const textarea = document.createElement("textarea");
+        textarea.value = address;
+        textarea.style.position = "fixed";
+        textarea.style.opacity = "0";
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand("copy");
+        textarea.remove();
+      }
+      setCopiedId(applicationId);
+      setTimeout(() => setCopiedId(null), 2000);
+    } catch {
+      setExportHint("复制失败，请重试");
+    }
+  };
+
+  const formatCsvTime = (ts?: number) => {
+    if (!ts) return "";
+    return new Date(ts).toLocaleString("zh-CN", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
+  const buildCsvRow = (values: Array<string | number | null | undefined>) =>
+    values
+      .map((value) => {
+        const raw = value === null || value === undefined ? "" : String(value);
+        return `"${raw.replace(/"/g, '""')}"`;
+      })
+      .join(",");
+
+  const exportFiltered = async () => {
+    if (exporting) return;
+    setExporting(true);
+    setExportHint(null);
+    try {
+      let items: AdminGuardianApplication[] = [];
+      if (exportScope === "current") {
+        items = applications;
+      } else {
+        const params = new URLSearchParams();
+        params.set("pageSize", "200");
+        if (statusFilter && statusFilter !== "全部") params.set("status", statusFilter);
+        if (query.trim()) params.set("q", query.trim());
+        let cursorValue: string | null = null;
+        let guard = 0;
+        while (guard < 200) {
+          if (cursorValue) {
+            params.set("cursor", cursorValue);
+          } else {
+            params.delete("cursor");
+          }
+          const res = await fetch(`/api/admin/guardians?${params.toString()}`);
+          if (!res.ok) throw new Error("export_failed");
+          const data = await res.json();
+          const nextItems: AdminGuardianApplication[] = Array.isArray(data?.items) ? data.items : [];
+          items.push(...nextItems);
+          cursorValue = data?.nextCursor || null;
+          if (!cursorValue) break;
+          guard += 1;
+        }
+      }
+
+      if (items.length === 0) {
+        setExportHint("暂无可导出的数据");
+        return;
+      }
+
+      const headers = [
+        "申请号",
+        "申请人",
+        "联系方式",
+        "钱包地址",
+        "状态",
+        "擅长游戏",
+        "经验",
+        "可接单时段",
+        "备注",
+        "提交时间",
+      ];
+      const rows = [buildCsvRow(headers)];
+      for (const item of items) {
+        rows.push(
+          buildCsvRow([
+            item.id,
+            item.user || "",
+            item.contact || "",
+            item.userAddress || "",
+            item.status || "",
+            item.games || "",
+            item.experience || "",
+            item.availability || "",
+            item.note || "",
+            formatCsvTime(item.createdAt),
+          ])
+        );
+      }
+
+      const bom = "\ufeff";
+      const csv = `${bom}${rows.join("\n")}`;
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      const scopeLabel = exportScope === "current" ? "当前页" : "筛选";
+      link.download = `护航${scopeLabel}_${new Date().toISOString().replace(/[:T]/g, "-").slice(0, 19)}.csv`;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      setExportHint("导出失败，请稍后重试");
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const load = useCallback(async (cursorValue: string | null, nextPage: number) => {
     setLoading(true);
     try {
+      setCacheHint(null);
       const params = new URLSearchParams();
-      params.set("page", String(nextPage));
       params.set("pageSize", String(pageSize));
+      if (cursorValue) params.set("cursor", cursorValue);
       if (statusFilter && statusFilter !== "全部") params.set("status", statusFilter);
       if (query.trim()) params.set("q", query.trim());
       const cacheKey = `cache:admin:guardians:${params.toString()}`;
-      const cached = readCache<{ items: AdminGuardianApplication[]; page?: number; totalPages?: number }>(
+      const cached = readCache<{ items: AdminGuardianApplication[]; nextCursor?: string | null }>(
         cacheKey,
         cacheTtlMs,
         true
       );
       if (cached) {
         setApplications(Array.isArray(cached.value?.items) ? cached.value.items : []);
-        setPage(cached.value?.page || nextPage);
-        setTotalPages(cached.value?.totalPages || 1);
+        setPage(nextPage);
+        setNextCursor(cached.value?.nextCursor || null);
+        setCacheHint(cached.fresh ? null : "显示缓存数据，正在刷新…");
       }
       const res = await fetch(`/api/admin/guardians?${params.toString()}`);
       if (res.ok) {
         const data = await res.json();
         const next = Array.isArray(data?.items) ? data.items : [];
         setApplications(next);
-        setPage(data?.page || nextPage);
-        setTotalPages(data?.totalPages || 1);
-        writeCache(cacheKey, { items: next, page: data?.page || nextPage, totalPages: data?.totalPages || 1 });
+        setPage(nextPage);
+        setNextCursor(data?.nextCursor || null);
+        setCacheHint(null);
+        writeCache(cacheKey, { items: next, nextCursor: data?.nextCursor || null });
       }
     } finally {
       setLoading(false);
@@ -61,13 +202,17 @@ export default function GuardiansPage() {
   }, [cacheTtlMs, pageSize, query, statusFilter]);
 
   useEffect(() => {
-    const handle = setTimeout(() => load(1), 300);
+    const handle = setTimeout(() => {
+      setPrevCursors([]);
+      setCursor(null);
+      setPage(1);
+    }, 300);
     return () => clearTimeout(handle);
-  }, [load]);
+  }, [query, statusFilter]);
 
   useEffect(() => {
-    load(page);
-  }, [load, page]);
+    load(cursor, page);
+  }, [load, cursor, page]);
 
   const updateApplication = async (applicationId: string, patch: Partial<AdminGuardianApplication>) => {
     setSaving((prev) => ({ ...prev, [applicationId]: true }));
@@ -82,17 +227,35 @@ export default function GuardiansPage() {
         setApplications((prev) => {
           const next = prev.map((r) => (r.id === applicationId ? data : r));
           const params = new URLSearchParams();
-          params.set("page", String(page));
           params.set("pageSize", String(pageSize));
+          if (cursor) params.set("cursor", cursor);
           if (statusFilter && statusFilter !== "全部") params.set("status", statusFilter);
           if (query.trim()) params.set("q", query.trim());
-          writeCache(`cache:admin:guardians:${params.toString()}`, { items: next, page, totalPages });
+          writeCache(`cache:admin:guardians:${params.toString()}`, { items: next, nextCursor });
           return next;
         });
       }
     } finally {
       setSaving((prev) => ({ ...prev, [applicationId]: false }));
     }
+  };
+
+  const goPrev = () => {
+    setPrevCursors((prev) => {
+      if (prev.length === 0) return prev;
+      const nextPrev = prev.slice(0, -1);
+      const prevCursor = prev[prev.length - 1] ?? null;
+      setCursor(prevCursor);
+      setPage((value) => Math.max(1, value - 1));
+      return nextPrev;
+    });
+  };
+
+  const goNext = () => {
+    if (!nextCursor) return;
+    setPrevCursors((prev) => [...prev, cursor]);
+    setCursor(nextCursor);
+    setPage((value) => value + 1);
   };
 
   return (
@@ -126,11 +289,31 @@ export default function GuardiansPage() {
               </option>
             ))}
           </select>
-          <button className="admin-btn ghost" onClick={() => load(1)}>
+          <select
+            className="admin-select"
+            value={exportScope}
+            onChange={(event) => setExportScope(event.target.value as "current" | "filtered")}
+            title="导出范围"
+          >
+            <option value="current">导出当前页</option>
+            <option value="filtered">导出全部筛选</option>
+          </select>
+          <button className="admin-btn ghost" onClick={exportFiltered} disabled={exporting}>
+            {exporting ? "导出中..." : "导出"}
+          </button>
+          <button
+            className="admin-btn ghost"
+            onClick={() => {
+              setPrevCursors([]);
+              setCursor(null);
+              setPage(1);
+            }}
+          >
             <RefreshCw size={16} style={{ marginRight: 6 }} />
             刷新
           </button>
         </div>
+        {exportHint && <div className="admin-meta" style={{ marginTop: 8 }}>{exportHint}</div>}
       </div>
 
       <div className="admin-card">
@@ -138,6 +321,7 @@ export default function GuardiansPage() {
           <h3>护航申请列表</h3>
           <div className="admin-card-actions">
             <span className="admin-pill">共 {applications.length} 条</span>
+            {cacheHint ? <span className="admin-pill">{cacheHint}</span> : null}
           </div>
         </div>
         {loading ? (
@@ -153,6 +337,7 @@ export default function GuardiansPage() {
                   <th>擅长游戏</th>
                   <th>经验</th>
                   <th>可接单时段</th>
+                  <th>钱包地址</th>
                   <th>状态</th>
                   <th>备注</th>
                   <th>时间</th>
@@ -172,6 +357,30 @@ export default function GuardiansPage() {
                     </td>
                     <td data-label="可接单时段" className="admin-meta">
                       {item.availability || "-"}
+                    </td>
+                    <td data-label="钱包地址" className="admin-meta" style={{ maxWidth: 220, wordBreak: "break-all" }}>
+                      <div className="flex items-center gap-2">
+                        <span title={item.userAddress || ""}>{maskAddress(item.userAddress)}</span>
+                        {item.userAddress && (
+                          <button
+                            type="button"
+                            className="admin-btn ghost"
+                            style={{
+                              padding: "4px 8px",
+                              fontSize: 12,
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: 6,
+                            }}
+                            onClick={() => copyAddress(item.id, item.userAddress)}
+                            title={copiedId === item.id ? "已复制" : "复制完整地址"}
+                            aria-label="复制钱包地址"
+                          >
+                            {copiedId === item.id ? <Check size={14} /> : <Copy size={14} />}
+                            <span>{copiedId === item.id ? "已复制" : "复制"}</span>
+                          </button>
+                        )}
+                      </div>
                     </td>
                     <td data-label="状态">
                       <select
@@ -218,18 +427,18 @@ export default function GuardiansPage() {
         <div className="admin-pagination">
           <button
             className="admin-btn ghost"
-            disabled={page <= 1}
-            onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+            disabled={prevCursors.length === 0}
+            onClick={goPrev}
           >
             上一页
           </button>
           <div className="admin-meta">
-            第 {page} / {totalPages} 页
+            第 {page} 页
           </div>
           <button
             className="admin-btn ghost"
-            disabled={page >= totalPages}
-            onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
+            disabled={!nextCursor}
+            onClick={goNext}
           >
             下一页
           </button>

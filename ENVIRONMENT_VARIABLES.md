@@ -15,6 +15,7 @@
 - ADMIN_DASH_TOKEN
   - 后台登录密钥 (单一 token)。
   - 可选替代: ADMIN_TOKENS 或 ADMIN_TOKENS_JSON (多角色/多 token)。
+  - 若已启用后台“密钥管理”，建议保留该值作为应急登录口。
 - ADMIN_IP_ALLOWLIST
   - 可选：后台 IP 白名单（逗号/空格分隔；支持 IPv4 CIDR）。
 - ADMIN_REQUIRE_SESSION
@@ -26,6 +27,8 @@
   - 下单/支付通知推送。
 - CRON_SECRET
   - /api/cron/* 定时任务鉴权。
+- CRON_LOCK_TTL_MS
+  - /api/cron/* 防重入锁 TTL（毫秒，默认 600000）。
 - LEDGER_ADMIN_TOKEN
   - 账本/充值接口鉴权。
 
@@ -77,9 +80,13 @@
 - USER_SESSION_TTL_HOURS
 - AUTH_MAX_SKEW_MS
 - AUTH_NONCE_TTL_MS
+- AUTH_SESSION_RATE_LIMIT_WINDOW_MS
+- AUTH_SESSION_RATE_LIMIT_MAX
 - ORDER_RATE_LIMIT_WINDOW_MS
 - ORDER_RATE_LIMIT_MAX
 - PUBLIC_ORDER_RATE_LIMIT_MAX
+- GUARDIAN_RATE_LIMIT_WINDOW_MS
+- GUARDIAN_RATE_LIMIT_MAX
 
 ## 前端展示/二维码 (可选)
 
@@ -143,3 +150,6 @@
   这些可以保留作配置备忘，但真正生效的是 DATABASE_URL / DATABASE_DIRECT_URL。
 - Vercel 上务必为 Production 环境设置关键变量，否则自定义域名访问时会读不到。
 - 若在聊天中暴露过密钥，建议尽快轮换。
+- 便捷脚本：
+  - `npm run vercel:env:sync`：将 `.env` 同步到 Vercel 的 development/preview/production（支持 `--file`/`--env`/`--dry-run`）。
+  - `npm run sentry:rotate`：用 `SENTRY_AUTH_TOKEN_NEW` 更新 Vercel 环境变量，旧 token 请在 Sentry 控制台撤销。

@@ -2,10 +2,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Clock3, ShieldCheck, QrCode, Loader2, CheckCircle2 } from "lucide-react";
 import { type LocalOrder } from "@/app/components/order-store";
-import { createOrder, deleteOrder, fetchOrders, patchOrder, syncChainOrder } from "@/app/components/order-service";
+import {
+  createOrder,
+  deleteOrder,
+  fetchOrdersWithMeta,
+  patchOrder,
+  syncChainOrder,
+} from "@/app/components/order-service";
 import { readCache, writeCache } from "@/app/components/client-cache";
 import { trackEvent } from "@/app/components/analytics";
 import { fetchWithUserAuth } from "@/app/components/user-auth-client";
+import { useBackoffPoll } from "@/app/components/use-backoff-poll";
 import {
   type ChainOrder,
   cancelOrderOnChain,
@@ -216,6 +223,9 @@ export default function Schedule() {
   const [chainAction, setChainAction] = useState<string | null>(null);
   const [chainAddress, setChainAddress] = useState("");
   const [chainUpdatedAt, setChainUpdatedAt] = useState<number | null>(null);
+  const [chainSyncRetries, setChainSyncRetries] = useState<number | null>(null);
+  const [chainSyncLastAttemptAt, setChainSyncLastAttemptAt] = useState<number | null>(null);
+  const [chainSyncing, setChainSyncing] = useState(false);
   const redirectRef = useRef(false);
   const [players, setPlayers] = useState<PublicPlayer[]>([]);
   const [playersLoading, setPlayersLoading] = useState(false);
@@ -242,8 +252,9 @@ export default function Schedule() {
 
   const MATCH_RATE = 0.15;
 
-  const refreshOrders = useCallback(async (addrOverride?: string) => {
-    const list = await fetchOrders({ force: true });
+  const refreshOrders = useCallback(async (addrOverride?: string, force = true) => {
+    const result = await fetchOrdersWithMeta({ force });
+    const list = result.items;
     const addr = addrOverride ?? userAddress ?? getCurrentAddress();
     const filtered = list.filter((order) => {
       if (!addr) return true;
@@ -252,6 +263,7 @@ export default function Schedule() {
     });
     setOrders(filtered);
     setMode(deriveMode(filtered));
+    return !result.meta.error;
   }, [userAddress]);
 
   useEffect(() => {
@@ -269,12 +281,12 @@ export default function Schedule() {
     return () => window.removeEventListener("passkey-updated", sync);
   }, [refreshOrders]);
 
-  useEffect(() => {
-    const timer = window.setInterval(() => {
-      refreshOrders(userAddress || getCurrentAddress());
-    }, 20_000);
-    return () => window.clearInterval(timer);
-  }, [refreshOrders, userAddress]);
+  useBackoffPoll({
+    enabled: true,
+    baseMs: 20_000,
+    maxMs: 120_000,
+    onPoll: async () => refreshOrders(userAddress || getCurrentAddress(), true),
+  });
 
   useEffect(() => {
     const addr = userAddress || getCurrentAddress();
@@ -1224,19 +1236,28 @@ export default function Schedule() {
         const address = getCurrentAddress();
         const retrySync = async () => {
           const delays = [1000, 2000, 4000, 8000];
-          for (const delay of delays) {
+          setChainSyncing(true);
+          for (let i = 0; i < delays.length; i += 1) {
+            const delay = delays[i];
+            setChainSyncRetries(delays.length - i);
+            setChainSyncLastAttemptAt(Date.now());
             try {
               await fetch(`/api/orders/${chainOrderId}/chain-sync?force=1&maxWaitMs=15000`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ userAddress: address, digest: chainDigest }),
               });
-              break;
+              setChainSyncing(false);
+              setChainSyncRetries(0);
+              return;
             } catch {
               // ignore and retry
             }
             await new Promise((resolve) => setTimeout(resolve, delay));
           }
+          setChainSyncing(false);
+          setChainSyncRetries(0);
+          setChainToast("链上同步超时，请稍后手动刷新");
         };
         void retrySync();
       }
@@ -1298,6 +1319,13 @@ export default function Schedule() {
           <div className="text-xs text-gray-500 mt-1">
             上次刷新：{chainUpdatedAt ? new Date(chainUpdatedAt).toLocaleTimeString() : "-"}
           </div>
+          {chainSyncLastAttemptAt ? (
+            <div className={`text-xs mt-1 ${chainSyncing ? "text-amber-600" : "text-gray-500"}`}>
+              {chainSyncing
+                ? `链上同步中：剩余重试 ${chainSyncRetries ?? 0} 次，最后尝试 ${new Date(chainSyncLastAttemptAt).toLocaleTimeString()}`
+                : `链上同步最后尝试：${new Date(chainSyncLastAttemptAt).toLocaleTimeString()}`}
+            </div>
+          ) : null}
           <div className="mt-2 flex justify-end">
             <button className="dl-tab-btn" style={{ padding: "6px 10px" }} onClick={() => setDebugOpen(true)}>
               链上调试信息

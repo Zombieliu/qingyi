@@ -1,9 +1,22 @@
 import { NextResponse } from "next/server";
 import crypto from "crypto";
 import { requireAdmin } from "@/lib/admin-auth";
-import { addPlayer, listPlayers } from "@/lib/admin-store";
+import { addPlayer, getPlayerByAddress, listPlayers } from "@/lib/admin-store";
 import { recordAudit } from "@/lib/admin-audit";
 import type { AdminPlayer, PlayerStatus } from "@/lib/admin-types";
+import { isValidSuiAddress, normalizeSuiAddress } from "@mysten/sui/utils";
+
+function normalizePlayerAddress(raw?: string | null) {
+  const trimmed = (raw || "").trim();
+  if (!trimmed) return "";
+  try {
+    const normalized = normalizeSuiAddress(trimmed);
+    if (!isValidSuiAddress(normalized)) return null;
+    return normalized;
+  } catch {
+    return null;
+  }
+}
 
 export async function GET(req: Request) {
   const auth = await requireAdmin(req, { role: "viewer" });
@@ -27,12 +40,25 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "name required" }, { status: 400 });
   }
 
+  const rawAddress = typeof body.address === "string" ? body.address.trim() : "";
+  if (!rawAddress) {
+    return NextResponse.json({ error: "address_required" }, { status: 400 });
+  }
+  const normalizedAddress = normalizePlayerAddress(rawAddress);
+  if (!normalizedAddress) {
+    return NextResponse.json({ error: "invalid_address" }, { status: 400 });
+  }
+  const existing = await getPlayerByAddress(normalizedAddress);
+  if (existing.conflict || existing.player) {
+    return NextResponse.json({ error: "address_in_use" }, { status: 409 });
+  }
+
   const player: AdminPlayer = {
     id: body.id || `PLY-${Date.now()}-${crypto.randomInt(1000, 9999)}`,
     name: body.name,
     role: body.role,
     contact: body.contact,
-    address: body.address,
+    address: normalizedAddress,
     wechatQr: body.wechatQr,
     alipayQr: body.alipayQr,
     depositBase: typeof body.depositBase === "number" ? body.depositBase : undefined,

@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import crypto from "crypto";
 import { requireAdmin } from "@/lib/admin-auth";
-import { addInvoiceRequest, queryInvoiceRequests } from "@/lib/admin-store";
+import { addInvoiceRequest, queryInvoiceRequests, queryInvoiceRequestsCursor } from "@/lib/admin-store";
 import { recordAudit } from "@/lib/admin-audit";
 import type { AdminInvoiceRequest, InvoiceStatus } from "@/lib/admin-types";
+import { decodeCursorParam, encodeCursorParam } from "@/lib/cursor-utils";
 
 export async function GET(req: Request) {
   const auth = await requireAdmin(req, { role: "finance" });
@@ -14,6 +15,21 @@ export async function GET(req: Request) {
   const pageSize = Math.min(200, Math.max(5, Number(searchParams.get("pageSize") || "20")));
   const status = searchParams.get("status") || "";
   const q = searchParams.get("q") || "";
+  const cursorRaw = searchParams.get("cursor");
+  const cursor = decodeCursorParam(cursorRaw);
+  const useCursor = !searchParams.has("page") || cursorRaw !== null;
+  if (useCursor) {
+    const result = await queryInvoiceRequestsCursor({
+      pageSize,
+      status: status || undefined,
+      q: q || undefined,
+      cursor: cursor || undefined,
+    });
+    return NextResponse.json({
+      items: result.items,
+      nextCursor: encodeCursorParam(result.nextCursor),
+    });
+  }
 
   const result = await queryInvoiceRequests({ page, pageSize, status, q });
   return NextResponse.json(result);

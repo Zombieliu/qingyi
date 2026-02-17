@@ -1,14 +1,14 @@
 import "server-only";
-import { fetchChainOrdersAdmin, type ChainOrder } from "./chain-admin";
+import { fetchChainOrdersAdmin, fetchChainOrdersAdminWithCursor, type ChainOrder } from "./chain-admin";
 import { addOrder, getOrderById, updateOrder } from "./admin-store";
 import type { AdminOrder } from "./admin-types";
 import { isValidSuiAddress, normalizeSuiAddress } from "@mysten/sui/utils";
 import {
   findChainOrderCached,
-  fetchChainOrdersCached,
   clearCache,
   getCacheStats,
 } from "./chain-order-cache";
+import { getChainEventCursor, updateChainEventCursor } from "./chain-event-cursor";
 
 export function mapStage(status: number): AdminOrder["stage"] {
   if (status === 6) return "已取消";
@@ -157,8 +157,14 @@ export async function upsertChainOrder(chain: ChainOrder) {
 }
 
 export async function syncChainOrders() {
-  // 强制刷新缓存获取最新订单
-  const chainOrders = await fetchChainOrdersCached(true);
+  const cursorState = await getChainEventCursor();
+  const cursor = cursorState?.cursor ?? null;
+  const incremental = Boolean(cursor);
+  const result = await fetchChainOrdersAdminWithCursor({
+    cursor: incremental ? cursor : null,
+    order: incremental ? "ascending" : "descending",
+  });
+  const chainOrders = result.orders;
   let created = 0;
   let updated = 0;
 
@@ -172,7 +178,17 @@ export async function syncChainOrders() {
     }
   }
 
-  return { total: chainOrders.length, created, updated };
+  if (result.latestCursor) {
+    const shouldUpdate =
+      !cursor ||
+      cursor.txDigest !== result.latestCursor.txDigest ||
+      cursor.eventSeq !== result.latestCursor.eventSeq;
+    if (shouldUpdate) {
+      await updateChainEventCursor({ cursor: result.latestCursor, lastEventMs: result.latestEventMs || undefined });
+    }
+  }
+
+  return { total: chainOrders.length, created, updated, mode: incremental ? "incremental" : "bootstrap" };
 }
 
 /**

@@ -1,15 +1,19 @@
 import { NextResponse } from "next/server";
 import crypto from "crypto";
-import { addOrder, hasOrdersForAddress, queryOrders, queryPublicOrdersCursor } from "@/lib/admin-store";
+import { addOrder, hasOrdersForAddress, isApprovedGuardianAddress, queryOrders, queryPublicOrdersCursor } from "@/lib/admin-store";
 import { requireAdmin } from "@/lib/admin-auth";
 import { isValidSuiAddress, normalizeSuiAddress } from "@mysten/sui/utils";
 import { requireUserAuth } from "@/lib/user-auth";
 import { rateLimit } from "@/lib/rate-limit";
 import { clearChainOrderCache } from "@/lib/chain-sync";
+import { getCache, setCache, computeJsonEtag } from "@/lib/server-cache";
+import { getIfNoneMatch, jsonWithEtag, notModified } from "@/lib/http-cache";
 
 const ORDER_RATE_LIMIT_WINDOW_MS = Number(process.env.ORDER_RATE_LIMIT_WINDOW_MS || "60000");
 const ORDER_RATE_LIMIT_MAX = Number(process.env.ORDER_RATE_LIMIT_MAX || "30");
 const PUBLIC_ORDER_RATE_LIMIT_MAX = Number(process.env.PUBLIC_ORDER_RATE_LIMIT_MAX || "120");
+const PUBLIC_ORDER_CACHE_TTL_MS = 5000;
+const PUBLIC_ORDER_CACHE_CONTROL = "private, max-age=5, stale-while-revalidate=10";
 
 function getClientIp(req: Request): string {
   const forwarded = req.headers.get("x-forwarded-for");
@@ -63,6 +67,15 @@ export async function GET(req: Request) {
   }
 
   if (isPublicPool) {
+    if (!userAddress) {
+      return NextResponse.json({ error: "address_required" }, { status: 401 });
+    }
+    const auth = await requireUserAuth(req, { intent: "orders:public", address: userAddress });
+    if (!auth.ok) return auth.response;
+    const isGuardian = await isApprovedGuardianAddress(userAddress);
+    if (!isGuardian) {
+      return NextResponse.json({ error: "guardian_required" }, { status: 403 });
+    }
     const cursorRaw = searchParams.get("cursor") || "";
     let cursor: { createdAt: number; id: string } | undefined;
     if (cursorRaw) {
@@ -80,6 +93,33 @@ export async function GET(req: Request) {
     }
 
     const publicPageSize = Math.min(30, Math.max(5, Number(searchParams.get("pageSize") || "20")));
+    const cacheKey = `api:orders:public:${publicPageSize}:${cursorRaw || "start"}`;
+    const cached = getCache<{
+      items: Array<{
+        id: string;
+        user: string;
+        userAddress?: string;
+        item: string;
+        amount: number;
+        currency: string;
+        paymentStatus?: string;
+        stage: string;
+        chainDigest?: string;
+        chainStatus?: number;
+        serviceFee?: number;
+        deposit?: number;
+        createdAt: number;
+        updatedAt?: number;
+      }>;
+      nextCursor: string | null;
+    }>(cacheKey);
+    if (cached?.etag) {
+      const ifNoneMatch = getIfNoneMatch(req);
+      if (ifNoneMatch === cached.etag) {
+        return notModified(cached.etag, PUBLIC_ORDER_CACHE_CONTROL);
+      }
+      return jsonWithEtag(cached.value, cached.etag, PUBLIC_ORDER_CACHE_CONTROL);
+    }
     const result = await queryPublicOrdersCursor({
       pageSize: publicPageSize,
       excludeStages: ["已完成", "已取消"],
@@ -91,7 +131,7 @@ export async function GET(req: Request) {
           "utf8"
         ).toString("base64url")
       : null;
-    return NextResponse.json({
+    const payload = {
       items: result.items.map((item) => ({
         id: item.id,
         user: "匿名用户",
@@ -109,7 +149,10 @@ export async function GET(req: Request) {
         updatedAt: item.updatedAt,
       })),
       nextCursor,
-    });
+    };
+    const etag = computeJsonEtag(payload);
+    setCache(cacheKey, payload, PUBLIC_ORDER_CACHE_TTL_MS, etag);
+    return jsonWithEtag(payload, etag, PUBLIC_ORDER_CACHE_CONTROL);
   }
 
   const result = await queryOrders({
