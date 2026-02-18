@@ -1,10 +1,20 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin/admin-auth";
-import { getOrderById, getPlayerByAddress, updateOrder, updateOrderIfUnassigned } from "@/lib/admin/admin-store";
+import { getOrderById, getPlayerByAddress, updateOrder, updateOrderIfUnassigned, processReferralReward } from "@/lib/admin/admin-store";
 import { isValidSuiAddress, normalizeSuiAddress } from "@mysten/sui/utils";
 import { canTransitionStage, isChainOrder } from "@/lib/order-guard";
 import type { AdminOrder } from "@/lib/admin/admin-types";
 import { requireUserAuth } from "@/lib/auth/user-auth";
+
+async function tryReferralReward(order: AdminOrder, prevStage: string | undefined) {
+  if (order.stage !== "已完成" || prevStage === "已完成") return;
+  if (!order.userAddress || !order.amount) return;
+  try {
+    await processReferralReward(order.id, order.userAddress, order.amount);
+  } catch {
+    // non-critical — don't block order update
+  }
+}
 
 type RouteContext = {
   params: Promise<{ orderId: string }>;
@@ -91,6 +101,7 @@ export async function PATCH(req: Request, { params }: RouteContext) {
 
     const updated = await updateOrder(orderId, patch);
     if (!updated) return NextResponse.json({ error: "not found" }, { status: 404 });
+    await tryReferralReward(updated, order.stage);
     return NextResponse.json(updated);
   }
 
@@ -173,6 +184,7 @@ export async function PATCH(req: Request, { params }: RouteContext) {
     }
     return NextResponse.json({ error: "not found" }, { status: 404 });
   }
+  await tryReferralReward(updated, order.stage);
   return NextResponse.json(updated);
 }
 

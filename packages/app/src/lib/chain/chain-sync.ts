@@ -1,6 +1,6 @@
 import "server-only";
 import { fetchChainOrdersAdmin, fetchChainOrdersAdminWithCursor, type ChainOrder } from "./chain-admin";
-import { addOrder, getOrderById, updateOrder } from "../admin/admin-store";
+import { addOrder, getOrderById, updateOrder, processReferralReward } from "../admin/admin-store";
 import type { AdminOrder } from "../admin/admin-types";
 import { isValidSuiAddress, normalizeSuiAddress } from "@mysten/sui/utils";
 import {
@@ -129,7 +129,13 @@ export async function upsertChainOrder(chain: ChainOrder) {
       patch.serviceFee = serviceFee;
       patch.deposit = deposit;
     }
-    return updateOrder(orderId, patch);
+    const updated = await updateOrder(orderId, patch);
+    if (updated && updated.stage === "已完成" && existing.stage !== "已完成") {
+      try {
+        await processReferralReward(orderId, chain.user, amount);
+      } catch { /* non-critical */ }
+    }
+    return updated;
   }
 
   if (companionAddress === null) {

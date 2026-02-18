@@ -362,3 +362,30 @@ model MantouWithdrawRequest {
   @@index([status])
   @@index([createdAt])
 }
+
+model Referral {
+  id              String    @id
+  inviterAddress  String
+  inviteeAddress  String    @unique
+  status          String
+  rewardInviter   Int?
+  rewardInvitee   Int?
+  triggerOrderId  String?
+  createdAt       DateTime
+  rewardedAt      DateTime?
+
+  @@index([inviterAddress])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model ReferralConfig {
+  id              String    @id @default("default")
+  mode            String    @default("fixed")
+  fixedInviter    Int       @default(50)
+  fixedInvitee    Int       @default(30)
+  percentInviter  Float     @default(0.05)
+  percentInvitee  Float     @default(0.03)
+  enabled         Boolean   @default(true)
+  updatedAt       DateTime?
+}

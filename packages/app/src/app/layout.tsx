@@ -7,6 +7,7 @@ import { BalanceProvider } from "./components/balance-provider";
 import { MantouProvider } from "./components/mantou-provider";
 import AnalyticsProvider from "./components/analytics-provider";
 import SeniorModeProvider from "./components/senior-mode";
+import { RefBinder } from "./components/ref-binder";
 import { Suspense } from "react";
 import { getServerLocale } from "@/lib/i18n/i18n";
 import { cookies } from "next/headers";
@@ -80,6 +81,7 @@ export default async function RootLayout({
         <FetchThrottle />
         <RegisterPWA />
         <PwaUpdateToast />
+        <RefBinder />
         <BalanceProvider>
           <MantouProvider>{children}</MantouProvider>
         </BalanceProvider>

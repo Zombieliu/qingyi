@@ -282,6 +282,42 @@ export interface MantouWithdrawRequest {
   updatedAt?: number;
 }
 
+export type ReferralStatus = "pending" | "rewarded";
+export type ReferralConfigMode = "fixed" | "percent";
+
+export interface Referral {
+  id: string;
+  inviterAddress: string;
+  inviteeAddress: string;
+  status: ReferralStatus;
+  rewardInviter?: number;
+  rewardInvitee?: number;
+  triggerOrderId?: string;
+  createdAt: number;
+  rewardedAt?: number;
+}
+
+export interface ReferralConfig {
+  id: string;
+  mode: ReferralConfigMode;
+  fixedInviter: number;
+  fixedInvitee: number;
+  percentInviter: number;
+  percentInvitee: number;
+  enabled: boolean;
+  updatedAt?: number;
+}
+
+export type LeaderboardType = "spend" | "companion" | "referral";
+export type LeaderboardPeriod = "all" | "week" | "month";
+
+export interface LeaderboardEntry {
+  rank: number;
+  address: string;
+  value: number;
+  extra?: number;
+}
+
 export interface AdminStore {
   orders: AdminOrder[];
   players: AdminPlayer[];

@@ -1,5 +1,5 @@
 "use client";
-import { Diamond, Gamepad2, Phone, ShieldCheck, User, Settings } from "lucide-react";
+import { Diamond, Gamepad2, Gift, Phone, ShieldCheck, User, Settings } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { PASSKEY_STORAGE_KEY } from "@/app/components/passkey-wallet";
@@ -17,6 +17,7 @@ const grid = [
   { label: "待确认", icon: ShieldCheck, color: "#f59e0b", href: "/me/orders?filter=pending-confirm" },
   { label: "开发票", icon: Phone, color: "#22c55e", href: "/me/invoice" },
   { label: "成为陪练", icon: User, color: "#d946ef", href: "/me/guardian" },
+  { label: "邀请返利", icon: Gift, color: "#ec4899", href: "/me/referral" },
   // 其他功能暂时隐藏
 ];
 
