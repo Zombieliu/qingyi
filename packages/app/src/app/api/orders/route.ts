@@ -1,6 +1,13 @@
 import { NextResponse } from "next/server";
 import crypto from "crypto";
-import { addOrder, hasOrdersForAddress, isApprovedGuardianAddress, queryOrders, queryPublicOrdersCursor } from "@/lib/admin-store";
+import {
+  addOrder,
+  getPlayerById,
+  hasOrdersForAddress,
+  isApprovedGuardianAddress,
+  queryOrders,
+  queryPublicOrdersCursor,
+} from "@/lib/admin-store";
 import { requireAdmin } from "@/lib/admin-auth";
 import { isValidSuiAddress, normalizeSuiAddress } from "@mysten/sui/utils";
 import { requireUserAuth } from "@/lib/user-auth";
@@ -24,6 +31,37 @@ function getClientIp(req: Request): string {
 async function enforceRateLimit(req: Request, limit: number, windowMs: number) {
   const key = `orders:${req.method}:${getClientIp(req)}`;
   return rateLimit(key, limit, windowMs);
+}
+
+type WecomMention =
+  | { type: "all"; tag: string }
+  | { type: "user"; tag: string }
+  | { type: "mobile"; mobile: string }
+  | { type: "none" };
+
+function isMobileNumber(value: string) {
+  return /^1\d{10}$/.test(value);
+}
+
+async function resolveWecomMention(meta?: Record<string, unknown>) {
+  const requestedPlayerId =
+    typeof meta?.requestedPlayerId === "string" ? meta.requestedPlayerId.trim() : "";
+  if (!requestedPlayerId) {
+    return { mention: { type: "all", tag: "<@all>" } as WecomMention };
+  }
+  const player = await getPlayerById(requestedPlayerId);
+  const contact = (player?.contact || "").trim();
+  if (!contact) {
+    return {
+      mention: { type: "all", tag: "<@all>" } as WecomMention,
+      fallbackAll: true,
+      playerName: player?.name,
+    };
+  }
+  if (isMobileNumber(contact)) {
+    return { mention: { type: "mobile", mobile: contact } as WecomMention, playerName: player?.name };
+  }
+  return { mention: { type: "user", tag: `<@${contact}>` } as WecomMention, playerName: player?.name };
 }
 
 interface OrderPayload {
@@ -277,15 +315,51 @@ export async function POST(req: Request) {
   let error: string | undefined;
 
   if (webhook) {
-    const markdown = buildMarkdown({ user, item, amount, currency, status, orderId, note });
+    const requestedNameRaw =
+      typeof meta?.requestedPlayerName === "string" ? meta.requestedPlayerName.trim() : "";
+    const resolved = await resolveWecomMention(meta);
+    const requestedName = resolved.playerName || requestedNameRaw || "";
+    const markdown = buildMarkdown({
+      user,
+      item,
+      amount,
+      currency,
+      status,
+      orderId,
+      note,
+      mentionTag: resolved.mention.type === "all" || resolved.mention.type === "user" ? resolved.mention.tag : "",
+      requestedPlayer: requestedName,
+      fallbackAll: resolved.fallbackAll,
+    });
+    const text = buildText({
+      user,
+      item,
+      amount,
+      currency,
+      status,
+      orderId,
+      note,
+      requestedPlayer: requestedName,
+      fallbackAll: resolved.fallbackAll,
+    });
     try {
+      const body =
+        resolved.mention.type === "mobile"
+          ? {
+              msgtype: "text",
+              text: {
+                content: text,
+                mentioned_mobile_list: [resolved.mention.mobile],
+              },
+            }
+          : {
+              msgtype: "markdown",
+              markdown: { content: markdown },
+            };
       const res = await fetch(`${webhook}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          msgtype: "markdown",
-          markdown: { content: markdown },
-        }),
+        body: JSON.stringify(body),
       });
       sent = res.ok;
       if (!res.ok) {
@@ -309,6 +383,9 @@ function buildMarkdown({
   status,
   orderId,
   note,
+  mentionTag,
+  requestedPlayer,
+  fallbackAll,
 }: {
   user: string;
   item: string;
@@ -317,6 +394,9 @@ function buildMarkdown({
   status: string;
   orderId: string;
   note?: string;
+  mentionTag?: string;
+  requestedPlayer?: string;
+  fallbackAll?: boolean;
 }) {
   const priceLine = currency === "CNY" ? `¥${amount}` : `${amount} ${currency}`;
   const now = new Intl.DateTimeFormat("zh-CN", {
@@ -328,17 +408,64 @@ function buildMarkdown({
   }).format(Date.now());
 
   const noteLine = note ? `> 备注：${note}\n` : "";
+  const mentionLine = mentionTag ? `${mentionTag}\n` : "";
+  const playerLine = requestedPlayer ? `> 指定打手：${requestedPlayer}${fallbackAll ? "（未配置企微ID，已@全部）" : ""}\n` : "";
 
   return [
+    mentionLine,
     `🛒 <font color="info">新订单</font>`,
     `> 用户：${user}`,
     `> 商品：${item}`,
     `> 金额：${priceLine}`,
     `> 状态：${status}`,
+    playerLine,
     noteLine,
     `> 时间：${now}`,
     `> 订单号：${orderId}`,
   ]
     .filter(Boolean)
     .join("\n");
+}
+
+function buildText({
+  user,
+  item,
+  amount,
+  currency,
+  status,
+  orderId,
+  note,
+  requestedPlayer,
+  fallbackAll,
+}: {
+  user: string;
+  item: string;
+  amount: number;
+  currency: string;
+  status: string;
+  orderId: string;
+  note?: string;
+  requestedPlayer?: string;
+  fallbackAll?: boolean;
+}) {
+  const priceLine = currency === "CNY" ? `¥${amount}` : `${amount} ${currency}`;
+  const now = new Intl.DateTimeFormat("zh-CN", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(Date.now());
+  const lines = [
+    "新订单提醒",
+    `用户：${user}`,
+    `商品：${item}`,
+    `金额：${priceLine}`,
+    `状态：${status}`,
+    requestedPlayer ? `指定打手：${requestedPlayer}${fallbackAll ? "（未配置企微ID，已@全部）" : ""}` : "",
+    note ? `备注：${note}` : "",
+    `时间：${now}`,
+    `订单号：${orderId}`,
+  ];
+  return lines.filter(Boolean).join("\n");
 }

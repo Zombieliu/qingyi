@@ -42,12 +42,18 @@ export default function PlayersPage() {
     }
   };
 
+  const isMobileNumber = (value: string) => /^1\d{10}$/.test(value);
+
   const formatAddressError = (error?: string) => {
     switch (error) {
       case "address_required":
         return "请填写钱包地址";
+      case "contact_required":
+        return "请填写手机号";
       case "invalid_address":
         return "钱包地址格式不正确";
+      case "invalid_contact":
+        return "手机号格式不正确";
       case "address_in_use":
         return "钱包地址已绑定其他打手";
       default:
@@ -97,6 +103,15 @@ export default function PlayersPage() {
       setFormHint("请填写打手名称");
       return;
     }
+    const contactValue = form.contact.trim();
+    if (!contactValue) {
+      setFormHint("请填写手机号");
+      return;
+    }
+    if (contactValue && !isMobileNumber(contactValue)) {
+      setFormHint("手机号格式不正确");
+      return;
+    }
     const addressParsed = parseAddress(form.address);
     if (addressParsed.state !== "valid") {
       setFormHint(addressParsed.state === "missing" ? "请填写钱包地址" : "钱包地址格式不正确");
@@ -108,7 +123,7 @@ export default function PlayersPage() {
         body: JSON.stringify({
           name: form.name.trim(),
           role: form.role.trim(),
-          contact: form.contact.trim(),
+          contact: contactValue,
           address: addressParsed.normalized,
           depositBase: form.depositBase ? Number(form.depositBase) : undefined,
           depositLocked: form.depositLocked ? Number(form.depositLocked) : undefined,
@@ -139,12 +154,25 @@ export default function PlayersPage() {
 
   const updatePlayer = async (playerId: string, patch: Partial<AdminPlayer>) => {
     if (!canEdit) return;
+    const nextPatch = { ...patch };
+    if (typeof nextPatch.contact === "string") {
+      const trimmed = nextPatch.contact.trim();
+      if (!trimmed) {
+        alert("手机号不能为空");
+        return;
+      }
+      if (trimmed && !isMobileNumber(trimmed)) {
+        alert("手机号格式不正确");
+        return;
+      }
+      nextPatch.contact = trimmed;
+    }
     setSaving((prev) => ({ ...prev, [playerId]: true }));
     try {
       const res = await fetch(`/api/admin/players/${playerId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(patch),
+        body: JSON.stringify(nextPatch),
       });
       if (res.ok) {
         await res.json();
@@ -242,10 +270,10 @@ export default function PlayersPage() {
                 />
               </label>
               <label className="admin-field">
-                联系方式
+                手机号（必填）
                 <input
                   className="admin-input"
-                  placeholder="微信 / QQ"
+                  placeholder="11位手机号"
                   value={form.contact}
                   onChange={(event) => setForm((prev) => ({ ...prev, contact: event.target.value }))}
                 />
@@ -436,6 +464,7 @@ export default function PlayersPage() {
                       <input
                         className="admin-input"
                         value={player.contact || ""}
+                        placeholder="11位手机号"
                         readOnly={!canEdit}
                         onChange={(event) =>
                           setPlayers((prev) =>

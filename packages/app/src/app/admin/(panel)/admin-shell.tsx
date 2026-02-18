@@ -22,6 +22,7 @@ import {
   FileText,
   CreditCard,
   TrendingUp,
+  BarChart3,
 } from "lucide-react";
 import { useI18n } from "@/lib/i18n-client";
 import AutoTranslate from "@/app/components/auto-translate";
@@ -106,6 +107,7 @@ const navItems: NavItem[] = [
   { href: "/admin/guardians", label: "护航申请", icon: UserCheck, minRole: "ops" },
   { href: "/admin/announcements", label: "公告资讯", icon: Megaphone, minRole: "viewer" },
   { href: "/admin/analytics", label: "增长数据", icon: TrendingUp, minRole: "admin" },
+  { href: "/admin/earnings", label: "完单收益", icon: BarChart3, minRole: "finance" },
   { href: "/admin/ledger", label: "记账中心", icon: Wallet, minRole: "finance" },
   { href: "/admin/mantou", label: "馒头提现", icon: Wallet, minRole: "finance" },
   { href: "/admin/invoices", label: "发票申请", icon: FileCheck, minRole: "finance" },
@@ -132,7 +134,7 @@ const navSections: Array<{ label: string; items: string[] }> = [
   },
   {
     label: "财务结算",
-    items: ["/admin/ledger", "/admin/mantou", "/admin/invoices", "/admin/chain", "/admin/payments"],
+    items: ["/admin/earnings", "/admin/ledger", "/admin/mantou", "/admin/invoices", "/admin/chain", "/admin/payments"],
   },
   { label: "系统", items: ["/admin/tokens", "/admin/audit"] },
 ];
@@ -149,6 +151,7 @@ const subtitles: Record<string, string> = {
   "/admin/guardians": "护航申请审核与入库",
   "/admin/announcements": "公告与资讯统一发布",
   "/admin/analytics": "访问与转化漏斗监控",
+  "/admin/earnings": "打手完单与平台撮合费汇总",
   "/admin/ledger": "充值记账与凭证管理",
   "/admin/mantou": "打手馒头提现审核",
   "/admin/invoices": "开票申请与处理",

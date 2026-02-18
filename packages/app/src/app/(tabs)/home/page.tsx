@@ -1,105 +1,32 @@
-import Image from "next/image";
-import { Heart, MoreHorizontal, Search, Verified } from "lucide-react";
-import OrderButton from "@/app/components/order-button";
-import { MotionCard, Stagger, StaggerItem } from "@/components/ui/motion";
+import { listPlayersPublic, listPublicAnnouncements } from "@/lib/admin-store";
+import HomeContent from "./home-content";
 
-const tabs = ["达人"];
-const subTabs = ["推荐"];
+export const dynamic = "force-dynamic";
 
-const creators = [
-  {
-    name: "QY-羊杂",
-    tags: ["魔王", "双子星"],
-    desc: "护航之王",
-    price: "1330钻石",
-    status: "空闲",
-    orders: "14人付款",
-    avatar: "/killer/yangza.jpg",
-    verified: true,
-  },
-  {
-    name: "QY-勇士",
-    tags: ["子龙", "双子星"],
-    desc: "实力护航",
-    price: "1330钻石",
-    amount: 1330,
-    status: "空闲",
-    orders: "5人付款",
-    avatar: "/killer/yongshi.jpg",
-    verified: true,
-  },
+const fallbackNews = [
+  { id: "guide", title: "新手下单指南", tag: "指南" },
+  { id: "safety", title: "护航服务保障说明", tag: "安全" },
+  { id: "event", title: "本周福利与活动", tag: "活动" },
 ];
 
-export default function Home() {
-  return (
-    <div className="lc-screen">
-      <header className="lc-topbar">
-        <span className="lc-time">08:18</span>
-        <span className="lc-title">情谊俱乐部</span>
-        <MoreHorizontal className="text-slate-500" size={18} />
-      </header>
+export default async function Home() {
+  const players = await listPlayersPublic();
+  const announcements = await listPublicAnnouncements();
+  const availablePlayers = players
+    .filter((player) => {
+      if (player.status !== "可接单") return false;
+      const base = player.depositBase ?? 0;
+      const locked = player.depositLocked ?? 0;
+      return base <= 0 || locked >= base;
+    })
+    .map((player) => ({
+      id: player.id,
+      name: player.name,
+      role: player.role,
+    }));
+  const news = announcements.length
+    ? announcements.slice(0, 3).map((item) => ({ id: item.id, title: item.title, tag: item.tag }))
+    : fallbackNews;
 
-      <div className="lc-search">
-        <Search size={16} />
-        <span className="text-sm text-slate-500">请输入搜索关键词</span>
-      </div>
-
-      <div className="lc-banner">
-        <div className="lc-banner-img" />
-      </div>
-
-      <div className="lc-tabs">
-        {tabs.map((t) => (
-          <button key={t} className={`lc-tab-btn ${t === "达人" ? "is-active" : ""}`}>
-            {t}
-          </button>
-        ))}
-      </div>
-
-      <div className="lc-subtabs">
-        {subTabs.map((t) => (
-          <button key={t} className={`lc-subtab ${t === "推荐" ? "is-active" : ""}`}>
-            {t}
-          </button>
-        ))}
-      </div>
-
-      <Stagger className="lc-list">
-        {creators.map((c) => (
-          <StaggerItem key={c.name}>
-            <MotionCard className="lc-card">
-              <div className="lc-avatar-wrap">
-                <Image src={c.avatar} alt={c.name} fill sizes="64px" className="lc-avatar" />
-              </div>
-              <div className="lc-card-body">
-                <div className="lc-row">
-                  <div className="lc-name">
-                    {c.name}
-                    {c.verified && <Verified size={14} className="text-amber-500" />}
-                  </div>
-                  <span className="lc-status">{c.status}</span>
-                </div>
-                <div className="lc-tags">
-                  {c.tags.map((t) => (
-                    <span key={t} className="lc-tag">
-                      {t}
-                    </span>
-                  ))}
-                </div>
-                <div className="lc-desc">{c.desc}</div>
-                <div className="lc-footer">
-                  <div className="lc-price">{c.price}</div>
-                  <div className="lc-meta">
-                    <Heart size={14} className="text-rose-400" />
-                    <span>{c.orders}</span>
-                  </div>
-                </div>
-              </div>
-              <OrderButton user={c.name} item={c.desc || c.name} amount={c.amount ?? 1330} />
-            </MotionCard>
-          </StaggerItem>
-        ))}
-      </Stagger>
-    </div>
-  );
+  return <HomeContent players={availablePlayers} news={news} />;
 }

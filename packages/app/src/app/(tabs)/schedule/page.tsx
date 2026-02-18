@@ -1,5 +1,6 @@
 "use client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Clock3, ShieldCheck, QrCode, Loader2, CheckCircle2 } from "lucide-react";
 import { type LocalOrder } from "@/app/components/order-store";
 import {
@@ -249,6 +250,11 @@ export default function Schedule() {
   const [promptBusy, setPromptBusy] = useState(false);
   const [userAddress, setUserAddress] = useState(() => getCurrentAddress());
   const cacheTtlMs = 60_000;
+  const searchParams = useSearchParams();
+  const requestedPlayerId = searchParams?.get("playerId")?.trim() || "";
+  const requestedPlayerName = searchParams?.get("playerName")?.trim() || "";
+  const [prefillApplied, setPrefillApplied] = useState(false);
+  const [prefillHint, setPrefillHint] = useState<string | null>(null);
 
   const MATCH_RATE = 0.15;
 
@@ -457,6 +463,28 @@ export default function Schedule() {
   useEffect(() => {
     loadPlayers();
   }, []);
+
+  useEffect(() => {
+    if (!requestedPlayerId || prefillApplied) return;
+    if (playersLoading) return;
+    if (players.length === 0) return;
+    const match = players.find((player) => player.id === requestedPlayerId);
+    if (match) {
+      setSelectedPlayerId(match.id);
+      setActive(PLAYER_SECTION_TITLE);
+      setTimeout(() => {
+        sectionRefs.current[PLAYER_SECTION_TITLE]?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 0);
+      setPrefillHint(null);
+    } else {
+      setPrefillHint(
+        requestedPlayerName
+          ? `指定打手「${requestedPlayerName}」当前不可接，已切换为系统匹配`
+          : "指定打手当前不可接，已切换为系统匹配"
+      );
+    }
+    setPrefillApplied(true);
+  }, [players, playersLoading, prefillApplied, requestedPlayerId, requestedPlayerName]);
 
   const toggle = (name: string) => setChecked((p) => ({ ...p, [name]: !p[name] }));
   const pickedNames = Object.entries(checked)
@@ -1688,12 +1716,16 @@ export default function Schedule() {
                     <div
                       key={player.id}
                       className="ride-row"
-                      onClick={() => setSelectedPlayerId(player.id)}
+                      onClick={() => {
+                        setSelectedPlayerId(player.id);
+                        setPrefillHint(null);
+                      }}
                       role="button"
                       tabIndex={0}
                       onKeyDown={(event) => {
                         if (event.key === "Enter" || event.key === " ") {
                           setSelectedPlayerId(player.id);
+                          setPrefillHint(null);
                         }
                       }}
                     >
@@ -1707,7 +1739,10 @@ export default function Schedule() {
                             type="radio"
                             name="selected-player"
                             checked={selectedPlayerId === player.id}
-                            onChange={() => setSelectedPlayerId(player.id)}
+                            onChange={() => {
+                              setSelectedPlayerId(player.id);
+                              setPrefillHint(null);
+                            }}
                           />
                           <span className="ride-checkbox-box" />
                         </label>
@@ -1720,7 +1755,7 @@ export default function Schedule() {
                 )}
               </div>
               <div className="px-4 pb-2 text-[11px] text-slate-400">
-                未选择将由系统匹配打手
+                {prefillHint || "未选择将由系统匹配打手"}
               </div>
             </div>
             {sections.map((section) => (

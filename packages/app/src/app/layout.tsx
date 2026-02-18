@@ -6,6 +6,7 @@ import FetchThrottle from "./components/fetch-throttle";
 import { BalanceProvider } from "./components/balance-provider";
 import { MantouProvider } from "./components/mantou-provider";
 import AnalyticsProvider from "./components/analytics-provider";
+import SeniorModeProvider from "./components/senior-mode";
 import { Suspense } from "react";
 import { getServerLocale } from "@/lib/i18n";
 import "./globals.css";
@@ -69,6 +70,7 @@ export default async function RootLayout({
         <Suspense fallback={null}>
           <AnalyticsProvider />
         </Suspense>
+        <SeniorModeProvider />
         <FetchThrottle />
         <RegisterPWA />
         <PwaUpdateToast />

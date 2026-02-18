@@ -183,7 +183,7 @@ try {
 
           const player = await postJson(
             "/api/admin/players",
-            { name: "Flow Test Player", status: "可接单", address: resolvePlayerAddress() },
+            { name: "Flow Test Player", status: "可接单", address: resolvePlayerAddress(), contact: "13900000000" },
             cookie
           );
           if (player.ok && player.json?.id) {

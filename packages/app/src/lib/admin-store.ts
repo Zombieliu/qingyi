@@ -868,9 +868,30 @@ export async function updateOrder(orderId: string, patch: Partial<AdminOrder>) {
       where: { id: orderId },
       data,
     });
-    return mapOrder(row);
+    const mapped = mapOrder(row);
+    await maybeCreditMantouForCompletedOrder(mapped);
+    return mapped;
   } catch {
     return null;
+  }
+}
+
+async function maybeCreditMantouForCompletedOrder(order: AdminOrder) {
+  if (order.stage !== "已完成") return;
+  const address = (order.companionAddress || "").trim();
+  if (!address) return;
+  const meta = (order.meta || {}) as Record<string, unknown>;
+  const diamondCharge = Number(meta.diamondCharge ?? 0);
+  if (!Number.isFinite(diamondCharge) || diamondCharge <= 0) return;
+  try {
+    await creditMantou({
+      address,
+      amount: Math.floor(diamondCharge),
+      orderId: order.id,
+      note: `来自订单 ${order.id} 的钻石兑换`,
+    });
+  } catch {
+    // Ignore auto-credit failures to avoid blocking order updates.
   }
 }
 
@@ -986,6 +1007,77 @@ export async function listPlayers() {
       availableCredit: available,
     };
   });
+}
+
+export async function getPlayerById(playerId: string) {
+  if (!playerId) return null;
+  const row = await prisma.adminPlayer.findUnique({ where: { id: playerId } });
+  return row ? mapPlayer(row) : null;
+}
+
+export async function getCompanionEarnings(params?: { from?: number; to?: number; limit?: number }) {
+  const where: Prisma.AdminOrderWhereInput = {
+    stage: "已完成",
+    companionAddress: { not: null },
+  };
+  if (params?.from || params?.to) {
+    where.createdAt = {};
+    if (params.from) (where.createdAt as Prisma.DateTimeFilter).gte = new Date(params.from);
+    if (params.to) (where.createdAt as Prisma.DateTimeFilter).lte = new Date(params.to);
+  }
+  const limit = Math.min(200, Math.max(5, params?.limit ?? 50));
+  const [grouped, totals] = await Promise.all([
+    prisma.adminOrder.groupBy({
+      by: ["companionAddress"],
+      where,
+      _count: { id: true },
+      _sum: { amount: true, serviceFee: true },
+      _max: { createdAt: true },
+      orderBy: {
+        _sum: { serviceFee: "desc" },
+      },
+      take: limit,
+    }),
+    prisma.adminOrder.aggregate({
+      where,
+      _count: { id: true },
+      _sum: { amount: true, serviceFee: true },
+    }),
+  ]);
+
+  const addresses = grouped
+    .map((row) => (row.companionAddress || "").trim())
+    .filter(Boolean);
+  const playerRows = addresses.length
+    ? await prisma.adminPlayer.findMany({
+        where: { address: { in: addresses } },
+        select: { address: true, name: true },
+      })
+    : [];
+  const playerNameMap = new Map(
+    playerRows.map((row) => [normalizePlayerAddress(row.address || ""), row.name])
+  );
+
+  const items = grouped.map((row) => {
+    const address = (row.companionAddress || "").trim();
+    return {
+      companionAddress: address,
+      companionName: playerNameMap.get(normalizePlayerAddress(address)),
+      orderCount: row._count.id ?? 0,
+      totalAmount: Number(row._sum.amount ?? 0),
+      totalServiceFee: Number(row._sum.serviceFee ?? 0),
+      lastCompletedAt: row._max.createdAt ? row._max.createdAt.getTime() : null,
+    };
+  });
+
+  return {
+    totals: {
+      orderCount: totals._count.id ?? 0,
+      totalAmount: Number(totals._sum.amount ?? 0),
+      totalServiceFee: Number(totals._sum.serviceFee ?? 0),
+    },
+    items,
+  };
 }
 
 export async function listPlayersPublic() {

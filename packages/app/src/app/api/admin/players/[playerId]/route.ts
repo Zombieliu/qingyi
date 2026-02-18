@@ -17,6 +17,10 @@ function normalizePlayerAddress(raw?: string | null) {
   }
 }
 
+function isMobileNumber(value: string) {
+  return /^1\d{10}$/.test(value);
+}
+
 type RouteContext = {
   params: Promise<{ playerId: string }>;
 };
@@ -43,7 +47,16 @@ export async function PATCH(
   const patch: Partial<AdminPlayer> = {};
   if (typeof body.name === "string") patch.name = body.name;
   if (typeof body.role === "string") patch.role = body.role;
-  if (typeof body.contact === "string") patch.contact = body.contact;
+  if (typeof body.contact === "string") {
+    const contact = body.contact.trim();
+    if (!contact) {
+      return NextResponse.json({ error: "contact_required" }, { status: 400 });
+    }
+    if (!isMobileNumber(contact)) {
+      return NextResponse.json({ error: "invalid_contact" }, { status: 400 });
+    }
+    patch.contact = contact;
+  }
   if (typeof body.address === "string") {
     const rawAddress = body.address.trim();
     if (!rawAddress) {

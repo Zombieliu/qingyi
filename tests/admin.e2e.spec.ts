@@ -298,10 +298,12 @@ test.describe("admin suite", () => {
   test("orders list and detail", async ({ page, request }) => {
     const orderId = `E2E-ORDER-${Date.now()}`;
     const playerName = `E2E-OPS-${Date.now()}`;
+    const playerContact = `1${String(Date.now()).slice(-10)}`;
     const playerAddress = `0x${crypto.randomBytes(32).toString("hex")}`;
     const playerRes = await request.post("/api/admin/players", {
       data: {
         name: playerName,
+        contact: playerContact,
         status: "可接单",
         address: playerAddress,
         depositBase: 2000,
@@ -380,9 +382,16 @@ test.describe("admin suite", () => {
 
   test("players and announcements", async ({ page, request }) => {
     const playerName = `E2E玩家-${Date.now()}`;
+    const playerContact = `1${String(Date.now()).slice(-10)}`;
     const playerAddress = `0x${crypto.randomBytes(32).toString("hex")}`;
     const createPlayerRes = await request.post("/api/admin/players", {
-      data: { name: playerName, address: playerAddress, status: "可接单", creditMultiplier: 1 },
+      data: {
+        name: playerName,
+        contact: playerContact,
+        address: playerAddress,
+        status: "可接单",
+        creditMultiplier: 1,
+      },
       headers: adminHeaders,
     });
     if (!createPlayerRes.ok()) {

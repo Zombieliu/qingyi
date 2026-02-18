@@ -6,6 +6,10 @@ import { recordAudit } from "@/lib/admin-audit";
 import type { AdminPlayer, PlayerStatus } from "@/lib/admin-types";
 import { isValidSuiAddress, normalizeSuiAddress } from "@mysten/sui/utils";
 
+function isMobileNumber(value: string) {
+  return /^1\d{10}$/.test(value);
+}
+
 function normalizePlayerAddress(raw?: string | null) {
   const trimmed = (raw || "").trim();
   if (!trimmed) return "";
@@ -40,6 +44,14 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "name required" }, { status: 400 });
   }
 
+  const contact = typeof body.contact === "string" ? body.contact.trim() : "";
+  if (!contact) {
+    return NextResponse.json({ error: "contact_required" }, { status: 400 });
+  }
+  if (!isMobileNumber(contact)) {
+    return NextResponse.json({ error: "invalid_contact" }, { status: 400 });
+  }
+
   const rawAddress = typeof body.address === "string" ? body.address.trim() : "";
   if (!rawAddress) {
     return NextResponse.json({ error: "address_required" }, { status: 400 });
@@ -57,7 +69,7 @@ export async function POST(req: Request) {
     id: body.id || `PLY-${Date.now()}-${crypto.randomInt(1000, 9999)}`,
     name: body.name,
     role: body.role,
-    contact: body.contact,
+    contact,
     address: normalizedAddress,
     wechatQr: body.wechatQr,
     alipayQr: body.alipayQr,
