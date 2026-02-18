@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { autoFinalizeChainOrdersSummary } from "@/lib/chain-auto-finalize";
+import { autoFinalizeChainOrdersSummary } from "@/lib/chain/chain-auto-finalize";
 import { acquireCronLock } from "@/lib/cron-lock";
 
 const CRON_LOCK_TTL_MS = Number(process.env.CRON_LOCK_TTL_MS || "600000");

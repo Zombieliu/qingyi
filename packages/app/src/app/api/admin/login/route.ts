@@ -5,9 +5,9 @@ import {
   enforceAdminIpAllowlist,
   enforceLoginRateLimit,
   getAdminRoleForToken,
-} from "@/lib/admin-auth";
-import { touchAccessTokenByHash } from "@/lib/admin-store";
-import { recordAudit } from "@/lib/admin-audit";
+} from "@/lib/admin/admin-auth";
+import { touchAccessTokenByHash } from "@/lib/admin/admin-store";
+import { recordAudit } from "@/lib/admin/admin-audit";
 
 export async function POST(req: Request) {
   if (!(await enforceLoginRateLimit(req))) {

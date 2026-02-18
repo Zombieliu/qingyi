@@ -96,8 +96,8 @@ const NAV_ITEMS: Array<{ href: string; label: string; minRole: AdminRole }> = [
   { href: "/admin/support", label: "客服工单", minRole: "ops" },
   { href: "/admin/coupons", label: "优惠卡券", minRole: "ops" },
   { href: "/admin/vip", label: "会员管理", minRole: "ops" },
-  { href: "/admin/players", label: "打手管理", minRole: "viewer" },
-  { href: "/admin/guardians", label: "护航申请", minRole: "ops" },
+  { href: "/admin/players", label: "陪练管理", minRole: "viewer" },
+  { href: "/admin/guardians", label: "陪练申请", minRole: "ops" },
   { href: "/admin/announcements", label: "公告资讯", minRole: "viewer" },
   { href: "/admin/analytics", label: "增长数据", minRole: "admin" },
   { href: "/admin/ledger", label: "记账中心", minRole: "finance" },
@@ -261,8 +261,8 @@ async function expectViewerReadOnly(page: any) {
   await expect(page.getByRole("heading", { name: "订单筛选" })).toBeVisible();
   await expect(page.locator(".admin-badge", { hasText: "只读权限" }).first()).toBeVisible();
   await page.goto("/admin/players");
-  await expect(page.getByRole("heading", { name: "打手列表" })).toBeVisible();
-  await expect(page.getByText("当前账号无法新增或编辑打手")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "陪练列表" })).toBeVisible();
+  await expect(page.getByText("当前账号无法新增或编辑陪练")).toBeVisible();
   await page.goto("/admin/announcements");
   await expect(page.getByRole("heading", { name: "公告列表" })).toBeVisible();
   await expect(page.getByText("当前账号无法编辑公告内容")).toBeVisible();
@@ -340,7 +340,7 @@ test.describe("admin suite", () => {
     await expect(row).toBeVisible();
     const note = "Playwright admin E2E note";
 
-    const assignSelect = row.getByRole("combobox", { name: "打手/客服" });
+    const assignSelect = row.getByRole("combobox", { name: "陪练/客服" });
     await expect(assignSelect).toBeEnabled();
     const currentAssign = await assignSelect.inputValue();
     if (currentAssign && currentAssign !== playerId) {
@@ -395,18 +395,18 @@ test.describe("admin suite", () => {
     });
     if (!createPlayerRes.ok()) {
       const payload = await createPlayerRes.json().catch(() => ({}));
-      throw new Error(`创建打手失败: ${createPlayerRes.status()} ${JSON.stringify(payload)}`);
+      throw new Error(`创建陪练失败: ${createPlayerRes.status()} ${JSON.stringify(payload)}`);
     }
     const playerPayload = await createPlayerRes.json().catch(() => ({}));
     const playerId = typeof playerPayload?.id === "string" ? playerPayload.id : "";
     if (!playerId) {
-      throw new Error("创建打手失败: 返回缺少 ID");
+      throw new Error("创建陪练失败: 返回缺少 ID");
     }
 
     const loadPlayersRes = waitForAdminResponse(page, "/api/admin/players", "GET");
     await page.goto("/admin/players");
     await loadPlayersRes;
-    await expect(page.getByRole("heading", { name: "打手列表" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "陪练列表" })).toBeVisible();
 
     const playerRow = page.locator("tr", { hasText: playerName });
     await expect(playerRow).toBeVisible();
@@ -417,7 +417,7 @@ test.describe("admin suite", () => {
     const deleteResp = await deleteRes;
     if (!deleteResp.ok()) {
       const payload = await deleteResp.json().catch(() => ({}));
-      throw new Error(`删除打手失败: ${deleteResp.status()} ${JSON.stringify(payload)}`);
+      throw new Error(`删除陪练失败: ${deleteResp.status()} ${JSON.stringify(payload)}`);
     }
 
     const title = `E2E公告-${Date.now()}`;
@@ -530,18 +530,18 @@ test.describe("admin suite", () => {
     await expect(ticketRow).toBeVisible();
     await request.delete(`/api/admin/support/${ticket.id}`, { headers: adminHeaders });
 
-    const guardianName = `E2E护航-${Date.now()}`;
+    const guardianName = `E2E陪练-${Date.now()}`;
     const guardianRes = await request.post("/api/admin/guardians", {
       data: { user: guardianName, contact: "test-wechat", status: "待审核" },
       headers: adminHeaders,
     });
     if (!guardianRes.ok()) {
       const payload = await guardianRes.json().catch(() => ({}));
-      throw new Error(`创建护航失败: ${guardianRes.status()} ${JSON.stringify(payload)}`);
+      throw new Error(`创建陪练失败: ${guardianRes.status()} ${JSON.stringify(payload)}`);
     }
     const guardian = await guardianRes.json();
     await page.goto("/admin/guardians");
-    await expect(page.getByRole("heading", { name: "护航申请列表" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "陪练申请列表" })).toBeVisible();
     await page.getByPlaceholder("搜索姓名 / 游戏 / 联系方式").fill(guardianName);
     await page.waitForTimeout(400);
     await expect(page.getByText(guardianName)).toBeVisible();

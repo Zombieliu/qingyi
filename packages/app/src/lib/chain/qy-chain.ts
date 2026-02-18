@@ -3,7 +3,7 @@
 import { SuiClient, getFullnodeUrl, type EventId } from "@mysten/sui/client";
 import { bcs } from "@mysten/sui/bcs";
 import { Transaction, Inputs } from "@mysten/sui/transactions";
-import { fromBase64, isValidSuiAddress, normalizeSuiAddress, toBase64, toHex } from "@mysten/sui/utils";
+import { fromBase64, isValidSuiAddress, normalizeSuiAddress, toBase64, toHex } from "@mysten/su../utils";
 import {
   PasskeyKeypair,
   BrowserPasskeyProvider,
@@ -11,7 +11,7 @@ import {
 } from "@mysten/sui/keypairs/passkey";
 import { PASSKEY_STORAGE_KEY } from "@/app/components/passkey-wallet";
 import { DAPP_HUB_ID, DAPP_HUB_INITIAL_SHARED_VERSION, PACKAGE_ID } from "contracts/deployment";
-import { buildAuthMessage } from "./auth-message";
+import { buildAuthMessage } from "../auth/auth-message";
 
 type StoredWallet = {
   address: string;

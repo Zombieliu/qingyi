@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/admin-auth";
-import { resolveDisputeAdmin } from "@/lib/chain-admin";
-import { syncChainOrder } from "@/lib/chain-sync";
-import { recordAudit } from "@/lib/admin-audit";
+import { requireAdmin } from "@/lib/admin/admin-auth";
+import { resolveDisputeAdmin } from "@/lib/chain/chain-admin";
+import { syncChainOrder } from "@/lib/chain/chain-sync";
+import { recordAudit } from "@/lib/admin/admin-audit";
 
 export async function POST(req: Request) {
   const auth = await requireAdmin(req, { role: "finance" });

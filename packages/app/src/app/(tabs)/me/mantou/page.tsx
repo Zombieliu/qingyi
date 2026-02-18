@@ -3,14 +3,14 @@
 import Link from "next/link";
 import { ArrowLeft, Wallet } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { getCurrentAddress } from "@/lib/qy-chain";
+import { getCurrentAddress } from "@/lib/chain/qy-chain";
 import { useMantouBalance } from "@/app/components/mantou-provider";
 import { readCache, writeCache } from "@/app/components/client-cache";
 import { fetchWithUserAuth } from "@/app/components/user-auth-client";
 import { StateBlock } from "@/app/components/state-block";
 import { formatErrorMessage } from "@/app/components/error-utils";
 import { useGuardianStatus } from "@/app/components/guardian-role";
-import { PLAYER_STATUS_OPTIONS, type PlayerStatus } from "@/lib/admin-types";
+import { PLAYER_STATUS_OPTIONS, type PlayerStatus } from "@/lib/admin/admin-types";
 
 type WithdrawItem = {
   id: string;
@@ -97,7 +97,7 @@ export default function MantouPage() {
       }
       if (!isGuardian) {
         setPlayerStatus(null);
-        setStatusHint("未通过护航审核，暂不可设置状态");
+        setStatusHint("未绑定陪练档案，暂不可设置状态");
         return;
       }
       setStatusLoading(true);
@@ -107,9 +107,9 @@ export default function MantouPage() {
         if (!res.ok) {
           const data = await res.json().catch(() => ({}));
           if (res.status === 404) {
-            setStatusHint("未绑定打手档案，请联系运营");
+            setStatusHint("未绑定陪练档案，请联系运营");
           } else if (res.status === 403) {
-            setStatusHint("未通过护航审核，暂不可设置状态");
+            setStatusHint("无陪练权限，暂不可设置状态");
           } else {
             setStatusHint(data?.error || "状态加载失败");
           }
@@ -224,7 +224,7 @@ export default function MantouPage() {
             <ArrowLeft size={16} />
           </Link>
           <span className="dl-time-text">馒头提现</span>
-          <span className="dl-chip">打手专属</span>
+          <span className="dl-chip">陪练专属</span>
         </div>
         <div className="dl-actions">
           <span className="dl-icon-circle">
@@ -241,7 +241,7 @@ export default function MantouPage() {
 
       <section className="dl-card" style={{ padding: 16, marginTop: 12 }}>
         <div className="text-sm font-semibold text-gray-900">接单状态</div>
-        <div className="mt-2 text-xs text-slate-500">仅护航账号可设置接单状态</div>
+        <div className="mt-2 text-xs text-slate-500">仅陪练账号可设置接单状态</div>
         {guardianState === "checking" || statusLoading ? (
           <div className="mt-3">
             <StateBlock tone="loading" size="compact" title="状态加载中" />
@@ -252,7 +252,7 @@ export default function MantouPage() {
           </div>
         ) : !isGuardian ? (
           <div className="mt-3">
-            <StateBlock tone="warning" size="compact" title="未通过护航审核" description="通过审核后可设置状态" />
+            <StateBlock tone="warning" size="compact" title="未绑定陪练档案" description="请联系运营绑定陪练" />
           </div>
         ) : playerStatus ? (
           <div className="mt-3">
@@ -282,7 +282,7 @@ export default function MantouPage() {
               tone="warning"
               size="compact"
               title={statusHint || "暂无可用状态"}
-              description="请联系运营绑定打手档案"
+              description="请联系运营绑定陪练档案"
             />
           </div>
         )}
@@ -290,7 +290,7 @@ export default function MantouPage() {
 
       <section className="dl-card" style={{ padding: 16, marginTop: 12 }}>
         <div className="text-sm font-semibold text-gray-900">提现申请</div>
-        <div className="mt-2 text-xs text-slate-500">只限打手使用，1:1 转换自用户支付钻石。</div>
+        <div className="mt-2 text-xs text-slate-500">只限陪练使用，1:1 转换自用户支付钻石。</div>
         <div className="mt-4 grid gap-3">
           <div className="grid gap-2">
             <label className="text-xs text-slate-500">提现数量</label>

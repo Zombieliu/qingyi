@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/admin-auth";
-import { listChainOrdersForAdmin } from "@/lib/admin-store";
-import { fetchChainOrdersAdmin } from "@/lib/chain-admin";
-import { getAutoCancelConfig } from "@/lib/chain-auto-cancel";
+import { requireAdmin } from "@/lib/admin/admin-auth";
+import { listChainOrdersForAdmin } from "@/lib/admin/admin-store";
+import { fetchChainOrdersAdmin } from "@/lib/chain/chain-admin";
+import { getAutoCancelConfig } from "@/lib/chain/chain-auto-cancel";
 
 type LocalOrder = Awaited<ReturnType<typeof listChainOrdersForAdmin>>[number];
 

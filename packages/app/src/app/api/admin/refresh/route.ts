@@ -4,8 +4,8 @@ import {
   getAdminSessionTokenFromCookies,
   requireAdmin,
   rotateAdminSession,
-} from "@/lib/admin-auth";
-import { recordAudit } from "@/lib/admin-audit";
+} from "@/lib/admin/admin-auth";
+import { recordAudit } from "@/lib/admin/admin-audit";
 
 export async function POST(req: Request) {
   const auth = await requireAdmin(req, { role: "viewer" });

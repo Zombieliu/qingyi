@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/admin-auth";
-import { getOrderById, listPlayers, updateOrder } from "@/lib/admin-store";
-import { recordAudit } from "@/lib/admin-audit";
+import { requireAdmin } from "@/lib/admin/admin-auth";
+import { getOrderById, listPlayers, updateOrder } from "@/lib/admin/admin-store";
+import { recordAudit } from "@/lib/admin/admin-audit";
 import { canTransitionStage, isChainOrder } from "@/lib/order-guard";
-import type { AdminOrder, OrderStage } from "@/lib/admin-types";
+import type { AdminOrder, OrderStage } from "@/lib/admin/admin-types";
 
 type RouteContext = {
   params: Promise<{ orderId: string }>;
@@ -52,12 +52,12 @@ export async function PATCH(
     const matched = players.find((p) => p.id === patch.assignedTo || p.name === patch.assignedTo);
     if (matched) {
       if (matched.status !== "可接单") {
-        return NextResponse.json({ error: "打手当前不可接单" }, { status: 400 });
+        return NextResponse.json({ error: "陪练当前不可接单" }, { status: 400 });
       }
       const depositBase = matched.depositBase ?? 0;
       const depositLocked = matched.depositLocked ?? 0;
       if (depositBase > 0 && depositLocked < depositBase) {
-        return NextResponse.json({ error: "打手押金不足，无法派单" }, { status: 400 });
+        return NextResponse.json({ error: "陪练押金不足，无法派单" }, { status: 400 });
       }
       const available = matched.availableCredit ?? 0;
       if (current.amount > available) {

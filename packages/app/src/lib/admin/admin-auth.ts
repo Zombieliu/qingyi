@@ -11,7 +11,7 @@ import {
   touchAccessTokenByHash,
   updateSessionByHash,
 } from "./admin-store";
-import { rateLimit } from "./rate-limit";
+import { rateLimit } from "../rate-limit";
 import { isIpAllowed, normalizeClientIp } from "./admin-ip-utils";
 
 export const ADMIN_SESSION_COOKIE = "admin_session";

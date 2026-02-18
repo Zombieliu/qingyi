@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/admin-auth";
-import { findChainOrder, findChainOrderDirect } from "@/lib/chain-sync";
-import { getOrderById } from "@/lib/admin-store";
+import { requireAdmin } from "@/lib/admin/admin-auth";
+import { findChainOrder, findChainOrderDirect } from "@/lib/chain/chain-sync";
+import { getOrderById } from "@/lib/admin/admin-store";
 
 type RouteContext = {
   params: Promise<{ orderId: string }>;

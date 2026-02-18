@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import PasskeyGate from "../components/passkey-gate";
 import AutoTranslate from "../components/auto-translate";
-import { useI18n } from "@/lib/i18n-client";
+import { useI18n } from "@/lib/i18n/i18n-client";
 import { PageTransition } from "@/components/ui/motion";
 import { useGuardianStatus } from "../components/guardian-role";
 

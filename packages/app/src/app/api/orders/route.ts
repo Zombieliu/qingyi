@@ -3,16 +3,16 @@ import crypto from "crypto";
 import {
   addOrder,
   getPlayerById,
+  getPlayerByAddress,
   hasOrdersForAddress,
-  isApprovedGuardianAddress,
   queryOrders,
   queryPublicOrdersCursor,
-} from "@/lib/admin-store";
-import { requireAdmin } from "@/lib/admin-auth";
+} from "@/lib/admin/admin-store";
+import { requireAdmin } from "@/lib/admin/admin-auth";
 import { isValidSuiAddress, normalizeSuiAddress } from "@mysten/sui/utils";
-import { requireUserAuth } from "@/lib/user-auth";
+import { requireUserAuth } from "@/lib/auth/user-auth";
 import { rateLimit } from "@/lib/rate-limit";
-import { clearChainOrderCache } from "@/lib/chain-sync";
+import { clearChainOrderCache } from "@/lib/chain/chain-sync";
 import { getCache, setCache, computeJsonEtag } from "@/lib/server-cache";
 import { getIfNoneMatch, jsonWithEtag, notModified } from "@/lib/http-cache";
 
@@ -129,9 +129,9 @@ export async function GET(req: Request) {
     }
     const auth = await requireUserAuth(req, { intent: "orders:public", address: userAddress });
     if (!auth.ok) return auth.response;
-    const isGuardian = await isApprovedGuardianAddress(userAddress);
-    if (!isGuardian) {
-      return NextResponse.json({ error: "guardian_required" }, { status: 403 });
+    const playerLookup = await getPlayerByAddress(userAddress);
+    if (!playerLookup.player || playerLookup.conflict || playerLookup.player.status === "停用") {
+      return NextResponse.json({ error: "player_required" }, { status: 403 });
     }
     const cursorRaw = searchParams.get("cursor") || "";
     let cursor: { createdAt: number; id: string } | undefined;
@@ -434,10 +434,10 @@ function buildMarkdown({
   const mentionLine = mentionTag ? `${mentionTag}\n` : "";
   const fallbackNote = fallbackAll
     ? fallbackReason === "missing_id"
-      ? "（无法定位打手，已@全部）"
+      ? "（无法定位陪练，已@全部）"
       : "（未配置企微ID，已@全部）"
     : "";
-  const playerLine = requestedPlayer ? `> 指定打手：${requestedPlayer}${fallbackNote}\n` : "";
+  const playerLine = requestedPlayer ? `> 指定陪练：${requestedPlayer}${fallbackNote}\n` : "";
 
   return [
     mentionLine,
@@ -488,7 +488,7 @@ function buildText({
   }).format(Date.now());
   const fallbackNote = fallbackAll
     ? fallbackReason === "missing_id"
-      ? "（无法定位打手，已@全部）"
+      ? "（无法定位陪练，已@全部）"
       : "（未配置企微ID，已@全部）"
     : "";
   const lines = [
@@ -497,7 +497,7 @@ function buildText({
     `商品：${item}`,
     `金额：${priceLine}`,
     `状态：${status}`,
-    requestedPlayer ? `指定打手：${requestedPlayer}${fallbackNote}` : "",
+    requestedPlayer ? `指定陪练：${requestedPlayer}${fallbackNote}` : "",
     note ? `备注：${note}` : "",
     `时间：${now}`,
     `订单号：${orderId}`,

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
-import { addPaymentEvent, getOrderById, updateOrder, upsertLedgerRecord } from "@/lib/admin-store";
-import { recordAudit } from "@/lib/admin-audit";
+import { addPaymentEvent, getOrderById, updateOrder, upsertLedgerRecord } from "@/lib/admin/admin-store";
+import { recordAudit } from "@/lib/admin/admin-audit";
 
 const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
 const stripe = stripeSecretKey ? new Stripe(stripeSecretKey) : null;

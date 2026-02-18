@@ -19,7 +19,7 @@ import {
   shortAddress,
 } from "./passkey-wallet";
 import { trackEvent } from "@/app/components/analytics";
-import { useI18n } from "@/lib/i18n-client";
+import { useI18n } from "@/lib/i18n/i18n-client";
 import { ensureUserSession } from "@/app/components/user-auth-client";
 
 const toBase64 = (bytes: Uint8Array) =>

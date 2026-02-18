@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getCurrentAddress } from "@/lib/qy-chain";
+import { getCurrentAddress } from "@/lib/chain/qy-chain";
 import { readCache, writeCache } from "./client-cache";
 
 type GuardianState = "checking" | "guardian" | "user";

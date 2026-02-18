@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/admin-auth";
-import { autoCancelChainOrders } from "@/lib/chain-auto-cancel";
-import { recordAudit } from "@/lib/admin-audit";
+import { requireAdmin } from "@/lib/admin/admin-auth";
+import { autoCancelChainOrders } from "@/lib/chain/chain-auto-cancel";
+import { recordAudit } from "@/lib/admin/admin-audit";
 
 export async function POST(req: Request) {
   const auth = await requireAdmin(req, { role: "finance" });

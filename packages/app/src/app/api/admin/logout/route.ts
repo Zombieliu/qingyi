@@ -4,9 +4,9 @@ import {
   LEGACY_ADMIN_COOKIE,
   getAdminSession,
   revokeAdminSession,
-} from "@/lib/admin-auth";
+} from "@/lib/admin/admin-auth";
 import { cookies } from "next/headers";
-import { recordAudit } from "@/lib/admin-audit";
+import { recordAudit } from "@/lib/admin/admin-audit";
 
 export async function POST(req: Request) {
   const cookieStore = await cookies();

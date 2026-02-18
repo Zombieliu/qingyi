@@ -1,5 +1,5 @@
 import type { MetadataRoute } from "next";
-import { listPublicAnnouncements } from "@/lib/admin-store";
+import { listPublicAnnouncements } from "@/lib/admin/admin-store";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 

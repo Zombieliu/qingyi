@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { Megaphone, Pencil, PlusCircle, Trash2, Archive } from "lucide-react";
-import type { AdminAnnouncement, AnnouncementStatus } from "@/lib/admin-types";
-import { ANNOUNCEMENT_STATUS_OPTIONS } from "@/lib/admin-types";
+import type { AdminAnnouncement, AnnouncementStatus } from "@/lib/admin/admin-types";
+import { ANNOUNCEMENT_STATUS_OPTIONS } from "@/lib/admin/admin-types";
 import { readCache, writeCache } from "@/app/components/client-cache";
 import { StateBlock } from "@/app/components/state-block";
 import { roleRank, useAdminSession } from "../admin-session";

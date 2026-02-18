@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { ArrowLeft, RefreshCw } from "lucide-react";
 import { useEffect, useState } from "react";
-import { getCurrentAddress } from "@/lib/qy-chain";
+import { getCurrentAddress } from "@/lib/chain/qy-chain";
 import { fetchWithUserAuth } from "@/app/components/user-auth-client";
 import { StateBlock } from "@/app/components/state-block";
 import { formatErrorMessage } from "@/app/components/error-utils";

@@ -1,5 +1,5 @@
 import "server-only";
-import { prisma } from "./db";
+import { prisma } from "../db";
 
 export type UserSessionRecord = {
   id: string;

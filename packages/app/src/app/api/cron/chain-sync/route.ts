@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { syncChainOrders } from "@/lib/chain-sync";
+import { syncChainOrders } from "@/lib/chain/chain-sync";
 import { acquireCronLock } from "@/lib/cron-lock";
 
 const CRON_LOCK_TTL_MS = Number(process.env.CRON_LOCK_TTL_MS || "600000");

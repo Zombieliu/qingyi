@@ -1,7 +1,7 @@
 import "server-only";
 import type { EventId } from "@mysten/sui/client";
 import { Prisma } from "@prisma/client";
-import { prisma } from "./db";
+import { prisma } from "../db";
 
 const DEFAULT_CURSOR_ID = "chain-orders";
 

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { RefreshCw } from "lucide-react";
 import { readCache, writeCache } from "@/app/components/client-cache";
-import * as chainOrderUtils from "@/lib/chain-order-utils";
+import * as chainOrderUtils from "@/lib/chain/chain-order-utils";
 import { StateBlock } from "@/app/components/state-block";
 import { ConfirmDialog } from "@/app/components/confirm-dialog";
 

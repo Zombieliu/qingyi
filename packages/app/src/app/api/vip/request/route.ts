@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import crypto from "crypto";
-import { addMembershipRequest, getMembershipTierById, listActiveMembershipTiers } from "@/lib/admin-store";
-import type { AdminMembershipRequest, MembershipRequestStatus } from "@/lib/admin-types";
+import { addMembershipRequest, getMembershipTierById, listActiveMembershipTiers } from "@/lib/admin/admin-store";
+import type { AdminMembershipRequest, MembershipRequestStatus } from "@/lib/admin/admin-types";
 import { isValidSuiAddress, normalizeSuiAddress } from "@mysten/sui/utils";
-import { requireUserAuth } from "@/lib/user-auth";
+import { requireUserAuth } from "@/lib/auth/user-auth";
 
 export async function POST(req: Request) {
   let rawBody = "";

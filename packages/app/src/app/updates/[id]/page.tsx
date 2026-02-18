@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { listPublicAnnouncements } from "@/lib/admin-store";
+import { listPublicAnnouncements } from "@/lib/admin/admin-store";
 
 export const dynamic = "force-dynamic";
 

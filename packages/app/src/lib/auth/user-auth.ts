@@ -2,9 +2,9 @@ import "server-only";
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { verifyPersonalMessageSignature } from "@mysten/sui/verify";
-import { isValidSuiAddress, normalizeSuiAddress } from "@mysten/sui/utils";
+import { isValidSuiAddress, normalizeSuiAddress } from "@mysten/su../utils";
 import { buildAuthMessage } from "./auth-message";
-import { consumeNonce } from "./rate-limit";
+import { consumeNonce } from "../rate-limit";
 import {
   createUserSession as createUserSessionRecord,
   getUserSessionByHash,

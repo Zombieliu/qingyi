@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { prisma } from "@/lib/db";
-import { upsertLedgerRecord } from "@/lib/admin-store";
-import { recordAudit } from "@/lib/admin-audit";
+import { upsertLedgerRecord } from "@/lib/admin/admin-store";
+import { recordAudit } from "@/lib/admin/admin-audit";
 import { acquireCronLock } from "@/lib/cron-lock";
 
 const CRON_LOCK_TTL_MS = Number(process.env.CRON_LOCK_TTL_MS || "600000");

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { ClipboardList, Megaphone, Users, Zap } from "lucide-react";
-import type { AdminOrder, AdminPlayer } from "@/lib/admin-types";
+import type { AdminOrder, AdminPlayer } from "@/lib/admin/admin-types";
 import { readCache, writeCache } from "@/app/components/client-cache";
 import { StateBlock } from "@/app/components/state-block";
 
@@ -104,7 +104,7 @@ export default function AdminDashboard() {
         </div>
         <div className="admin-card">
           <div className="admin-card-header">
-            <h3>可用打手</h3>
+            <h3>可用陪练</h3>
           </div>
           <div className="admin-stat">{stats.activePlayers}</div>
           <p>可接单或忙碌状态</p>
@@ -166,18 +166,18 @@ export default function AdminDashboard() {
 
         <div className="admin-card">
           <div className="admin-card-header">
-            <h3>打手状态</h3>
+            <h3>陪练状态</h3>
             <div className="admin-card-actions">
               <Link href="/admin/players" className="admin-btn ghost">
                 <Users size={16} style={{ marginRight: 6 }} />
-                管理打手资料
+                管理陪练资料
               </Link>
             </div>
           </div>
           {loading ? (
-            <StateBlock tone="loading" size="compact" title="正在加载" description="同步打手状态" />
+            <StateBlock tone="loading" size="compact" title="正在加载" description="同步陪练状态" />
           ) : activePlayers.length === 0 ? (
-            <StateBlock tone="empty" size="compact" title="暂无打手档案" description="先去创建打手资料" />
+            <StateBlock tone="empty" size="compact" title="暂无陪练档案" description="先去创建陪练资料" />
           ) : (
             <div className="admin-table-wrap">
               <table className="admin-table">

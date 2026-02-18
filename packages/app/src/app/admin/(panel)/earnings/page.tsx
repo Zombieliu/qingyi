@@ -113,7 +113,7 @@ export default function EarningsPage() {
         <div className="admin-card-header">
           <div>
             <h3>完单收益看板</h3>
-            <p>统计已完成订单的打手完单情况与平台撮合费。</p>
+            <p>统计已完成订单的陪练完单情况与平台撮合费。</p>
           </div>
           <div className="admin-card-actions">
             <span className="admin-pill">已完成订单</span>
@@ -180,7 +180,7 @@ export default function EarningsPage() {
             <h3>订单金额</h3>
           </div>
           <div className="admin-stat">¥{formatMoney(totals.totalAmount)}</div>
-          <p>打手完成订单金额合计</p>
+          <p>陪练完成订单金额合计</p>
         </div>
         <div className="admin-card">
           <div className="admin-card-header">
@@ -193,7 +193,7 @@ export default function EarningsPage() {
 
       <div className="admin-card" style={{ marginTop: 16 }}>
         <div className="admin-card-header">
-          <h3>打手完单明细</h3>
+          <h3>陪练完单明细</h3>
           <div className="admin-card-actions">
             <span className="admin-pill">共 {rows.length} 人</span>
           </div>
@@ -209,7 +209,7 @@ export default function EarningsPage() {
             <table className="admin-table">
               <thead>
                 <tr>
-                  <th>打手</th>
+                  <th>陪练</th>
                   <th>完单数</th>
                   <th>订单金额</th>
                   <th>平台撮合费</th>
@@ -219,7 +219,7 @@ export default function EarningsPage() {
               <tbody>
                 {rows.map((item) => (
                   <tr key={item.companionAddress}>
-                    <td data-label="打手">
+                    <td data-label="陪练">
                       <div className="admin-text-strong">{item.companionName || "未绑定"}</div>
                       <div className="admin-meta-faint">{item.companionAddress || "-"}</div>
                     </td>

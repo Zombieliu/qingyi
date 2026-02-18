@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/admin-auth";
-import { cancelOrderAdmin } from "@/lib/chain-admin";
-import { findChainOrder, syncChainOrder } from "@/lib/chain-sync";
-import * as chainOrderUtils from "@/lib/chain-order-utils";
-import { recordAudit } from "@/lib/admin-audit";
+import { requireAdmin } from "@/lib/admin/admin-auth";
+import { cancelOrderAdmin } from "@/lib/chain/chain-admin";
+import { findChainOrder, syncChainOrder } from "@/lib/chain/chain-sync";
+import * as chainOrderUtils from "@/lib/chain/chain-order-utils";
+import { recordAudit } from "@/lib/admin/admin-audit";
 
 export async function POST(req: Request) {
   const auth = await requireAdmin(req, { role: "finance" });

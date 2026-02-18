@@ -1,5 +1,5 @@
 import TrackedLink from "@/app/components/tracked-link";
-import { createTranslator, getMessages, getServerLocale } from "@/lib/i18n";
+import { createTranslator, getMessages, getServerLocale } from "@/lib/i18n/i18n";
 
 export const metadata = {
   title: "价格与服务 | 情谊电竞",

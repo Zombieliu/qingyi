@@ -1,4 +1,4 @@
-import { listPlayersPublic } from "@/lib/admin-store";
+import { listPlayersPublic } from "@/lib/admin/admin-store";
 import { getCache, setCache, computeJsonEtag } from "@/lib/server-cache";
 import { getIfNoneMatch, jsonWithEtag, notModified } from "@/lib/http-cache";
 

@@ -9,12 +9,12 @@ import type {
   MemberStatus,
   MembershipRequestStatus,
   MembershipTierStatus,
-} from "@/lib/admin-types";
+} from "@/lib/admin/admin-types";
 import {
   MEMBER_STATUS_OPTIONS,
   MEMBERSHIP_REQUEST_STATUS_OPTIONS,
   MEMBERSHIP_TIER_STATUS_OPTIONS,
-} from "@/lib/admin-types";
+} from "@/lib/admin/admin-types";
 import { readCache, writeCache } from "@/app/components/client-cache";
 import { StateBlock } from "@/app/components/state-block";
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { signAuthIntent } from "@/lib/qy-chain";
+import { signAuthIntent } from "@/lib/chain/qy-chain";
 
 const AUTH_RETRY_ERRORS = new Set([
   "auth_required",

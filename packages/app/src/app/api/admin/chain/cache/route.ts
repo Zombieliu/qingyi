@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/admin-auth";
-import { getCacheStats, clearCache, getChainOrderStats } from "@/lib/chain-order-cache";
-import { fetchChainOrdersCached } from "@/lib/chain-sync";
+import { requireAdmin } from "@/lib/admin/admin-auth";
+import { getCacheStats, clearCache, getChainOrderStats } from "@/lib/chain/chain-order-cache";
+import { fetchChainOrdersCached } from "@/lib/chain/chain-sync";
 
 /**
  * 链上订单缓存监控和管理 API

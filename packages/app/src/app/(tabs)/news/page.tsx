@@ -1,5 +1,5 @@
 import { MessageCircle, Flame } from "lucide-react";
-import { listPublicAnnouncements } from "@/lib/admin-store";
+import { listPublicAnnouncements } from "@/lib/admin/admin-store";
 
 export const dynamic = "force-dynamic";
 

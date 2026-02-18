@@ -24,7 +24,7 @@ import {
   TrendingUp,
   BarChart3,
 } from "lucide-react";
-import { useI18n } from "@/lib/i18n-client";
+import { useI18n } from "@/lib/i18n/i18n-client";
 import AutoTranslate from "@/app/components/auto-translate";
 import SwControl from "@/app/components/sw-control";
 import { PageTransition, Stagger, StaggerItem } from "@/components/ui/motion";
@@ -103,8 +103,8 @@ const navItems: NavItem[] = [
   { href: "/admin/support", label: "客服工单", icon: Headset, minRole: "ops" },
   { href: "/admin/coupons", label: "优惠卡券", icon: TicketPercent, minRole: "ops" },
   { href: "/admin/vip", label: "会员管理", icon: Crown, minRole: "ops" },
-  { href: "/admin/players", label: "打手管理", icon: Users, minRole: "viewer" },
-  { href: "/admin/guardians", label: "护航申请", icon: UserCheck, minRole: "ops" },
+  { href: "/admin/players", label: "陪练管理", icon: Users, minRole: "viewer" },
+  { href: "/admin/guardians", label: "陪练申请", icon: UserCheck, minRole: "ops" },
   { href: "/admin/announcements", label: "公告资讯", icon: Megaphone, minRole: "viewer" },
   { href: "/admin/analytics", label: "增长数据", icon: TrendingUp, minRole: "admin" },
   { href: "/admin/earnings", label: "完单收益", icon: BarChart3, minRole: "finance" },
@@ -147,13 +147,13 @@ const subtitles: Record<string, string> = {
   "/admin/support": "客服工单受理与跟进",
   "/admin/coupons": "优惠券配置与发放",
   "/admin/vip": "会员等级、申请与会员管理",
-  "/admin/players": "打手档案、状态与接单能力",
-  "/admin/guardians": "护航申请审核与入库",
+  "/admin/players": "陪练档案、状态与接单能力",
+  "/admin/guardians": "陪练申请审核与入库",
   "/admin/announcements": "公告与资讯统一发布",
   "/admin/analytics": "访问与转化漏斗监控",
-  "/admin/earnings": "打手完单与平台撮合费汇总",
+  "/admin/earnings": "陪练完单与平台撮合费汇总",
   "/admin/ledger": "充值记账与凭证管理",
-  "/admin/mantou": "打手馒头提现审核",
+  "/admin/mantou": "陪练馒头提现审核",
   "/admin/invoices": "开票申请与处理",
   "/admin/chain": "订单对账与争议裁决",
   "/admin/payments": "支付回调记录与核验",

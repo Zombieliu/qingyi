@@ -8,7 +8,9 @@ import { MantouProvider } from "./components/mantou-provider";
 import AnalyticsProvider from "./components/analytics-provider";
 import SeniorModeProvider from "./components/senior-mode";
 import { Suspense } from "react";
-import { getServerLocale } from "@/lib/i18n";
+import { getServerLocale } from "@/lib/i18n/i18n";
+import { cookies } from "next/headers";
+import { SENIOR_MODE_COOKIE_KEY } from "@/lib/shared/cookie-utils";
 import "./globals.css";
 
 const brandSans = Space_Grotesk({
@@ -63,9 +65,13 @@ export default async function RootLayout({
 }>) {
   const locale = await getServerLocale();
   const htmlLang = locale === "en" ? "en" : "zh-CN";
+  
+  const cookieStore = await cookies();
+  const seniorModeValue = cookieStore.get(SENIOR_MODE_COOKIE_KEY)?.value;
+  const isSeniorMode = seniorModeValue === "1";
 
   return (
-    <html lang={htmlLang}>
+    <html lang={htmlLang} data-senior={isSeniorMode ? "1" : undefined}>
       <body className={`${brandSans.variable} ${brandMono.variable} antialiased`}>
         <Suspense fallback={null}>
           <AnalyticsProvider />

@@ -1,8 +1,8 @@
 import "server-only";
 import { fetchChainOrdersAdmin, markCompletedAdmin, finalizeNoDisputeAdmin, type ChainOrder } from "./chain-admin";
-import { listChainOrdersForAutoFinalize } from "./admin-store";
+import { listChainOrdersForAutoFinalize } from "../admin/admin-store";
 import { syncChainOrder } from "./chain-sync";
-import { isChainOrder } from "./order-guard";
+import { isChainOrder } from "../order-guard";
 
 const DEFAULT_AUTO_COMPLETE_HOURS = 24;
 const DEFAULT_AUTO_COMPLETE_MAX = 10;

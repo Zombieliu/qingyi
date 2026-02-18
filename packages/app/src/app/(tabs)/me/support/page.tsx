@@ -17,7 +17,7 @@ type SupportRequest = {
   createdAt: number;
 };
 
-const topics = ["订单问题", "支付问题", "账号与安全", "护航服务", "其他"];
+const topics = ["订单问题", "支付问题", "账号与安全", "陪练服务", "其他"];
 
 const channels = [
   { label: "在线客服", value: "企业微信：qy-esports", hint: "09:00-24:00" },

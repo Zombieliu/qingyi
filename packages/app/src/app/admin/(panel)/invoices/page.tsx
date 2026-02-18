@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { RefreshCw, Search } from "lucide-react";
-import type { AdminInvoiceRequest, InvoiceStatus } from "@/lib/admin-types";
-import { INVOICE_STATUS_OPTIONS } from "@/lib/admin-types";
+import type { AdminInvoiceRequest, InvoiceStatus } from "@/lib/admin/admin-types";
+import { INVOICE_STATUS_OPTIONS } from "@/lib/admin/admin-types";
 import { readCache, writeCache } from "@/app/components/client-cache";
 import { StateBlock } from "@/app/components/state-block";
 

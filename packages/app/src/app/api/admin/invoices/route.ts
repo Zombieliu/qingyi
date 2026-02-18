@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import crypto from "crypto";
-import { requireAdmin } from "@/lib/admin-auth";
-import { addInvoiceRequest, queryInvoiceRequests, queryInvoiceRequestsCursor } from "@/lib/admin-store";
-import { recordAudit } from "@/lib/admin-audit";
-import type { AdminInvoiceRequest, InvoiceStatus } from "@/lib/admin-types";
+import { requireAdmin } from "@/lib/admin/admin-auth";
+import { addInvoiceRequest, queryInvoiceRequests, queryInvoiceRequestsCursor } from "@/lib/admin/admin-store";
+import { recordAudit } from "@/lib/admin/admin-audit";
+import type { AdminInvoiceRequest, InvoiceStatus } from "@/lib/admin/admin-types";
 import { decodeCursorParam, encodeCursorParam } from "@/lib/cursor-utils";
 
 export async function GET(req: Request) {

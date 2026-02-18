@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/admin-auth";
-import { updateMantouWithdrawStatus } from "@/lib/admin-store";
+import { requireAdmin } from "@/lib/admin/admin-auth";
+import { updateMantouWithdrawStatus } from "@/lib/admin/admin-store";
 
 type RouteContext = {
   params: Promise<{ requestId: string }>;

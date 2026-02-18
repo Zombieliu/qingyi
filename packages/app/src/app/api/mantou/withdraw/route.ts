@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { isValidSuiAddress, normalizeSuiAddress } from "@mysten/sui/utils";
-import { queryMantouWithdraws, requestMantouWithdraw } from "@/lib/admin-store";
-import { requireUserAuth } from "@/lib/user-auth";
+import { queryMantouWithdraws, requestMantouWithdraw } from "@/lib/admin/admin-store";
+import { requireUserAuth } from "@/lib/auth/user-auth";
 
 export async function POST(req: Request) {
   let rawBody = "";

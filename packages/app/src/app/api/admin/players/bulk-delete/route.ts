@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/admin-auth";
-import { removePlayers } from "@/lib/admin-store";
-import { recordAudit } from "@/lib/admin-audit";
+import { requireAdmin } from "@/lib/admin/admin-auth";
+import { removePlayers } from "@/lib/admin/admin-store";
+import { recordAudit } from "@/lib/admin/admin-audit";
 
 export async function POST(req: Request) {
   const auth = await requireAdmin(req, { role: "viewer" });

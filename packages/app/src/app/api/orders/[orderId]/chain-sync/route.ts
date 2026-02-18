@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/admin-auth";
+import { requireAdmin } from "@/lib/admin/admin-auth";
 import {
   findChainOrder,
   findChainOrderDirect,
@@ -7,10 +7,10 @@ import {
   upsertChainOrder,
   getChainOrderCacheStats,
   clearChainOrderCache,
-} from "@/lib/chain-sync";
+} from "@/lib/chain/chain-sync";
 import { isValidSuiAddress, normalizeSuiAddress } from "@mysten/sui/utils";
-import { requireUserAuth } from "@/lib/user-auth";
-import { getOrderById, updateOrder } from "@/lib/admin-store";
+import { requireUserAuth } from "@/lib/auth/user-auth";
+import { getOrderById, updateOrder } from "@/lib/admin/admin-store";
 
 type RouteContext = {
   params: Promise<{ orderId: string }>;

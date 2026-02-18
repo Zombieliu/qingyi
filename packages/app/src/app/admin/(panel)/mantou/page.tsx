@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { RefreshCw } from "lucide-react";
-import type { MantouWithdrawRequest, MantouWithdrawStatus } from "@/lib/admin-types";
-import { MANTOU_WITHDRAW_STATUS_OPTIONS } from "@/lib/admin-types";
+import type { MantouWithdrawRequest, MantouWithdrawStatus } from "@/lib/admin/admin-types";
+import { MANTOU_WITHDRAW_STATUS_OPTIONS } from "@/lib/admin/admin-types";
 import { readCache, writeCache } from "@/app/components/client-cache";
 import { StateBlock } from "@/app/components/state-block";
 
@@ -172,7 +172,7 @@ export default function MantouWithdrawPage() {
             <table className="admin-table">
               <thead>
                 <tr>
-                  <th>打手账号</th>
+                  <th>陪练账号</th>
                   <th>数量</th>
                   <th>收款账号</th>
                   <th>状态</th>
@@ -184,7 +184,7 @@ export default function MantouWithdrawPage() {
               <tbody>
                 {requests.map((item) => (
                   <tr key={item.id}>
-                    <td data-label="打手账号">
+                    <td data-label="陪练账号">
                       <div className="admin-meta">{item.address}</div>
                     </td>
                     <td data-label="数量">{item.amount}</td>

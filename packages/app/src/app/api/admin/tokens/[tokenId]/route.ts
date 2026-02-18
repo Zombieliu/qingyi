@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/admin-auth";
-import { recordAudit } from "@/lib/admin-audit";
-import { removeAccessToken, updateAccessToken } from "@/lib/admin-store";
-import type { AdminAccessToken, AdminRole, AdminTokenStatus } from "@/lib/admin-types";
-import { ADMIN_ROLE_OPTIONS, ADMIN_TOKEN_STATUS_OPTIONS } from "@/lib/admin-types";
+import { requireAdmin } from "@/lib/admin/admin-auth";
+import { recordAudit } from "@/lib/admin/admin-audit";
+import { removeAccessToken, updateAccessToken } from "@/lib/admin/admin-store";
+import type { AdminAccessToken, AdminRole, AdminTokenStatus } from "@/lib/admin/admin-types";
+import { ADMIN_ROLE_OPTIONS, ADMIN_TOKEN_STATUS_OPTIONS } from "@/lib/admin/admin-types";
 
 const roleSet = new Set(ADMIN_ROLE_OPTIONS);
 const statusSet = new Set(ADMIN_TOKEN_STATUS_OPTIONS);

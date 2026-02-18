@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/admin-auth";
-import { queryPaymentEvents, queryPaymentEventsCursor } from "@/lib/admin-store";
+import { requireAdmin } from "@/lib/admin/admin-auth";
+import { queryPaymentEvents, queryPaymentEventsCursor } from "@/lib/admin/admin-store";
 import { decodeCursorParam, encodeCursorParam } from "@/lib/cursor-utils";
 
 export async function GET(req: Request) {

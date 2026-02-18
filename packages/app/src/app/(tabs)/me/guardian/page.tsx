@@ -103,7 +103,7 @@ export default function GuardianPage() {
       const updated = [next, ...applications];
       setApplications(updated);
       persistLocalApplications(updated);
-      setHint("申请已提交，审核通过后会通知你加入护航库");
+      setHint("申请已提交，审核通过后会通知你加入陪练库");
       setForm((prev) => ({ ...prev, note: "" }));
     } catch {
       setHint("网络异常，请稍后再试");
@@ -119,7 +119,7 @@ export default function GuardianPage() {
           <Link href="/me" className="dl-icon-circle" aria-label="返回我的">
             <ArrowLeft size={16} />
           </Link>
-          <span className="dl-time-text">成为护航</span>
+          <span className="dl-time-text">成为陪练</span>
           <span className="dl-chip">达人招募</span>
         </div>
         <div className="dl-actions">
@@ -139,7 +139,7 @@ export default function GuardianPage() {
       </section>
 
       <section className="dl-card" style={{ padding: 16 }}>
-        <div className="text-sm font-semibold text-gray-900">提交护航申请</div>
+        <div className="text-sm font-semibold text-gray-900">提交陪练申请</div>
         <div className="mt-3 grid gap-3">
           <div className="grid gap-2">
             <label className="text-xs text-slate-500">姓名 / 昵称</label>

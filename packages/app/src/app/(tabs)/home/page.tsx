@@ -1,11 +1,11 @@
-import { listPlayersPublic, listPublicAnnouncements } from "@/lib/admin-store";
+import { listPlayersPublic, listPublicAnnouncements } from "@/lib/admin/admin-store";
 import HomeContent from "./home-content";
 
 export const dynamic = "force-dynamic";
 
 const fallbackNews = [
   { id: "guide", title: "新手下单指南", tag: "指南" },
-  { id: "safety", title: "护航服务保障说明", tag: "安全" },
+  { id: "safety", title: "陪练服务保障说明", tag: "安全" },
   { id: "event", title: "本周福利与活动", tag: "活动" },
 ];
 

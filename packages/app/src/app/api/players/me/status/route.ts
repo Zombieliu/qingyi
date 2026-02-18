@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { isValidSuiAddress, normalizeSuiAddress } from "@mysten/sui/utils";
-import { requireUserAuth } from "@/lib/user-auth";
-import { PLAYER_STATUS_OPTIONS, type PlayerStatus } from "@/lib/admin-types";
-import { getPlayerByAddress, isApprovedGuardianAddress, updatePlayerStatusByAddress } from "@/lib/admin-store";
-import { recordAudit } from "@/lib/admin-audit";
+import { requireUserAuth } from "@/lib/auth/user-auth";
+import { PLAYER_STATUS_OPTIONS, type PlayerStatus } from "@/lib/admin/admin-types";
+import { getPlayerByAddress, updatePlayerStatusByAddress } from "@/lib/admin/admin-store";
+import { recordAudit } from "@/lib/admin/admin-audit";
 
 function normalizeAddress(raw?: string | null) {
   const address = normalizeSuiAddress(raw || "");
@@ -21,11 +21,6 @@ export async function GET(req: Request) {
   }
   const auth = await requireUserAuth(req, { intent: "players:status:read", address });
   if (!auth.ok) return auth.response;
-
-  const isGuardian = await isApprovedGuardianAddress(address);
-  if (!isGuardian) {
-    return NextResponse.json({ error: "guardian_required" }, { status: 403 });
-  }
 
   const result = await getPlayerByAddress(address);
   if (result.conflict) {
@@ -66,9 +61,15 @@ export async function PATCH(req: Request) {
   });
   if (!auth.ok) return auth.response;
 
-  const isGuardian = await isApprovedGuardianAddress(address);
-  if (!isGuardian) {
-    return NextResponse.json({ error: "guardian_required" }, { status: 403 });
+  const current = await getPlayerByAddress(address);
+  if (current.conflict) {
+    return NextResponse.json({ error: "address_conflict" }, { status: 409 });
+  }
+  if (!current.player) {
+    return NextResponse.json({ error: "player_not_found" }, { status: 404 });
+  }
+  if (current.player.status === "停用") {
+    return NextResponse.json({ error: "player_disabled" }, { status: 403 });
   }
 
   const result = await updatePlayerStatusByAddress(address, status);

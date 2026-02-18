@@ -6,8 +6,8 @@ import { useEffect, useMemo, useState } from "react";
 import { PASSKEY_STORAGE_KEY } from "@/app/components/passkey-wallet";
 import { readCache, writeCache } from "@/app/components/client-cache";
 import { fetchWithUserAuth } from "@/app/components/user-auth-client";
-import type { AdminMember, AdminMembershipTier } from "@/lib/admin-types";
-import { isVisualTestMode } from "@/lib/qy-chain";
+import type { AdminMember, AdminMembershipTier } from "@/lib/admin/admin-types";
+import { isVisualTestMode } from "@/lib/chain/qy-chain";
 import { StateBlock } from "@/app/components/state-block";
 
 const fallbackPerks = [

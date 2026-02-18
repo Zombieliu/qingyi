@@ -5,7 +5,7 @@ import PasskeyLoginButton from "../components/passkey-login-button";
 import { useSyncExternalStore } from "react";
 import { PASSKEY_STORAGE_KEY } from "../components/passkey-wallet";
 import TrackedLink from "../components/tracked-link";
-import { useI18n } from "@/lib/i18n-client";
+import { useI18n } from "@/lib/i18n/i18n-client";
 
 export default function LoginPage() {
   const { t } = useI18n();

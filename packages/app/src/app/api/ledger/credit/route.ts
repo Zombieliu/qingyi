@@ -3,7 +3,7 @@ import { Dubhe, Transaction, type NetworkType, type SuiMoveNormalizedModules } f
 import { Inputs } from "@mysten/sui/transactions";
 import { isValidSuiAddress, normalizeSuiAddress } from "@mysten/sui/utils";
 import contractMetadata from "contracts/metadata.json";
-import { upsertLedgerRecord } from "@/lib/admin-store";
+import { upsertLedgerRecord } from "@/lib/admin/admin-store";
 
 const REQUIRED_ENVS = [
   "SUI_RPC_URL",

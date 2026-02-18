@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { PlusCircle, RefreshCw, Search } from "lucide-react";
-import type { AdminCoupon, CouponStatus } from "@/lib/admin-types";
-import { COUPON_STATUS_OPTIONS } from "@/lib/admin-types";
+import type { AdminCoupon, CouponStatus } from "@/lib/admin/admin-types";
+import { COUPON_STATUS_OPTIONS } from "@/lib/admin/admin-types";
 import { readCache, writeCache } from "@/app/components/client-cache";
 import { StateBlock } from "@/app/components/state-block";
 

@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/admin-auth";
-import { getOrderById, updateOrder, updateOrderIfUnassigned } from "@/lib/admin-store";
+import { requireAdmin } from "@/lib/admin/admin-auth";
+import { getOrderById, getPlayerByAddress, updateOrder, updateOrderIfUnassigned } from "@/lib/admin/admin-store";
 import { isValidSuiAddress, normalizeSuiAddress } from "@mysten/sui/utils";
 import { canTransitionStage, isChainOrder } from "@/lib/order-guard";
-import type { AdminOrder } from "@/lib/admin-types";
-import { requireUserAuth } from "@/lib/user-auth";
+import type { AdminOrder } from "@/lib/admin/admin-types";
+import { requireUserAuth } from "@/lib/auth/user-auth";
 
 type RouteContext = {
   params: Promise<{ orderId: string }>;
@@ -137,6 +137,13 @@ export async function PATCH(req: Request, { params }: RouteContext) {
     body: rawBody,
   });
   if (!auth.ok) return auth.response;
+
+  if (companionRaw) {
+    const playerLookup = await getPlayerByAddress(actor);
+    if (!playerLookup.player || playerLookup.conflict || playerLookup.player.status === "停用") {
+      return NextResponse.json({ error: "player_required" }, { status: 403 });
+    }
+  }
 
   const patch: Partial<AdminOrder> = { meta: body.meta || {} };
   if (companionRaw) {

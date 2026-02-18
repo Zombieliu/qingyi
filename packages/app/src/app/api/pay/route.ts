@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
-import { upsertLedgerRecord } from "@/lib/admin-store";
+import { upsertLedgerRecord } from "@/lib/admin/admin-store";
 import { isValidSuiAddress, normalizeSuiAddress } from "@mysten/sui/utils";
-import { requireUserAuth } from "@/lib/user-auth";
+import { requireUserAuth } from "@/lib/auth/user-auth";
 
 const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
 const stripe = stripeSecretKey ? new Stripe(stripeSecretKey) : null;

@@ -1,4 +1,4 @@
-import type { AdminOrder, OrderStage } from "./admin-types";
+import type { AdminOrder, OrderStage } from "./admin/admin-types";
 
 export function isChainOrder(order: Pick<AdminOrder, "chainDigest" | "chainStatus" | "source">) {
   return Boolean(order.chainDigest) || order.chainStatus !== undefined || order.source === "chain";

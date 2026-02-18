@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import crypto from "crypto";
-import { requireAdmin } from "@/lib/admin-auth";
-import { addAccessToken, listAccessTokens } from "@/lib/admin-store";
-import { recordAudit } from "@/lib/admin-audit";
-import type { AdminAccessToken, AdminRole, AdminTokenStatus } from "@/lib/admin-types";
-import { ADMIN_ROLE_OPTIONS, ADMIN_TOKEN_STATUS_OPTIONS } from "@/lib/admin-types";
+import { requireAdmin } from "@/lib/admin/admin-auth";
+import { addAccessToken, listAccessTokens } from "@/lib/admin/admin-store";
+import { recordAudit } from "@/lib/admin/admin-audit";
+import type { AdminAccessToken, AdminRole, AdminTokenStatus } from "@/lib/admin/admin-types";
+import { ADMIN_ROLE_OPTIONS, ADMIN_TOKEN_STATUS_OPTIONS } from "@/lib/admin/admin-types";
 
 const roleSet = new Set(ADMIN_ROLE_OPTIONS);
 const statusSet = new Set(ADMIN_TOKEN_STATUS_OPTIONS);

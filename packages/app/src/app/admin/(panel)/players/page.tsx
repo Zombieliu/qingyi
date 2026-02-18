@@ -2,8 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { PlusCircle, Trash2 } from "lucide-react";
-import type { AdminPlayer, PlayerStatus } from "@/lib/admin-types";
-import { PLAYER_STATUS_OPTIONS } from "@/lib/admin-types";
+import type { AdminPlayer, PlayerStatus } from "@/lib/admin/admin-types";
+import { PLAYER_STATUS_OPTIONS } from "@/lib/admin/admin-types";
 import { readCache, writeCache } from "@/app/components/client-cache";
 import { StateBlock } from "@/app/components/state-block";
 import { isValidSuiAddress, normalizeSuiAddress } from "@mysten/sui/utils";
@@ -55,7 +55,7 @@ export default function PlayersPage() {
       case "invalid_contact":
         return "手机号格式不正确";
       case "address_in_use":
-        return "钱包地址已绑定其他打手";
+        return "钱包地址已绑定其他陪练";
       default:
         return error || "保存失败";
     }
@@ -100,7 +100,7 @@ export default function PlayersPage() {
   const createPlayer = async () => {
     if (!canEdit) return;
     if (!form.name.trim()) {
-      setFormHint("请填写打手名称");
+      setFormHint("请填写陪练名称");
       return;
     }
     const contactValue = form.contact.trim();
@@ -188,7 +188,7 @@ export default function PlayersPage() {
 
   const removePlayer = async (playerId: string) => {
     if (!canEdit) return;
-    if (!confirm("确定要删除该打手吗？")) return;
+    if (!confirm("确定要删除该陪练吗？")) return;
     setSaving((prev) => ({ ...prev, [playerId]: true }));
     try {
       const res = await fetch(`/api/admin/players/${playerId}`, { method: "DELETE" });
@@ -220,7 +220,7 @@ export default function PlayersPage() {
   const bulkDelete = async () => {
     if (!canEdit) return;
     if (selectedIds.length === 0) return;
-    if (!confirm(`确定要删除选中的 ${selectedIds.length} 位打手吗？`)) return;
+    if (!confirm(`确定要删除选中的 ${selectedIds.length} 位陪练吗？`)) return;
     const res = await fetch("/api/admin/players/bulk-delete", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -244,8 +244,8 @@ export default function PlayersPage() {
       <div className="admin-card">
         <div className="admin-card-header">
           <div>
-            <h3>新增打手档案</h3>
-            <p>录入打手信息与授信配置。</p>
+            <h3>新增陪练档案</h3>
+            <p>录入陪练信息与授信配置。</p>
           </div>
         </div>
         {canEdit ? (
@@ -358,7 +358,7 @@ export default function PlayersPage() {
             </div>
             <button className="admin-btn primary" onClick={createPlayer} style={{ marginTop: 14 }}>
               <PlusCircle size={16} style={{ marginRight: 6 }} />
-              添加打手
+              添加陪练
             </button>
             {formHint && (
               <div style={{ marginTop: 12 }}>
@@ -368,14 +368,14 @@ export default function PlayersPage() {
           </>
         ) : (
           <div style={{ marginTop: 12 }}>
-            <StateBlock tone="warning" size="compact" title="只读权限" description="当前账号无法新增或编辑打手" />
+            <StateBlock tone="warning" size="compact" title="只读权限" description="当前账号无法新增或编辑陪练" />
           </div>
         )}
       </div>
 
       <div className="admin-card">
         <div className="admin-card-header">
-          <h3>打手列表</h3>
+          <h3>陪练列表</h3>
           <div className="admin-card-actions">
             {addressStats.invalid > 0 && <span className="admin-badge warm">地址格式错误 {addressStats.invalid}</span>}
             {addressStats.missing > 0 && <span className="admin-badge warm">未绑定地址 {addressStats.missing}</span>}
@@ -402,9 +402,9 @@ export default function PlayersPage() {
           </div>
         </div>
         {loading ? (
-          <StateBlock tone="loading" size="compact" title="加载中" description="正在同步打手档案" />
+          <StateBlock tone="loading" size="compact" title="加载中" description="正在同步陪练档案" />
         ) : players.length === 0 ? (
-          <StateBlock tone="empty" size="compact" title="暂无打手档案" description="可以先创建打手资料" />
+          <StateBlock tone="empty" size="compact" title="暂无陪练档案" description="可以先创建陪练资料" />
         ) : (
           <div className="admin-table-wrap">
             <table className="admin-table">

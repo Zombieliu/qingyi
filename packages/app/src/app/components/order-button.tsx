@@ -6,7 +6,7 @@ import {
   createOrderOnChain,
   getCurrentAddress,
   isChainOrdersEnabled,
-} from "@/lib/qy-chain";
+} from "@/lib/chain/qy-chain";
 import { trackEvent } from "@/app/components/analytics";
 import { Button } from "@/components/ui/button";
 import { StateBlock } from "@/app/components/state-block";

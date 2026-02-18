@@ -1,6 +1,6 @@
 "use client";
 
-import { getCurrentAddress } from "@/lib/qy-chain";
+import { getCurrentAddress } from "@/lib/chain/qy-chain";
 
 const CLIENT_ID_KEY = "qy_client_id_v1";
 const SESSION_KEY = "qy_session_id_v1";

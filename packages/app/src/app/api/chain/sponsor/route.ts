@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { buildSponsoredTransactionFromKind, executeSponsoredTransaction } from "@/lib/chain-sponsor";
+import { buildSponsoredTransactionFromKind, executeSponsoredTransaction } from "@/lib/chain/chain-sponsor";
 
 export async function POST(req: Request) {
   let body: unknown;

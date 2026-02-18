@@ -140,7 +140,7 @@ export default function OrderCenterPage() {
                 </div>
                 {order.driver ? (
                   <div className="mt-2 text-xs text-slate-500">
-                    打手：{order.driver.name}
+                    陪练：{order.driver.name}
                     {order.driver.tier ? ` · ${order.driver.tier}` : ""}
                   </div>
                 ) : null}

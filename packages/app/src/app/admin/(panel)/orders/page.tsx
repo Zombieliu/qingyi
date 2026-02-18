@@ -3,8 +3,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { RefreshCw, Search } from "lucide-react";
 import Link from "next/link";
-import type { AdminOrder, AdminPlayer, OrderStage } from "@/lib/admin-types";
-import { ORDER_STAGE_OPTIONS } from "@/lib/admin-types";
+import type { AdminOrder, AdminPlayer, OrderStage } from "@/lib/admin/admin-types";
+import { ORDER_STAGE_OPTIONS } from "@/lib/admin/admin-types";
 import { readCache, writeCache } from "@/app/components/client-cache";
 import { StateBlock } from "@/app/components/state-block";
 import { roleRank, useAdminSession } from "../admin-session";
@@ -435,7 +435,7 @@ export default function OrdersPage() {
                         <select
                           className="admin-select"
                           value={selectValue}
-                          aria-label="打手/客服"
+                          aria-label="陪练/客服"
                           disabled={!canEdit}
                           onChange={(event) => {
                             if (!canEdit) return;
@@ -468,7 +468,7 @@ export default function OrdersPage() {
                             ? "额度加载中..."
                             : matchedPlayer
                               ? `可用 ${available} 元 / 占用 ${used} 元 / 总额度 ${limit} 元`
-                              : "未选择打手"}
+                              : "未选择陪练"}
                           {insufficient ? "（余额不足）" : ""}
                         </div>
                       </div>

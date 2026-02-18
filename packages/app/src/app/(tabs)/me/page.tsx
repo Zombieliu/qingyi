@@ -16,7 +16,7 @@ const grid = [
   { label: "待开始", icon: Gamepad2, color: "#6366f1", href: "/me/orders?filter=pending-start" },
   { label: "待确认", icon: ShieldCheck, color: "#f59e0b", href: "/me/orders?filter=pending-confirm" },
   { label: "开发票", icon: Phone, color: "#22c55e", href: "/me/invoice" },
-  { label: "成为护航", icon: User, color: "#d946ef", href: "/me/guardian" },
+  { label: "成为陪练", icon: User, color: "#d946ef", href: "/me/guardian" },
   // 其他功能暂时隐藏
 ];
 

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { isValidSuiAddress, normalizeSuiAddress } from "@mysten/sui/utils";
-import { isApprovedGuardianAddress } from "@/lib/admin-store";
+import { getPlayerByAddress } from "@/lib/admin/admin-store";
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
@@ -12,6 +12,7 @@ export async function GET(req: Request) {
   if (!isValidSuiAddress(address)) {
     return NextResponse.json({ error: "invalid_address" }, { status: 400 });
   }
-  const isGuardian = await isApprovedGuardianAddress(address);
+  const result = await getPlayerByAddress(address);
+  const isGuardian = Boolean(result.player && result.player.status !== "停用");
   return NextResponse.json({ address, isGuardian });
 }

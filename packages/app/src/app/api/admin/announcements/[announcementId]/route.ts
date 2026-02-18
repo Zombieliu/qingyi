@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/admin-auth";
-import { removeAnnouncement, updateAnnouncement } from "@/lib/admin-store";
-import { recordAudit } from "@/lib/admin-audit";
-import type { AdminAnnouncement, AnnouncementStatus } from "@/lib/admin-types";
+import { requireAdmin } from "@/lib/admin/admin-auth";
+import { removeAnnouncement, updateAnnouncement } from "@/lib/admin/admin-store";
+import { recordAudit } from "@/lib/admin/admin-audit";
+import type { AdminAnnouncement, AnnouncementStatus } from "@/lib/admin/admin-types";
 
 type RouteContext = {
   params: Promise<{ announcementId: string }>;

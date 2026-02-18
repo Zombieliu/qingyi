@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Check, Copy, RefreshCw, Trash2 } from "lucide-react";
-import type { AdminAccessToken, AdminRole, AdminTokenStatus } from "@/lib/admin-types";
-import { ADMIN_ROLE_OPTIONS } from "@/lib/admin-types";
+import type { AdminAccessToken, AdminRole, AdminTokenStatus } from "@/lib/admin/admin-types";
+import { ADMIN_ROLE_OPTIONS } from "@/lib/admin/admin-types";
 import { StateBlock } from "@/app/components/state-block";
 
 type TokenView = Omit<AdminAccessToken, "tokenHash">;

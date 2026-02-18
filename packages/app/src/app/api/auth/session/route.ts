@@ -8,7 +8,7 @@ import {
   getUserSessionFromCookies,
   requireUserSignature,
   setUserSessionCookie,
-} from "@/lib/user-auth";
+} from "@/lib/auth/user-auth";
 import { rateLimit } from "@/lib/rate-limit";
 
 const AUTH_SESSION_RATE_LIMIT_WINDOW_MS = Number(process.env.AUTH_SESSION_RATE_LIMIT_WINDOW_MS || "60000");

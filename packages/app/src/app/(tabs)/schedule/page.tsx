@@ -28,7 +28,7 @@ import {
   markCompletedOnChain,
   payServiceFeeOnChain,
   raiseDisputeOnChain,
-} from "@/lib/qy-chain";
+} from "@/lib/chain/qy-chain";
 import { resolveDisputePolicy } from "@/lib/risk-policy";
 import { StateBlock } from "@/app/components/state-block";
 import { ConfirmDialog, PromptDialog } from "@/app/components/confirm-dialog";
@@ -155,9 +155,9 @@ const sections: RideSection[] = [
   {
     title: "小时单",
     items: [
-      { name: "机密单护", desc: "稳定护航", eta: "7分钟", price: "300钻石", base: 30 },
+      { name: "机密单护", desc: "稳定陪练", eta: "7分钟", price: "300钻石", base: 30 },
       { name: "机密双护", desc: "双人协同", eta: "8分钟", price: "600钻石", base: 60 },
-      { name: "绝密单护", desc: "高强度护航", eta: "10分钟", price: "500钻石", base: 50 },
+      { name: "绝密单护", desc: "高强度陪练", eta: "10分钟", price: "500钻石", base: 50 },
       { name: "绝密双护", desc: "双核保障", eta: "11分钟", price: "1000钻石", base: 100 },
     ],
   },
@@ -170,7 +170,7 @@ const sections: RideSection[] = [
   },
 ];
 
-const PLAYER_SECTION_TITLE = "可接打手";
+const PLAYER_SECTION_TITLE = "可接陪练";
 
 function readDiscountUsage(address: string) {
   if (typeof window === "undefined") return false;
@@ -471,7 +471,7 @@ export default function Schedule() {
       setPlayers(next);
       writeCache(cacheKey, next);
     } catch (e) {
-      setPlayersError(formatErrorMessage(e, "加载打手失败"));
+      setPlayersError(formatErrorMessage(e, "加载陪练失败"));
     } finally {
       setPlayersLoading(false);
     }
@@ -496,8 +496,8 @@ export default function Schedule() {
     } else {
       setPrefillHint(
         requestedPlayerName
-          ? `指定打手「${requestedPlayerName}」当前不可接，已切换为系统匹配`
-          : "指定打手当前不可接，已切换为系统匹配"
+          ? `指定陪练「${requestedPlayerName}」当前不可接，已切换为系统匹配`
+          : "指定陪练当前不可接，已切换为系统匹配"
       );
     }
     setPrefillApplied(true);
@@ -852,7 +852,7 @@ export default function Schedule() {
     return (
       <div className="ride-shell">
         <div className="ride-tip" style={{ marginTop: 0 }}>
-          打手已支付押金，平台将使用钻石托管打手费用
+          陪练已支付押金，平台将使用钻石托管陪练费用
         </div>
 
         <div className="ride-driver-card dl-card">
@@ -860,7 +860,7 @@ export default function Schedule() {
             <div className="ride-driver-avatar" />
             <div>
               <div className="text-sm text-amber-600 font-semibold">
-                {isEscrow ? "打手费用已托管" : "等待支付打手费用"}
+                {isEscrow ? "陪练费用已托管" : "等待支付陪练费用"}
               </div>
               {hasCompanionProfile ? (
                 <>
@@ -895,7 +895,7 @@ export default function Schedule() {
           <div className="ride-driver-actions">
             <button className="dl-tab-btn" onClick={cancelOrder}>取消订单</button>
             <button className="dl-tab-btn accent">
-              联系打手
+              联系陪练
             </button>
           </div>
           {chainStatusHint && (
@@ -907,7 +907,7 @@ export default function Schedule() {
         <div className="ride-pay-box">
           <div className="ride-pay-head">
             <div>
-              <div className="ride-pay-title">托管打手费用</div>
+              <div className="ride-pay-title">托管陪练费用</div>
               <div className="ride-pay-sub">无需扫码，平台将从钻石托管后结算</div>
             </div>
             <div className="ride-pay-amount">¥{playerDue.toFixed(2)}</div>
@@ -918,7 +918,7 @@ export default function Schedule() {
               className="dl-tab-btn primary"
               onClick={async () => {
                 if (!currentOrder) return;
-                await patchOrder(currentOrder.id, { playerPaid: true, status: "打手费已托管", userAddress: getCurrentAddress() });
+                await patchOrder(currentOrder.id, { playerPaid: true, status: "陪练费已托管", userAddress: getCurrentAddress() });
                 await refreshOrders();
                 setMode("enroute");
               }}
@@ -946,7 +946,7 @@ export default function Schedule() {
         </div>
         {canConfirmCompletion && (
           <div className="ride-tip" style={{ marginTop: 0 }}>
-            打手已结束服务，请确认完成后进入结算/争议期
+            陪练已结束服务，请确认完成后进入结算/争议期
             {chainStatusHint && <div className="mt-1 text-xs text-gray-500">{chainStatusHint}</div>}
           </div>
         )}
@@ -1032,7 +1032,7 @@ export default function Schedule() {
               </button>
             )}
             <button className="dl-tab-btn accent">
-              联系打手
+              联系陪练
             </button>
           </div>
           <div className="text-xs text-gray-500 mt-2">订单：{currentOrder.item}</div>
@@ -1160,7 +1160,7 @@ export default function Schedule() {
               {currentOrder ? renderActionLabel(`finalize-${currentOrder.id}`, "无争议结算") : "无争议结算"}
             </button>
             <button className="dl-tab-btn accent">
-              联系打手
+              联系陪练
             </button>
           </div>
           {disputeDeadline && (
@@ -1179,11 +1179,11 @@ export default function Schedule() {
     return (
       <div className="ride-shell">
         <div className="ride-tip" style={{ marginTop: 0 }}>
-          正在通知护航，需打手支付押金后才能接单
+          正在通知陪练，需陪练支付押金后才能接单
         </div>
         <div className="ride-stepper">
           <Step label={`托管费 ¥${escrowFeeDisplay.toFixed(2)} 已收`} done={!!currentOrder.serviceFeePaid} />
-          <Step label="打手支付押金" done={!!currentOrder.depositPaid} />
+          <Step label="陪练支付押金" done={!!currentOrder.depositPaid} />
           <Step label="派单匹配" done={!!currentOrder.driver} />
         </div>
         <div className="ride-notify-illu" />
@@ -1212,7 +1212,7 @@ export default function Schedule() {
     }
     setCalling(true);
     try {
-      const requestedNote = selectedPlayer ? `指定打手：${selectedPlayer.name}` : "";
+      const requestedNote = selectedPlayer ? `指定陪练：${selectedPlayer.name}` : "";
       let chainOrderId: string | null = null;
       let chainDigest: string | null = null;
       if (isChainOrdersEnabled()) {
@@ -1556,15 +1556,15 @@ export default function Schedule() {
                   </div>
                 )}
                 <div className="text-xs text-gray-500" style={{ marginTop: 4 }}>
-                  撮合费 ¥{locked.service.toFixed(2)} / 打手费用 ¥{locked.player.toFixed(2)}
+                  撮合费 ¥{locked.service.toFixed(2)} / 陪练费用 ¥{locked.player.toFixed(2)}
                 </div>
-                <div className="ride-chip">打手费用由平台托管，服务完成后结算</div>
+                <div className="ride-chip">陪练费用由平台托管，服务完成后结算</div>
                 <div className="text-xs text-gray-500" style={{ marginTop: 4 }}>
                   仲裁时效：{vipLoading ? "查询中..." : `${disputePolicy.hours}小时`}
                   {vipTier?.name ? `（会员：${vipTier.name}）` : ""}
                 </div>
                 <div className="text-xs text-gray-500" style={{ marginTop: 4 }}>
-                  已选打手：
+                  已选陪练：
                   {selectedPlayer ? `${selectedPlayer.name}${selectedPlayer.role ? `（${selectedPlayer.role}）` : ""}` : "系统匹配"}
                 </div>
                 <div className="text-xs text-gray-500" style={{ marginTop: 6 }}>
@@ -1676,7 +1676,7 @@ export default function Schedule() {
               sectionRefs.current[PLAYER_SECTION_TITLE]?.scrollIntoView({ behavior: "smooth", block: "start" });
             }}
           >
-            可接打手
+            可接陪练
           </button>
           {sections.map((s) => (
             <button
@@ -1702,7 +1702,7 @@ export default function Schedule() {
             >
               <div className="ride-block-title">
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                  <span>可接打手</span>
+                  <span>可接陪练</span>
                   <button
                     className="dl-tab-btn"
                     style={{ padding: "4px 8px" }}
@@ -1716,12 +1716,12 @@ export default function Schedule() {
               </div>
               <div className="ride-items">
                 {playersLoading && players.length === 0 ? (
-                  <StateBlock tone="loading" size="compact" title="加载中" description="正在获取可接打手" />
+                  <StateBlock tone="loading" size="compact" title="加载中" description="正在获取可接陪练" />
                 ) : playersError && players.length === 0 ? (
                   <StateBlock
                     tone="danger"
                     size="compact"
-                    title="打手列表加载失败"
+                    title="陪练列表加载失败"
                     description={playersError}
                     actions={
                       <button className="dl-tab-btn" onClick={loadPlayers} type="button" disabled={playersLoading}>
@@ -1733,7 +1733,7 @@ export default function Schedule() {
                   <StateBlock
                     tone="empty"
                     size="compact"
-                    title="暂无可接打手"
+                    title="暂无可接陪练"
                     description="稍后刷新或切换时间段试试"
                   />
                 ) : (
@@ -1776,11 +1776,11 @@ export default function Schedule() {
                   ))
                 )}
                 {playersError && players.length > 0 && (
-                  <div className="px-4 pb-2 text-xs text-rose-500">打手列表更新失败：{playersError}</div>
+                  <div className="px-4 pb-2 text-xs text-rose-500">陪练列表更新失败：{playersError}</div>
                 )}
               </div>
               <div className="px-4 pb-2 text-[11px] text-slate-400">
-                {prefillHint || "未选择将由系统匹配打手"}
+                {prefillHint || "未选择将由系统匹配陪练"}
               </div>
             </div>
             {sections.map((section) => (

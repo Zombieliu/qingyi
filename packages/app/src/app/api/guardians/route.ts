@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import crypto from "crypto";
-import { addGuardianApplication } from "@/lib/admin-store";
-import type { AdminGuardianApplication, GuardianStatus } from "@/lib/admin-types";
+import { addGuardianApplication } from "@/lib/admin/admin-store";
+import type { AdminGuardianApplication, GuardianStatus } from "@/lib/admin/admin-types";
 import { isValidSuiAddress, normalizeSuiAddress } from "@mysten/sui/utils";
-import { requireUserAuth } from "@/lib/user-auth";
+import { requireUserAuth } from "@/lib/auth/user-auth";
 import { rateLimit } from "@/lib/rate-limit";
 
 const GUARDIAN_RATE_LIMIT_WINDOW_MS = Number(process.env.GUARDIAN_RATE_LIMIT_WINDOW_MS || "60000");

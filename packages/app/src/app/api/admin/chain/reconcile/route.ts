@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/admin-auth";
-import { fetchChainOrdersCached, getChainOrderCacheStats } from "@/lib/chain-sync";
-import { getChainOrderStats } from "@/lib/chain-order-cache";
+import { requireAdmin } from "@/lib/admin/admin-auth";
+import { fetchChainOrdersCached, getChainOrderCacheStats } from "@/lib/chain/chain-sync";
+import { getChainOrderStats } from "@/lib/chain/chain-order-cache";
 import { prisma } from "@/lib/db";
-import type { AdminOrder } from "@/lib/admin-types";
+import type { AdminOrder } from "@/lib/admin/admin-types";
 
 /**
  * 链上订单对账和诊断 API

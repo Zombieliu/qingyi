@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import crypto from "crypto";
-import { addInvoiceRequest } from "@/lib/admin-store";
-import type { AdminInvoiceRequest, InvoiceStatus } from "@/lib/admin-types";
+import { addInvoiceRequest } from "@/lib/admin/admin-store";
+import type { AdminInvoiceRequest, InvoiceStatus } from "@/lib/admin/admin-types";
 
 export async function POST(req: Request) {
   let body: {

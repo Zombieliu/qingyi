@@ -2,7 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
-import { getCurrentAddress } from "@/lib/qy-chain";
+import { getCurrentAddress } from "@/lib/chain/qy-chain";
 import { PASSKEY_STORAGE_KEY } from "./passkey-wallet";
 import { readCache, writeCache } from "./client-cache";
 

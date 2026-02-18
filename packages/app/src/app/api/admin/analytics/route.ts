@@ -1,4 +1,4 @@
-import { requireAdmin } from "@/lib/admin-auth";
+import { requireAdmin } from "@/lib/admin/admin-auth";
 import { prisma } from "@/lib/db";
 import { getCache, setCache, computeJsonEtag } from "@/lib/server-cache";
 import { getIfNoneMatch, jsonWithEtag, notModified } from "@/lib/http-cache";

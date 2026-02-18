@@ -28,7 +28,7 @@ import {
   signAuthIntent,
   getChainDebugInfo,
   getDefaultCompanionAddress,
-} from "@/lib/qy-chain";
+} from "@/lib/chain/qy-chain";
 import { useBackoffPoll } from "@/app/components/use-backoff-poll";
 import { MotionCard } from "@/components/ui/motion";
 import { StateBlock } from "@/app/components/state-block";
@@ -436,7 +436,7 @@ export default function Showcase() {
       status: needsChain ? undefined : "已接单",
       depositPaid: true,
       driver: {
-        name: "护航·刘师傅",
+        name: "陪练·刘师傅",
         car: "白色新能源汽车",
         eta: "2.7公里 · 5分钟",
         plate: "苏RF M9358",
@@ -779,7 +779,7 @@ export default function Showcase() {
   if (!canAccessShowcase) {
     return (
       <div className="dl-main">
-        <StateBlock tone="empty" size="compact" title="暂无权限访问" description="请使用护航账号访问接单大厅" />
+        <StateBlock tone="empty" size="compact" title="暂无权限访问" description="请使用陪练账号访问接单大厅" />
       </div>
     );
   }
@@ -1192,7 +1192,7 @@ export default function Showcase() {
                     <>
                 <div className="flex items-center gap-2 text-amber-600 text-sm font-semibold">
                   <Car size={16} />
-                  打手已接单
+                  陪练已接单
                 </div>
                 {hasProfile ? (
                   <div className="mt-2 text-sm text-gray-900">
@@ -1220,9 +1220,9 @@ export default function Showcase() {
                 <div className="mt-2 text-xs">
                   <span className="text-emerald-600 font-semibold mr-2">押金已付</span>
                   {o.playerPaid ? (
-                    <span className="text-emerald-700 font-semibold">打手费已付，进行中</span>
+                    <span className="text-emerald-700 font-semibold">陪练费已付，进行中</span>
                   ) : (
-                    <span className="text-red-500 font-semibold">等待用户支付打手费</span>
+                    <span className="text-red-500 font-semibold">等待用户支付陪练费</span>
                   )}
                 </div>
                 <div className="mt-3 flex items-center gap-10 text-sm">
@@ -1240,7 +1240,7 @@ export default function Showcase() {
                     完成
                   </button>
                   <button className="dl-tab-btn accent" style={{ padding: "8px 10px" }}>
-                    联系打手
+                    联系陪练
                   </button>
                 </div>
                     </>

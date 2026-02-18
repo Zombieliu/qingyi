@@ -19,9 +19,9 @@ import type {
   AdminSession,
   AdminAccessToken,
 } from "./admin-types";
-import { prisma } from "./db";
+import { prisma } from "../db";
 import { Prisma } from "@prisma/client";
-import { getCache, setCache } from "./server-cache";
+import { getCache, setCache } from "../server-cache";
 
 const MAX_AUDIT_LOGS = Number(process.env.ADMIN_AUDIT_LOG_LIMIT || "1000");
 const MAX_PAYMENT_EVENTS = Number(process.env.ADMIN_PAYMENT_EVENT_LIMIT || "1000");

@@ -1,9 +1,10 @@
 "use client";
 import { ChevronLeft, Moon, Globe2, BookOpen, MessageSquare } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useI18n } from "@/lib/i18n-client";
+import { useI18n } from "@/lib/i18n/i18n-client";
 import { useEffect, useState } from "react";
 import { applySeniorMode, SENIOR_MODE_STORAGE_KEY } from "@/app/components/senior-mode";
+import { SENIOR_MODE_COOKIE_KEY, setCookie, getCookie } from "@/lib/shared/cookie-utils";
 
 interface Props {
   onBack: () => void;
@@ -19,6 +20,12 @@ export default function SettingsPanel({ onBack, onLogout }: Props) {
   useEffect(() => {
     if (typeof window === "undefined") return;
     const read = () => {
+      // Prioritize cookie, fallback to localStorage
+      const cookieValue = getCookie(SENIOR_MODE_COOKIE_KEY);
+      if (cookieValue !== undefined) {
+        setSeniorMode(cookieValue === "1");
+        return;
+      }
       const stored = localStorage.getItem(SENIOR_MODE_STORAGE_KEY);
       setSeniorMode(stored === "1");
     };
@@ -43,11 +50,16 @@ export default function SettingsPanel({ onBack, onLogout }: Props) {
     const next = !seniorMode;
     setSeniorMode(next);
     if (typeof window === "undefined") return;
+    
+    // Update both for compatibility
     if (next) {
       localStorage.setItem(SENIOR_MODE_STORAGE_KEY, "1");
+      setCookie(SENIOR_MODE_COOKIE_KEY, "1");
     } else {
       localStorage.removeItem(SENIOR_MODE_STORAGE_KEY);
+      setCookie(SENIOR_MODE_COOKIE_KEY, "0");
     }
+    
     applySeniorMode(next);
     window.dispatchEvent(new Event("senior-mode-updated"));
   };

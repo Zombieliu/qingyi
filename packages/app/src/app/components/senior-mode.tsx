@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { SENIOR_MODE_COOKIE_KEY, getCookie, setCookie } from "@/lib/shared/cookie-utils";
 
 export const SENIOR_MODE_STORAGE_KEY = "qy_senior_mode_v1";
 
@@ -16,7 +17,18 @@ export function applySeniorMode(enabled: boolean) {
 
 function readSeniorMode() {
   if (typeof window === "undefined") return false;
-  return localStorage.getItem(SENIOR_MODE_STORAGE_KEY) === "1";
+  // Try cookie first, fallback to localStorage for migration
+  const cookieValue = getCookie(SENIOR_MODE_COOKIE_KEY);
+  if (cookieValue !== undefined) {
+    return cookieValue === "1";
+  }
+  const storageValue = localStorage.getItem(SENIOR_MODE_STORAGE_KEY);
+  if (storageValue === "1") {
+    // Migrate to cookie
+    setCookie(SENIOR_MODE_COOKIE_KEY, "1");
+    return true;
+  }
+  return false;
 }
 
 export default function SeniorModeProvider() {
@@ -25,7 +37,9 @@ export default function SeniorModeProvider() {
 
     const handleStorage = (event: StorageEvent) => {
       if (event.key === SENIOR_MODE_STORAGE_KEY) {
-        applySeniorMode(readSeniorMode());
+        const enabled = event.newValue === "1";
+        setCookie(SENIOR_MODE_COOKIE_KEY, enabled ? "1" : "0");
+        applySeniorMode(enabled);
       }
     };
     const handleCustom = () => {

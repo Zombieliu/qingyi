@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/admin-auth";
-import { queryOrders } from "@/lib/admin-store";
+import { requireAdmin } from "@/lib/admin/admin-auth";
+import { queryOrders } from "@/lib/admin/admin-store";
 
 function toCsv(rows: Array<Record<string, unknown>>) {
   if (!rows.length) return "";

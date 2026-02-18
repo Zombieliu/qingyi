@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { isValidSuiAddress, normalizeSuiAddress } from "@mysten/sui/utils";
-import { getMantouWallet } from "@/lib/admin-store";
-import { requireUserAuth } from "@/lib/user-auth";
+import { getMantouWallet } from "@/lib/admin/admin-store";
+import { requireUserAuth } from "@/lib/auth/user-auth";
 
 const MANTOU_BALANCE_CACHE_TTL_MS = 10_000;
 const mantouCache = new Map<string, { value: { balance: number; frozen: number }; updatedAt: number; inflight?: Promise<{ balance: number; frozen: number }> }>();

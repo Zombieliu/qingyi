@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/admin-auth";
+import { requireAdmin } from "@/lib/admin/admin-auth";
 import {
   getMemberByAddress,
   getMembershipTierById,
@@ -7,9 +7,9 @@ import {
   updateMembershipRequest,
   addMember,
   removeMembershipRequest,
-} from "@/lib/admin-store";
-import { recordAudit } from "@/lib/admin-audit";
-import type { AdminMember, AdminMembershipRequest, MemberStatus } from "@/lib/admin-types";
+} from "@/lib/admin/admin-store";
+import { recordAudit } from "@/lib/admin/admin-audit";
+import type { AdminMember, AdminMembershipRequest, MemberStatus } from "@/lib/admin/admin-types";
 
 type RouteContext = { params: Promise<{ requestId: string }> };
 

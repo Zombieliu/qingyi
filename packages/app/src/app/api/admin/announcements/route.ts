@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import crypto from "crypto";
-import { requireAdmin } from "@/lib/admin-auth";
-import { addAnnouncement, listAnnouncements } from "@/lib/admin-store";
-import { recordAudit } from "@/lib/admin-audit";
-import type { AdminAnnouncement, AnnouncementStatus } from "@/lib/admin-types";
+import { requireAdmin } from "@/lib/admin/admin-auth";
+import { addAnnouncement, listAnnouncements } from "@/lib/admin/admin-store";
+import { recordAudit } from "@/lib/admin/admin-audit";
+import type { AdminAnnouncement, AnnouncementStatus } from "@/lib/admin/admin-types";
 
 export async function GET(req: Request) {
   const auth = await requireAdmin(req, { role: "viewer" });

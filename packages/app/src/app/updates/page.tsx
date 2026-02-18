@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { listPublicAnnouncements } from "@/lib/admin-store";
+import { listPublicAnnouncements } from "@/lib/admin/admin-store";
 
 export const dynamic = "force-dynamic";
 

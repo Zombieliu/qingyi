@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import crypto from "crypto";
-import { addSupportTicket } from "@/lib/admin-store";
-import type { AdminSupportTicket, SupportStatus } from "@/lib/admin-types";
+import { addSupportTicket } from "@/lib/admin/admin-store";
+import type { AdminSupportTicket, SupportStatus } from "@/lib/admin/admin-types";
 
 export async function POST(req: Request) {
   let body: {

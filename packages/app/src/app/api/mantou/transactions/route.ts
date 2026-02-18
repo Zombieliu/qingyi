@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { isValidSuiAddress, normalizeSuiAddress } from "@mysten/sui/utils";
-import { queryMantouTransactions } from "@/lib/admin-store";
-import { requireUserAuth } from "@/lib/user-auth";
+import { queryMantouTransactions } from "@/lib/admin/admin-store";
+import { requireUserAuth } from "@/lib/auth/user-auth";
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);

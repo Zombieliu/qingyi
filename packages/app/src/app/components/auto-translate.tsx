@@ -2,7 +2,7 @@
 
 import { Children, cloneElement, isValidElement } from "react";
 import type { ReactNode, ReactElement } from "react";
-import { useI18n } from "@/lib/i18n-client";
+import { useI18n } from "@/lib/i18n/i18n-client";
 
 const TRANSLATABLE_PROPS = ["placeholder", "title", "aria-label", "ariaLabel", "alt"];
 

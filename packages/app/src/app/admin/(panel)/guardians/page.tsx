@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Check, Copy, RefreshCw, Search } from "lucide-react";
-import type { AdminGuardianApplication, GuardianStatus } from "@/lib/admin-types";
-import { GUARDIAN_STATUS_OPTIONS } from "@/lib/admin-types";
+import type { AdminGuardianApplication, GuardianStatus } from "@/lib/admin/admin-types";
+import { GUARDIAN_STATUS_OPTIONS } from "@/lib/admin/admin-types";
 import { readCache, writeCache } from "@/app/components/client-cache";
 import { StateBlock } from "@/app/components/state-block";
 
@@ -155,7 +155,7 @@ export default function GuardiansPage() {
       const link = document.createElement("a");
       link.href = url;
       const scopeLabel = exportScope === "current" ? "当前页" : "筛选";
-      link.download = `护航${scopeLabel}_${new Date().toISOString().replace(/[:T]/g, "-").slice(0, 19)}.csv`;
+      link.download = `陪练${scopeLabel}_${new Date().toISOString().replace(/[:T]/g, "-").slice(0, 19)}.csv`;
       link.click();
       URL.revokeObjectURL(url);
     } catch {
@@ -263,7 +263,7 @@ export default function GuardiansPage() {
       <div className="admin-card">
         <div className="admin-card-header">
           <div>
-            <h3>护航筛选</h3>
+            <h3>陪练筛选</h3>
             <p>按申请人、状态与联系方式快速定位。</p>
           </div>
         </div>
@@ -318,16 +318,16 @@ export default function GuardiansPage() {
 
       <div className="admin-card">
         <div className="admin-card-header">
-          <h3>护航申请列表</h3>
+          <h3>陪练申请列表</h3>
           <div className="admin-card-actions">
             <span className="admin-pill">共 {applications.length} 条</span>
             {cacheHint ? <span className="admin-pill">{cacheHint}</span> : null}
           </div>
         </div>
         {loading ? (
-          <StateBlock tone="loading" size="compact" title="加载护航申请中" description="正在同步最新申请" />
+          <StateBlock tone="loading" size="compact" title="加载陪练申请中" description="正在同步最新申请" />
         ) : applications.length === 0 ? (
-          <StateBlock tone="empty" size="compact" title="暂无护航申请" description="当前没有待处理的申请" />
+          <StateBlock tone="empty" size="compact" title="暂无陪练申请" description="当前没有待处理的申请" />
         ) : (
           <div className="admin-table-wrap">
             <table className="admin-table">

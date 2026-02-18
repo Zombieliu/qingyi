@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/admin-auth";
-import { creditMantou } from "@/lib/admin-store";
+import { requireAdmin } from "@/lib/admin/admin-auth";
+import { creditMantou } from "@/lib/admin/admin-store";
 import { isValidSuiAddress, normalizeSuiAddress } from "@mysten/sui/utils";
 
 export async function POST(req: Request) {

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getAdminSession, requireAdmin } from "@/lib/admin-auth";
+import { getAdminSession, requireAdmin } from "@/lib/admin/admin-auth";
 
 export async function GET(req: Request) {
   const auth = await requireAdmin(req, { role: "viewer" });

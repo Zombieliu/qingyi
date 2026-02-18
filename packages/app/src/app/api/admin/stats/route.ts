@@ -1,5 +1,5 @@
-import { requireAdmin } from "@/lib/admin-auth";
-import { getAdminStats } from "@/lib/admin-store";
+import { requireAdmin } from "@/lib/admin/admin-auth";
+import { getAdminStats } from "@/lib/admin/admin-store";
 import { getCache, setCache, computeJsonEtag } from "@/lib/server-cache";
 import { getIfNoneMatch, jsonWithEtag, notModified } from "@/lib/http-cache";
 

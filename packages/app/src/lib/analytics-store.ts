@@ -2,7 +2,7 @@ import "server-only";
 import crypto from "crypto";
 import { prisma } from "./db";
 import { Prisma } from "@prisma/client";
-import type { GrowthEvent } from "./admin-types";
+import type { GrowthEvent } from "./admin/admin-types";
 
 export type GrowthEventInput = {
   event: string;

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/admin-auth";
-import { getCompanionEarnings } from "@/lib/admin-store";
+import { requireAdmin } from "@/lib/admin/admin-auth";
+import { getCompanionEarnings } from "@/lib/admin/admin-store";
 
 function parseDateParam(raw: string | null, endOfDay = false) {
   if (!raw) return undefined;

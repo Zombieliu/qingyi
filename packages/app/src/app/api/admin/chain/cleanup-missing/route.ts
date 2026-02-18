@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/admin-auth";
-import { listOrders, removeOrders } from "@/lib/admin-store";
-import { fetchChainOrdersAdmin } from "@/lib/chain-admin";
-import { recordAudit } from "@/lib/admin-audit";
-import { computeMissingChainCleanup } from "@/lib/chain-missing-utils";
+import { requireAdmin } from "@/lib/admin/admin-auth";
+import { listOrders, removeOrders } from "@/lib/admin/admin-store";
+import { fetchChainOrdersAdmin } from "@/lib/chain/chain-admin";
+import { recordAudit } from "@/lib/admin/admin-audit";
+import { computeMissingChainCleanup } from "@/lib/chain/chain-missing-utils";
 
 export async function POST(req: Request) {
   const auth = await requireAdmin(req, { role: "finance" });
