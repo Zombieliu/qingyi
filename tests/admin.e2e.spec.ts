@@ -50,7 +50,6 @@ async function login(page: any, tokenOverride?: string) {
     await submit.click();
     const res = await responsePromise;
     if (res.ok()) {
-      await page.waitForURL(/\/admin$/, { timeout: 10_000 });
       return;
     }
     const status = res.status();

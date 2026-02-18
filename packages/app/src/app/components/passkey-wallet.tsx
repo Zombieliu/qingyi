@@ -5,15 +5,22 @@ import {
   PasskeyKeypair,
   BrowserPasskeyProvider,
   type BrowserPasswordProviderOptions,
+  type PasskeyProvider,
   findCommonPublicKey,
 } from "@mysten/sui/keypairs/passkey";
 import { StateBlock } from "@/app/components/state-block";
+import { ensureUserSession } from "@/app/components/user-auth-client";
 
 export const PASSKEY_STORAGE_KEY = "qy_passkey_wallet_v3";
+export const PASSKEY_WALLETS_KEY = "qy_passkey_wallets_v1";
+const RP_NAME = "情谊电竞";
 
-type StoredWallet = {
+export type StoredWallet = {
   address: string;
   publicKey: string; // base64
+  label?: string;
+  createdAt?: number;
+  lastUsedAt?: number;
 };
 
 const toBase64 = (bytes: Uint8Array) =>
@@ -21,41 +28,158 @@ const toBase64 = (bytes: Uint8Array) =>
 const fromBase64 = (b64: string) =>
   new Uint8Array(atob(b64).split("").map((c) => c.charCodeAt(0)));
 
+export function shortAddress(address: string) {
+  if (!address) return "";
+  return `${address.slice(0, 6)}...${address.slice(-4)}`;
+}
+
+export function loadStoredWallet(): StoredWallet | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(PASSKEY_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as StoredWallet;
+    if (!parsed?.address || !parsed?.publicKey) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+export function saveStoredWallet(stored: StoredWallet): StoredWallet | null {
+  if (typeof window === "undefined") return null;
+  const now = Date.now();
+  const next: StoredWallet = {
+    ...stored,
+    createdAt: stored.createdAt || now,
+    lastUsedAt: now,
+  };
+  localStorage.setItem(PASSKEY_STORAGE_KEY, JSON.stringify(next));
+  rememberWallet(next);
+  window.dispatchEvent(new Event("passkey-updated"));
+  return next;
+}
+
+export function clearStoredWallet() {
+  if (typeof window === "undefined") return;
+  localStorage.removeItem(PASSKEY_STORAGE_KEY);
+  window.dispatchEvent(new Event("passkey-updated"));
+}
+
+export function loadWalletList(): StoredWallet[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(PASSKEY_WALLETS_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as StoredWallet[];
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((item) => item?.address && item?.publicKey);
+  } catch {
+    return [];
+  }
+}
+
+function saveWalletList(list: StoredWallet[]) {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(PASSKEY_WALLETS_KEY, JSON.stringify(list.slice(0, 5)));
+}
+
+export function rememberWallet(stored: StoredWallet) {
+  if (typeof window === "undefined") return;
+  const now = Date.now();
+  const list = loadWalletList();
+  const idx = list.findIndex((item) => item.address === stored.address);
+  const nextItem: StoredWallet = {
+    ...stored,
+    createdAt: stored.createdAt || now,
+    lastUsedAt: now,
+  };
+  let next = [...list];
+  if (idx >= 0) {
+    next[idx] = { ...list[idx], ...nextItem };
+  } else {
+    next = [nextItem, ...next];
+  }
+  next.sort((a, b) => (b.lastUsedAt || 0) - (a.lastUsedAt || 0));
+  saveWalletList(next);
+}
+
+export function removeWalletFromList(address: string) {
+  if (typeof window === "undefined") return;
+  const list = loadWalletList().filter((item) => item.address !== address);
+  saveWalletList(list);
+  window.dispatchEvent(new Event("passkey-updated"));
+}
+
+export function getPasskeyProviderOptions(isAutomation = false): BrowserPasswordProviderOptions {
+  return {
+    rp: {
+      id: typeof window !== "undefined" ? window.location.hostname : undefined,
+    },
+    authenticatorSelection: {
+      authenticatorAttachment: isAutomation ? "cross-platform" : "platform",
+      residentKey: "preferred",
+      requireResidentKey: false,
+      userVerification: "preferred",
+    },
+  };
+}
+
+export function createPasskeyProvider(isAutomation = false): PasskeyProvider {
+  return new BrowserPasskeyProvider(RP_NAME, getPasskeyProviderOptions(isAutomation));
+}
+
+function isMissingCredential(error: unknown) {
+  const err = error as Error & { name?: string };
+  const msg = err.message || "";
+  return (
+    err.name === "NotFoundError" ||
+    msg.includes("No passkeys found") ||
+    msg.includes("not found") ||
+    msg.includes("No credentials")
+  );
+}
+
+async function bootstrapSession(address: string) {
+  try {
+    await ensureUserSession(address);
+  } catch {
+    // ignore session bootstrap errors
+  }
+}
+
 export default function PasskeyWallet() {
   const [wallet, setWallet] = useState<StoredWallet | null>(null);
+  const [wallets, setWallets] = useState<StoredWallet[]>([]);
   const [hasCredential, setHasCredential] = useState(false);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const isAutomation = process.env.NEXT_PUBLIC_PASSKEY_AUTOMATION === "1";
 
-  const providerOpts = useMemo<BrowserPasswordProviderOptions>(() => {
-    const isApple =
-      typeof navigator !== "undefined" && /Mac|iPhone|iPad|iPod/.test(navigator.platform || "");
-    return {
-      rpName: "情谊电竞",
-      rpId: typeof window !== "undefined" ? window.location.hostname : undefined,
-      authenticatorSelection: isAutomation
-        ? {
-            authenticatorAttachment: "cross-platform",
-            residentKey: "preferred",
-            requireResidentKey: false,
-            userVerification: "preferred",
-          }
-        : { authenticatorAttachment: isApple ? "cross-platform" : "platform", userVerification: "preferred" },
-    };
-  }, [isAutomation]);
+  const providerOpts = useMemo<BrowserPasswordProviderOptions>(
+    () => getPasskeyProviderOptions(isAutomation),
+    [isAutomation]
+  );
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const raw = localStorage.getItem(PASSKEY_STORAGE_KEY);
-    if (raw) {
-      try {
-        setWallet(JSON.parse(raw) as StoredWallet);
-      } catch {
-        /* ignore */
+    const sync = () => {
+      setWallet(loadStoredWallet());
+      setWallets(loadWalletList());
+    };
+    sync();
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === PASSKEY_STORAGE_KEY || event.key === PASSKEY_WALLETS_KEY) {
+        sync();
       }
-    }
+    };
+    window.addEventListener("storage", handleStorage);
+    window.addEventListener("passkey-updated", sync);
+    return () => {
+      window.removeEventListener("storage", handleStorage);
+      window.removeEventListener("passkey-updated", sync);
+    };
   }, []);
 
   useEffect(() => {
@@ -75,30 +199,29 @@ export default function PasskeyWallet() {
     return () => controller.abort();
   }, []);
 
-  const persist = (stored: StoredWallet, toast: string) => {
-    localStorage.setItem(PASSKEY_STORAGE_KEY, JSON.stringify(stored));
-    setWallet(stored);
+  const persist = async (stored: StoredWallet, toast: string) => {
+    const next = saveStoredWallet(stored);
+    if (next) {
+      setWallet(next);
+      setWallets(loadWalletList());
+      await bootstrapSession(next.address);
+    }
     setMsg(toast);
-    window.dispatchEvent(new Event("passkey-updated"));
     setTimeout(() => setMsg(null), 3000);
   };
 
   const create = async () => {
     if (typeof window === "undefined") return;
-    if (hasCredential) {
-      setError("已检测到已有账号，请使用「找回已有账号」");
-      return;
-    }
     try {
       setBusy(true);
       setMsg(null);
       setError(null);
-      const provider = new BrowserPasskeyProvider("情谊电竞", providerOpts);
+      const provider = new BrowserPasskeyProvider(RP_NAME, providerOpts);
       const keypair = await PasskeyKeypair.getPasskeyInstance(provider);
       const publicKey = keypair.getPublicKey();
       const address = publicKey.toSuiAddress();
       const stored: StoredWallet = { address, publicKey: toBase64(publicKey.toRawBytes()) };
-      persist(stored, "账号已创建");
+      await persist(stored, "账号已创建");
     } catch (e) {
       setError((e as Error).message || "创建失败");
     } finally {
@@ -106,20 +229,27 @@ export default function PasskeyWallet() {
     }
   };
 
-  const login = async () => {
-    if (!wallet) return;
+  const login = async (target?: StoredWallet | null) => {
+    const nextWallet = target || wallet || loadStoredWallet();
+    if (!nextWallet) {
+      setError("未找到可登录账号，请先创建或找回");
+      return;
+    }
     try {
       setBusy(true);
       setError(null);
       setMsg(null);
-      const provider = new BrowserPasskeyProvider("情谊电竞", providerOpts);
-      const keypair = new PasskeyKeypair(fromBase64(wallet.publicKey), provider);
-      // 简单校验签名
+      const provider = new BrowserPasskeyProvider(RP_NAME, providerOpts);
+      const keypair = new PasskeyKeypair(fromBase64(nextWallet.publicKey), provider);
       const testMsg = new TextEncoder().encode("login-check");
       await keypair.signPersonalMessage(testMsg);
-      setMsg("登录成功，可用于签名");
+      await persist(nextWallet, "登录成功");
     } catch (e) {
-      setError((e as Error).message || "登录失败");
+      if (isMissingCredential(e)) {
+        setError("此设备未找到该账号，请使用找回已有账号");
+      } else {
+        setError((e as Error).message || "登录失败");
+      }
     } finally {
       setBusy(false);
       setTimeout(() => setMsg(null), 3000);
@@ -131,7 +261,7 @@ export default function PasskeyWallet() {
       setBusy(true);
       setError(null);
       setMsg(null);
-      const provider = new BrowserPasskeyProvider("情谊电竞", providerOpts);
+      const provider = new BrowserPasskeyProvider(RP_NAME, providerOpts);
       const msg1 = new TextEncoder().encode("recover-1");
       const msg2 = new TextEncoder().encode("recover-2");
       const pks1 = await PasskeyKeypair.signAndRecover(provider, msg1);
@@ -141,7 +271,7 @@ export default function PasskeyWallet() {
         address: pk.toSuiAddress(),
         publicKey: toBase64(pk.toRawBytes()),
       };
-      persist(stored, "已找回账号");
+      await persist(stored, "已找回账号");
     } catch (e) {
       setError((e as Error).message || "找回失败");
     } finally {
@@ -150,10 +280,15 @@ export default function PasskeyWallet() {
     }
   };
 
-  const reset = () => {
-    localStorage.removeItem(PASSKEY_STORAGE_KEY);
+  const reset = async () => {
+    clearStoredWallet();
     setWallet(null);
-    window.dispatchEvent(new Event("passkey-updated"));
+    setWallets(loadWalletList());
+    try {
+      await fetch("/api/auth/session", { method: "DELETE" });
+    } catch {
+      // ignore
+    }
   };
 
   return (
@@ -165,37 +300,75 @@ export default function PasskeyWallet() {
           <div className="text-xs text-gray-500">用于安全登录与身份识别</div>
         </div>
       </div>
-      {wallet ? (
-        <div className="mt-3 space-y-2 text-xs text-gray-600">
-          <div className="flex gap-2 mt-2">
-            <button onClick={login} disabled={busy} className="lc-tab-btn" style={{ padding: "6px 10px" }}>
-              {busy ? "校验中..." : "使用此账号"}
-            </button>
-            <button onClick={reset} className="lc-tab-btn" style={{ padding: "6px 10px" }}>
-              清除本地缓存
-            </button>
-          </div>
+
+      {wallets.length > 0 && (
+        <div className="mt-3 space-y-2">
+          <div className="text-xs text-gray-500">最近账号</div>
+          {wallets.map((item) => (
+            <div key={item.address} className="flex items-center justify-between gap-3 text-xs text-gray-600">
+              <div>
+                <div className="text-sm font-semibold text-gray-900">{item.label || shortAddress(item.address)}</div>
+                <div className="text-[11px] text-gray-400">
+                  {item.lastUsedAt ? new Date(item.lastUsedAt).toLocaleDateString("zh-CN") : ""}
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => login(item)}
+                  disabled={busy}
+                  className="lc-tab-btn"
+                  style={{ padding: "6px 10px" }}
+                >
+                  使用
+                </button>
+                <button
+                  onClick={() => removeWalletFromList(item.address)}
+                  disabled={busy}
+                  className="lc-tab-btn"
+                  style={{ padding: "6px 10px", backgroundColor: "#f3f4f6", color: "#111827" }}
+                >
+                  移除
+                </button>
+              </div>
+            </div>
+          ))}
         </div>
-      ) : (
-        <button
-          onClick={create}
-          disabled={busy || hasCredential}
-          className="lc-tab-btn"
-          style={{ marginTop: 8, padding: "10px 12px" }}
-        >
-          {busy ? "创建中..." : hasCredential ? "已有账号" : "创建账号"}
-        </button>
       )}
-      {!wallet && (
+
+      <div className="mt-3 space-y-2">
+        <button onClick={() => login()} disabled={busy} className="lc-tab-btn" style={{ padding: "10px 12px" }}>
+          {busy ? "登录中..." : "登录已有账号"}
+        </button>
+        <button onClick={create} disabled={busy} className="lc-tab-btn" style={{ padding: "10px 12px" }}>
+          {busy ? "创建中..." : "创建新账号"}
+        </button>
         <button
           onClick={recover}
           disabled={busy}
           className="lc-tab-btn"
-          style={{ marginTop: 6, padding: "10px 12px", backgroundColor: "#f3f4f6", color: "#111827" }}
+          style={{ padding: "10px 12px", backgroundColor: "#f3f4f6", color: "#111827" }}
         >
-          {busy ? "恢复中..." : "找回已有账号"}
+          {busy ? "找回中..." : "找回已有账号"}
         </button>
+      </div>
+
+      {hasCredential && (
+        <div className="mt-2 text-xs text-amber-600">检测到设备已有 Passkey，建议优先登录或找回。</div>
       )}
+
+      {wallet && (
+        <div className="mt-3 text-xs text-gray-500">
+          当前账号：{shortAddress(wallet.address)}
+          <button
+            onClick={reset}
+            className="lc-tab-btn"
+            style={{ marginLeft: 8, padding: "4px 8px", backgroundColor: "#f3f4f6", color: "#111827" }}
+          >
+            清除本地缓存
+          </button>
+        </div>
+      )}
+
       {msg && (
         <div className="mt-3">
           <StateBlock tone="success" size="compact" title={msg} />

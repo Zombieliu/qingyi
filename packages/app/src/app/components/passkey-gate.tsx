@@ -1,11 +1,13 @@
 "use client";
-import { useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import PasskeyWallet, { PASSKEY_STORAGE_KEY } from "./passkey-wallet";
 
 type GateState = "checking" | "allowed" | "blocked";
 
 export default function PasskeyGate({ children }: { children: React.ReactNode }) {
-  const state = useSyncExternalStore<GateState>(
+  const [sessionReady, setSessionReady] = useState(false);
+  const [sessionOk, setSessionOk] = useState(false);
+  const hasPasskey = useSyncExternalStore<boolean>(
     (callback) => {
       if (typeof window === "undefined") return () => {};
       const handler = () => callback();
@@ -17,12 +19,42 @@ export default function PasskeyGate({ children }: { children: React.ReactNode })
       };
     },
     () => {
-      if (typeof window === "undefined") return "checking";
-      const ok = !!localStorage.getItem(PASSKEY_STORAGE_KEY);
-      return ok ? "allowed" : "blocked";
+      if (typeof window === "undefined") return false;
+      return !!localStorage.getItem(PASSKEY_STORAGE_KEY);
     },
-    () => "checking"
+    () => false
   );
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    let active = true;
+    const check = async () => {
+      try {
+        const res = await fetch("/api/auth/session");
+        if (!active) return;
+        setSessionOk(res.ok);
+      } catch {
+        if (!active) return;
+        setSessionOk(false);
+      } finally {
+        if (active) setSessionReady(true);
+      }
+    };
+    check();
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        check();
+      }
+    };
+    window.addEventListener("visibilitychange", handleVisibility);
+    return () => {
+      active = false;
+      window.removeEventListener("visibilitychange", handleVisibility);
+    };
+  }, [hasPasskey]);
+
+  const allowed = hasPasskey || sessionOk;
+  const state: GateState = allowed ? "allowed" : sessionReady ? "blocked" : "checking";
 
   if (state === "allowed") return <>{children}</>;
 
@@ -31,7 +63,7 @@ export default function PasskeyGate({ children }: { children: React.ReactNode })
       <div className="dl-card" style={{ padding: 18, marginBottom: 16 }}>
         <div className="text-base font-semibold text-gray-900">需要登录</div>
         <div className="text-sm text-gray-600 mt-2 leading-relaxed">
-          首次打开视为注册：创建账号即可完成身份验证；更换设备请使用“找回已有账号”。完成后自动解锁全站页面。
+          请选择登录、创建或找回已有账号完成验证。若更换设备，请使用“找回已有账号”。完成后自动解锁全站页面。
           （登录仅在 HTTPS 或 localhost 可用）
         </div>
       </div>

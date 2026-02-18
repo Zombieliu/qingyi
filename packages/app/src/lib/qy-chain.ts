@@ -67,11 +67,17 @@ function isSponsorStrict() {
 }
 
 function getProviderOptions(): BrowserPasswordProviderOptions {
+  const isAutomation = process.env.NEXT_PUBLIC_PASSKEY_AUTOMATION === "1";
   return {
     rp: {
       id: typeof window !== "undefined" ? window.location.hostname : undefined,
     },
-    authenticatorSelection: { authenticatorAttachment: "platform", userVerification: "preferred" },
+    authenticatorSelection: {
+      authenticatorAttachment: isAutomation ? "cross-platform" : "platform",
+      residentKey: "preferred",
+      requireResidentKey: false,
+      userVerification: "preferred",
+    },
   };
 }
 

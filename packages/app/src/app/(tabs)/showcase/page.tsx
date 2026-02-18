@@ -1209,7 +1209,7 @@ export default function Showcase() {
                     </div>
                     <div className="text-right text-sm">
                       <div className="font-semibold text-emerald-600">{o.driver.eta}</div>
-                      {o.driver.price && <div className="text-xs text-gray-500">一口价 ¥{o.driver.price / 10}</div>}
+                      {o.driver.price && <div className="text-xs text-gray-500">一口价 {o.driver.price} 钻石</div>}
                     </div>
                   </div>
                 )}

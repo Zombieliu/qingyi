@@ -81,6 +81,7 @@ function mergeChainStatus(local?: number, remote?: number) {
 const GAME_PROFILE_KEY = "qy_game_profile_v1";
 const FIRST_ORDER_STORAGE_KEY = "qy_first_order_discount_used_v1";
 const FIRST_ORDER_DISCOUNT = { minSpend: 99, amount: 10, label: "首单满99减10" };
+const DIAMOND_RATE = 10;
 
 type GameProfile = {
   gameName: string;
@@ -112,43 +113,59 @@ const sections: RideSection[] = [
         name: "绝密体验单",
         desc: "15分钟上车",
         eta: "15分钟",
-        price: "¥88",
-        old: "¥128",
-        tag: "已优惠40",
+        price: "880钻石",
+        old: "1280钻石",
+        tag: "已优惠400",
         bold: true,
         info: "保1000W",
+        base: 88,
       },
       {
         name: "绝密快单",
         desc: "10分钟上车",
         eta: "10分钟",
-        price: "¥128",
-        old: "¥158",
+        price: "1280钻石",
+        old: "1580钻石",
         info: "保1000W",
+        base: 128,
       },
     ],
   },
   {
     title: "特价单",
     items: [
-      { name: "机密大坝", desc: "单护/双护随机", eta: "5分钟", price: "¥28", tag: "保188" },
-      { name: "机密航天", desc: "单护/双护随机", eta: "7分钟", price: "¥38", tag: "保288" },
+      {
+        name: "机密大坝",
+        desc: "单护/双护随机",
+        eta: "5分钟",
+        price: "280钻石",
+        tag: "保1880",
+        base: 28,
+      },
+      {
+        name: "机密航天",
+        desc: "单护/双护随机",
+        eta: "7分钟",
+        price: "380钻石",
+        tag: "保2880",
+        base: 38,
+      },
     ],
   },
   {
     title: "小时单",
     items: [
-      { name: "机密单护", desc: "稳定护航", eta: "7分钟", price: "¥30" },
-      { name: "机密双护", desc: "双人协同", eta: "8分钟", price: "¥60" },
-      { name: "绝密单护", desc: "高强度护航", eta: "10分钟", price: "¥50" },
-      { name: "绝密双护", desc: "双核保障", eta: "11分钟", price: "¥100" },
+      { name: "机密单护", desc: "稳定护航", eta: "7分钟", price: "300钻石", base: 30 },
+      { name: "机密双护", desc: "双人协同", eta: "8分钟", price: "600钻石", base: 60 },
+      { name: "绝密单护", desc: "高强度护航", eta: "10分钟", price: "500钻石", base: 50 },
+      { name: "绝密双护", desc: "双核保障", eta: "11分钟", price: "1000钻石", base: 100 },
     ],
   },
   {
     title: "趣味单",
     items: [
-      { name: "摸油", desc: "保证带油出局", eta: "9分钟", price: "¥588" },
-      { name: "摸心", desc: "保证摸到心", eta: "12分钟", price: "¥1288" },
+      { name: "摸油", desc: "保证带油出局", eta: "9分钟", price: "5880钻石", base: 588 },
+      { name: "摸心", desc: "保证摸到心", eta: "12分钟", price: "12880钻石", base: 1288 },
     ],
   },
 ];
@@ -494,9 +511,17 @@ export default function Schedule() {
     .flatMap((s) => s.items)
     .filter((i) => checked[i.name])
     .reduce((sum, item) => {
-      const parsed = item.base ?? parseFloat(item.price.replace(/[^\d.]/g, ""));
+      const numeric = parseFloat(item.price.replace(/[^\d.]/g, ""));
+      const parsed =
+        item.base ??
+        (Number.isFinite(numeric)
+          ? item.price.includes("钻石")
+            ? numeric / DIAMOND_RATE
+            : numeric
+          : NaN);
       return sum + (Number.isFinite(parsed) ? parsed : 0);
     }, 0);
+  const pickedDiamonds = Math.ceil(pickedPrice * DIAMOND_RATE);
 
   const currentOrder = useMemo(() => {
     const list = orders;
@@ -759,7 +784,7 @@ export default function Schedule() {
     setFeeChecked(false);
   };
 
-  const diamondRate = 10;
+  const diamondRate = DIAMOND_RATE;
   const requiredDiamonds = Math.ceil(locked.total * diamondRate);
   const hasEnoughDiamonds = Number(diamondBalance) >= requiredDiamonds;
   const disputePolicy = useMemo(() => resolveDisputePolicy(vipTier?.level), [vipTier]);
@@ -861,7 +886,7 @@ export default function Schedule() {
                 <>
                   <div className="text-emerald-600 font-semibold text-sm">{currentOrder.driver.eta}</div>
                   {currentOrder.driver.price && (
-                    <div className="text-xs text-gray-500">一口价 ¥{currentOrder.driver.price / 10}</div>
+                    <div className="text-xs text-gray-500">一口价 {currentOrder.driver.price} 钻石</div>
                   )}
                 </>
               )}
@@ -954,7 +979,7 @@ export default function Schedule() {
                 <>
                   <div className="text-emerald-600 font-semibold text-sm">{currentOrder.driver.eta}</div>
                   {currentOrder.driver.price && (
-                    <div className="text-xs text-gray-500">一口价 ¥{currentOrder.driver.price / 10}</div>
+                    <div className="text-xs text-gray-500">一口价 {currentOrder.driver.price} 钻石</div>
                   )}
                 </>
               )}
@@ -1820,7 +1845,9 @@ export default function Schedule() {
 
       <footer className="ride-footer">
         <div className="ride-footer-left">
-          <div className="ride-range">预估价 {pickedPrice ? pickedPrice.toFixed(0) : "4-9"}</div>
+          <div className="ride-range">
+            预估价 {pickedPrice ? pickedDiamonds.toFixed(0) : "40-90"} 钻石
+          </div>
           <div className="ride-extra">动态调价</div>
           {firstOrderEligible && (
             <div className="ride-discount-tag">{FIRST_ORDER_DISCOUNT.label}</div>

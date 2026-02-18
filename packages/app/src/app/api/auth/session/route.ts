@@ -5,6 +5,7 @@ import {
   createUserSession,
   clearUserSessionCookie,
   revokeUserSession,
+  getUserSessionFromCookies,
   requireUserSignature,
   setUserSessionCookie,
 } from "@/lib/user-auth";
@@ -58,6 +59,19 @@ export async function POST(req: Request) {
   });
   setUserSessionCookie(res, token, session.expiresAt);
   return res;
+}
+
+export async function GET() {
+  const session = await getUserSessionFromCookies();
+  if (!session) {
+    return NextResponse.json({ ok: false }, { status: 401 });
+  }
+  return NextResponse.json({
+    ok: true,
+    address: session.address,
+    expiresAt: session.expiresAt,
+    lastSeenAt: session.lastSeenAt ?? null,
+  });
 }
 
 export async function DELETE() {

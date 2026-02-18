@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { ShieldCheck, KeyRound } from "lucide-react";
 import SwControl from "@/app/components/sw-control";
 import { Button } from "@/components/ui/button";
@@ -9,7 +8,6 @@ import { Input } from "@/components/ui/input";
 import { MotionCard } from "@/components/ui/motion";
 
 export default function AdminLoginPage() {
-  const router = useRouter();
   const [token, setToken] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -33,7 +31,7 @@ export default function AdminLoginPage() {
         setError(data?.error || "登录失败，请检查密钥");
         return;
       }
-      router.push("/admin");
+      window.location.href = "/admin";
     } catch {
       setError("网络异常，请稍后再试");
     } finally {

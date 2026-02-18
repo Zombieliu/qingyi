@@ -61,6 +61,13 @@ export default function LoginPage() {
         {t("login.passkey")}
       </div>
       <PasskeyLoginButton />
+      {hasWallet && (
+        <div style={{ textAlign: "center", marginTop: 12 }}>
+          <TrackedLink href="/home" event="login_enter_home" className="text-sm text-emerald-600">
+            {t("login.enter")}
+          </TrackedLink>
+        </div>
+      )}
       <div style={{ textAlign: "center", marginTop: 18, fontSize: 13 }}>
         <span style={{ color: "#6b7280" }}>{t("login.need")}</span>
       </div>

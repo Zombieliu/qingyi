@@ -58,9 +58,14 @@ export default function Me() {
       setTimeout(() => setAddrToast(null), 3000);
     }
   };
-  const logout = () => {
+  const logout = async () => {
     localStorage.removeItem(PASSKEY_STORAGE_KEY);
     window.dispatchEvent(new Event("passkey-updated"));
+    try {
+      await fetch("/api/auth/session", { method: "DELETE" });
+    } catch {
+      // ignore
+    }
     router.push("/");
   };
 

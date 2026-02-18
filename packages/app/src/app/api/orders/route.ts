@@ -46,16 +46,35 @@ function isMobileNumber(value: string) {
 async function resolveWecomMention(meta?: Record<string, unknown>) {
   const requestedPlayerId =
     typeof meta?.requestedPlayerId === "string" ? meta.requestedPlayerId.trim() : "";
+  const requestedPlayerName =
+    typeof meta?.requestedPlayerName === "string" ? meta.requestedPlayerName.trim() : "";
   if (!requestedPlayerId) {
+    if (requestedPlayerName) {
+      return {
+        mention: { type: "all", tag: "<@all>" } as WecomMention,
+        fallbackAll: true,
+        fallbackReason: "missing_id" as const,
+        playerName: requestedPlayerName,
+      };
+    }
     return { mention: { type: "all", tag: "<@all>" } as WecomMention };
   }
   const player = await getPlayerById(requestedPlayerId);
+  if (!player) {
+    return {
+      mention: { type: "all", tag: "<@all>" } as WecomMention,
+      fallbackAll: true,
+      fallbackReason: "missing_id" as const,
+      playerName: requestedPlayerName,
+    };
+  }
   const contact = (player?.contact || "").trim();
   if (!contact) {
     return {
       mention: { type: "all", tag: "<@all>" } as WecomMention,
       fallbackAll: true,
-      playerName: player?.name,
+      fallbackReason: "missing_contact" as const,
+      playerName: player?.name || requestedPlayerName,
     };
   }
   if (isMobileNumber(contact)) {
@@ -330,6 +349,7 @@ export async function POST(req: Request) {
       mentionTag: resolved.mention.type === "all" || resolved.mention.type === "user" ? resolved.mention.tag : "",
       requestedPlayer: requestedName,
       fallbackAll: resolved.fallbackAll,
+      fallbackReason: resolved.fallbackReason,
     });
     const text = buildText({
       user,
@@ -341,6 +361,7 @@ export async function POST(req: Request) {
       note,
       requestedPlayer: requestedName,
       fallbackAll: resolved.fallbackAll,
+      fallbackReason: resolved.fallbackReason,
     });
     try {
       const body =
@@ -386,6 +407,7 @@ function buildMarkdown({
   mentionTag,
   requestedPlayer,
   fallbackAll,
+  fallbackReason,
 }: {
   user: string;
   item: string;
@@ -397,6 +419,7 @@ function buildMarkdown({
   mentionTag?: string;
   requestedPlayer?: string;
   fallbackAll?: boolean;
+  fallbackReason?: "missing_id" | "missing_contact";
 }) {
   const priceLine = currency === "CNY" ? `¥${amount}` : `${amount} ${currency}`;
   const now = new Intl.DateTimeFormat("zh-CN", {
@@ -409,7 +432,12 @@ function buildMarkdown({
 
   const noteLine = note ? `> 备注：${note}\n` : "";
   const mentionLine = mentionTag ? `${mentionTag}\n` : "";
-  const playerLine = requestedPlayer ? `> 指定打手：${requestedPlayer}${fallbackAll ? "（未配置企微ID，已@全部）" : ""}\n` : "";
+  const fallbackNote = fallbackAll
+    ? fallbackReason === "missing_id"
+      ? "（无法定位打手，已@全部）"
+      : "（未配置企微ID，已@全部）"
+    : "";
+  const playerLine = requestedPlayer ? `> 指定打手：${requestedPlayer}${fallbackNote}\n` : "";
 
   return [
     mentionLine,
@@ -437,6 +465,7 @@ function buildText({
   note,
   requestedPlayer,
   fallbackAll,
+  fallbackReason,
 }: {
   user: string;
   item: string;
@@ -447,6 +476,7 @@ function buildText({
   note?: string;
   requestedPlayer?: string;
   fallbackAll?: boolean;
+  fallbackReason?: "missing_id" | "missing_contact";
 }) {
   const priceLine = currency === "CNY" ? `¥${amount}` : `${amount} ${currency}`;
   const now = new Intl.DateTimeFormat("zh-CN", {
@@ -456,13 +486,18 @@ function buildText({
     hour: "2-digit",
     minute: "2-digit",
   }).format(Date.now());
+  const fallbackNote = fallbackAll
+    ? fallbackReason === "missing_id"
+      ? "（无法定位打手，已@全部）"
+      : "（未配置企微ID，已@全部）"
+    : "";
   const lines = [
     "新订单提醒",
     `用户：${user}`,
     `商品：${item}`,
     `金额：${priceLine}`,
     `状态：${status}`,
-    requestedPlayer ? `指定打手：${requestedPlayer}${fallbackAll ? "（未配置企微ID，已@全部）" : ""}` : "",
+    requestedPlayer ? `指定打手：${requestedPlayer}${fallbackNote}` : "",
     note ? `备注：${note}` : "",
     `时间：${now}`,
     `订单号：${orderId}`,

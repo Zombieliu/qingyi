@@ -94,7 +94,7 @@ export function clearUserSessionCookie(res: NextResponse) {
   });
 }
 
-async function getUserSession() {
+export async function getUserSessionFromCookies() {
   const sessionToken = await getUserSessionTokenFromCookies();
   if (!sessionToken) return null;
   const sessionHash = hashToken(sessionToken);
@@ -183,7 +183,7 @@ export async function requireUserAuth(
   | { ok: true; address: string; authType: "session" | "signature" }
   | { ok: false; response: NextResponse }
 > {
-  const session = await getUserSession();
+  const session = await getUserSessionFromCookies();
   if (session) {
     const normalized = normalizeSuiAddress(params.address || "");
     if (!normalized || !isValidSuiAddress(normalized)) {
