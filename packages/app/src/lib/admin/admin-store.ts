@@ -2623,7 +2623,7 @@ export async function queryMantouWithdrawsCursor(params: {
   const hasMore = rows.length > pageSize;
   const sliced = hasMore ? rows.slice(0, pageSize) : rows;
   return {
-    items: sliced.map(mapMantouWithdrawRequest),
+    items: sliced.map(mapMantouWithdraw),
     nextCursor: hasMore ? buildCursorPayload(sliced[sliced.length - 1]) : null,
   };
 }

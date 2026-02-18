@@ -185,7 +185,7 @@ export async function POST(req: Request, { params }: RouteContext) {
   }
 
   const synced = await upsertChainOrder(chain);
-  if (digest && !synced.chainDigest) {
+  if (digest && synced && !synced.chainDigest) {
     try {
       const fallback = buildDigestFallback(orderId, await loadLocalOrder());
       const byDigest = await findChainOrderFromDigest(digest, fallback);

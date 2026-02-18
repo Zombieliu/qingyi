@@ -40,7 +40,7 @@ export async function updateChainEventCursor(params: {
   const now = new Date();
   const lastEventAt = params.lastEventMs ? new Date(params.lastEventMs) : null;
   const data = {
-    cursor: params.cursor as Prisma.InputJsonValue,
+    cursor: params.cursor as unknown as Prisma.InputJsonValue,
     lastEventAt,
     updatedAt: now,
   };

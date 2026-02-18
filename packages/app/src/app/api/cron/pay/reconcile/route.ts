@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
-import { prisma } from "@/lib/db";
+import { prisma, Prisma } from "@/lib/db";
 import { upsertLedgerRecord } from "@/lib/admin/admin-store";
 import { recordAudit } from "@/lib/admin/admin-audit";
 import { acquireCronLock } from "@/lib/cron-lock";
@@ -79,12 +79,12 @@ async function fetchStripeSuccessRecords(since: Date, limit: number): Promise<St
   const createdGte = Math.floor(since.getTime() / 1000);
   while (hasMore && results.length < limit) {
     const page = await stripe.paymentIntents.list({
-      status: "succeeded",
       created: { gte: createdGte },
       limit: Math.min(100, limit - results.length),
       starting_after: startingAfter,
     });
     for (const intent of page.data) {
+      if (intent.status !== "succeeded") continue;
       const metadata = intent.metadata || {};
       const orderId = metadata.orderId || metadata.order_id;
       if (!orderId) continue;
@@ -306,7 +306,7 @@ export async function GET(req: Request) {
             reconciledAt: now,
             reconcileSource: record.source,
             eventId: record.eventId,
-          } as Record<string, unknown>,
+          } as Prisma.InputJsonValue,
         },
       });
       reconciled.push(orderId);

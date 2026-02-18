@@ -127,10 +127,10 @@ export default function Showcase() {
     (order: ChainOrder) => {
       const local = localDisputeDeadlineById.get(order.orderId);
       const remote = Number(order.disputeDeadline);
-      if (Number.isFinite(local) && local > 0 && Number.isFinite(remote) && remote > 0) {
+      if (local !== undefined && Number.isFinite(local) && local > 0 && Number.isFinite(remote) && remote > 0) {
         return Math.max(local, remote);
       }
-      if (Number.isFinite(local) && local > 0) return local;
+      if (local !== undefined && Number.isFinite(local) && local > 0) return local;
       if (Number.isFinite(remote) && remote > 0) return remote;
       return 0;
     },
@@ -1088,7 +1088,7 @@ export default function Showcase() {
                           disabled={chainAction === `finalize-${o.orderId}`}
                         onClick={() => {
                             if (isUser && inDisputeWindow) {
-                              const deadlineText = hasDeadline ? new Date(deadline).toLocaleString() : "";
+                              const deadlineText = hasDeadline && deadline ? new Date(deadline).toLocaleString() : "";
                               openConfirm({
                                 title: "确认放弃争议期并立即结算？",
                                 description: deadlineText ? `争议截止：${deadlineText}` : "争议期内放弃争议将立即结算。",
@@ -1271,7 +1271,7 @@ export default function Showcase() {
                     className="dl-tab-btn"
                     style={{ padding: "8px 10px" }}
                     onClick={() =>
-                      confirmDepositAccept(o.id, typeof o.deposit === "number" ? `¥${formatAmount(o.deposit)}` : undefined)
+                      confirmDepositAccept(o.id, typeof o.deposit === "number" ? `¥${formatAmount(String(o.deposit))}` : undefined)
                     }
                     disabled={Boolean(o.userAddress && o.userAddress === chainAddress)}
                     title={o.userAddress && o.userAddress === chainAddress ? "不能接自己发的单" : undefined}

@@ -12,6 +12,7 @@ export type LocalOrder = {
   chainDigest?: string;
   chainStatus?: number;
   serviceFee?: number;
+  deposit?: number;
   serviceFeePaid?: boolean;
   depositPaid?: boolean;
   playerPaid?: boolean;

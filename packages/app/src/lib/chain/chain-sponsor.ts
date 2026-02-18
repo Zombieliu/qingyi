@@ -3,7 +3,7 @@ import "server-only";
 import { SuiClient, getFullnodeUrl } from "@mysten/sui/client";
 import { Transaction } from "@mysten/sui/transactions";
 import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
-import { fromBase64, isValidSuiAddress, normalizeSuiAddress, toBase64 } from "@mysten/su../utils";
+import { fromBase64, isValidSuiAddress, normalizeSuiAddress, toBase64 } from "@mysten/sui/utils";
 import { PACKAGE_ID } from "contracts/deployment";
 
 const DEFAULT_SPONSOR_GAS_BUDGET = 50_000_000;

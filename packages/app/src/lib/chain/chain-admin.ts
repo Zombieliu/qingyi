@@ -3,7 +3,7 @@ import { SuiClient, getFullnodeUrl, type EventId } from "@mysten/sui/client";
 import { bcs } from "@mysten/sui/bcs";
 import { Transaction, Inputs } from "@mysten/sui/transactions";
 import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
-import { isValidSuiAddress, normalizeSuiAddress, toHex } from "@mysten/su../utils";
+import { isValidSuiAddress, normalizeSuiAddress, toHex } from "@mysten/sui/utils";
 import { DAPP_HUB_ID, DAPP_HUB_INITIAL_SHARED_VERSION, PACKAGE_ID } from "contracts/deployment";
 
 export type ChainOrder = {

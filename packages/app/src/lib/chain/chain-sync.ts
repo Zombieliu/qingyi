@@ -2,7 +2,7 @@ import "server-only";
 import { fetchChainOrdersAdmin, fetchChainOrdersAdminWithCursor, type ChainOrder } from "./chain-admin";
 import { addOrder, getOrderById, updateOrder } from "../admin/admin-store";
 import type { AdminOrder } from "../admin/admin-types";
-import { isValidSuiAddress, normalizeSuiAddress } from "@mysten/su../utils";
+import { isValidSuiAddress, normalizeSuiAddress } from "@mysten/sui/utils";
 import {
   findChainOrderCached,
   clearCache,
@@ -123,7 +123,7 @@ export async function upsertChainOrder(chain: ChainOrder) {
       meta,
     };
     if (!preserveCompanion) {
-      patch.companionAddress = companionAddress;
+      patch.companionAddress = companionAddress || undefined;
     }
     if (!preserveAmounts) {
       patch.serviceFee = serviceFee;

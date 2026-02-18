@@ -4,7 +4,7 @@ import * as React from "react";
 import { AnimatePresence, motion, type HTMLMotionProps } from "framer-motion";
 import { cn } from "@/lib/utils";
 
-const ease = [0.22, 1, 0.36, 1];
+const ease: [number, number, number, number] = [0.22, 1, 0.36, 1];
 
 const pageVariants = {
   initial: { opacity: 0, y: 12, filter: "blur(6px)" },

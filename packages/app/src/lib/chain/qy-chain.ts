@@ -3,7 +3,7 @@
 import { SuiClient, getFullnodeUrl, type EventId } from "@mysten/sui/client";
 import { bcs } from "@mysten/sui/bcs";
 import { Transaction, Inputs } from "@mysten/sui/transactions";
-import { fromBase64, isValidSuiAddress, normalizeSuiAddress, toBase64, toHex } from "@mysten/su../utils";
+import { fromBase64, isValidSuiAddress, normalizeSuiAddress, toBase64, toHex } from "@mysten/sui/utils";
 import {
   PasskeyKeypair,
   BrowserPasskeyProvider,
