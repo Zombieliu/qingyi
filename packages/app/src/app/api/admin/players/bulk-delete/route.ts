@@ -4,7 +4,7 @@ import { removePlayers } from "@/lib/admin-store";
 import { recordAudit } from "@/lib/admin-audit";
 
 export async function POST(req: Request) {
-  const auth = await requireAdmin(req, { role: "ops" });
+  const auth = await requireAdmin(req, { role: "viewer" });
   if (!auth.ok) return auth.response;
 
   let body: { ids?: string[] } = {};

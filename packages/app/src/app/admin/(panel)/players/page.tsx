@@ -11,7 +11,7 @@ import { roleRank, useAdminSession } from "../admin-session";
 
 export default function PlayersPage() {
   const { role } = useAdminSession();
-  const canEdit = roleRank(role) >= roleRank("ops");
+  const canEdit = roleRank(role) >= roleRank("viewer");
   const [players, setPlayers] = useState<AdminPlayer[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<Record<string, boolean>>({});

@@ -29,7 +29,7 @@ export async function PATCH(
   req: Request,
   { params }: RouteContext
 ) {
-  const auth = await requireAdmin(req, { role: "ops" });
+  const auth = await requireAdmin(req, { role: "viewer" });
   if (!auth.ok) return auth.response;
 
   const { playerId } = await params;
@@ -103,7 +103,7 @@ export async function DELETE(
   req: Request,
   { params }: RouteContext
 ) {
-  const auth = await requireAdmin(req, { role: "ops" });
+  const auth = await requireAdmin(req, { role: "viewer" });
   if (!auth.ok) return auth.response;
 
   const { playerId } = await params;

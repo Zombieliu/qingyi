@@ -30,7 +30,7 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const auth = await requireAdmin(req, { role: "ops" });
+  const auth = await requireAdmin(req, { role: "viewer" });
   if (!auth.ok) return auth.response;
 
   let body: Partial<AdminPlayer> = {};
