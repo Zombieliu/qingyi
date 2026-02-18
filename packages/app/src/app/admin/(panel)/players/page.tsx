@@ -440,7 +440,28 @@ export default function PlayersPage() {
                       />
                     </td>
                     <td data-label="名称">
-                      <span className="admin-text-strong">{player.name}</span>
+                      <input
+                        className="admin-input admin-text-strong"
+                        value={player.name}
+                        readOnly={!canEdit}
+                        onChange={(event) =>
+                          setPlayers((prev) =>
+                            prev.map((p) =>
+                              p.id === player.id ? { ...p, name: event.target.value } : p
+                            )
+                          )
+                        }
+                        onBlur={(event) => {
+                          if (!canEdit) return;
+                          const nextName = event.target.value.trim();
+                          if (!nextName) {
+                            alert("名称不能为空");
+                            loadPlayers();
+                            return;
+                          }
+                          updatePlayer(player.id, { name: nextName });
+                        }}
+                      />
                     </td>
                     <td data-label="位置">
                       <input
