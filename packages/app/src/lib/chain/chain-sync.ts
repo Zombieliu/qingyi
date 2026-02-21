@@ -10,35 +10,15 @@ import { isValidSuiAddress, normalizeSuiAddress } from "@mysten/sui/utils";
 import { findChainOrderCached, clearCache, getCacheStats } from "./chain-order-cache";
 import { getChainEventCursor, updateChainEventCursor } from "./chain-event-cursor";
 import { env } from "@/lib/env";
+import {
+  mapStage,
+  mapPaymentStatus,
+  resolveEffectiveChainStatus,
+  deriveOrderStatus,
+} from "./chain-status";
 
-export function mapStage(status: number): AdminOrder["stage"] {
-  if (status === 6) return "已取消";
-  if (status === 5) return "已完成";
-  if (status >= 2) return "进行中";
-  if (status === 1) return "已确认";
-  return "待处理";
-}
-
-export function mapPaymentStatus(status: number): string {
-  switch (status) {
-    case 0:
-      return "未支付";
-    case 1:
-      return "撮合费已付";
-    case 2:
-      return "押金已锁定";
-    case 3:
-      return "待结算";
-    case 4:
-      return "争议中";
-    case 5:
-      return "已结算";
-    case 6:
-      return "已取消";
-    default:
-      return "未知";
-  }
-}
+// Re-export for backward compatibility
+export { mapStage, mapPaymentStatus };
 
 function toCny(value: string): number {
   const num = Number(value);
@@ -79,32 +59,28 @@ export async function upsertChainOrder(chain: ChainOrder) {
   const serviceFee = toCny(chain.serviceFee);
   const deposit = toCny(chain.deposit);
   const amount = existing?.amount ?? Number((serviceFee + deposit).toFixed(2));
+
+  // Resolve effective status using unified logic
+  const effectiveStatus = resolveEffectiveChainStatus(existing, chain.status);
+  const shouldPreserveChainMeta = effectiveStatus > chain.status;
+
   const existingMeta = (existing?.meta || {}) as Record<string, unknown>;
   const existingChainMeta =
     (existingMeta.chain as Record<string, unknown> | undefined) || undefined;
-  const existingMetaStatusRaw = existingChainMeta?.status;
-  const existingStatus =
-    typeof existing?.chainStatus === "number"
-      ? existing.chainStatus
-      : typeof existingMetaStatusRaw === "number"
-        ? existingMetaStatusRaw
-        : undefined;
-  const effectiveStatus =
-    typeof existingStatus === "number" && existingStatus > chain.status
-      ? existingStatus
-      : chain.status;
-  const shouldPreserveChainMeta =
-    typeof existingStatus === "number" && existingStatus > chain.status;
-  let meta = buildChainMeta(existing, chain);
+
+  let meta: Record<string, unknown>;
   if (shouldPreserveChainMeta) {
     meta = {
       ...existingMeta,
       chain: {
         ...(existingChainMeta || {}),
-        status: existingStatus,
+        status: effectiveStatus,
       },
-    } as Record<string, unknown>;
+    };
+  } else {
+    meta = buildChainMeta(existing, chain);
   }
+
   const preserveAmounts = existingMeta.paymentMode === "diamond_escrow";
   const companionAddress = normalizeCompanionAddress(chain.companion);
   const existingCompanion = existing?.companionAddress
@@ -119,12 +95,13 @@ export async function upsertChainOrder(chain: ChainOrder) {
     meta.publicPool = false;
   }
 
+  // Derive all status fields from effectiveStatus
+  const statusFields = deriveOrderStatus(effectiveStatus);
+
   if (existing) {
     const patch: Partial<AdminOrder> = {
       userAddress: chain.user,
-      chainStatus: effectiveStatus,
-      paymentStatus: mapPaymentStatus(effectiveStatus),
-      stage: mapStage(effectiveStatus),
+      ...statusFields,
       meta,
     };
     if (!preserveCompanion) {
@@ -157,11 +134,9 @@ export async function upsertChainOrder(chain: ChainOrder) {
     item: `链上订单 #${orderId}`,
     amount,
     currency: "CNY",
-    paymentStatus: mapPaymentStatus(chain.status),
-    stage: mapStage(chain.status),
+    ...statusFields,
     note: "链上同步",
     source: "chain",
-    chainStatus: chain.status,
     serviceFee,
     deposit,
     meta,

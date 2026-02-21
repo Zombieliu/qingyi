@@ -63,8 +63,16 @@ export default function PasskeyGate({ children }: { children: React.ReactNode })
       <div className="dl-card" style={{ padding: 18, marginBottom: 16 }}>
         <div className="text-base font-semibold text-gray-900">需要登录</div>
         <div className="text-sm text-gray-600 mt-2 leading-relaxed">
-          请选择登录、创建或找回已有账号完成验证。若更换设备，请使用“找回已有账号”。完成后自动解锁全站页面。
-          （登录仅在 HTTPS 或 localhost 可用）
+          {sessionOk && !hasPasskey ? (
+            <>
+              检测到你可能更换了设备。请点击下方「找回已有账号」，系统会要求你验证两次指纹/面容来恢复账号。
+            </>
+          ) : (
+            <>
+              请选择登录、创建或找回已有账号完成验证。若更换设备，请使用「找回已有账号」。完成后自动解锁全站页面。
+              （登录仅在 HTTPS 或 localhost 可用）
+            </>
+          )}
         </div>
       </div>
       <PasskeyWallet />
