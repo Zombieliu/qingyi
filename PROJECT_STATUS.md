@@ -1,8 +1,8 @@
 # 情谊电竞 (Qingyi Esports) — 项目状态总览
 
-> 更新时间: 2026-02-19 (第二次更新)
+> 更新时间: 2026-02-21 (第三次更新)
 > 项目: 三角洲行动 电竞陪玩平台
-> 技术栈: Next.js 16 + React 19 + Sui 区块链 + Stripe 支付 + PostgreSQL
+> 技术栈: Next.js 16 + React 19 + Sui 区块链 + Stripe 支付 + PostgreSQL + Taro 小程序
 
 ---
 
@@ -11,20 +11,22 @@
 ```
 qingyi/
 ├── packages/app/          # Next.js 主应用 (PWA)
-│   ├── src/app/           # 页面、API 路由、组件
-│   ├── src/lib/           # 核心业务逻辑 (已重构为子目录)
+│   ├── src/app/           # 42 个页面、96 个 API 路由
+│   ├── src/lib/           # 核心业务逻辑 (8 个子目录 + 11 个顶级文件)
 │   ├── src/i18n/          # 国际化翻译文件 (zh/en)
-│   ├── prisma/            # 数据库 Schema (24 个模型, 12 次迁移)
+│   ├── prisma/            # 数据库 Schema (28 个模型, 13 次迁移)
 │   └── public/            # 静态资源
-├── packages/contracts/    # Sui Move 智能合约 (Dubhe/Obelisk 框架)
-├── tests/                 # Playwright E2E + 视觉回归测试
-├── scripts/               # 运维脚本
+├── packages/contracts/    # Sui Move 智能合约 (Dubhe + QY 模块)
+├── packages/mp/           # Taro 跨平台小程序 (微信/支付宝/抖音)
+├── tests/                 # Playwright E2E + 视觉回归 + 单元测试
+├── scripts/               # 运维脚本 (9 个)
 └── .github/workflows/     # CI/CD (视觉回归 + PWA SW 构建)
 ```
 
 **核心技术:**
 - 前端: Next.js 16 App Router, React 19, Tailwind v4, Framer Motion
-- 认证: WebAuthn Passkey (无助记词钱包)
+- 小程序: Taro 4.1 (微信/支付宝/抖音/百度/H5/鸿蒙)
+- 认证: WebAuthn Passkey (无助记词钱包) + 小程序登录
 - 区块链: Sui (@mysten/sui + @0xobelisk/sui-client)
 - 支付: Stripe (支付宝/微信支付)
 - 数据库: PostgreSQL (Supabase) + Prisma ORM
@@ -42,6 +44,7 @@ qingyi/
 | 模块 | 状态 | 说明 |
 |------|------|------|
 | Passkey 登录 | ✅ | WebAuthn 创建/登录/恢复钱包，无需助记词 |
+| 小程序登录 | ✅ | 微信/支付宝小程序授权登录 |
 | 首页 | ✅ | 服务套餐展示、陪玩列表、搜索、快捷操作 |
 | 下单流程 | ✅ | 服务选择 → 钻石托管 → 陪玩接单 → 确认完成 → 结算 |
 | 钻石充值 | ✅ | Stripe 集成，支持支付宝/微信支付，自定义金额 |
@@ -62,12 +65,15 @@ qingyi/
 | 评价系统 | ✅ | 订单完成后评分(1-5星)、标签、文字评价，提交奖励 5 馒头 |
 | 邀请返利 | ✅ | 邀请码分享、双向馒头奖励、邀请记录 |
 | 排行榜 | ✅ | 消费榜、陪练榜、邀请榜，支持总榜/周榜/月榜 |
+| 兑换码 | ✅ | 用户端兑换码输入与兑换 |
+| FAQ 页面 | ✅ | 常见问题解答 |
+| 定价页面 | ✅ | 服务定价展示 |
 
 ### 区块链
 
 | 模块 | 状态 | 说明 |
 |------|------|------|
-| Move 合约 | ✅ | 订单状态机、账本系统、争议解决、规则集 |
+| Move 合约 | ✅ | Dubhe + QY 双模块: 订单状态机、账本系统、争议解决、规则集 |
 | 链上订单 | ✅ | Created → Paid → Deposited → Completed → (Disputed) → Resolved |
 | Gas 代付 | ✅ | 赞助模式 (auto/strict/off) |
 | 事件同步 | ✅ | 增量游标同步链上事件到数据库 |
@@ -86,24 +92,26 @@ qingyi/
 | 陪玩管理 | ✅ | 档案管理、信用体系 |
 | 公告管理 | ✅ | 草稿/发布/归档 |
 | 优惠券管理 | ✅ | 创建/编辑/停用 |
+| 兑换码管理 | ✅ | 批次创建、兑换码生成、兑换记录查看 |
 | 收益统计 | ✅ | 营收追踪 |
 | 守护者审核 | ✅ | 入驻申请审批 |
 | 发票处理 | ✅ | 开票请求管理 |
 | 馒头提现 | ✅ | 提现审批 (finance 角色) |
 | 客服工单 | ✅ | 工单处理 |
-| Token 管理 | ✅ | API 密钥管理 (admin 角色), 已迁移至数据库存储 |
+| Token 管理 | ✅ | API 密钥管理 (admin 角色), 数据库存储 |
 | VIP 管理 | ✅ | 等级配置、会员管理、申请审批 |
 | 链上对账 | ✅ | 区块链订单对账工具 (finance 角色) |
 | 支付事件 | ✅ | Stripe Webhook 事件日志 |
-| 数据分析 | ✅ | 增长数据、转化漏斗可视化、趋势折线、留存分析 (admin 角色) |
+| 数据分析 | ✅ | 增长数据、转化漏斗、趋势折线、留存分析 (admin 角色) |
 | 邀请返利管理 | ✅ | 返利模式配置(固定/比例)、邀请记录查看、启停控制 |
 | 订单评价查看 | ✅ | 订单详情页内展示用户评价(评分、标签、内容) |
+| 账本管理 | ✅ | 钻石充值管理 |
 
 ### 支付 & 对账
 
 | 模块 | 状态 | 说明 |
 |------|------|------|
-| Stripe 集成 | ✅ | PaymentIntent 创建 + Webhook 处理 |
+| Stripe 集成 | ✅ | PaymentIntent 创建 + 预创建 + Webhook 处理 |
 | 支付宝/微信 | ✅ | 通过 Stripe 渠道 |
 | 自动对账 | ✅ | Cron 定时对账 + 异常告警 |
 | 企业微信通知 | ✅ | 订单 Webhook 推送 |
@@ -115,9 +123,19 @@ qingyi/
 | 自动取消 | ✅ | Cron 自动取消过期未支付订单 |
 | 自动结算 | ✅ | Cron 自动结算超过争议期订单 |
 | 缺失清理 | ✅ | Cron 清理链上缺失订单 |
+| 数据库维护 | ✅ | Cron 定期维护任务 |
 | 分布式锁 | ✅ | Redis Cron 锁防重复执行 |
 | 限流 | ✅ | Redis/内存双模式限流 |
 | HTTP 缓存 | ✅ | ETag + 短 TTL 缓存策略 |
+| 风险策略 | ✅ | 订单风控规则引擎 |
+
+### 小程序 (新增)
+
+| 模块 | 状态 | 说明 |
+|------|------|------|
+| Taro 框架 | ✅ | 基于 Taro 4.1 + React 18 |
+| 多平台支持 | ✅ | 微信/支付宝/抖音/百度/H5/鸿蒙 |
+| 小程序认证 | ✅ | 小程序授权登录 API |
 
 ### 测试 & CI/CD
 
@@ -127,46 +145,21 @@ qingyi/
 | 链上 E2E | ✅ | Passkey 钱包创建 → 完整订单流程 |
 | 管理后台 E2E | ✅ | 全页面功能测试 |
 | CI 流水线 | ✅ | GitHub Actions (视觉回归 + PWA 构建) |
-| 单元测试 | ✅ | IP 工具、链上工具函数 |
+| 单元测试 | ✅ | IP 工具、链上工具、API 工具、日期工具、Zod 验证 |
 
 ---
 
 ## 三、进行中 / 待完成 ⏳
 
-### 3.1 lib 目录重构 (当前进行中)
-
-已将 `src/lib/` 下 25 个文件重组为 5 个子目录:
-
-```
-lib/
-├── admin/    ← admin-auth, admin-store, admin-audit, admin-types, admin-ip-utils
-├── auth/     ← user-auth, user-session-store, auth-message
-├── chain/    ← qy-chain, chain-sync, chain-admin, chain-sponsor, dubhe 等 13 个文件
-├── i18n/     ← i18n, i18n-client, i18n-shared
-└── shared/   ← cookie-utils
-```
-
-**待修复问题:**
-
-| 问题 | 优先级 | 说明 |
-|------|--------|------|
-| 相对导入未更新 | 🔴 高 | `analytics-store.ts` 和 `order-guard.ts` 仍引用 `./admin-types`，需改为 `./admin/admin-types` |
-| CSS 语法错误 | 🟡 中 | `globals.css:2681` 多余的 `}` 字符 |
-| 临时文件清理 | 🟢 低 | `fix-imports.mjs`, `home_styles_temp.css` 需清理 |
-| 提交变更 | 🟡 中 | ~110 个修改文件待 git commit |
-
-### 3.2 部署 & 上线
+### 3.1 部署 & 上线
 
 | 任务 | 优先级 | 说明 |
 |------|--------|------|
-| Vercel 部署验证 | 🔴 高 | 重构后需验证构建通过 |
+| Vercel 部署验证 | 🔴 高 | 验证构建通过 |
 | 合约主网部署 | 🔴 高 | Move 合约目前在测试网 |
-| 生产数据库迁移 | 🔴 高 | 12 次迁移待执行 (`npm run db:deploy`) |
-| 性能索引迁移 | 🟡 中 | `20260216_01_perf_indexes` 待执行 |
-| Token 迁移 | 🟡 中 | `20260216_00_admin_access_tokens` 待执行 (需可用 DB) |
-| 管理后台 E2E | 🟡 中 | `npm run test:admin:e2e` 权限矩阵校验待跑 |
+| 生产数据库迁移 | 🔴 高 | 13 次迁移待执行 (`npm run db:deploy`) |
 
-### 3.3 配置项确认
+### 3.2 配置项确认
 
 | 配置 | 说明 |
 |------|------|
@@ -194,6 +187,7 @@ lib/
 | 自动匹配 | 基于段位、时间、偏好的智能匹配算法 |
 | 优惠券自动发放 | 基于用户行为的自动营销 (首单、回流、生日) |
 | 多游戏支持 | 扩展到其他游戏 (架构已支持，需增加配置) |
+| 小程序完善 | 完善 Taro 小程序功能，对齐 Web 端 |
 
 ### 长期
 
@@ -209,7 +203,7 @@ lib/
 
 ---
 
-## 五、数据库模型 (24 个)
+## 五、数据库模型 (28 个)
 
 ```
 AdminOrder              # 订单
@@ -233,56 +227,105 @@ MantouTransaction       # 馒头交易
 MantouWithdrawRequest   # 提现请求
 ChainEventCursor        # 链上事件游标
 UserSession             # 用户会话
+MiniProgramAccount      # 小程序账户 (新增)
 Referral                # 邀请关系
 ReferralConfig          # 邀请返利配置
 OrderReview             # 订单评价
+RedeemBatch             # 兑换码批次 (新增)
+RedeemCode              # 兑换码 (新增)
+RedeemRecord            # 兑换记录 (新增)
 ```
 
 ---
 
-## 六、API 路由总览
+## 六、Lib 目录结构
+
+```
+lib/
+├── admin/       ← admin-auth, admin-store, admin-audit, admin-types, admin-ip-utils, redeem-store
+├── atoms/       ← balance-atom, mantou-atom (Jotai 状态原子)
+├── auth/        ← user-auth, user-auth-client, user-session-store, auth-message
+├── chain/       ← qy-chain, chain-sync, chain-admin, chain-sponsor, dubhe 等 17 个文件
+├── i18n/        ← i18n, i18n-client, i18n-shared
+├── ledger/      ← ledger-credit
+├── redeem/      ← redeem-service
+├── services/    ← analytics, order-service, order-store
+├── shared/      ← api-utils, api-validation, client-cache, constants, cookie-utils,
+│                  date-utils, error-utils, zod-utils (含单元测试)
+├── analytics-store.ts, cron-lock.ts, cursor-utils.ts, db.ts, env.ts,
+│   http-cache.ts, order-guard.ts, rate-limit.ts, risk-policy.ts,
+│   server-cache.ts, utils.ts
+```
+
+---
+
+## 七、API 路由总览 (96 个)
 
 ```
 用户端:
   /api/auth/session              # 用户会话
+  /api/auth/mini                 # 小程序登录 (新增)
   /api/orders/                   # 订单 CRUD + 链上同步
+  /api/orders/[orderId]          # 订单详情
+  /api/orders/[orderId]/chain-sync # 订单链上同步
   /api/orders/[orderId]/review   # 订单评价 (GET/POST)
-  /api/pay/                      # Stripe 支付 + Webhook
-  /api/ledger/                   # 钻石账本 (充值/记录)
-  /api/mantou/                   # 馒头 (余额/提现/交易/充值/种子)
-  /api/vip/                      # VIP (等级/状态/申请)
-  /api/players/                  # 陪玩列表/状态
+  /api/pay/                      # Stripe 支付
+  /api/pay/precreate             # 支付预创建
+  /api/pay/webhook               # Stripe Webhook
+  /api/ledger/balance|credit|records  # 钻石账本
+  /api/mantou/balance|credit|seed|transactions|withdraw  # 馒头系统
+  /api/vip/status|tiers|request  # VIP 系统
+  /api/players/                  # 陪玩列表
+  /api/players/me/status         # 陪玩状态
   /api/guardians/                # 守护者申请/状态
   /api/support/                  # 客服工单
   /api/coupons/                  # 优惠券
   /api/invoices/                 # 发票
-  /api/referral/                 # 邀请返利 (邀请码/记录/排行榜)
+  /api/referral/status|bind|leaderboard  # 邀请返利
+  /api/redeem/                   # 兑换码兑换 (新增)
+  /api/announcements/            # 公告列表
   /api/chain/sponsor             # Gas 代付
+  /api/track/                    # 数据埋点
 
 定时任务:
   /api/cron/chain-sync           # 链上事件同步
   /api/cron/chain/auto-cancel    # 自动取消过期订单
   /api/cron/chain/auto-finalize  # 自动结算完成订单
   /api/cron/chain/cleanup-missing # 清理缺失订单
+  /api/cron/maintenance          # 数据库维护 (新增)
   /api/cron/pay/reconcile        # 支付对账
 
-管理后台 (25+ 个子路由):
+管理后台 (40+ 个子路由):
   /api/admin/login|logout|refresh|me
-  /api/admin/orders|players|announcements|coupons
-  /api/admin/earnings|guardians|invoices|support
-  /api/admin/tokens|stats|analytics|audit
-  /api/admin/analytics/trend         # 趋势数据 + 留存分析
-  /api/admin/referral                # 邀请返利配置与记录管理
+  /api/admin/orders (CRUD + bulk-delete + export + cleanup-e2e)
+  /api/admin/orders/[orderId]
+  /api/admin/players (CRUD + bulk-delete)
+  /api/admin/players/[playerId]
+  /api/admin/announcements (CRUD + bulk-delete)
+  /api/admin/announcements/[announcementId]
+  /api/admin/coupons + [couponId]
+  /api/admin/redeem/codes + [codeId]     # 兑换码管理 (新增)
+  /api/admin/redeem/records              # 兑换记录 (新增)
+  /api/admin/earnings
+  /api/admin/guardians + [applicationId]
+  /api/admin/invoices + [invoiceId]
+  /api/admin/support + [ticketId]
+  /api/admin/tokens + [tokenId]
+  /api/admin/stats
+  /api/admin/analytics + trend
+  /api/admin/audit
+  /api/admin/referral/config|list
   /api/admin/ledger/credit
-  /api/admin/mantou/withdraws
-  /api/admin/vip/members|requests|tiers
-  /api/admin/chain/*
+  /api/admin/mantou/withdraws + [requestId]
+  /api/admin/vip/members|requests|tiers + [id]
+  /api/admin/chain/* (orders, order/[id], cancel, resolve, reconcile,
+                      auto-cancel, auto-finalize, cleanup-missing, cache, logs)
   /api/admin/payments
 ```
 
 ---
 
-## 七、环境变量清单
+## 八、环境变量清单
 
 完整清单见 `ENVIRONMENT_VARIABLES.md`，关键分组:
 
@@ -299,21 +342,32 @@ OrderReview             # 订单评价
 
 ---
 
-## 八、当前 Git 状态
+## 九、当前 Git 状态
 
 - 分支: `main`
-- 最近提交: `36f7e3d feat: 邀请返利与排行榜系统`
-- 未提交变更 (11 个文件):
-  - 修改: `prisma/schema.prisma` (新增 OrderReview 模型)
-  - 修改: `admin-store.ts`, `admin-types.ts` (评价相关方法和类型)
-  - 修改: `me/orders/page.tsx` (订单列表可点击跳转)
-  - 修改: `admin/orders/[orderId]/page.tsx` (管理端评价展示)
-  - 修改: `admin/analytics/page.tsx` (漏斗图、趋势线、留存卡片)
-  - 修改: `zh.json`, `en.json` (评价和订单详情 i18n)
-  - 新增: `me/orders/[orderId]/page.tsx` (用户端订单详情+评价)
-  - 新增: `api/admin/analytics/trend/route.ts` (趋势 API)
-  - 新增: `api/orders/[orderId]/review/route.ts` (评价 API)
+- 最近提交: `3052728 update`
+- 未提交变更: `package.json` (lint-staged 配置更新)
 
 ---
 
-*此文档基于 2026-02-19 项目扫描生成并更新，涵盖评价系统、订单详情页、数据看板增强、邀请返利与排行榜等新功能。*
+## 十、迁移历史 (13 次)
+
+```
+20260201_00_init_admin_store
+20260201_01_admin_order_chain_fields
+20260201_02_more_feature_resources
+20260201_03_membership_system
+20260201_admin_order_chain_fields
+20260203_00_admin_player_fields
+20260203_01_mantou_wallet
+20260206_00_growth_event
+20260216_00_admin_access_tokens
+20260216_01_perf_indexes
+20260216_02_chain_event_cursor
+20260220_00_referral_system
+20260220_01_redeem_codes
+```
+
+---
+
+*此文档基于 2026-02-21 项目扫描生成，涵盖兑换码系统、小程序支持、数据库维护 Cron、共享工具库等新功能。*

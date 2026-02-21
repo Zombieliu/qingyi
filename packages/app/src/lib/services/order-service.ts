@@ -39,7 +39,7 @@ type ServerOrder = {
   updatedAt?: number | null;
 };
 
-function normalizeOrder(order: ServerOrder): LocalOrder {
+export function normalizeOrder(order: ServerOrder): LocalOrder {
   const meta = (order.meta || {}) as Record<string, unknown>;
   const metaStatus = typeof meta.status === "string" ? meta.status : undefined;
   const chainMeta = meta.chain as { status?: number } | undefined;
@@ -73,7 +73,7 @@ function normalizeOrder(order: ServerOrder): LocalOrder {
   };
 }
 
-function buildMeta(order: Partial<LocalOrder>) {
+export function buildMeta(order: Partial<LocalOrder>) {
   const meta: Record<string, unknown> = {};
   if (order.status) meta.status = order.status;
   if (order.time) meta.time = order.time;

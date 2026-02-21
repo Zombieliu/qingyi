@@ -48,7 +48,7 @@
   },
   "lint-staged": {
     "packages/app/src/**/*.{ts,tsx}": [
-      "eslint --fix --no-warn-ignored",
+      "eslint --fix --no-warn-ignored --config packages/app/eslint.config.mjs",
       "prettier --write"
     ],
     "packages/app/src/**/*.{json,css}": [
