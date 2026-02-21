@@ -41,13 +41,18 @@ type ServerOrder = {
 
 export function normalizeOrder(order: ServerOrder): LocalOrder {
   const meta = (order.meta || {}) as Record<string, unknown>;
-  const metaStatus = typeof meta.status === "string" ? meta.status : undefined;
   const chainMeta = meta.chain as { status?: number } | undefined;
   const hasChainStatus = order.chainStatus !== undefined && order.chainStatus !== null;
   const isChain = Boolean(order.chainDigest) || hasChainStatus || chainMeta?.status !== undefined;
+
+  // Status resolution priority:
+  // Chain orders: stage (derived from chainStatus on server) > paymentStatus
+  // Non-chain orders: meta.status (legacy client-set) > stage > paymentStatus
+  const metaStatus = typeof meta.status === "string" ? meta.status : undefined;
   const status = isChain
     ? order.stage || order.paymentStatus
     : metaStatus || order.stage || order.paymentStatus;
+
   const time = typeof meta.time === "string" ? meta.time : new Date(order.createdAt).toISOString();
   return {
     id: order.id,
