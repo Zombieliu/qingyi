@@ -37,6 +37,8 @@ model AdminOrder {
   @@index([assignedTo])
   @@index([companionAddress])
   @@index([source])
+  @@index([companionAddress, createdAt, id])  // public orders cursor query
+  @@index([userAddress, createdAt])            // user order history
 }
 
 model AdminPlayer {
