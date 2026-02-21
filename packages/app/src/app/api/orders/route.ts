@@ -13,7 +13,7 @@ import { isValidSuiAddress, normalizeSuiAddress } from "@mysten/sui/utils";
 import { requireUserAuth } from "@/lib/auth/user-auth";
 import { rateLimit } from "@/lib/rate-limit";
 import { clearChainOrderCache } from "@/lib/chain/chain-sync";
-import { getCache, setCache, computeJsonEtag } from "@/lib/server-cache";
+import { getCacheAsync, setCache, computeJsonEtag } from "@/lib/server-cache";
 import { getIfNoneMatch, jsonWithEtag, notModified } from "@/lib/http-cache";
 import { getClientIp } from "@/lib/shared/api-utils";
 import { formatFullDateTime } from "@/lib/shared/date-utils";
@@ -155,7 +155,7 @@ export async function GET(req: Request) {
 
     const publicPageSize = Math.min(30, Math.max(5, Number(searchParams.get("pageSize") || "20")));
     const cacheKey = `api:orders:public:${publicPageSize}:${cursorRaw || "start"}`;
-    const cached = getCache<{
+    const cached = await getCacheAsync<{
       items: Array<{
         id: string;
         user: string;
