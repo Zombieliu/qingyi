@@ -35,6 +35,7 @@ import { resolveDisputePolicy } from "@/lib/risk-policy";
 import { StateBlock } from "@/app/components/state-block";
 import { ConfirmDialog, PromptDialog } from "@/app/components/confirm-dialog";
 import { extractErrorMessage, formatErrorMessage } from "@/lib/shared/error-utils";
+import { classifyChainError } from "@/lib/chain/chain-error";
 
 type RideItem = {
   name: string;
@@ -433,7 +434,7 @@ export default function Schedule() {
       setChainOrders(list);
       setChainUpdatedAt(Date.now());
     } catch (e) {
-      setChainError(formatErrorMessage(e, "链上订单加载失败，请检查链上配置"));
+      setChainError(classifyChainError(e).message);
     } finally {
       if (!visualTest) {
         setChainLoading(false);
@@ -698,7 +699,7 @@ export default function Schedule() {
     try {
       await confirmAction.action();
     } catch (error) {
-      setChainToast(formatErrorMessage(error, "操作失败"));
+      setChainToast(classifyChainError(error).title + "：" + classifyChainError(error).message);
       setTimeout(() => setChainToast(null), 3000);
     } finally {
       setConfirmBusy(false);
@@ -712,7 +713,7 @@ export default function Schedule() {
     try {
       await promptAction.action(promptValue.trim());
     } catch (error) {
-      setChainToast(formatErrorMessage(error, "操作失败"));
+      setChainToast(classifyChainError(error).title + "：" + classifyChainError(error).message);
       setTimeout(() => setChainToast(null), 3000);
     } finally {
       setPromptBusy(false);
@@ -744,7 +745,7 @@ export default function Schedule() {
       }
       return true;
     } catch (e) {
-      setChainToast(formatErrorMessage(e, "操作失败"));
+      setChainToast(classifyChainError(e).title + "：" + classifyChainError(e).message);
       return false;
     } finally {
       setChainAction(null);
@@ -1036,7 +1037,7 @@ export default function Schedule() {
                       try {
                         chainOrder = await fetchOrSyncChainOrder(currentOrder.id);
                       } catch (error) {
-                        setToast(formatErrorMessage(error, "链上订单加载失败，请检查链上配置"));
+                        setToast(classifyChainError(error).message);
                         return;
                       }
                     }

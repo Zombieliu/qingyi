@@ -1,10 +1,15 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/admin/admin-auth";
-import { fetchChainOrdersCached, getChainOrderCacheStats } from "@/lib/chain/chain-sync";
+import {
+  fetchChainOrdersCached,
+  getChainOrderCacheStats,
+  upsertChainOrder,
+} from "@/lib/chain/chain-sync";
 import { getChainOrderStats } from "@/lib/chain/chain-order-cache";
 import { prisma } from "@/lib/db";
 import { parseBody } from "@/lib/shared/api-validation";
+import { trackCronCompleted } from "@/lib/business-events";
 
 /**
  * 链上订单对账和诊断 API
@@ -179,7 +184,7 @@ export async function GET(req: Request) {
 }
 
 const postSchema = z.object({
-  action: z.string().min(1),
+  action: z.enum(["sync_missing", "sync_all", "fix_status"]),
 });
 
 /**
@@ -188,6 +193,10 @@ const postSchema = z.object({
  * POST /api/admin/chain/reconcile
  *
  * Body: { action: "sync_missing" | "sync_all" | "fix_status" }
+ *
+ * - sync_missing: 同步链上有但本地没有的订单
+ * - fix_status: 修复状态不一致的订单
+ * - sync_all: 以上两者都做
  */
 export async function POST(req: Request) {
   const auth = await requireAdmin(req, { role: "admin" });
@@ -197,12 +206,59 @@ export async function POST(req: Request) {
   if (!parsed.success) return parsed.response;
   const { action } = parsed.data;
 
-  // 这里可以实现自动修复逻辑
-  // 例如：同步缺失的订单，修复状态不一致等
+  const startMs = Date.now();
+  const chainOrders = await fetchChainOrdersCached(true);
+  const chainOrderMap = new Map(chainOrders.map((o) => [o.orderId, o]));
+
+  const localOrders = await prisma.adminOrder.findMany({
+    where: {
+      OR: [{ source: "chain" }, { chainStatus: { not: null } }],
+    },
+    select: { id: true, chainStatus: true },
+  });
+  const localOrderMap = new Map(localOrders.map((o) => [o.id, o]));
+
+  let synced = 0;
+  let fixed = 0;
+  const errors: string[] = [];
+
+  // sync_missing or sync_all: 同步链上有但本地没有的订单
+  if (action === "sync_missing" || action === "sync_all") {
+    for (const chain of chainOrders) {
+      if (!localOrderMap.has(chain.orderId)) {
+        try {
+          await upsertChainOrder(chain);
+          synced++;
+        } catch (e) {
+          errors.push(`sync ${chain.orderId}: ${(e as Error).message}`);
+        }
+      }
+    }
+  }
+
+  // fix_status or sync_all: 修复状态不一致的订单
+  if (action === "fix_status" || action === "sync_all") {
+    for (const local of localOrders) {
+      const chain = chainOrderMap.get(local.id);
+      if (chain && chain.status !== local.chainStatus) {
+        try {
+          await upsertChainOrder(chain);
+          fixed++;
+        } catch (e) {
+          errors.push(`fix ${local.id}: ${(e as Error).message}`);
+        }
+      }
+    }
+  }
+
+  const durationMs = Date.now() - startMs;
+  const result = { action, synced, fixed, errors: errors.length, durationMs };
+
+  trackCronCompleted("reconcile", { ...result, errorDetails: errors.slice(0, 10) }, durationMs);
 
   return NextResponse.json({
-    message: "同步修复功能待实现",
-    action,
+    ...result,
+    errorDetails: errors.slice(0, 20),
     timestamp: new Date().toISOString(),
   });
 }

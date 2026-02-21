@@ -135,7 +135,7 @@ describe("upsertChainOrder", () => {
         meta: {},
       };
       mockGetOrderById.mockResolvedValue(existing);
-      mockUpdateOrder.mockImplementation((_id: string, patch: unknown) => ({
+      mockUpdateOrder.mockImplementation((_id: string, patch: Record<string, unknown>) => ({
         ...existing,
         ...patch,
       }));
@@ -153,7 +153,7 @@ describe("upsertChainOrder", () => {
         meta: {},
       };
       mockGetOrderById.mockResolvedValue(existing);
-      mockUpdateOrder.mockImplementation((_id: string, patch: unknown) => ({
+      mockUpdateOrder.mockImplementation((_id: string, patch: Record<string, unknown>) => ({
         ...existing,
         ...patch,
       }));
@@ -175,7 +175,7 @@ describe("upsertChainOrder", () => {
         meta: { paymentMode: "diamond_escrow" },
       };
       mockGetOrderById.mockResolvedValue(existing);
-      mockUpdateOrder.mockImplementation((_id: string, patch: unknown) => ({
+      mockUpdateOrder.mockImplementation((_id: string, patch: Record<string, unknown>) => ({
         ...existing,
         ...patch,
       }));
@@ -215,7 +215,7 @@ describe("upsertChainOrder", () => {
         meta: {},
       };
       mockGetOrderById.mockResolvedValue(existing);
-      mockUpdateOrder.mockImplementation((_id: string, patch: unknown) => ({
+      mockUpdateOrder.mockImplementation((_id: string, patch: Record<string, unknown>) => ({
         ...existing,
         ...patch,
       }));
@@ -282,7 +282,7 @@ describe("syncChainOrders", () => {
     });
     const existing = { id: "o1", amount: 100, stage: "待处理", meta: {} };
     mockGetOrderById.mockResolvedValue(existing);
-    mockUpdateOrder.mockImplementation((_id: string, patch: unknown) => ({
+    mockUpdateOrder.mockImplementation((_id: string, patch: Record<string, unknown>) => ({
       ...existing,
       ...patch,
     }));

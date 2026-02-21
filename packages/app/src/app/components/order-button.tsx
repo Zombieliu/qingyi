@@ -8,6 +8,7 @@ import {
   isChainOrdersEnabled,
 } from "@/lib/chain/qy-chain";
 import { trackEvent } from "@/lib/services/analytics";
+import { classifyChainError } from "@/lib/chain/chain-error";
 import { Button } from "@/components/ui/button";
 import { StateBlock } from "@/app/components/state-block";
 import { formatErrorMessage } from "@/lib/shared/error-utils";
@@ -143,7 +144,8 @@ export default function OrderButton({ user, item, amount, note }: Props) {
         amount,
         reason: "exception",
       });
-      setStatus({ tone: "danger", title: formatErrorMessage(e, "下单失败") });
+      const errInfo = classifyChainError(e);
+      setStatus({ tone: "danger", title: `${errInfo.title}：${errInfo.message}` });
     } finally {
       setLoading(false);
       setTimeout(() => setStatus(null), 3000);
