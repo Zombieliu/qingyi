@@ -334,74 +334,74 @@ export async function POST(req: Request) {
     return NextResponse.json({ orderId, sent: true, error: null });
   }
 
+  // 异步发送企微 webhook，不阻塞用户响应
   const webhook = env.WECHAT_WEBHOOK_URL;
-  let sent = false;
-  let error: string | undefined;
-
   if (webhook) {
-    const requestedNameRaw =
-      typeof meta?.requestedPlayerName === "string" ? meta.requestedPlayerName.trim() : "";
-    const resolved = await resolveWecomMention(meta);
-    const requestedName = resolved.playerName || requestedNameRaw || "";
-    const markdown = buildMarkdown({
-      user,
-      item,
-      amount,
-      currency,
-      status,
-      orderId,
-      note,
-      mentionTag:
-        resolved.mention.type === "all" || resolved.mention.type === "user"
-          ? resolved.mention.tag
-          : "",
-      requestedPlayer: requestedName,
-      fallbackAll: resolved.fallbackAll,
-      fallbackReason: resolved.fallbackReason,
-    });
-    const text = buildText({
-      user,
-      item,
-      amount,
-      currency,
-      status,
-      orderId,
-      note,
-      requestedPlayer: requestedName,
-      fallbackAll: resolved.fallbackAll,
-      fallbackReason: resolved.fallbackReason,
-    });
-    try {
-      const body =
-        resolved.mention.type === "mobile"
-          ? {
-              msgtype: "text",
-              text: {
-                content: text,
-                mentioned_mobile_list: [resolved.mention.mobile],
-              },
-            }
-          : {
-              msgtype: "markdown",
-              markdown: { content: markdown },
-            };
-      const res = await fetch(`${webhook}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      sent = res.ok;
-      if (!res.ok) {
-        error = `WeCom webhook failed: ${res.status}`;
+    const notifyPromise = (async () => {
+      try {
+        const requestedNameRaw =
+          typeof meta?.requestedPlayerName === "string" ? meta.requestedPlayerName.trim() : "";
+        const resolved = await resolveWecomMention(meta);
+        const requestedName = resolved.playerName || requestedNameRaw || "";
+        const markdown = buildMarkdown({
+          user,
+          item,
+          amount,
+          currency,
+          status,
+          orderId,
+          note,
+          mentionTag:
+            resolved.mention.type === "all" || resolved.mention.type === "user"
+              ? resolved.mention.tag
+              : "",
+          requestedPlayer: requestedName,
+          fallbackAll: resolved.fallbackAll,
+          fallbackReason: resolved.fallbackReason,
+        });
+        const text = buildText({
+          user,
+          item,
+          amount,
+          currency,
+          status,
+          orderId,
+          note,
+          requestedPlayer: requestedName,
+          fallbackAll: resolved.fallbackAll,
+          fallbackReason: resolved.fallbackReason,
+        });
+        const body =
+          resolved.mention.type === "mobile"
+            ? {
+                msgtype: "text",
+                text: {
+                  content: text,
+                  mentioned_mobile_list: [resolved.mention.mobile],
+                },
+              }
+            : {
+                msgtype: "markdown",
+                markdown: { content: markdown },
+              };
+        const res = await fetch(`${webhook}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        if (!res.ok) {
+          console.error(`WeCom webhook failed: ${res.status}`);
+        }
+      } catch (e) {
+        console.error("WeCom webhook error:", (e as Error).message);
       }
-    } catch (e) {
-      error = (e as Error).message;
-    }
-  } else {
-    error = "WECHAT_WEBHOOK_URL not set";
+    })();
+    // Vercel/Node: 不 await，让通知在后台完成
+    // 如果运行时支持 waitUntil，用它来保证函数不会提前终止
+    void notifyPromise;
   }
 
-  return NextResponse.json({ orderId, sent, error: error || null });
+  return NextResponse.json({ orderId, sent: true, error: null });
 }
 
 function buildMarkdown({

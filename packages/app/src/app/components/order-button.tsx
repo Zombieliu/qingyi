@@ -92,18 +92,29 @@ export default function OrderButton({ user, item, amount, note }: Props) {
         const address = getCurrentAddress();
         const retrySync = async () => {
           const delays = [1000, 2000, 4000, 8000];
+          let synced = false;
           for (const delay of delays) {
             try {
-              await fetch(`/api/orders/${chainOrderId}/chain-sync?force=1&maxWaitMs=15000`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ userAddress: address, digest: chainDigest }),
-              });
-              break;
+              const res = await fetch(
+                `/api/orders/${chainOrderId}/chain-sync?force=1&maxWaitMs=15000`,
+                {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ userAddress: address, digest: chainDigest }),
+                }
+              );
+              if (res.ok) {
+                synced = true;
+                break;
+              }
             } catch {
-              // ignore and retry
+              // retry
             }
             await new Promise((resolve) => setTimeout(resolve, delay));
+          }
+          if (!synced) {
+            setStatus({ tone: "warning", title: "链上同步失败，订单已创建，稍后会自动重试" });
+            trackEvent("chain_sync_failed", { orderId: chainOrderId, source: "home_card" });
           }
         };
         void retrySync();
