@@ -29,9 +29,9 @@
       "description": "快速进入组队大厅"
     },
     {
-      "name": "战队约战",
-      "short_name": "约战",
-      "url": "/matches",
+      "name": "快速下单",
+      "short_name": "下单",
+      "url": "/schedule",
       "description": "查看/发布三角洲行动陪玩约战"
     }
   ]
