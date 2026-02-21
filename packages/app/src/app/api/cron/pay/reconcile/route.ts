@@ -4,14 +4,14 @@ import { prisma, Prisma } from "@/lib/db";
 import { upsertLedgerRecord } from "@/lib/admin/admin-store";
 import { recordAudit } from "@/lib/admin/admin-audit";
 import { acquireCronLock } from "@/lib/cron-lock";
+import { env } from "@/lib/env";
+import { formatFullDateTime } from "@/lib/shared/date-utils";
 
-const CRON_LOCK_TTL_MS = Number(process.env.CRON_LOCK_TTL_MS || "600000");
-
-const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
+const stripeSecretKey = env.STRIPE_SECRET_KEY;
 const stripe = stripeSecretKey ? new Stripe(stripeSecretKey) : null;
 
 function isAuthorized(req: Request) {
-  const secret = process.env.CRON_SECRET;
+  const secret = env.CRON_SECRET;
   const vercelCron = req.headers.get("x-vercel-cron") === "1";
   if (vercelCron) return true;
   if (!secret) {
@@ -22,7 +22,12 @@ function isAuthorized(req: Request) {
   return token === secret;
 }
 
-function parseNumber(value: string | null | undefined, fallback: number, min?: number, max?: number) {
+function parseNumber(
+  value: string | null | undefined,
+  fallback: number,
+  min?: number,
+  max?: number
+) {
   const raw = Number(value);
   if (!Number.isFinite(raw)) return fallback;
   const clampedMin = min !== undefined ? Math.max(raw, min) : raw;
@@ -69,9 +74,16 @@ function extractStripeMeta(raw: unknown): StripeMeta {
   return extractStripeMetaFromObject(data);
 }
 
-type StripeSuccessRecord = StripeMeta & { orderId: string; source: "event" | "stripe"; eventId?: string };
+type StripeSuccessRecord = StripeMeta & {
+  orderId: string;
+  source: "event" | "stripe";
+  eventId?: string;
+};
 
-async function fetchStripeSuccessRecords(since: Date, limit: number): Promise<StripeSuccessRecord[]> {
+async function fetchStripeSuccessRecords(
+  since: Date,
+  limit: number
+): Promise<StripeSuccessRecord[]> {
   if (!stripe) return [];
   const results: StripeSuccessRecord[] = [];
   let startingAfter: string | undefined;
@@ -120,15 +132,9 @@ function buildAlertMarkdown(params: {
   stalePending: number;
   sample: { missingLedger: string[]; patchedLedger: string[]; stalePending: string[] };
 }) {
-  const now = new Intl.DateTimeFormat("zh-CN", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(Date.now());
+  const now = formatFullDateTime(Date.now());
   const lines = [
-    "⚠️ <font color=\"warning\">支付对账告警</font>",
+    '⚠️ <font color="warning">支付对账告警</font>',
     `> 时间：${now}`,
     `> apply：${params.apply ? "是" : "否"}  窗口：${params.sinceHours}h  pending：${params.pendingHours}h`,
     `> Stripe 事件：${params.scannedEvents}  Stripe 列表：${params.stripeRecords}`,
@@ -151,7 +157,7 @@ export async function GET(req: Request) {
   if (!isAuthorized(req)) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
-  if (!(await acquireCronLock("pay-reconcile", CRON_LOCK_TTL_MS))) {
+  if (!(await acquireCronLock("pay-reconcile", env.CRON_LOCK_TTL_MS))) {
     return NextResponse.json({ error: "locked" }, { status: 429 });
   }
 
@@ -159,30 +165,30 @@ export async function GET(req: Request) {
   const apply = url.searchParams.get("apply") === "1";
   const useStripe = parseFlag(
     url.searchParams.get("useStripe"),
-    parseFlag(process.env.PAYMENT_RECONCILE_USE_STRIPE, Boolean(stripe))
+    parseFlag(env.PAYMENT_RECONCILE_USE_STRIPE, Boolean(stripe))
   );
   const sinceHours = parseNumber(url.searchParams.get("sinceHours"), 48, 1, 720);
   const limit = parseNumber(url.searchParams.get("limit"), 200, 1, 1000);
   const pendingHours = parseNumber(url.searchParams.get("pendingHours"), 6, 1, 168);
   const alertEnabled = parseFlag(
     url.searchParams.get("alert"),
-    parseFlag(process.env.PAYMENT_RECONCILE_ALERT_ENABLED, true)
+    parseFlag(env.PAYMENT_RECONCILE_ALERT_ENABLED, true)
   );
   const missingThreshold = parseNumber(
     url.searchParams.get("missingThreshold"),
-    Number(process.env.PAYMENT_RECONCILE_MISSING_THRESHOLD || "1"),
+    env.PAYMENT_RECONCILE_MISSING_THRESHOLD,
     0,
     10000
   );
   const patchedThreshold = parseNumber(
     url.searchParams.get("patchedThreshold"),
-    Number(process.env.PAYMENT_RECONCILE_PATCHED_THRESHOLD || "1"),
+    env.PAYMENT_RECONCILE_PATCHED_THRESHOLD,
     0,
     10000
   );
   const pendingThreshold = parseNumber(
     url.searchParams.get("pendingThreshold"),
-    Number(process.env.PAYMENT_RECONCILE_PENDING_THRESHOLD || "5"),
+    env.PAYMENT_RECONCILE_PENDING_THRESHOLD,
     0,
     10000
   );
@@ -229,11 +235,13 @@ export async function GET(req: Request) {
           continue;
         }
         if (!existing.userAddress && record.userAddress) existing.userAddress = record.userAddress;
-        if (!existing.diamondAmount && record.diamondAmount) existing.diamondAmount = record.diamondAmount;
+        if (!existing.diamondAmount && record.diamondAmount)
+          existing.diamondAmount = record.diamondAmount;
         if (!existing.amountCny && record.amountCny) existing.amountCny = record.amountCny;
         if (!existing.currency && record.currency) existing.currency = record.currency;
         if (!existing.channel && record.channel) existing.channel = record.channel;
-        if (!existing.paymentIntentId && record.paymentIntentId) existing.paymentIntentId = record.paymentIntentId;
+        if (!existing.paymentIntentId && record.paymentIntentId)
+          existing.paymentIntentId = record.paymentIntentId;
       }
     } catch (error) {
       stripeError = (error as Error).message || "stripe_list_failed";
@@ -294,7 +302,9 @@ export async function GET(req: Request) {
       patchedLedger.push(orderId);
       if (!apply) continue;
       const existingMeta =
-        existing.meta && typeof existing.meta === "object" ? (existing.meta as Record<string, unknown>) : {};
+        existing.meta && typeof existing.meta === "object"
+          ? (existing.meta as Record<string, unknown>)
+          : {};
       await prisma.ledgerRecord.update({
         where: { id: existing.id },
         data: {
@@ -323,16 +333,25 @@ export async function GET(req: Request) {
   });
   const successOrders = new Set(orderNos);
   const stalePending = stalePendingRows
-    .filter((row) => !successOrders.has(row.id) && (!row.orderId || !successOrders.has(row.orderId)))
+    .filter(
+      (row) => !successOrders.has(row.id) && (!row.orderId || !successOrders.has(row.orderId))
+    )
     .map((row) => row.id);
 
-  const alertWebhook =
-    process.env.PAYMENT_RECONCILE_ALERT_WEBHOOK_URL || process.env.WECHAT_WEBHOOK_URL || "";
+  const alertWebhook = env.PAYMENT_RECONCILE_ALERT_WEBHOOK_URL || env.WECHAT_WEBHOOK_URL || "";
   const alertReasons: string[] = [];
-  if (missingThreshold >= 0 && missingLedger.length >= missingThreshold && missingLedger.length > 0) {
+  if (
+    missingThreshold >= 0 &&
+    missingLedger.length >= missingThreshold &&
+    missingLedger.length > 0
+  ) {
     alertReasons.push("missing_ledger");
   }
-  if (patchedThreshold >= 0 && patchedLedger.length >= patchedThreshold && patchedLedger.length > 0) {
+  if (
+    patchedThreshold >= 0 &&
+    patchedLedger.length >= patchedThreshold &&
+    patchedLedger.length > 0
+  ) {
     alertReasons.push("patched_ledger");
   }
   if (pendingThreshold >= 0 && stalePending.length >= pendingThreshold && stalePending.length > 0) {
@@ -410,10 +429,17 @@ export async function GET(req: Request) {
   };
 
   const hasIssues = missingLedger.length > 0 || patchedLedger.length > 0 || stalePending.length > 0;
-  await recordAudit(req, { role: "finance", authType: "cron" }, "payments.reconcile", "payment", undefined, {
-    ...summary,
-    hasIssues,
-  });
+  await recordAudit(
+    req,
+    { role: "finance", authType: "cron" },
+    "payments.reconcile",
+    "payment",
+    undefined,
+    {
+      ...summary,
+      hasIssues,
+    }
+  );
 
   return NextResponse.json(summary);
 }

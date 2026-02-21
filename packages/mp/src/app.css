@@ -1,0 +1,224 @@
+page {
+  background: #f3f7fb;
+  color: #0f172a;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.page {
+  min-height: 100vh;
+  padding: 20px 16px 96px;
+  background: linear-gradient(180deg, #fef6ff 0%, #f7faff 45%, #ffffff 100%);
+}
+
+.title {
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 12px;
+  letter-spacing: -0.02em;
+}
+
+.section {
+  margin-top: 18px;
+}
+
+.section-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 8px;
+}
+
+.card {
+  background: linear-gradient(180deg, #ffffff 0%, #f9fbff 100%);
+  border-radius: 18px;
+  padding: 16px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  box-shadow: 0 12px 26px rgba(15, 23, 42, 0.08);
+}
+
+.input {
+  margin-top: 8px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 10px 12px;
+  background: #fff;
+  font-size: 13px;
+  color: #0f172a;
+  outline: none;
+  min-height: 44px;
+  height: 44px;
+  line-height: 22px;
+  box-shadow: 0 6px 14px rgba(15, 23, 42, 0.06);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.input:focus {
+  border-color: rgba(14, 165, 233, 0.45);
+  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.14);
+}
+
+.input.input-error {
+  border-color: rgba(244, 63, 94, 0.6);
+  box-shadow: 0 0 0 3px rgba(244, 63, 94, 0.12);
+  background: #fff5f7;
+}
+
+.input.input-success {
+  border-color: rgba(34, 197, 94, 0.6);
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.12);
+  background: #f0fdf4;
+}
+
+.input.input-warning {
+  border-color: rgba(245, 158, 11, 0.6);
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.12);
+  background: #fff7ed;
+}
+
+.input[disabled],
+.input:disabled,
+.input.is-disabled {
+  background: #f1f5f9;
+  color: #94a3b8;
+  border-color: #e2e8f0;
+  box-shadow: none;
+}
+
+.input.textarea {
+  height: 96px;
+  min-height: 96px;
+  line-height: 20px;
+  padding-top: 10px;
+  padding-bottom: 10px;
+  resize: none;
+}
+
+.input-placeholder {
+  color: #94a3b8;
+}
+
+.button {
+  margin-top: 12px;
+  background: linear-gradient(135deg, #0ea5e9 0%, #38bdf8 55%, #f59e0b 120%);
+  color: #ffffff;
+  border-radius: 12px;
+  border: none;
+  line-height: 44px;
+  font-weight: 600;
+  box-shadow: 0 12px 26px rgba(14, 165, 233, 0.22);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 14px;
+}
+
+.button::after {
+  border: none;
+}
+
+.button-secondary {
+  background: #ffffff;
+  color: #0f172a;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08);
+}
+
+.button-ghost {
+  background: rgba(14, 165, 233, 0.12);
+  color: #075985;
+  border: 1px solid rgba(14, 165, 233, 0.24);
+  box-shadow: none;
+}
+
+.button-small {
+  line-height: 32px;
+  font-size: 12px;
+  padding: 0 10px;
+  margin-top: 0;
+}
+
+.helper {
+  margin-top: 6px;
+  font-size: 12px;
+  color: #64748b;
+}
+
+.helper-error {
+  color: #e11d48;
+}
+
+.helper-success {
+  color: #16a34a;
+}
+
+.helper-warning {
+  color: #b45309;
+}
+
+.grid {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(14, 165, 233, 0.12);
+  border: 1px solid rgba(14, 165, 233, 0.22);
+  color: #075985;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.pill-warn {
+  background: rgba(245, 158, 11, 0.14);
+  border-color: rgba(245, 158, 11, 0.3);
+  color: #b45309;
+}
+
+.pill-success {
+  background: rgba(22, 163, 74, 0.14);
+  border-color: rgba(22, 163, 74, 0.28);
+  color: #166534;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 12px;
+  background: rgba(14, 165, 233, 0.16);
+  color: #0f172a;
+  font-weight: 700;
+  font-size: 12px;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.row-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.text-strong {
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.text-muted {
+  color: #64748b;
+}

@@ -1,9 +1,11 @@
+import { env } from "@/lib/env";
+
 export type DisputePolicy = {
   hours: number;
   ruleSetId: string;
 };
 
-const DEFAULT_RULESET_ID = process.env.NEXT_PUBLIC_QY_RULESET_ID || "1";
+const DEFAULT_RULESET_ID = env.NEXT_PUBLIC_QY_RULESET_ID || "1";
 
 function normalizeRuleSet(value?: string): string {
   if (!value) return DEFAULT_RULESET_ID;
@@ -16,23 +18,23 @@ export function resolveDisputePolicy(tierLevel?: number): DisputePolicy {
   if (level >= 4) {
     return {
       hours: 72,
-      ruleSetId: normalizeRuleSet(process.env.NEXT_PUBLIC_QY_RULESET_ID_L4),
+      ruleSetId: normalizeRuleSet(env.NEXT_PUBLIC_QY_RULESET_ID_L4),
     };
   }
   if (level >= 3) {
     return {
       hours: 48,
-      ruleSetId: normalizeRuleSet(process.env.NEXT_PUBLIC_QY_RULESET_ID_L3),
+      ruleSetId: normalizeRuleSet(env.NEXT_PUBLIC_QY_RULESET_ID_L3),
     };
   }
   if (level >= 2) {
     return {
       hours: 36,
-      ruleSetId: normalizeRuleSet(process.env.NEXT_PUBLIC_QY_RULESET_ID_L2),
+      ruleSetId: normalizeRuleSet(env.NEXT_PUBLIC_QY_RULESET_ID_L2),
     };
   }
   return {
     hours: 24,
-    ruleSetId: normalizeRuleSet(process.env.NEXT_PUBLIC_QY_RULESET_ID_L1),
+    ruleSetId: normalizeRuleSet(env.NEXT_PUBLIC_QY_RULESET_ID_L1),
   };
 }

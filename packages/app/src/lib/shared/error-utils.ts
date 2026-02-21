@@ -12,7 +12,12 @@ export function formatErrorMessage(error: unknown, fallback: string) {
     return `${fallback}：${message}`;
   }
   if (error && typeof error === "object") {
-    const record = error as { message?: unknown; error?: unknown; code?: unknown; status?: unknown };
+    const record = error as {
+      message?: unknown;
+      error?: unknown;
+      code?: unknown;
+      status?: unknown;
+    };
     const raw = record.message || record.error || record.code || record.status;
     if (typeof raw === "string" && raw.trim()) {
       const message = raw.trim();
@@ -31,7 +36,12 @@ export function extractErrorMessage(error: unknown) {
     return error.trim();
   }
   if (error && typeof error === "object") {
-    const record = error as { message?: unknown; error?: unknown; code?: unknown; status?: unknown };
+    const record = error as {
+      message?: unknown;
+      error?: unknown;
+      code?: unknown;
+      status?: unknown;
+    };
     const raw = record.message || record.error || record.code || record.status;
     if (typeof raw === "string") return raw.trim();
   }

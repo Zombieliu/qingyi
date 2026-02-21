@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { acquireCronLock } from "@/lib/cron-lock";
-
-const CRON_LOCK_TTL_MS = Number(process.env.CRON_LOCK_TTL_MS || "600000");
+import { env } from "@/lib/env";
 
 type PrunableModel = {
   count: () => Promise<number>;
@@ -16,7 +15,7 @@ type PrunableModel = {
 };
 
 function isAuthorized(req: Request) {
-  const secret = process.env.CRON_SECRET;
+  const secret = env.CRON_SECRET;
   const vercelCron = req.headers.get("x-vercel-cron") === "1";
   if (vercelCron) return true;
   if (!secret) {
@@ -47,12 +46,12 @@ export async function GET(req: Request) {
   if (!isAuthorized(req)) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
-  if (!(await acquireCronLock("maintenance", CRON_LOCK_TTL_MS))) {
+  if (!(await acquireCronLock("maintenance", env.CRON_LOCK_TTL_MS))) {
     return NextResponse.json({ error: "locked" }, { status: 429 });
   }
-  const maxAudit = Number(process.env.ADMIN_AUDIT_LOG_LIMIT || "1000");
-  const maxPayments = Number(process.env.ADMIN_PAYMENT_EVENT_LIMIT || "1000");
-  const retentionDays = Number(process.env.ORDER_RETENTION_DAYS || "180");
+  const maxAudit = env.ADMIN_AUDIT_LOG_LIMIT;
+  const maxPayments = env.ADMIN_PAYMENT_EVENT_LIMIT;
+  const retentionDays = env.ORDER_RETENTION_DAYS;
 
   const deletedAudit = await prune(prisma.adminAuditLog, maxAudit);
   const deletedPayments = await prune(prisma.adminPaymentEvent, maxPayments);

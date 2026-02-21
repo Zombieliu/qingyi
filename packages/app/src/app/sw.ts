@@ -1,5 +1,11 @@
 /// <reference lib="webworker" />
-import { disableDevLogs, handlePrecaching, installSerwist, registerRuntimeCaching, type RuntimeCaching } from "@serwist/sw";
+import {
+  disableDevLogs,
+  handlePrecaching,
+  installSerwist,
+  registerRuntimeCaching,
+  type RuntimeCaching,
+} from "@serwist/sw";
 import { CacheFirst, NetworkFirst, NetworkOnly, StaleWhileRevalidate } from "@serwist/strategies";
 
 declare const self: ServiceWorkerGlobalScope & {
@@ -31,7 +37,8 @@ const runtimeCaching: RuntimeCaching[] = [
   },
   {
     // Game assets, avatars, CDN static
-    matcher: ({ request, url }) => request.destination === "image" || url.pathname.match(/\.(png|jpg|jpeg|webp|avif|svg)$/),
+    matcher: ({ request, url }) =>
+      request.destination === "image" || url.pathname.match(/\.(png|jpg|jpeg|webp|avif|svg)$/),
     handler: new CacheFirst({
       cacheName: "images-cache",
       matchOptions: { ignoreVary: true },
@@ -39,7 +46,8 @@ const runtimeCaching: RuntimeCaching[] = [
   },
   {
     // Fonts and CSS
-    matcher: ({ request, url }) => request.destination === "style" || url.pathname.match(/\.(css|woff2?|ttf)$/),
+    matcher: ({ request, url }) =>
+      request.destination === "style" || url.pathname.match(/\.(css|woff2?|ttf)$/),
     handler: new StaleWhileRevalidate({ cacheName: "assets-cache" }),
   },
 ];

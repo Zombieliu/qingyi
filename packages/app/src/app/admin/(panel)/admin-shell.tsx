@@ -103,6 +103,7 @@ const navItems: NavItem[] = [
   { href: "/admin/orders", label: "订单调度", icon: ClipboardList, minRole: "viewer" },
   { href: "/admin/support", label: "客服工单", icon: Headset, minRole: "ops" },
   { href: "/admin/coupons", label: "优惠卡券", icon: TicketPercent, minRole: "ops" },
+  { href: "/admin/redeem", label: "卡密兑换", icon: KeyRound, minRole: "ops" },
   { href: "/admin/vip", label: "会员管理", icon: Crown, minRole: "ops" },
   { href: "/admin/players", label: "陪练管理", icon: Users, minRole: "viewer" },
   { href: "/admin/guardians", label: "陪练申请", icon: UserCheck, minRole: "ops" },
@@ -127,6 +128,7 @@ const navSections: Array<{ label: string; items: string[] }> = [
       "/admin/orders",
       "/admin/support",
       "/admin/coupons",
+      "/admin/redeem",
       "/admin/vip",
       "/admin/players",
       "/admin/guardians",
@@ -137,7 +139,14 @@ const navSections: Array<{ label: string; items: string[] }> = [
   },
   {
     label: "财务结算",
-    items: ["/admin/earnings", "/admin/ledger", "/admin/mantou", "/admin/invoices", "/admin/chain", "/admin/payments"],
+    items: [
+      "/admin/earnings",
+      "/admin/ledger",
+      "/admin/mantou",
+      "/admin/invoices",
+      "/admin/chain",
+      "/admin/payments",
+    ],
   },
   { label: "系统", items: ["/admin/tokens", "/admin/audit"] },
 ];
@@ -154,6 +163,7 @@ const subtitles: Record<string, string> = {
   "/admin/guardians": "陪练申请审核与入库",
   "/admin/announcements": "公告与资讯统一发布",
   "/admin/referral": "邀请返利配置与记录管理",
+  "/admin/redeem": "卡密生成与兑换记录",
   "/admin/analytics": "访问与转化漏斗监控",
   "/admin/earnings": "陪练完单与平台撮合费汇总",
   "/admin/ledger": "充值记账与凭证管理",
@@ -175,8 +185,8 @@ const roleLabels: Record<AdminRole, string> = {
 export default function AdminShell({ children }: { children: React.ReactNode }) {
   const { locale, setLocale, t } = useI18n();
   const pathname = usePathname();
-  const [routePath, setRoutePath] = useState(() =>
-    pathname || (typeof window !== "undefined" ? window.location.pathname : "/admin")
+  const [routePath, setRoutePath] = useState(
+    () => pathname || (typeof window !== "undefined" ? window.location.pathname : "/admin")
   );
   const routePathRef = useRef(routePath);
   const router = useRouter();
@@ -205,9 +215,9 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
   const fallbackHref = visibleNav[0]?.href || "/admin";
   const active = useMemo(
     () =>
-      visibleNav.find(
-      (item) => routePath === item.href || routePath.startsWith(`${item.href}/`)
-      ) || visibleNav[0] || navItems[0],
+      visibleNav.find((item) => routePath === item.href || routePath.startsWith(`${item.href}/`)) ||
+      visibleNav[0] ||
+      navItems[0],
     [routePath, visibleNav]
   );
 
@@ -220,12 +230,6 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
   useEffect(() => {
     routePathRef.current = routePath;
   }, [routePath]);
-
-  useEffect(() => {
-    if (pathname && pathname !== routePath) {
-      setRoutePath(pathname);
-    }
-  }, [pathname, routePath]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -329,7 +333,8 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
                 <Stagger>
                   {items.map((item) => {
                     const Icon = item.icon;
-                    const isActive = routePath === item.href || routePath.startsWith(`${item.href}/`);
+                    const isActive =
+                      routePath === item.href || routePath.startsWith(`${item.href}/`);
                     return (
                       <StaggerItem key={item.href}>
                         <Link
@@ -366,7 +371,9 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
           <div className="admin-topbar-main">
             <h2 className="admin-title">{active?.label ? t(active.label) : t("管理后台")}</h2>
             <p className="admin-subtitle">
-              {subtitles[active?.href || "/admin"] ? t(subtitles[active?.href || "/admin"]) : t("运营状态一览")}
+              {subtitles[active?.href || "/admin"]
+                ? t(subtitles[active?.href || "/admin"])
+                : t("运营状态一览")}
             </p>
           </div>
           <div className="admin-actions">

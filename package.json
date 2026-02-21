@@ -14,6 +14,12 @@
     "build": "npm run build --workspace app",
     "start": "npm run start --workspace app",
     "lint": "npm run lint --workspace app",
+    "dev:mp:weapp": "pnpm --filter mp dev:weapp",
+    "dev:mp:alipay": "pnpm --filter mp dev:alipay",
+    "dev:mp:tt": "pnpm --filter mp dev:tt",
+    "build:mp:weapp": "pnpm --filter mp build:weapp",
+    "build:mp:alipay": "pnpm --filter mp build:alipay",
+    "build:mp:tt": "pnpm --filter mp build:tt",
     "test:visual": "playwright test --config playwright.config.ts",
     "test:visual:core": "PW_PROFILE=core playwright test --config playwright.config.ts",
     "test:visual:full": "PW_PROFILE=full playwright test --config playwright.config.ts",
@@ -32,9 +38,21 @@
     "test:chain:script": "node scripts/chain-e2e.mjs",
     "vercel:env:clear": "node scripts/vercel-env-clear.mjs",
     "vercel:env:sync": "node scripts/vercel-env-sync.mjs",
-    "sentry:rotate": "node scripts/sentry-token-rotate.mjs"
+    "sentry:rotate": "node scripts/sentry-token-rotate.mjs",
+    "prepare": "husky"
   },
   "devDependencies": {
-    "@playwright/test": "^1.50.1"
+    "@playwright/test": "^1.50.1",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.2.7"
+  },
+  "lint-staged": {
+    "packages/app/src/**/*.{ts,tsx}": [
+      "eslint --fix --no-warn-ignored",
+      "prettier --write"
+    ],
+    "packages/app/src/**/*.{json,css}": [
+      "prettier --write"
+    ]
   }
 }

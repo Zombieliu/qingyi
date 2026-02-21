@@ -11,7 +11,11 @@ type CacheResult<T> = {
   fresh: boolean;
 };
 
-export function readCache<T>(key: string, maxAgeMs: number, allowStale = false): CacheResult<T> | null {
+export function readCache<T>(
+  key: string,
+  maxAgeMs: number,
+  allowStale = false
+): CacheResult<T> | null {
   if (typeof window === "undefined") return null;
   try {
     const raw = localStorage.getItem(key);

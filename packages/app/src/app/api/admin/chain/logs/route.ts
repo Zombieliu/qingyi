@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin/admin-auth";
 import { chainOrderLogger } from "@/lib/chain/chain-order-logger";
+import { env } from "@/lib/env";
 
 /**
  * 链上订单日志查看 API
@@ -30,7 +31,7 @@ export async function GET(req: Request) {
       operation: operation || "all",
       limit,
     },
-    debugEnabled: process.env.CHAIN_ORDER_DEBUG === "true",
+    debugEnabled: env.CHAIN_ORDER_DEBUG === "1",
   });
 }
 

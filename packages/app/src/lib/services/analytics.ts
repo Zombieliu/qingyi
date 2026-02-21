@@ -27,7 +27,10 @@ function getClientId() {
   if (typeof window === "undefined") return "";
   const existing = window.localStorage.getItem(CLIENT_ID_KEY);
   if (existing) return existing;
-  const next = typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`;
+  const next =
+    typeof crypto !== "undefined" && "randomUUID" in crypto
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random()}`;
   window.localStorage.setItem(CLIENT_ID_KEY, next);
   return next;
 }
@@ -35,13 +38,18 @@ function getClientId() {
 function getSessionId() {
   if (typeof window === "undefined") return "";
   const now = Date.now();
-  const existing = safeParse<{ id: string; lastSeen: number }>(window.localStorage.getItem(SESSION_KEY));
+  const existing = safeParse<{ id: string; lastSeen: number }>(
+    window.localStorage.getItem(SESSION_KEY)
+  );
   if (existing && now - existing.lastSeen < SESSION_TTL_MS) {
     const refreshed = { ...existing, lastSeen: now };
     window.localStorage.setItem(SESSION_KEY, JSON.stringify(refreshed));
     return existing.id;
   }
-  const id = typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `${now}-${Math.random()}`;
+  const id =
+    typeof crypto !== "undefined" && "randomUUID" in crypto
+      ? crypto.randomUUID()
+      : `${now}-${Math.random()}`;
   window.localStorage.setItem(SESSION_KEY, JSON.stringify({ id, lastSeen: now }));
   return id;
 }
@@ -63,7 +71,7 @@ function captureAttribution() {
   if (existing && !hasUtm) return;
   const next: Attribution = {
     utm: hasUtm ? utm : existing?.utm,
-    firstReferrer: existing?.firstReferrer || (document.referrer || ""),
+    firstReferrer: existing?.firstReferrer || document.referrer || "",
     firstLanding: existing?.firstLanding || window.location.pathname,
     firstSeenAt: existing?.firstSeenAt || Date.now(),
   };

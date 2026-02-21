@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { getCurrentAddress } from "@/lib/chain/qy-chain";
-import { readCache, writeCache } from "./client-cache";
+import { readCache, writeCache } from "@/lib/shared/client-cache";
 
 type GuardianState = "checking" | "guardian" | "user";
 

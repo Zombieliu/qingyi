@@ -7,8 +7,8 @@ function toCsv(rows: Array<Record<string, unknown>>) {
   const headers = Object.keys(rows[0]);
   const escape = (value: unknown) => {
     const raw = value === null || value === undefined ? "" : String(value);
-    if (raw.includes(",") || raw.includes("\"") || raw.includes("\n")) {
-      return `"${raw.replace(/"/g, "\"\"")}"`;
+    if (raw.includes(",") || raw.includes('"') || raw.includes("\n")) {
+      return `"${raw.replace(/"/g, '""')}"`;
     }
     return raw;
   };

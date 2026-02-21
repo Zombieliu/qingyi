@@ -95,7 +95,12 @@ export default function LedgerPage() {
             />
           </label>
         </div>
-        <button className="admin-btn primary" style={{ marginTop: 16 }} onClick={submit} disabled={loading}>
+        <button
+          className="admin-btn primary"
+          style={{ marginTop: 16 }}
+          onClick={submit}
+          disabled={loading}
+        >
           <Send size={16} style={{ marginRight: 6 }} />
           {loading ? "提交中..." : "提交记账"}
         </button>

@@ -1,14 +1,27 @@
 import { NextResponse } from "next/server";
 import crypto from "crypto";
+import { z } from "zod";
 import { requireAdmin } from "@/lib/admin/admin-auth";
 import { addPlayer, getPlayerByAddress, listPlayers } from "@/lib/admin/admin-store";
 import { recordAudit } from "@/lib/admin/admin-audit";
-import type { AdminPlayer, PlayerStatus } from "@/lib/admin/admin-types";
+import { parseBody } from "@/lib/shared/api-validation";
+import type { PlayerStatus } from "@/lib/admin/admin-types";
 import { isValidSuiAddress, normalizeSuiAddress } from "@mysten/sui/utils";
 
-function isMobileNumber(value: string) {
-  return /^1\d{10}$/.test(value);
-}
+const postSchema = z.object({
+  id: z.string().optional(),
+  name: z.string().min(1),
+  role: z.string().optional(),
+  contact: z.string().regex(/^1\d{10}$/),
+  address: z.string().min(1),
+  wechatQr: z.string().optional(),
+  alipayQr: z.string().optional(),
+  depositBase: z.number().min(0).optional(),
+  depositLocked: z.number().min(0).optional(),
+  creditMultiplier: z.number().optional(),
+  status: z.enum(["可接单", "忙碌", "停用"]).default("可接单"),
+  notes: z.string().optional(),
+});
 
 function normalizePlayerAddress(raw?: string | null) {
   const trimmed = (raw || "").trim();
@@ -30,32 +43,14 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const auth = await requireAdmin(req, { role: "viewer" });
+  const auth = await requireAdmin(req, { role: "ops" });
   if (!auth.ok) return auth.response;
 
-  let body: Partial<AdminPlayer> = {};
-  try {
-    body = (await req.json()) as Partial<AdminPlayer>;
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
+  const parsed = await parseBody(req, postSchema);
+  if (!parsed.success) return parsed.response;
+  const body = parsed.data;
 
-  if (!body.name) {
-    return NextResponse.json({ error: "name required" }, { status: 400 });
-  }
-
-  const contact = typeof body.contact === "string" ? body.contact.trim() : "";
-  if (!contact) {
-    return NextResponse.json({ error: "contact_required" }, { status: 400 });
-  }
-  if (!isMobileNumber(contact)) {
-    return NextResponse.json({ error: "invalid_contact" }, { status: 400 });
-  }
-
-  const rawAddress = typeof body.address === "string" ? body.address.trim() : "";
-  if (!rawAddress) {
-    return NextResponse.json({ error: "address_required" }, { status: 400 });
-  }
+  const rawAddress = body.address.trim();
   const normalizedAddress = normalizePlayerAddress(rawAddress);
   if (!normalizedAddress) {
     return NextResponse.json({ error: "invalid_address" }, { status: 400 });
@@ -65,28 +60,22 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "address_in_use" }, { status: 409 });
   }
 
-  const player: AdminPlayer = {
+  const player = {
     id: body.id || `PLY-${Date.now()}-${crypto.randomInt(1000, 9999)}`,
     name: body.name,
     role: body.role,
-    contact,
+    contact: body.contact,
     address: normalizedAddress,
     wechatQr: body.wechatQr,
     alipayQr: body.alipayQr,
-    depositBase: typeof body.depositBase === "number" ? body.depositBase : undefined,
-    depositLocked: typeof body.depositLocked === "number" ? body.depositLocked : undefined,
-    creditMultiplier: typeof body.creditMultiplier === "number" ? body.creditMultiplier : undefined,
-    status: (body.status as PlayerStatus) || "可接单",
+    depositBase: body.depositBase,
+    depositLocked: body.depositLocked,
+    creditMultiplier: body.creditMultiplier,
+    status: body.status as PlayerStatus,
     notes: body.notes,
     createdAt: Date.now(),
   };
 
-  if (player.depositBase !== undefined && player.depositBase < 0) {
-    return NextResponse.json({ error: "depositBase must be >= 0" }, { status: 400 });
-  }
-  if (player.depositLocked !== undefined && player.depositLocked < 0) {
-    return NextResponse.json({ error: "depositLocked must be >= 0" }, { status: 400 });
-  }
   if (player.creditMultiplier !== undefined) {
     const clamped = Math.min(5, Math.max(1, Math.round(player.creditMultiplier)));
     player.creditMultiplier = clamped;

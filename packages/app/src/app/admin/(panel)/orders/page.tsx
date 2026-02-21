@@ -5,18 +5,10 @@ import { RefreshCw, Search } from "lucide-react";
 import Link from "next/link";
 import type { AdminOrder, AdminPlayer, OrderStage } from "@/lib/admin/admin-types";
 import { ORDER_STAGE_OPTIONS } from "@/lib/admin/admin-types";
-import { readCache, writeCache } from "@/app/components/client-cache";
+import { readCache, writeCache } from "@/lib/shared/client-cache";
+import { formatShortDateTime } from "@/lib/shared/date-utils";
 import { StateBlock } from "@/app/components/state-block";
 import { roleRank, useAdminSession } from "../admin-session";
-
-function formatTime(ts: number) {
-  return new Date(ts).toLocaleString("zh-CN", {
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
 
 export default function OrdersPage() {
   const { role } = useAdminSession();
@@ -39,40 +31,47 @@ export default function OrdersPage() {
   const pageSize = 20;
   const cacheTtlMs = 60_000;
 
-  const loadOrders = useCallback(async (cursorValue: string | null, nextPage: number) => {
-    setLoading(true);
-    try {
-      setCacheHint(null);
-      const params = new URLSearchParams();
-      params.set("pageSize", String(pageSize));
-      if (cursorValue) params.set("cursor", cursorValue);
-      if (stageFilter && stageFilter !== "全部") params.set("stage", stageFilter);
-      if (query.trim()) params.set("q", query.trim());
-      const cacheKey = `cache:admin:orders:${params.toString()}`;
-      const cached = readCache<{ items: AdminOrder[]; nextCursor?: string | null }>(cacheKey, cacheTtlMs, true);
-      if (cached) {
-        setOrders(Array.isArray(cached.value?.items) ? cached.value.items : []);
-        setPage(nextPage);
-        setNextCursor(cached.value?.nextCursor || null);
-        setCacheHint(cached.fresh ? null : "显示缓存数据，正在刷新…");
-      }
-      const res = await fetch(`/api/admin/orders?${params.toString()}`);
-      if (res.ok) {
-        const data = await res.json();
-        setOrders(Array.isArray(data?.items) ? data.items : []);
-        setPage(nextPage);
-        setNextCursor(data?.nextCursor || null);
+  const loadOrders = useCallback(
+    async (cursorValue: string | null, nextPage: number) => {
+      setLoading(true);
+      try {
         setCacheHint(null);
-        setSelectedIds([]);
-        writeCache(cacheKey, {
-          items: Array.isArray(data?.items) ? data.items : [],
-          nextCursor: data?.nextCursor || null,
-        });
+        const params = new URLSearchParams();
+        params.set("pageSize", String(pageSize));
+        if (cursorValue) params.set("cursor", cursorValue);
+        if (stageFilter && stageFilter !== "全部") params.set("stage", stageFilter);
+        if (query.trim()) params.set("q", query.trim());
+        const cacheKey = `cache:admin:orders:${params.toString()}`;
+        const cached = readCache<{ items: AdminOrder[]; nextCursor?: string | null }>(
+          cacheKey,
+          cacheTtlMs,
+          true
+        );
+        if (cached) {
+          setOrders(Array.isArray(cached.value?.items) ? cached.value.items : []);
+          setPage(nextPage);
+          setNextCursor(cached.value?.nextCursor || null);
+          setCacheHint(cached.fresh ? null : "显示缓存数据，正在刷新…");
+        }
+        const res = await fetch(`/api/admin/orders?${params.toString()}`);
+        if (res.ok) {
+          const data = await res.json();
+          setOrders(Array.isArray(data?.items) ? data.items : []);
+          setPage(nextPage);
+          setNextCursor(data?.nextCursor || null);
+          setCacheHint(null);
+          setSelectedIds([]);
+          writeCache(cacheKey, {
+            items: Array.isArray(data?.items) ? data.items : [],
+            nextCursor: data?.nextCursor || null,
+          });
+        }
+      } finally {
+        setLoading(false);
       }
-    } finally {
-      setLoading(false);
-    }
-  }, [cacheTtlMs, pageSize, query, stageFilter]);
+    },
+    [cacheTtlMs, pageSize, query, stageFilter]
+  );
 
   const loadPlayers = useCallback(async () => {
     setPlayersLoading(true);
@@ -158,7 +157,9 @@ export default function OrdersPage() {
 
   const toggleSelect = (id: string) => {
     if (!canEdit) return;
-    setSelectedIds((prev) => (prev.includes(id) ? prev.filter((itemId) => itemId !== id) : [...prev, id]));
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((itemId) => itemId !== id) : [...prev, id]
+    );
   };
 
   const toggleSelectAll = (checked: boolean) => {
@@ -238,10 +239,7 @@ export default function OrdersPage() {
         </div>
         <div className="admin-toolbar">
           <div className="admin-toolbar-grow" style={{ position: "relative" }}>
-            <Search
-              size={16}
-              className="admin-input-icon"
-            />
+            <Search size={16} className="admin-input-icon" />
             <input
               className="admin-input"
               style={{ paddingLeft: 36 }}
@@ -250,7 +248,11 @@ export default function OrdersPage() {
               onChange={(event) => setQuery(event.target.value)}
             />
           </div>
-          <select className="admin-select" value={stageFilter} onChange={(event) => setStageFilter(event.target.value)}>
+          <select
+            className="admin-select"
+            value={stageFilter}
+            onChange={(event) => setStageFilter(event.target.value)}
+          >
             <option value="全部">全部状态</option>
             {ORDER_STAGE_OPTIONS.map((stage) => (
               <option key={stage} value={stage}>
@@ -270,7 +272,11 @@ export default function OrdersPage() {
             刷新
           </button>
           {canEdit ? (
-            <button className="admin-btn ghost" disabled={selectedIds.length === 0} onClick={bulkDelete}>
+            <button
+              className="admin-btn ghost"
+              disabled={selectedIds.length === 0}
+              onClick={bulkDelete}
+            >
               删除选中{selectedIds.length > 0 ? `（${selectedIds.length}）` : ""}
             </button>
           ) : null}
@@ -311,9 +317,19 @@ export default function OrdersPage() {
           </div>
         </div>
         {loading ? (
-          <StateBlock tone="loading" size="compact" title="加载订单中" description="正在同步最新订单列表" />
+          <StateBlock
+            tone="loading"
+            size="compact"
+            title="加载订单中"
+            description="正在同步最新订单列表"
+          />
         ) : orders.length === 0 ? (
-          <StateBlock tone="empty" size="compact" title="没有符合条件的订单" description="调整筛选条件试试" />
+          <StateBlock
+            tone="empty"
+            size="compact"
+            title="没有符合条件的订单"
+            description="调整筛选条件试试"
+          />
         ) : (
           <div className="admin-table-wrap">
             <table className="admin-table">
@@ -350,162 +366,165 @@ export default function OrdersPage() {
                   const limit = matchedPlayer?.creditLimit ?? 0;
                   const insufficient = matchedPlayer ? order.amount > available : false;
                   const isChainOrder =
-                    Boolean(order.chainDigest) || (order.chainStatus !== undefined && order.chainStatus !== null);
+                    Boolean(order.chainDigest) ||
+                    (order.chainStatus !== undefined && order.chainStatus !== null);
 
                   return (
                     <tr key={order.id}>
-                    <td data-label="选择">
-                      <input
-                        type="checkbox"
-                        checked={selectedIds.includes(order.id)}
-                        onChange={() => toggleSelect(order.id)}
-                        disabled={!canEdit}
-                      />
-                    </td>
-                    <td data-label="订单信息">
-                      <div className="admin-text-strong">{order.user}</div>
-                      <div className="admin-meta">{order.item}</div>
-                      <div className="admin-meta-faint">{order.id}</div>
-                      {isChainOrder ? (
-                        <div style={{ marginTop: 6 }}>
-                          <span className="admin-badge warm">系统订单</span>
+                      <td data-label="选择">
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.includes(order.id)}
+                          onChange={() => toggleSelect(order.id)}
+                          disabled={!canEdit}
+                        />
+                      </td>
+                      <td data-label="订单信息">
+                        <div className="admin-text-strong">{order.user}</div>
+                        <div className="admin-meta">{order.item}</div>
+                        <div className="admin-meta-faint">{order.id}</div>
+                        {isChainOrder ? (
+                          <div style={{ marginTop: 6 }}>
+                            <span className="admin-badge warm">系统订单</span>
+                          </div>
+                        ) : null}
+                        <div className="admin-meta-faint">
+                          {formatShortDateTime(order.createdAt)}
                         </div>
-                      ) : null}
-                      <div className="admin-meta-faint">{formatTime(order.createdAt)}</div>
-                    </td>
-                    <td data-label="金额">
-                      <div className="admin-text-strong">
-                        {order.currency === "CNY" ? "¥" : order.currency} {order.amount}
-                      </div>
-                    </td>
-                    <td data-label="付款状态">
-                      {isChainOrder || !canEdit ? (
-                        <input
-                          className="admin-input"
-                          readOnly
-                          value={order.paymentStatus || ""}
-                          title={isChainOrder ? "订单状态由系统同步" : "只读权限"}
-                        />
-                      ) : (
-                        <input
-                          className="admin-input"
-                          value={order.paymentStatus || ""}
-                          onChange={(event) =>
-                            setOrders((prev) =>
-                              prev.map((item) =>
-                                item.id === order.id
-                                  ? { ...item, paymentStatus: event.target.value }
-                                  : item
+                      </td>
+                      <td data-label="金额">
+                        <div className="admin-text-strong">
+                          {order.currency === "CNY" ? "¥" : order.currency} {order.amount}
+                        </div>
+                      </td>
+                      <td data-label="付款状态">
+                        {isChainOrder || !canEdit ? (
+                          <input
+                            className="admin-input"
+                            readOnly
+                            value={order.paymentStatus || ""}
+                            title={isChainOrder ? "订单状态由系统同步" : "只读权限"}
+                          />
+                        ) : (
+                          <input
+                            className="admin-input"
+                            value={order.paymentStatus || ""}
+                            onChange={(event) =>
+                              setOrders((prev) =>
+                                prev.map((item) =>
+                                  item.id === order.id
+                                    ? { ...item, paymentStatus: event.target.value }
+                                    : item
+                                )
                               )
-                            )
-                          }
-                          onBlur={(event) =>
-                            updateOrder(order.id, { paymentStatus: event.target.value })
-                          }
-                        />
-                      )}
-                    </td>
-                    <td data-label="流程状态">
-                      <select
-                        className="admin-select"
-                        value={order.stage}
-                        aria-label="订单阶段"
-                        disabled={isChainOrder || !canEdit}
-                        title={isChainOrder ? "订单阶段由系统同步" : !canEdit ? "只读权限" : ""}
-                        onChange={(event) => {
-                          if (isChainOrder || !canEdit) return;
-                          const nextStage = event.target.value as OrderStage;
-                          setOrders((prev) =>
-                            prev.map((item) =>
-                              item.id === order.id ? { ...item, stage: nextStage } : item
-                            )
-                          );
-                          updateOrder(order.id, { stage: nextStage });
-                        }}
-                      >
-                        {ORDER_STAGE_OPTIONS.map((stage) => (
-                          <option key={stage} value={stage}>
-                            {stage}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
-                    <td data-label="派单">
-                      <div style={{ display: "grid", gap: 6 }}>
+                            }
+                            onBlur={(event) =>
+                              updateOrder(order.id, { paymentStatus: event.target.value })
+                            }
+                          />
+                        )}
+                      </td>
+                      <td data-label="流程状态">
                         <select
                           className="admin-select"
-                          value={selectValue}
-                          aria-label="陪练/客服"
-                          disabled={!canEdit}
+                          value={order.stage}
+                          aria-label="订单阶段"
+                          disabled={isChainOrder || !canEdit}
+                          title={isChainOrder ? "订单阶段由系统同步" : !canEdit ? "只读权限" : ""}
                           onChange={(event) => {
-                            if (!canEdit) return;
-                            const nextValue = event.target.value;
-                            const selectedPlayer = players.find((player) => player.id === nextValue);
-                            const assignedTo = selectedPlayer ? selectedPlayer.name : nextValue;
+                            if (isChainOrder || !canEdit) return;
+                            const nextStage = event.target.value as OrderStage;
                             setOrders((prev) =>
                               prev.map((item) =>
-                                item.id === order.id ? { ...item, assignedTo } : item
+                                item.id === order.id ? { ...item, stage: nextStage } : item
                               )
                             );
-                            updateOrder(order.id, { assignedTo });
+                            updateOrder(order.id, { stage: nextStage });
                           }}
                         >
-                          <option value="">未派单</option>
-                          {assignedKey && !matchedPlayer ? (
-                            <option value={assignedKey}>当前：{assignedKey}</option>
-                          ) : null}
-                          {players.map((player) => (
-                            <option key={player.id} value={player.id}>
-                              {player.name}
-                              {player.status !== "可接单" ? `（${player.status}）` : ""}
+                          {ORDER_STAGE_OPTIONS.map((stage) => (
+                            <option key={stage} value={stage}>
+                              {stage}
                             </option>
                           ))}
                         </select>
-                        <div
-                          className={`admin-meta-faint${insufficient ? " admin-text-danger" : ""}`}
-                        >
-                          {playersLoading
-                            ? "额度加载中..."
-                            : matchedPlayer
-                              ? `可用 ${available} 元 / 占用 ${used} 元 / 总额度 ${limit} 元`
-                              : "未选择陪练"}
-                          {insufficient ? "（余额不足）" : ""}
+                      </td>
+                      <td data-label="派单">
+                        <div style={{ display: "grid", gap: 6 }}>
+                          <select
+                            className="admin-select"
+                            value={selectValue}
+                            aria-label="陪练/客服"
+                            disabled={!canEdit}
+                            onChange={(event) => {
+                              if (!canEdit) return;
+                              const nextValue = event.target.value;
+                              const selectedPlayer = players.find(
+                                (player) => player.id === nextValue
+                              );
+                              const assignedTo = selectedPlayer ? selectedPlayer.name : nextValue;
+                              setOrders((prev) =>
+                                prev.map((item) =>
+                                  item.id === order.id ? { ...item, assignedTo } : item
+                                )
+                              );
+                              updateOrder(order.id, { assignedTo });
+                            }}
+                          >
+                            <option value="">未派单</option>
+                            {assignedKey && !matchedPlayer ? (
+                              <option value={assignedKey}>当前：{assignedKey}</option>
+                            ) : null}
+                            {players.map((player) => (
+                              <option key={player.id} value={player.id}>
+                                {player.name}
+                                {player.status !== "可接单" ? `（${player.status}）` : ""}
+                              </option>
+                            ))}
+                          </select>
+                          <div
+                            className={`admin-meta-faint${insufficient ? " admin-text-danger" : ""}`}
+                          >
+                            {playersLoading
+                              ? "额度加载中..."
+                              : matchedPlayer
+                                ? `可用 ${available} 元 / 占用 ${used} 元 / 总额度 ${limit} 元`
+                                : "未选择陪练"}
+                            {insufficient ? "（余额不足）" : ""}
+                          </div>
                         </div>
-                      </div>
-                    </td>
-                    <td data-label="备注">
-                      <input
-                        className="admin-input"
-                        placeholder="备注"
-                        value={order.note || ""}
-                        readOnly={!canEdit}
-                        onChange={(event) => {
-                          if (!canEdit) return;
-                          setOrders((prev) =>
-                            prev.map((item) =>
-                              item.id === order.id
-                                ? { ...item, note: event.target.value }
-                                : item
-                            )
-                          );
-                        }}
-                        onBlur={(event) => {
-                          if (!canEdit) return;
-                          updateOrder(order.id, { note: event.target.value });
-                        }}
-                      />
-                    </td>
-                    <td data-label="更新">
-                      <span className="admin-badge neutral">
-                        {saving[order.id] ? "保存中" : "已同步"}
-                      </span>
-                    </td>
-                    <td data-label="详情">
-                      <Link className="admin-btn ghost" href={`/admin/orders/${order.id}`}>
-                        查看
-                      </Link>
-                    </td>
-                  </tr>
+                      </td>
+                      <td data-label="备注">
+                        <input
+                          className="admin-input"
+                          placeholder="备注"
+                          value={order.note || ""}
+                          readOnly={!canEdit}
+                          onChange={(event) => {
+                            if (!canEdit) return;
+                            setOrders((prev) =>
+                              prev.map((item) =>
+                                item.id === order.id ? { ...item, note: event.target.value } : item
+                              )
+                            );
+                          }}
+                          onBlur={(event) => {
+                            if (!canEdit) return;
+                            updateOrder(order.id, { note: event.target.value });
+                          }}
+                        />
+                      </td>
+                      <td data-label="更新">
+                        <span className="admin-badge neutral">
+                          {saving[order.id] ? "保存中" : "已同步"}
+                        </span>
+                      </td>
+                      <td data-label="详情">
+                        <Link className="admin-btn ghost" href={`/admin/orders/${order.id}`}>
+                          查看
+                        </Link>
+                      </td>
+                    </tr>
                   );
                 })}
               </tbody>
@@ -513,21 +532,11 @@ export default function OrdersPage() {
           </div>
         )}
         <div className="admin-pagination">
-          <button
-            className="admin-btn ghost"
-            disabled={prevCursors.length === 0}
-            onClick={goPrev}
-          >
+          <button className="admin-btn ghost" disabled={prevCursors.length === 0} onClick={goPrev}>
             上一页
           </button>
-          <div className="admin-meta">
-            第 {page} 页
-          </div>
-          <button
-            className="admin-btn ghost"
-            disabled={!nextCursor}
-            onClick={goNext}
-          >
+          <div className="admin-meta">第 {page} 页</div>
+          <button className="admin-btn ghost" disabled={!nextCursor} onClick={goNext}>
             下一页
           </button>
         </div>

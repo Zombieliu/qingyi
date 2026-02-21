@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { PlusCircle, Trash2 } from "lucide-react";
 import type { AdminPlayer, PlayerStatus } from "@/lib/admin/admin-types";
 import { PLAYER_STATUS_OPTIONS } from "@/lib/admin/admin-types";
-import { readCache, writeCache } from "@/app/components/client-cache";
+import { readCache, writeCache } from "@/lib/shared/client-cache";
 import { StateBlock } from "@/app/components/state-block";
 import { isValidSuiAddress, normalizeSuiAddress } from "@mysten/sui/utils";
 import { roleRank, useAdminSession } from "../admin-session";
@@ -120,18 +120,18 @@ export default function PlayersPage() {
     const res = await fetch("/api/admin/players", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: form.name.trim(),
-          role: form.role.trim(),
-          contact: contactValue,
-          address: addressParsed.normalized,
-          depositBase: form.depositBase ? Number(form.depositBase) : undefined,
-          depositLocked: form.depositLocked ? Number(form.depositLocked) : undefined,
-          creditMultiplier: form.creditMultiplier ? Number(form.creditMultiplier) : undefined,
-          status: form.status,
-          notes: form.notes.trim(),
-        }),
-      });
+      body: JSON.stringify({
+        name: form.name.trim(),
+        role: form.role.trim(),
+        contact: contactValue,
+        address: addressParsed.normalized,
+        depositBase: form.depositBase ? Number(form.depositBase) : undefined,
+        depositLocked: form.depositLocked ? Number(form.depositLocked) : undefined,
+        creditMultiplier: form.creditMultiplier ? Number(form.creditMultiplier) : undefined,
+        status: form.status,
+        notes: form.notes.trim(),
+      }),
+    });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
       setFormHint(formatAddressError(data?.error));
@@ -209,7 +209,9 @@ export default function PlayersPage() {
 
   const toggleSelect = (id: string) => {
     if (!canEdit) return;
-    setSelectedIds((prev) => (prev.includes(id) ? prev.filter((itemId) => itemId !== id) : [...prev, id]));
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((itemId) => itemId !== id) : [...prev, id]
+    );
   };
 
   const toggleSelectAll = (checked: boolean) => {
@@ -250,7 +252,10 @@ export default function PlayersPage() {
         </div>
         {canEdit ? (
           <>
-            <div className="admin-form" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
+            <div
+              className="admin-form"
+              style={{ gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}
+            >
               <label className="admin-field">
                 名称
                 <input
@@ -275,7 +280,9 @@ export default function PlayersPage() {
                   className="admin-input"
                   placeholder="11位手机号"
                   value={form.contact}
-                  onChange={(event) => setForm((prev) => ({ ...prev, contact: event.target.value }))}
+                  onChange={(event) =>
+                    setForm((prev) => ({ ...prev, contact: event.target.value }))
+                  }
                 />
               </label>
               <label className="admin-field">
@@ -296,7 +303,9 @@ export default function PlayersPage() {
                   className="admin-input"
                   placeholder="如 1000"
                   value={form.depositBase}
-                  onChange={(event) => setForm((prev) => ({ ...prev, depositBase: event.target.value }))}
+                  onChange={(event) =>
+                    setForm((prev) => ({ ...prev, depositBase: event.target.value }))
+                  }
                 />
               </label>
               <label className="admin-field">
@@ -305,7 +314,9 @@ export default function PlayersPage() {
                   className="admin-input"
                   placeholder="如 1000"
                   value={form.depositLocked}
-                  onChange={(event) => setForm((prev) => ({ ...prev, depositLocked: event.target.value }))}
+                  onChange={(event) =>
+                    setForm((prev) => ({ ...prev, depositLocked: event.target.value }))
+                  }
                 />
                 <button
                   className="admin-btn ghost"
@@ -327,7 +338,9 @@ export default function PlayersPage() {
                   className="admin-input"
                   placeholder="1-5"
                   value={form.creditMultiplier}
-                  onChange={(event) => setForm((prev) => ({ ...prev, creditMultiplier: event.target.value }))}
+                  onChange={(event) =>
+                    setForm((prev) => ({ ...prev, creditMultiplier: event.target.value }))
+                  }
                 />
               </label>
               <label className="admin-field">
@@ -368,7 +381,12 @@ export default function PlayersPage() {
           </>
         ) : (
           <div style={{ marginTop: 12 }}>
-            <StateBlock tone="warning" size="compact" title="只读权限" description="当前账号无法新增或编辑陪练" />
+            <StateBlock
+              tone="warning"
+              size="compact"
+              title="只读权限"
+              description="当前账号无法新增或编辑陪练"
+            />
           </div>
         )}
       </div>
@@ -377,8 +395,12 @@ export default function PlayersPage() {
         <div className="admin-card-header">
           <h3>陪练列表</h3>
           <div className="admin-card-actions">
-            {addressStats.invalid > 0 && <span className="admin-badge warm">地址格式错误 {addressStats.invalid}</span>}
-            {addressStats.missing > 0 && <span className="admin-badge warm">未绑定地址 {addressStats.missing}</span>}
+            {addressStats.invalid > 0 && (
+              <span className="admin-badge warm">地址格式错误 {addressStats.invalid}</span>
+            )}
+            {addressStats.missing > 0 && (
+              <span className="admin-badge warm">未绑定地址 {addressStats.missing}</span>
+            )}
             {addressStats.invalid === 0 && addressStats.missing === 0 && (
               <span className="admin-badge">地址已齐全</span>
             )}
@@ -392,7 +414,11 @@ export default function PlayersPage() {
               全选
             </label>
             {canEdit ? (
-              <button className="admin-btn ghost" disabled={selectedIds.length === 0} onClick={bulkDelete}>
+              <button
+                className="admin-btn ghost"
+                disabled={selectedIds.length === 0}
+                onClick={bulkDelete}
+              >
                 <Trash2 size={14} style={{ marginRight: 4 }} />
                 批量删除{selectedIds.length > 0 ? `（${selectedIds.length}）` : ""}
               </button>
@@ -404,7 +430,12 @@ export default function PlayersPage() {
         {loading ? (
           <StateBlock tone="loading" size="compact" title="加载中" description="正在同步陪练档案" />
         ) : players.length === 0 ? (
-          <StateBlock tone="empty" size="compact" title="暂无陪练档案" description="可以先创建陪练资料" />
+          <StateBlock
+            tone="empty"
+            size="compact"
+            title="暂无陪练档案"
+            description="可以先创建陪练资料"
+          />
         ) : (
           <div className="admin-table-wrap">
             <table className="admin-table">
@@ -430,253 +461,263 @@ export default function PlayersPage() {
                 {players.map((player) => {
                   const addressState = parseAddress(player.address || "").state;
                   return (
-                  <tr key={player.id}>
-                    <td data-label="选择">
-                      <input
-                        type="checkbox"
-                        checked={selectedIds.includes(player.id)}
-                        onChange={() => toggleSelect(player.id)}
-                        disabled={!canEdit}
-                      />
-                    </td>
-                    <td data-label="名称">
-                      <input
-                        className="admin-input admin-text-strong"
-                        value={player.name}
-                        readOnly={!canEdit}
-                        onChange={(event) =>
-                          setPlayers((prev) =>
-                            prev.map((p) =>
-                              p.id === player.id ? { ...p, name: event.target.value } : p
+                    <tr key={player.id}>
+                      <td data-label="选择">
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.includes(player.id)}
+                          onChange={() => toggleSelect(player.id)}
+                          disabled={!canEdit}
+                        />
+                      </td>
+                      <td data-label="名称">
+                        <input
+                          className="admin-input admin-text-strong"
+                          value={player.name}
+                          readOnly={!canEdit}
+                          onChange={(event) =>
+                            setPlayers((prev) =>
+                              prev.map((p) =>
+                                p.id === player.id ? { ...p, name: event.target.value } : p
+                              )
                             )
-                          )
-                        }
-                        onBlur={(event) => {
-                          if (!canEdit) return;
-                          const nextName = event.target.value.trim();
-                          if (!nextName) {
-                            alert("名称不能为空");
-                            loadPlayers();
-                            return;
                           }
-                          updatePlayer(player.id, { name: nextName });
-                        }}
-                      />
-                    </td>
-                    <td data-label="位置">
-                      <input
-                        className="admin-input"
-                        value={player.role || ""}
-                        readOnly={!canEdit}
-                        onChange={(event) =>
-                          setPlayers((prev) =>
-                            prev.map((p) =>
-                              p.id === player.id ? { ...p, role: event.target.value } : p
-                            )
-                          )
-                        }
-                        onBlur={(event) => {
-                          if (!canEdit) return;
-                          updatePlayer(player.id, { role: event.target.value });
-                        }}
-                      />
-                    </td>
-                    <td data-label="联系方式">
-                      <input
-                        className="admin-input"
-                        value={player.contact || ""}
-                        placeholder="11位手机号"
-                        readOnly={!canEdit}
-                        onChange={(event) =>
-                          setPlayers((prev) =>
-                            prev.map((p) =>
-                              p.id === player.id ? { ...p, contact: event.target.value } : p
-                            )
-                          )
-                        }
-                        onBlur={(event) => {
-                          if (!canEdit) return;
-                          updatePlayer(player.id, { contact: event.target.value });
-                        }}
-                      />
-                    </td>
-                    <td data-label="钱包地址">
-                      {addressState === "invalid" && (
-                        <span className="admin-badge warm" style={{ marginBottom: 6 }}>
-                          格式错误
-                        </span>
-                      )}
-                      {addressState === "missing" && (
-                        <span className="admin-badge warm" style={{ marginBottom: 6 }}>
-                          未绑定
-                        </span>
-                      )}
-                      <input
-                        className="admin-input"
-                        value={player.address || ""}
-                        readOnly={!canEdit}
-                        onChange={(event) =>
-                          setPlayers((prev) =>
-                            prev.map((p) =>
-                              p.id === player.id ? { ...p, address: event.target.value } : p
-                            )
-                          )
-                        }
-                        onBlur={(event) => {
-                          if (!canEdit) return;
-                          const parsed = parseAddress(event.target.value);
-                          if (parsed.state === "invalid") {
-                            alert("钱包地址格式不正确");
-                            return;
-                          }
-                          const nextAddress = parsed.state === "missing" ? "" : parsed.normalized;
-                          setPlayers((prev) =>
-                            prev.map((p) =>
-                              p.id === player.id ? { ...p, address: nextAddress } : p
-                            )
-                          );
-                          updatePlayer(player.id, { address: nextAddress });
-                        }}
-                      />
-                    </td>
-                    <td data-label="基础押金(钻石)">
-                      <input
-                        className="admin-input"
-                        value={player.depositBase ?? ""}
-                        readOnly={!canEdit}
-                        onChange={(event) =>
-                          setPlayers((prev) =>
-                            prev.map((p) =>
-                              p.id === player.id ? { ...p, depositBase: Number(event.target.value) || 0 } : p
-                            )
-                          )
-                        }
-                        onBlur={(event) => {
-                          if (!canEdit) return;
-                          updatePlayer(player.id, { depositBase: Number(event.target.value) || 0 });
-                        }}
-                      />
-                    </td>
-                    <td data-label="已锁押金(钻石)">
-                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                          onBlur={(event) => {
+                            if (!canEdit) return;
+                            const nextName = event.target.value.trim();
+                            if (!nextName) {
+                              alert("名称不能为空");
+                              loadPlayers();
+                              return;
+                            }
+                            updatePlayer(player.id, { name: nextName });
+                          }}
+                        />
+                      </td>
+                      <td data-label="位置">
                         <input
                           className="admin-input"
-                          value={player.depositLocked ?? ""}
+                          value={player.role || ""}
+                          readOnly={!canEdit}
+                          onChange={(event) =>
+                            setPlayers((prev) =>
+                              prev.map((p) =>
+                                p.id === player.id ? { ...p, role: event.target.value } : p
+                              )
+                            )
+                          }
+                          onBlur={(event) => {
+                            if (!canEdit) return;
+                            updatePlayer(player.id, { role: event.target.value });
+                          }}
+                        />
+                      </td>
+                      <td data-label="联系方式">
+                        <input
+                          className="admin-input"
+                          value={player.contact || ""}
+                          placeholder="11位手机号"
+                          readOnly={!canEdit}
+                          onChange={(event) =>
+                            setPlayers((prev) =>
+                              prev.map((p) =>
+                                p.id === player.id ? { ...p, contact: event.target.value } : p
+                              )
+                            )
+                          }
+                          onBlur={(event) => {
+                            if (!canEdit) return;
+                            updatePlayer(player.id, { contact: event.target.value });
+                          }}
+                        />
+                      </td>
+                      <td data-label="钱包地址">
+                        {addressState === "invalid" && (
+                          <span className="admin-badge warm" style={{ marginBottom: 6 }}>
+                            格式错误
+                          </span>
+                        )}
+                        {addressState === "missing" && (
+                          <span className="admin-badge warm" style={{ marginBottom: 6 }}>
+                            未绑定
+                          </span>
+                        )}
+                        <input
+                          className="admin-input"
+                          value={player.address || ""}
+                          readOnly={!canEdit}
+                          onChange={(event) =>
+                            setPlayers((prev) =>
+                              prev.map((p) =>
+                                p.id === player.id ? { ...p, address: event.target.value } : p
+                              )
+                            )
+                          }
+                          onBlur={(event) => {
+                            if (!canEdit) return;
+                            const parsed = parseAddress(event.target.value);
+                            if (parsed.state === "invalid") {
+                              alert("钱包地址格式不正确");
+                              return;
+                            }
+                            const nextAddress = parsed.state === "missing" ? "" : parsed.normalized;
+                            setPlayers((prev) =>
+                              prev.map((p) =>
+                                p.id === player.id ? { ...p, address: nextAddress } : p
+                              )
+                            );
+                            updatePlayer(player.id, { address: nextAddress });
+                          }}
+                        />
+                      </td>
+                      <td data-label="基础押金(钻石)">
+                        <input
+                          className="admin-input"
+                          value={player.depositBase ?? ""}
                           readOnly={!canEdit}
                           onChange={(event) =>
                             setPlayers((prev) =>
                               prev.map((p) =>
                                 p.id === player.id
-                                  ? { ...p, depositLocked: Number(event.target.value) || 0 }
+                                  ? { ...p, depositBase: Number(event.target.value) || 0 }
                                   : p
                               )
                             )
                           }
                           onBlur={(event) => {
                             if (!canEdit) return;
-                            updatePlayer(player.id, { depositLocked: Number(event.target.value) || 0 });
+                            updatePlayer(player.id, {
+                              depositBase: Number(event.target.value) || 0,
+                            });
                           }}
                         />
-                        <button
-                          className="admin-btn ghost"
-                          type="button"
-                          style={{ padding: "6px 10px", fontSize: 12 }}
-                          disabled={player.depositBase === undefined || !canEdit}
-                          onClick={() => {
-                            if (!canEdit) return;
-                            const nextLocked = player.depositBase ?? 0;
-                            setPlayers((prev) =>
-                              prev.map((p) =>
-                                p.id === player.id ? { ...p, depositLocked: nextLocked } : p
+                      </td>
+                      <td data-label="已锁押金(钻石)">
+                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                          <input
+                            className="admin-input"
+                            value={player.depositLocked ?? ""}
+                            readOnly={!canEdit}
+                            onChange={(event) =>
+                              setPlayers((prev) =>
+                                prev.map((p) =>
+                                  p.id === player.id
+                                    ? { ...p, depositLocked: Number(event.target.value) || 0 }
+                                    : p
+                                )
                               )
-                            );
-                            updatePlayer(player.id, { depositLocked: nextLocked });
-                          }}
-                        >
-                          同基础
-                        </button>
-                      </div>
-                    </td>
-                    <td data-label="授信倍数">
-                      <input
-                        className="admin-input"
-                        value={player.creditMultiplier ?? 1}
-                        readOnly={!canEdit}
-                        onChange={(event) =>
-                          setPlayers((prev) =>
-                            prev.map((p) =>
-                              p.id === player.id ? { ...p, creditMultiplier: Number(event.target.value) || 1 } : p
-                            )
-                          )
-                        }
-                        onBlur={(event) => {
-                          if (!canEdit) return;
-                          updatePlayer(player.id, { creditMultiplier: Number(event.target.value) || 1 });
-                        }}
-                      />
-                    </td>
-                    <td data-label="可接额度(元)">{player.creditLimit ?? 0}</td>
-                    <td data-label="已占用(元)">{player.usedCredit ?? 0}</td>
-                    <td data-label="可用额度(元)">{player.availableCredit ?? 0}</td>
-                    <td data-label="状态">
-                      <select
-                        className="admin-select"
-                        value={player.status}
-                        disabled={!canEdit}
-                        onChange={(event) => {
-                          if (!canEdit) return;
-                          const nextStatus = event.target.value as PlayerStatus;
-                          setPlayers((prev) =>
-                            prev.map((p) =>
-                              p.id === player.id ? { ...p, status: nextStatus } : p
-                            )
-                          );
-                          updatePlayer(player.id, { status: nextStatus });
-                        }}
-                      >
-                        {PLAYER_STATUS_OPTIONS.map((status) => (
-                          <option key={status} value={status}>
-                            {status}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
-                    <td data-label="备注">
-                      <input
-                        className="admin-input"
-                        value={player.notes || ""}
-                        readOnly={!canEdit}
-                        onChange={(event) =>
-                          setPlayers((prev) =>
-                            prev.map((p) =>
-                              p.id === player.id ? { ...p, notes: event.target.value } : p
-                            )
-                          )
-                        }
-                        onBlur={(event) => {
-                          if (!canEdit) return;
-                          updatePlayer(player.id, { notes: event.target.value });
-                        }}
-                      />
-                    </td>
-                    <td data-label="操作">
-                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        <span className="admin-badge neutral">
-                          {saving[player.id] ? "保存中" : "已同步"}
-                        </span>
-                        {canEdit ? (
+                            }
+                            onBlur={(event) => {
+                              if (!canEdit) return;
+                              updatePlayer(player.id, {
+                                depositLocked: Number(event.target.value) || 0,
+                              });
+                            }}
+                          />
                           <button
                             className="admin-btn ghost"
-                            onClick={() => removePlayer(player.id)}
-                            disabled={saving[player.id]}
+                            type="button"
+                            style={{ padding: "6px 10px", fontSize: 12 }}
+                            disabled={player.depositBase === undefined || !canEdit}
+                            onClick={() => {
+                              if (!canEdit) return;
+                              const nextLocked = player.depositBase ?? 0;
+                              setPlayers((prev) =>
+                                prev.map((p) =>
+                                  p.id === player.id ? { ...p, depositLocked: nextLocked } : p
+                                )
+                              );
+                              updatePlayer(player.id, { depositLocked: nextLocked });
+                            }}
                           >
-                            <Trash2 size={14} style={{ marginRight: 4 }} />
-                            删除
+                            同基础
                           </button>
-                        ) : null}
-                      </div>
-                    </td>
-                  </tr>
+                        </div>
+                      </td>
+                      <td data-label="授信倍数">
+                        <input
+                          className="admin-input"
+                          value={player.creditMultiplier ?? 1}
+                          readOnly={!canEdit}
+                          onChange={(event) =>
+                            setPlayers((prev) =>
+                              prev.map((p) =>
+                                p.id === player.id
+                                  ? { ...p, creditMultiplier: Number(event.target.value) || 1 }
+                                  : p
+                              )
+                            )
+                          }
+                          onBlur={(event) => {
+                            if (!canEdit) return;
+                            updatePlayer(player.id, {
+                              creditMultiplier: Number(event.target.value) || 1,
+                            });
+                          }}
+                        />
+                      </td>
+                      <td data-label="可接额度(元)">{player.creditLimit ?? 0}</td>
+                      <td data-label="已占用(元)">{player.usedCredit ?? 0}</td>
+                      <td data-label="可用额度(元)">{player.availableCredit ?? 0}</td>
+                      <td data-label="状态">
+                        <select
+                          className="admin-select"
+                          value={player.status}
+                          disabled={!canEdit}
+                          onChange={(event) => {
+                            if (!canEdit) return;
+                            const nextStatus = event.target.value as PlayerStatus;
+                            setPlayers((prev) =>
+                              prev.map((p) =>
+                                p.id === player.id ? { ...p, status: nextStatus } : p
+                              )
+                            );
+                            updatePlayer(player.id, { status: nextStatus });
+                          }}
+                        >
+                          {PLAYER_STATUS_OPTIONS.map((status) => (
+                            <option key={status} value={status}>
+                              {status}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+                      <td data-label="备注">
+                        <input
+                          className="admin-input"
+                          value={player.notes || ""}
+                          readOnly={!canEdit}
+                          onChange={(event) =>
+                            setPlayers((prev) =>
+                              prev.map((p) =>
+                                p.id === player.id ? { ...p, notes: event.target.value } : p
+                              )
+                            )
+                          }
+                          onBlur={(event) => {
+                            if (!canEdit) return;
+                            updatePlayer(player.id, { notes: event.target.value });
+                          }}
+                        />
+                      </td>
+                      <td data-label="操作">
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          <span className="admin-badge neutral">
+                            {saving[player.id] ? "保存中" : "已同步"}
+                          </span>
+                          {canEdit ? (
+                            <button
+                              className="admin-btn ghost"
+                              onClick={() => removePlayer(player.id)}
+                              disabled={saving[player.id]}
+                            >
+                              <Trash2 size={14} style={{ marginRight: 4 }} />
+                              删除
+                            </button>
+                          ) : null}
+                        </div>
+                      </td>
+                    </tr>
                   );
                 })}
               </tbody>

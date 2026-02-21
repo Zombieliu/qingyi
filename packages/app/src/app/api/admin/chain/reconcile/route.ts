@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { requireAdmin } from "@/lib/admin/admin-auth";
 import { fetchChainOrdersCached, getChainOrderCacheStats } from "@/lib/chain/chain-sync";
 import { getChainOrderStats } from "@/lib/chain/chain-order-cache";
 import { prisma } from "@/lib/db";
-import type { AdminOrder } from "@/lib/admin/admin-types";
+import { parseBody } from "@/lib/shared/api-validation";
 
 /**
  * 链上订单对账和诊断 API
@@ -145,9 +146,24 @@ export async function GET(req: Request) {
     summary.health.issues.push(`${statusMismatch.length} 个订单状态不一致`);
   }
 
-  const response: any = {
-    summary,
+  type ReconcileResponse = {
+    summary: typeof summary;
+    details?: {
+      missingInLocal: string[];
+      missingInChain: string[];
+      statusMismatch: Array<{
+        orderId: string;
+        chainStatus: number;
+        localStatus: number | null;
+      }>;
+      needsSync: Array<{
+        orderId: string;
+        reason: string;
+      }>;
+    };
   };
+
+  const response: ReconcileResponse = { summary };
 
   // 如果请求详细信息，添加详细列表
   if (detailed) {
@@ -162,6 +178,10 @@ export async function GET(req: Request) {
   return NextResponse.json(response);
 }
 
+const postSchema = z.object({
+  action: z.string().min(1),
+});
+
 /**
  * 执行订单同步修复
  *
@@ -173,12 +193,9 @@ export async function POST(req: Request) {
   const auth = await requireAdmin(req, { role: "admin" });
   if (!auth.ok) return auth.response;
 
-  const body = (await req.json()) as { action?: string };
-  const action = body.action;
-
-  if (!action) {
-    return NextResponse.json({ error: "action required" }, { status: 400 });
-  }
+  const parsed = await parseBody(req, postSchema);
+  if (!parsed.success) return parsed.response;
+  const { action } = parsed.data;
 
   // 这里可以实现自动修复逻辑
   // 例如：同步缺失的订单，修复状态不一致等

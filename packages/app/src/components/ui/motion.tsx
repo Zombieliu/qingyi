@@ -64,17 +64,18 @@ export function Stagger({
   delay?: number;
 }) {
   return (
-    <motion.div className={cn(className)} variants={staggerContainer(delay)} initial="hidden" animate="show">
+    <motion.div
+      className={cn(className)}
+      variants={staggerContainer(delay)}
+      initial="hidden"
+      animate="show"
+    >
       {children}
     </motion.div>
   );
 }
 
-export function StaggerItem({
-  children,
-  className,
-  ...props
-}: HTMLMotionProps<"div">) {
+export function StaggerItem({ children, className, ...props }: HTMLMotionProps<"div">) {
   return (
     <motion.div className={cn(className)} variants={staggerItem} {...props}>
       {children}
@@ -82,11 +83,7 @@ export function StaggerItem({
   );
 }
 
-export function MotionCard({
-  children,
-  className,
-  ...props
-}: HTMLMotionProps<"div">) {
+export function MotionCard({ children, className, ...props }: HTMLMotionProps<"div">) {
   return (
     <motion.div
       className={cn(className)}

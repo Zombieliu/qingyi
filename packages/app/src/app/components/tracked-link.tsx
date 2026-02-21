@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { type ReactNode } from "react";
-import { trackEvent } from "@/app/components/analytics";
+import { trackEvent } from "@/lib/services/analytics";
 
 type TrackedLinkProps = {
   href: string;

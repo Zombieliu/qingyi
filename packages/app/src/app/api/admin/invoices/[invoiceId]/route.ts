@@ -1,8 +1,14 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { requireAdmin } from "@/lib/admin/admin-auth";
 import { removeInvoiceRequest, updateInvoiceRequest } from "@/lib/admin/admin-store";
 import { recordAudit } from "@/lib/admin/admin-audit";
-import type { AdminInvoiceRequest } from "@/lib/admin/admin-types";
+import { parseBody } from "@/lib/shared/api-validation";
+
+const patchSchema = z.object({
+  status: z.enum(["待审核", "已开票", "已拒绝"]).optional(),
+  note: z.string().optional(),
+});
 
 type RouteContext = { params: Promise<{ invoiceId: string }> };
 
@@ -10,17 +16,13 @@ export async function PATCH(req: Request, { params }: RouteContext) {
   const auth = await requireAdmin(req, { role: "finance" });
   if (!auth.ok) return auth.response;
 
-  let body: Partial<AdminInvoiceRequest> = {};
-  try {
-    body = (await req.json()) as Partial<AdminInvoiceRequest>;
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
+  const parsed = await parseBody(req, patchSchema);
+  if (!parsed.success) return parsed.response;
 
   const { invoiceId } = await params;
   const updated = await updateInvoiceRequest(invoiceId, {
-    status: body.status,
-    note: body.note,
+    status: parsed.data.status,
+    note: parsed.data.note,
   });
   if (!updated) return NextResponse.json({ error: "not found" }, { status: 404 });
 

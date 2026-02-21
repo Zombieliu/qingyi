@@ -127,6 +127,25 @@ model UserSession {
   @@index([expiresAt])
 }
 
+model MiniProgramAccount {
+  id          String   @id
+  platform    String
+  openid      String
+  unionid     String?
+  sessionKey  String?
+  userAddress String?
+  phone       String?
+  createdAt   DateTime
+  updatedAt   DateTime?
+  lastLoginAt DateTime?
+  meta        Json?
+
+  @@unique([platform, openid])
+  @@index([userAddress])
+  @@index([unionid])
+  @@index([createdAt])
+}
+
 model AdminAuditLog {
   id             String   @id
   actorRole      String
@@ -228,6 +247,75 @@ model AdminCoupon {
 
   @@index([status])
   @@index([expiresAt])
+}
+
+model RedeemBatch {
+  id               String   @id
+  title            String
+  description      String?
+  rewardType       String
+  rewardPayload    Json?
+  status           String   @default("active")
+  maxRedeem        Int?
+  maxRedeemPerUser Int?
+  totalCodes       Int?
+  usedCount        Int      @default(0)
+  startsAt         DateTime?
+  expiresAt        DateTime?
+  createdAt        DateTime
+  updatedAt        DateTime?
+
+  codes   RedeemCode[]
+  records RedeemRecord[]
+
+  @@index([status])
+  @@index([createdAt])
+}
+
+model RedeemCode {
+  id               String   @id
+  batchId          String?
+  code             String   @unique
+  status           String   @default("active")
+  maxRedeem        Int      @default(1)
+  maxRedeemPerUser Int      @default(1)
+  usedCount        Int      @default(0)
+  rewardType       String?
+  rewardPayload    Json?
+  startsAt         DateTime?
+  expiresAt        DateTime?
+  note             String?
+  createdAt        DateTime
+  updatedAt        DateTime?
+  lastRedeemedAt   DateTime?
+
+  batch   RedeemBatch?  @relation(fields: [batchId], references: [id])
+  records RedeemRecord[]
+
+  @@index([batchId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model RedeemRecord {
+  id          String   @id
+  codeId      String
+  batchId     String?
+  userAddress String
+  rewardType  String
+  rewardPayload Json?
+  status      String
+  createdAt   DateTime
+  ip          String?
+  userAgent   String?
+  meta        Json?
+
+  code  RedeemCode  @relation(fields: [codeId], references: [id])
+  batch RedeemBatch? @relation(fields: [batchId], references: [id])
+
+  @@index([userAddress, createdAt])
+  @@index([batchId])
+  @@index([codeId])
 }
 
 model AdminInvoiceRequest {
@@ -388,4 +476,18 @@ model ReferralConfig {
   percentInvitee  Float     @default(0.03)
   enabled         Boolean   @default(true)
   updatedAt       DateTime?
+}
+
+model OrderReview {
+  id               String   @id
+  orderId          String   @unique
+  reviewerAddress  String
+  companionAddress String
+  rating           Int
+  content          String?
+  tags             Json?
+  createdAt        DateTime
+
+  @@index([companionAddress])
+  @@index([createdAt])
 }

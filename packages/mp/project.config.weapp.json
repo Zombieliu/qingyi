@@ -1,0 +1,15 @@
+{
+  "miniprogramRoot": ".",
+  "projectname": "qingyi-mp-weapp",
+  "description": "情谊电竞小程序",
+  "appid": "touristappid",
+  "setting": {
+    "urlCheck": true,
+    "es6": false,
+    "enhance": false,
+    "compileHotReLoad": false,
+    "postcss": false,
+    "minified": false
+  },
+  "compileType": "miniprogram"
+}

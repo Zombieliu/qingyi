@@ -29,7 +29,11 @@ export async function GET(req: Request) {
   return NextResponse.json({
     refCode,
     invitedBy: invitedBy
-      ? { inviterAddress: invitedBy.inviterAddress, status: invitedBy.status, rewardInvitee: invitedBy.rewardInvitee }
+      ? {
+          inviterAddress: invitedBy.inviterAddress,
+          status: invitedBy.status,
+          rewardInvitee: invitedBy.rewardInvitee,
+        }
       : null,
     inviteCount: myInvites.length,
     rewardedCount: myInvites.filter((r) => r.status === "rewarded").length,

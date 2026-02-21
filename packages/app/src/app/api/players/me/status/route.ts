@@ -1,9 +1,15 @@
 import { NextResponse } from "next/server";
 import { isValidSuiAddress, normalizeSuiAddress } from "@mysten/sui/utils";
 import { requireUserAuth } from "@/lib/auth/user-auth";
-import { PLAYER_STATUS_OPTIONS, type PlayerStatus } from "@/lib/admin/admin-types";
 import { getPlayerByAddress, updatePlayerStatusByAddress } from "@/lib/admin/admin-store";
 import { recordAudit } from "@/lib/admin/admin-audit";
+import { z } from "zod";
+import { parseBodyRaw } from "@/lib/shared/api-validation";
+
+const statusSchema = z.object({
+  address: z.string().min(1),
+  status: z.enum(["可接单", "忙碌", "停用"]),
+});
 
 function normalizeAddress(raw?: string | null) {
   const address = normalizeSuiAddress(raw || "");
@@ -36,23 +42,15 @@ export async function GET(req: Request) {
 }
 
 export async function PATCH(req: Request) {
-  let rawBody = "";
-  let payload: { address?: string; status?: PlayerStatus } = {};
-  try {
-    rawBody = await req.text();
-    payload = rawBody ? (JSON.parse(rawBody) as typeof payload) : {};
-  } catch {
-    return NextResponse.json({ error: "invalid_json" }, { status: 400 });
-  }
+  const parsed = await parseBodyRaw(req, statusSchema);
+  if (!parsed.success) return parsed.response;
+  const { data: payload, rawBody } = parsed;
 
   const address = normalizeAddress(payload.address);
   if (!address) {
     return NextResponse.json({ error: "invalid_address" }, { status: 400 });
   }
   const status = payload.status;
-  if (!status || !PLAYER_STATUS_OPTIONS.includes(status)) {
-    return NextResponse.json({ error: "invalid_status" }, { status: 400 });
-  }
 
   const auth = await requireUserAuth(req, {
     intent: "players:status:update",

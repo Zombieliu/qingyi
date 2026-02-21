@@ -1,28 +1,29 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { requireAdmin } from "@/lib/admin/admin-auth";
 import { cancelOrderAdmin } from "@/lib/chain/chain-admin";
 import { findChainOrder, syncChainOrder } from "@/lib/chain/chain-sync";
 import * as chainOrderUtils from "@/lib/chain/chain-order-utils";
 import { recordAudit } from "@/lib/admin/admin-audit";
+import { parseBody } from "@/lib/shared/api-validation";
+import { env } from "@/lib/env";
+
+const postSchema = z.object({
+  orderId: z
+    .string()
+    .trim()
+    .min(1)
+    .regex(/^[0-9]+$/),
+  reason: z.string().optional(),
+});
 
 export async function POST(req: Request) {
   const auth = await requireAdmin(req, { role: "finance" });
   if (!auth.ok) return auth.response;
 
-  let body: { orderId?: string; reason?: string } = {};
-  try {
-    body = (await req.json()) as { orderId?: string; reason?: string };
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
-
-  const orderId = body.orderId?.trim() || "";
-  if (!orderId) {
-    return NextResponse.json({ error: "orderId required" }, { status: 400 });
-  }
-  if (!/^[0-9]+$/.test(orderId)) {
-    return NextResponse.json({ error: "orderId must be numeric" }, { status: 400 });
-  }
+  const parsed = await parseBody(req, postSchema);
+  if (!parsed.success) return parsed.response;
+  const { orderId, reason } = parsed.data;
 
   try {
     // 强制刷新以获取最新状态
@@ -36,7 +37,7 @@ export async function POST(req: Request) {
           troubleshooting: [
             "检查订单 ID 是否正确",
             "确认订单已在区块链上创建",
-            "检查网络配置（当前：" + (process.env.SUI_NETWORK || "testnet") + "）",
+            "检查网络配置（当前：" + env.SUI_NETWORK + "）",
           ],
         },
         { status: 404 }
@@ -56,7 +57,7 @@ export async function POST(req: Request) {
     const result = await cancelOrderAdmin(orderId);
     await syncChainOrder(orderId);
     await recordAudit(req, auth, "chain.cancel", "order", orderId, {
-      reason: body.reason || "",
+      reason: reason || "",
       digest: result.digest,
     });
     return NextResponse.json({ ok: true, digest: result.digest, effects: result.effects });

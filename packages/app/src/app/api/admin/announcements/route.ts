@@ -1,9 +1,19 @@
 import { NextResponse } from "next/server";
 import crypto from "crypto";
+import { z } from "zod";
 import { requireAdmin } from "@/lib/admin/admin-auth";
 import { addAnnouncement, listAnnouncements } from "@/lib/admin/admin-store";
 import { recordAudit } from "@/lib/admin/admin-audit";
 import type { AdminAnnouncement, AnnouncementStatus } from "@/lib/admin/admin-types";
+import { parseBody } from "@/lib/shared/api-validation";
+
+const postSchema = z.object({
+  id: z.string().optional(),
+  title: z.string().min(1),
+  tag: z.string().default("公告"),
+  content: z.string().default(""),
+  status: z.enum(["draft", "published", "archived"]).default("draft"),
+});
 
 export async function GET(req: Request) {
   const auth = await requireAdmin(req, { role: "viewer" });
@@ -16,23 +26,16 @@ export async function POST(req: Request) {
   const auth = await requireAdmin(req, { role: "ops" });
   if (!auth.ok) return auth.response;
 
-  let body: Partial<AdminAnnouncement> = {};
-  try {
-    body = (await req.json()) as Partial<AdminAnnouncement>;
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
-
-  if (!body.title) {
-    return NextResponse.json({ error: "title required" }, { status: 400 });
-  }
+  const parsed = await parseBody(req, postSchema);
+  if (!parsed.success) return parsed.response;
+  const body = parsed.data;
 
   const announcement: AdminAnnouncement = {
     id: body.id || `ANN-${Date.now()}-${crypto.randomInt(1000, 9999)}`,
     title: body.title,
-    tag: body.tag || "公告",
-    content: body.content || "",
-    status: (body.status as AnnouncementStatus) || "draft",
+    tag: body.tag,
+    content: body.content,
+    status: body.status as AnnouncementStatus,
     createdAt: Date.now(),
   };
 

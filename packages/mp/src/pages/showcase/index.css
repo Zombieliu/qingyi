@@ -1,0 +1,29 @@
+.showcase .showcase-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.showcase .showcase-card .button {
+  width: 100%;
+}
+
+.showcase .order-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.showcase .order-card .pill {
+  align-self: flex-start;
+}
+
+.showcase .order-title {
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.showcase .order-price {
+  font-weight: 700;
+  color: #0ea5e9;
+}

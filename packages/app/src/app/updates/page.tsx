@@ -14,7 +14,14 @@ export default async function UpdatesPage() {
   return (
     <div style={{ minHeight: "100vh", background: "#f8fafc" }}>
       <div style={{ maxWidth: 960, margin: "0 auto", padding: "40px 20px 64px" }}>
-        <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16 }}>
+        <header
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            gap: 16,
+          }}
+        >
           <div>
             <div style={{ fontSize: 22, fontWeight: 700, color: "#0f172a" }}>公告更新</div>
             <div style={{ marginTop: 6, color: "#64748b" }}>最新公告与版本更新</div>
@@ -42,7 +49,9 @@ export default async function UpdatesPage() {
                 }}
               >
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <div style={{ fontSize: 16, fontWeight: 700, color: "#0f172a" }}>{item.title}</div>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: "#0f172a" }}>
+                    {item.title}
+                  </div>
                   <span style={{ fontSize: 12, color: "#64748b" }}>{item.tag}</span>
                 </div>
                 <div style={{ marginTop: 8, color: "#475569" }}>

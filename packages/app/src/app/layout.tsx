@@ -66,7 +66,7 @@ export default async function RootLayout({
 }>) {
   const locale = await getServerLocale();
   const htmlLang = locale === "en" ? "en" : "zh-CN";
-  
+
   const cookieStore = await cookies();
   const seniorModeValue = cookieStore.get(SENIOR_MODE_COOKIE_KEY)?.value;
   const isSeniorMode = seniorModeValue === "1";

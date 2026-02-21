@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { readCache, writeCache } from "@/app/components/client-cache";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { readCache, writeCache } from "@/lib/shared/client-cache";
 import { StateBlock } from "@/app/components/state-block";
+import { formatShortDateTime, formatDateISO } from "@/lib/shared/date-utils";
 
 type EarningsItem = {
   companionAddress: string;
@@ -30,16 +31,11 @@ function formatMoney(value: number) {
 
 function formatDate(value?: number | null) {
   if (!value) return "-";
-  return new Date(value).toLocaleString("zh-CN", {
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  return formatShortDateTime(value);
 }
 
 function toDateInput(value: Date) {
-  return value.toISOString().slice(0, 10);
+  return formatDateISO(value);
 }
 
 export default function EarningsPage() {
@@ -58,7 +54,7 @@ export default function EarningsPage() {
     return params.toString();
   }, [from, to]);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     const cacheKey = `cache:admin:earnings:${queryKey}`;
@@ -85,7 +81,7 @@ export default function EarningsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [cacheTtlMs, queryKey]);
 
   const applyPreset = (days: number | null) => {
     if (!days) {
@@ -102,7 +98,7 @@ export default function EarningsPage() {
 
   useEffect(() => {
     load();
-  }, [queryKey]);
+  }, [load]);
 
   const totals = data?.totals || { orderCount: 0, totalAmount: 0, totalServiceFee: 0 };
   const rows = data?.items || [];
@@ -203,7 +199,12 @@ export default function EarningsPage() {
         ) : error ? (
           <StateBlock tone="danger" size="compact" title="加载失败" description={error} />
         ) : rows.length === 0 ? (
-          <StateBlock tone="empty" size="compact" title="暂无数据" description="调整筛选条件后再试" />
+          <StateBlock
+            tone="empty"
+            size="compact"
+            title="暂无数据"
+            description="调整筛选条件后再试"
+          />
         ) : (
           <div className="admin-table-wrap">
             <table className="admin-table">

@@ -1,10 +1,25 @@
 import { NextResponse } from "next/server";
 import crypto from "crypto";
+import { z } from "zod";
 import { requireAdmin } from "@/lib/admin/admin-auth";
 import { addOrder, queryOrders, queryOrdersCursor } from "@/lib/admin/admin-store";
 import { recordAudit } from "@/lib/admin/admin-audit";
 import type { AdminOrder, OrderStage } from "@/lib/admin/admin-types";
 import { decodeCursorParam, encodeCursorParam } from "@/lib/cursor-utils";
+import { parseBody } from "@/lib/shared/api-validation";
+
+const postSchema = z.object({
+  id: z.string().optional(),
+  user: z.string().min(1),
+  item: z.string().min(1),
+  amount: z.number(),
+  currency: z.string().default("CNY"),
+  paymentStatus: z.string().default("已支付"),
+  stage: z.string().default("待处理"),
+  note: z.string().optional(),
+  assignedTo: z.string().optional(),
+  source: z.string().default("manual"),
+});
 
 export async function GET(req: Request) {
   const auth = await requireAdmin(req, { role: "viewer" });
@@ -20,7 +35,14 @@ export async function GET(req: Request) {
   const cursor = decodeCursorParam(cursorRaw);
   const useCursor = !searchParams.has("page") || cursorRaw !== null;
   if (useCursor) {
-    const result = await queryOrdersCursor({ pageSize, stage, q, paymentStatus, assignedTo, cursor: cursor || undefined });
+    const result = await queryOrdersCursor({
+      pageSize,
+      stage,
+      q,
+      paymentStatus,
+      assignedTo,
+      cursor: cursor || undefined,
+    });
     return NextResponse.json({
       items: result.items,
       nextCursor: encodeCursorParam(result.nextCursor),
@@ -34,28 +56,21 @@ export async function POST(req: Request) {
   const auth = await requireAdmin(req, { role: "ops" });
   if (!auth.ok) return auth.response;
 
-  let body: Partial<AdminOrder> = {};
-  try {
-    body = (await req.json()) as Partial<AdminOrder>;
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
-
-  if (!body.user || !body.item || typeof body.amount !== "number") {
-    return NextResponse.json({ error: "user, item, amount are required" }, { status: 400 });
-  }
+  const parsed = await parseBody(req, postSchema);
+  if (!parsed.success) return parsed.response;
+  const body = parsed.data;
 
   const order: AdminOrder = {
     id: body.id || `ORD-${Date.now()}-${crypto.randomInt(1000, 9999)}`,
     user: body.user,
     item: body.item,
     amount: body.amount,
-    currency: body.currency || "CNY",
-    paymentStatus: body.paymentStatus || "已支付",
-    stage: (body.stage as OrderStage) || "待处理",
+    currency: body.currency,
+    paymentStatus: body.paymentStatus,
+    stage: body.stage as OrderStage,
     note: body.note,
     assignedTo: body.assignedTo,
-    source: body.source || "manual",
+    source: body.source,
     createdAt: Date.now(),
   };
 

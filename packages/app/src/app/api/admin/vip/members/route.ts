@@ -1,10 +1,26 @@
 import { NextResponse } from "next/server";
 import crypto from "crypto";
+import { z } from "zod";
 import { requireAdmin } from "@/lib/admin/admin-auth";
 import { addMember, queryMembers, queryMembersCursor } from "@/lib/admin/admin-store";
 import { recordAudit } from "@/lib/admin/admin-audit";
-import type { AdminMember, MemberStatus } from "@/lib/admin/admin-types";
+import { parseBody } from "@/lib/shared/api-validation";
+import type { MemberStatus } from "@/lib/admin/admin-types";
 import { decodeCursorParam, encodeCursorParam } from "@/lib/cursor-utils";
+
+const postSchema = z
+  .object({
+    id: z.string().optional(),
+    userAddress: z.string().optional(),
+    userName: z.string().optional(),
+    tierId: z.string().optional(),
+    tierName: z.string().optional(),
+    points: z.number().optional(),
+    status: z.enum(["有效", "已过期", "待开通"]).default("待开通"),
+    expiresAt: z.number().optional(),
+    note: z.string().optional(),
+  })
+  .refine((d) => d.userAddress || d.userName, { message: "userAddress or userName required" });
 
 export async function GET(req: Request) {
   const auth = await requireAdmin(req, { role: "ops" });
@@ -39,25 +55,18 @@ export async function POST(req: Request) {
   const auth = await requireAdmin(req, { role: "ops" });
   if (!auth.ok) return auth.response;
 
-  let body: Partial<AdminMember> = {};
-  try {
-    body = (await req.json()) as Partial<AdminMember>;
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
+  const parsed = await parseBody(req, postSchema);
+  if (!parsed.success) return parsed.response;
+  const body = parsed.data;
 
-  if (!body.userAddress && !body.userName) {
-    return NextResponse.json({ error: "userAddress or userName required" }, { status: 400 });
-  }
-
-  const member: AdminMember = {
+  const member = {
     id: body.id || `MBR-${Date.now()}-${crypto.randomInt(1000, 9999)}`,
     userAddress: body.userAddress,
     userName: body.userName,
     tierId: body.tierId,
     tierName: body.tierName,
     points: body.points,
-    status: (body.status as MemberStatus) || "待开通",
+    status: body.status as MemberStatus,
     expiresAt: body.expiresAt,
     note: body.note,
     createdAt: Date.now(),

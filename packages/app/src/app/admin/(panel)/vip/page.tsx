@@ -15,21 +15,13 @@ import {
   MEMBERSHIP_REQUEST_STATUS_OPTIONS,
   MEMBERSHIP_TIER_STATUS_OPTIONS,
 } from "@/lib/admin/admin-types";
-import { readCache, writeCache } from "@/app/components/client-cache";
+import { readCache, writeCache } from "@/lib/shared/client-cache";
+import { formatShortDateTime, formatDateISO } from "@/lib/shared/date-utils";
 import { StateBlock } from "@/app/components/state-block";
-
-function formatTime(ts: number) {
-  return new Date(ts).toLocaleString("zh-CN", {
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
 
 function toDateInput(ts?: number | null) {
   if (!ts) return "";
-  return new Date(ts).toISOString().slice(0, 10);
+  return formatDateISO(ts);
 }
 
 function formatPerks(perks?: AdminMembershipTier["perks"]) {
@@ -114,41 +106,44 @@ export default function VipAdminPage() {
     }
   }, [cacheTtlMs]);
 
-  const loadRequests = useCallback(async (cursorValue: string | null, nextPage: number) => {
-    setLoading(true);
-    try {
-      setCacheHint(null);
-      const params = new URLSearchParams();
-      params.set("pageSize", String(pageSize));
-      if (cursorValue) params.set("cursor", cursorValue);
-      if (statusFilter && statusFilter !== "全部") params.set("status", statusFilter);
-      if (query.trim()) params.set("q", query.trim());
-      const cacheKey = `cache:admin:vip:requests:${params.toString()}`;
-      const cached = readCache<{ items: AdminMembershipRequest[]; nextCursor?: string | null }>(
-        cacheKey,
-        cacheTtlMs,
-        true
-      );
-      if (cached) {
-        setRequests(Array.isArray(cached.value?.items) ? cached.value.items : []);
-        setPage(nextPage);
-        setNextCursor(cached.value?.nextCursor || null);
-        setCacheHint(cached.fresh ? null : "显示缓存数据，正在刷新…");
-      }
-      const res = await fetch(`/api/admin/vip/requests?${params.toString()}`);
-      if (res.ok) {
-        const data = await res.json();
-        const next = Array.isArray(data?.items) ? data.items : [];
-        setRequests(next);
-        setPage(nextPage);
-        setNextCursor(data?.nextCursor || null);
+  const loadRequests = useCallback(
+    async (cursorValue: string | null, nextPage: number) => {
+      setLoading(true);
+      try {
         setCacheHint(null);
-        writeCache(cacheKey, { items: next, nextCursor: data?.nextCursor || null });
+        const params = new URLSearchParams();
+        params.set("pageSize", String(pageSize));
+        if (cursorValue) params.set("cursor", cursorValue);
+        if (statusFilter && statusFilter !== "全部") params.set("status", statusFilter);
+        if (query.trim()) params.set("q", query.trim());
+        const cacheKey = `cache:admin:vip:requests:${params.toString()}`;
+        const cached = readCache<{ items: AdminMembershipRequest[]; nextCursor?: string | null }>(
+          cacheKey,
+          cacheTtlMs,
+          true
+        );
+        if (cached) {
+          setRequests(Array.isArray(cached.value?.items) ? cached.value.items : []);
+          setPage(nextPage);
+          setNextCursor(cached.value?.nextCursor || null);
+          setCacheHint(cached.fresh ? null : "显示缓存数据，正在刷新…");
+        }
+        const res = await fetch(`/api/admin/vip/requests?${params.toString()}`);
+        if (res.ok) {
+          const data = await res.json();
+          const next = Array.isArray(data?.items) ? data.items : [];
+          setRequests(next);
+          setPage(nextPage);
+          setNextCursor(data?.nextCursor || null);
+          setCacheHint(null);
+          writeCache(cacheKey, { items: next, nextCursor: data?.nextCursor || null });
+        }
+      } finally {
+        setLoading(false);
       }
-    } finally {
-      setLoading(false);
-    }
-  }, [cacheTtlMs, pageSize, query, statusFilter]);
+    },
+    [cacheTtlMs, pageSize, query, statusFilter]
+  );
 
   const loadMembers = useCallback(async () => {
     const cacheKey = "cache:admin:vip:members";
@@ -310,7 +305,10 @@ export default function VipAdminPage() {
             <p>定义等级、权益与价格。</p>
           </div>
         </div>
-        <div className="admin-form" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
+        <div
+          className="admin-form"
+          style={{ gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}
+        >
           <label className="admin-field">
             等级名称
             <input
@@ -344,7 +342,9 @@ export default function VipAdminPage() {
               className="admin-input"
               placeholder="30"
               value={form.durationDays}
-              onChange={(event) => setForm((prev) => ({ ...prev, durationDays: event.target.value }))}
+              onChange={(event) =>
+                setForm((prev) => ({ ...prev, durationDays: event.target.value }))
+              }
             />
           </label>
           <label className="admin-field">
@@ -361,7 +361,9 @@ export default function VipAdminPage() {
             <select
               className="admin-select"
               value={form.status}
-              onChange={(event) => setForm((prev) => ({ ...prev, status: event.target.value as MembershipTierStatus }))}
+              onChange={(event) =>
+                setForm((prev) => ({ ...prev, status: event.target.value as MembershipTierStatus }))
+              }
             >
               {MEMBERSHIP_TIER_STATUS_OPTIONS.map((status) => (
                 <option key={status} value={status}>
@@ -398,10 +400,7 @@ export default function VipAdminPage() {
         </div>
         <div className="admin-toolbar">
           <div className="admin-toolbar-grow" style={{ position: "relative" }}>
-            <Search
-              size={16}
-              className="admin-input-icon"
-            />
+            <Search size={16} className="admin-input-icon" />
             <input
               className="admin-input"
               style={{ paddingLeft: 36 }}
@@ -410,7 +409,11 @@ export default function VipAdminPage() {
               onChange={(event) => setQuery(event.target.value)}
             />
           </div>
-          <select className="admin-select" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
+          <select
+            className="admin-select"
+            value={statusFilter}
+            onChange={(event) => setStatusFilter(event.target.value)}
+          >
             <option value="全部">全部申请状态</option>
             {MEMBERSHIP_REQUEST_STATUS_OPTIONS.map((status) => (
               <option key={status} value={status}>
@@ -440,7 +443,12 @@ export default function VipAdminPage() {
           </div>
         </div>
         {tiers.length === 0 ? (
-          <StateBlock tone="empty" size="compact" title="暂无会员等级" description="先创建会员等级" />
+          <StateBlock
+            tone="empty"
+            size="compact"
+            title="暂无会员等级"
+            description="先创建会员等级"
+          />
         ) : (
           <div className="admin-table-wrap">
             <table className="admin-table">
@@ -470,7 +478,12 @@ export default function VipAdminPage() {
                           setTiers((prev) =>
                             prev.map((item) =>
                               item.id === tier.id
-                                ? { ...item, price: event.target.value ? Number(event.target.value) : undefined }
+                                ? {
+                                    ...item,
+                                    price: event.target.value
+                                      ? Number(event.target.value)
+                                      : undefined,
+                                  }
                                 : item
                             )
                           )
@@ -490,7 +503,12 @@ export default function VipAdminPage() {
                           setTiers((prev) =>
                             prev.map((item) =>
                               item.id === tier.id
-                                ? { ...item, durationDays: event.target.value ? Number(event.target.value) : undefined }
+                                ? {
+                                    ...item,
+                                    durationDays: event.target.value
+                                      ? Number(event.target.value)
+                                      : undefined,
+                                  }
                                 : item
                             )
                           )
@@ -510,7 +528,12 @@ export default function VipAdminPage() {
                           setTiers((prev) =>
                             prev.map((item) =>
                               item.id === tier.id
-                                ? { ...item, minPoints: event.target.value ? Number(event.target.value) : undefined }
+                                ? {
+                                    ...item,
+                                    minPoints: event.target.value
+                                      ? Number(event.target.value)
+                                      : undefined,
+                                  }
                                 : item
                             )
                           )
@@ -529,7 +552,9 @@ export default function VipAdminPage() {
                         onChange={(event) => {
                           const nextStatus = event.target.value as MembershipTierStatus;
                           setTiers((prev) =>
-                            prev.map((item) => (item.id === tier.id ? { ...item, status: nextStatus } : item))
+                            prev.map((item) =>
+                              item.id === tier.id ? { ...item, status: nextStatus } : item
+                            )
                           );
                           updateTier(tier.id, { status: nextStatus });
                         }}
@@ -548,11 +573,15 @@ export default function VipAdminPage() {
                         onChange={(event) =>
                           setPerksDraft((prev) => ({ ...prev, [tier.id]: event.target.value }))
                         }
-                        onBlur={(event) => updateTier(tier.id, { perks: parsePerks(event.target.value) })}
+                        onBlur={(event) =>
+                          updateTier(tier.id, { perks: parsePerks(event.target.value) })
+                        }
                       />
                     </td>
                     <td data-label="更新">
-                      <span className="admin-badge neutral">{saving[tier.id] ? "保存中" : "已同步"}</span>
+                      <span className="admin-badge neutral">
+                        {saving[tier.id] ? "保存中" : "已同步"}
+                      </span>
                     </td>
                   </tr>
                 ))}
@@ -582,7 +611,12 @@ export default function VipAdminPage() {
         {loading ? (
           <StateBlock tone="loading" size="compact" title="加载中" description="正在同步会员申请" />
         ) : requests.length === 0 ? (
-          <StateBlock tone="empty" size="compact" title="暂无会员申请" description="暂无待处理申请" />
+          <StateBlock
+            tone="empty"
+            size="compact"
+            title="暂无会员申请"
+            description="暂无待处理申请"
+          />
         ) : (
           <div className="admin-table-wrap">
             <table className="admin-table">
@@ -616,7 +650,9 @@ export default function VipAdminPage() {
                         onChange={(event) => {
                           const nextStatus = event.target.value as MembershipRequestStatus;
                           setRequests((prev) =>
-                            prev.map((item) => (item.id === req.id ? { ...item, status: nextStatus } : item))
+                            prev.map((item) =>
+                              item.id === req.id ? { ...item, status: nextStatus } : item
+                            )
                           );
                           updateRequest(req.id, { status: nextStatus });
                         }}
@@ -643,9 +679,11 @@ export default function VipAdminPage() {
                         onBlur={(event) => updateRequest(req.id, { note: event.target.value })}
                       />
                     </td>
-                    <td data-label="时间">{formatTime(req.createdAt)}</td>
+                    <td data-label="时间">{formatShortDateTime(req.createdAt)}</td>
                     <td data-label="更新">
-                      <span className="admin-badge neutral">{saving[req.id] ? "保存中" : "已同步"}</span>
+                      <span className="admin-badge neutral">
+                        {saving[req.id] ? "保存中" : "已同步"}
+                      </span>
                     </td>
                   </tr>
                 ))}
@@ -663,7 +701,12 @@ export default function VipAdminPage() {
           </div>
         </div>
         {members.length === 0 ? (
-          <StateBlock tone="empty" size="compact" title="暂无会员记录" description="当前没有会员记录" />
+          <StateBlock
+            tone="empty"
+            size="compact"
+            title="暂无会员记录"
+            description="当前没有会员记录"
+          />
         ) : (
           <div className="admin-table-wrap">
             <table className="admin-table">
@@ -694,7 +737,12 @@ export default function VipAdminPage() {
                           setMembers((prev) =>
                             prev.map((item) =>
                               item.id === member.id
-                                ? { ...item, points: event.target.value ? Number(event.target.value) : undefined }
+                                ? {
+                                    ...item,
+                                    points: event.target.value
+                                      ? Number(event.target.value)
+                                      : undefined,
+                                  }
                                 : item
                             )
                           )
@@ -715,14 +763,21 @@ export default function VipAdminPage() {
                           setMembers((prev) =>
                             prev.map((item) =>
                               item.id === member.id
-                                ? { ...item, expiresAt: event.target.value ? new Date(event.target.value).getTime() : undefined }
+                                ? {
+                                    ...item,
+                                    expiresAt: event.target.value
+                                      ? new Date(event.target.value).getTime()
+                                      : undefined,
+                                  }
                                 : item
                             )
                           )
                         }
                         onBlur={(event) =>
                           updateMember(member.id, {
-                            expiresAt: event.target.value ? new Date(event.target.value).getTime() : null,
+                            expiresAt: event.target.value
+                              ? new Date(event.target.value).getTime()
+                              : null,
                           })
                         }
                       />
@@ -734,7 +789,9 @@ export default function VipAdminPage() {
                         onChange={(event) => {
                           const nextStatus = event.target.value as MemberStatus;
                           setMembers((prev) =>
-                            prev.map((item) => (item.id === member.id ? { ...item, status: nextStatus } : item))
+                            prev.map((item) =>
+                              item.id === member.id ? { ...item, status: nextStatus } : item
+                            )
                           );
                           updateMember(member.id, { status: nextStatus });
                         }}
@@ -762,7 +819,9 @@ export default function VipAdminPage() {
                       />
                     </td>
                     <td data-label="更新">
-                      <span className="admin-badge neutral">{saving[member.id] ? "保存中" : "已同步"}</span>
+                      <span className="admin-badge neutral">
+                        {saving[member.id] ? "保存中" : "已同步"}
+                      </span>
                     </td>
                   </tr>
                 ))}

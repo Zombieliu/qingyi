@@ -18,11 +18,7 @@ export const metadata: Metadata = {
   description: "情谊电竞运营管理后台",
 };
 
-export default function AdminLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
     <section className={`${adminSans.variable} ${adminMono.variable} admin-shell`}>
       {children}

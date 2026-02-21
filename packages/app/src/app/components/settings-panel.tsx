@@ -50,7 +50,7 @@ export default function SettingsPanel({ onBack, onLogout }: Props) {
     const next = !seniorMode;
     setSeniorMode(next);
     if (typeof window === "undefined") return;
-    
+
     // Update both for compatibility
     if (next) {
       localStorage.setItem(SENIOR_MODE_STORAGE_KEY, "1");
@@ -59,7 +59,7 @@ export default function SettingsPanel({ onBack, onLogout }: Props) {
       localStorage.removeItem(SENIOR_MODE_STORAGE_KEY);
       setCookie(SENIOR_MODE_COOKIE_KEY, "0");
     }
-    
+
     applySeniorMode(next);
     window.dispatchEvent(new Event("senior-mode-updated"));
   };

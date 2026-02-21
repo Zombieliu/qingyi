@@ -28,7 +28,9 @@
   background: #ffffff;
   border: 1px solid #e5e7eb;
   box-shadow: 0 8px 20px rgba(99, 102, 241, 0.06);
-  transition: box-shadow var(--motion-fast) var(--motion-ease), border-color var(--motion-fast) var(--motion-ease);
+  transition:
+    box-shadow var(--motion-fast) var(--motion-ease),
+    border-color var(--motion-fast) var(--motion-ease);
 }
 .lc-search:hover {
   border-color: rgba(99, 102, 241, 0.2);
@@ -64,7 +66,9 @@
   height: 140px;
   position: relative;
   box-shadow: 0 12px 28px rgba(244, 114, 182, 0.25);
-  transition: transform var(--motion-base) var(--motion-ease), box-shadow var(--motion-base) var(--motion-ease);
+  transition:
+    transform var(--motion-base) var(--motion-ease),
+    box-shadow var(--motion-base) var(--motion-ease);
 }
 .lc-banner:hover {
   transform: translateY(-2px);
@@ -92,7 +96,9 @@
   color: #334155;
   font-weight: 700;
   letter-spacing: -0.01em;
-  transition: transform var(--motion-fast) var(--motion-ease), box-shadow var(--motion-fast) var(--motion-ease),
+  transition:
+    transform var(--motion-fast) var(--motion-ease),
+    box-shadow var(--motion-fast) var(--motion-ease),
     border-color var(--motion-fast) var(--motion-ease);
 }
 .lc-tab-btn:hover {
@@ -126,7 +132,9 @@
   color: var(--tag-text);
   font-size: 12px;
   font-weight: 600;
-  transition: transform var(--motion-fast) var(--motion-ease), box-shadow var(--motion-fast) var(--motion-ease);
+  transition:
+    transform var(--motion-fast) var(--motion-ease),
+    box-shadow var(--motion-fast) var(--motion-ease);
 }
 .lc-subtab:hover {
   box-shadow: 0 10px 20px rgba(15, 23, 42, 0.08);
@@ -153,7 +161,9 @@
   border: 1px solid #e5e7eb;
   box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
   align-items: center;
-  transition: transform var(--motion-base) var(--motion-ease), box-shadow var(--motion-base) var(--motion-ease),
+  transition:
+    transform var(--motion-base) var(--motion-ease),
+    box-shadow var(--motion-base) var(--motion-ease),
     border-color var(--motion-base) var(--motion-ease);
 }
 .lc-card:hover {
@@ -223,7 +233,9 @@
   font-size: 11px;
   border: 1px solid var(--tag-border);
   font-weight: 600;
-  transition: transform var(--motion-fast) var(--motion-ease), box-shadow var(--motion-fast) var(--motion-ease);
+  transition:
+    transform var(--motion-fast) var(--motion-ease),
+    box-shadow var(--motion-fast) var(--motion-ease);
 }
 .lc-tag:hover {
   transform: translateY(-1px);
@@ -263,7 +275,9 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  transition: transform var(--motion-fast) var(--motion-ease), box-shadow var(--motion-fast) var(--motion-ease);
+  transition:
+    transform var(--motion-fast) var(--motion-ease),
+    box-shadow var(--motion-fast) var(--motion-ease);
 }
 .lc-order-wrap {
   display: flex;
@@ -329,7 +343,9 @@
   border-radius: 16px;
   border: 1px solid #e5e7eb;
   box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
-  transition: transform var(--motion-base) var(--motion-ease), box-shadow var(--motion-base) var(--motion-ease),
+  transition:
+    transform var(--motion-base) var(--motion-ease),
+    box-shadow var(--motion-base) var(--motion-ease),
     border-color var(--motion-base) var(--motion-ease);
 }
 .lc-quick-card:hover {
@@ -419,7 +435,9 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
-  transition: transform var(--motion-base) var(--motion-ease), box-shadow var(--motion-base) var(--motion-ease);
+  transition:
+    transform var(--motion-base) var(--motion-ease),
+    box-shadow var(--motion-base) var(--motion-ease);
 }
 .lc-package-card.is-highlight {
   border-color: rgba(14, 165, 233, 0.25);

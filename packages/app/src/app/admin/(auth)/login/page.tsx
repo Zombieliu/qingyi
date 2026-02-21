@@ -61,7 +61,13 @@ export default function AdminLoginPage() {
             <div style={{ position: "relative" }}>
               <KeyRound
                 size={16}
-                style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "#64748b" }}
+                style={{
+                  position: "absolute",
+                  left: 12,
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  color: "#64748b",
+                }}
               />
               <Input
                 className="admin-input"
@@ -78,12 +84,19 @@ export default function AdminLoginPage() {
               {error}
             </div>
           ) : null}
-          <Button variant="admin" size="unstyled" className="primary" type="submit" disabled={loading}>
+          <Button
+            variant="admin"
+            size="unstyled"
+            className="primary"
+            type="submit"
+            disabled={loading}
+          >
             {loading ? "登录中..." : "进入后台"}
           </Button>
         </form>
         <div className="admin-helper">
-          提示：可在“密钥管理”中创建后台密钥；也可在 `.env.local` 中设置 `ADMIN_DASH_TOKEN` 或 `ADMIN_TOKENS`。
+          提示：可在“密钥管理”中创建后台密钥；也可在 `.env.local` 中设置 `ADMIN_DASH_TOKEN` 或
+          `ADMIN_TOKENS`。
         </div>
         <div style={{ marginTop: 16 }}>
           <SwControl />

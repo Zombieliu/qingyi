@@ -1,25 +1,26 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { isValidSuiAddress, normalizeSuiAddress } from "@mysten/sui/utils";
 import { bindReferral } from "@/lib/admin/admin-store";
 import { requireUserAuth } from "@/lib/auth/user-auth";
+import { parseBody } from "@/lib/shared/api-validation";
+
+const postSchema = z.object({
+  inviteeAddress: z.string().min(1),
+  refCode: z.string().trim().min(6),
+});
 
 export async function POST(req: Request) {
-  let payload: { inviteeAddress?: string; refCode?: string } = {};
-  try {
-    payload = (await req.json()) as typeof payload;
-  } catch {
-    return NextResponse.json({ error: "invalid json" }, { status: 400 });
-  }
+  const parsed = await parseBody(req, postSchema);
+  if (!parsed.success) return parsed.response;
+  const { inviteeAddress: rawInviteeAddress, refCode: rawRefCode } = parsed.data;
 
-  const inviteeAddress = normalizeSuiAddress(payload.inviteeAddress || "");
+  const inviteeAddress = normalizeSuiAddress(rawInviteeAddress);
   if (!inviteeAddress || !isValidSuiAddress(inviteeAddress)) {
     return NextResponse.json({ error: "invalid inviteeAddress" }, { status: 400 });
   }
 
-  const refCode = (payload.refCode || "").trim().toLowerCase();
-  if (!refCode || refCode.length < 6) {
-    return NextResponse.json({ error: "invalid refCode" }, { status: 400 });
-  }
+  const refCode = rawRefCode.toLowerCase();
 
   const auth = await requireUserAuth(req, { intent: "referral:bind", address: inviteeAddress });
   if (!auth.ok) return auth.response;
@@ -41,7 +42,11 @@ export async function POST(req: Request) {
 
   try {
     const result = await bindReferral(inviterAddress, inviteeAddress);
-    return NextResponse.json({ ok: true, duplicated: result.duplicated, referral: result.referral });
+    return NextResponse.json({
+      ok: true,
+      duplicated: result.duplicated,
+      referral: result.referral,
+    });
   } catch (e) {
     return NextResponse.json({ error: (e as Error).message || "bind failed" }, { status: 500 });
   }

@@ -1,7 +1,7 @@
 "use client";
 import { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { type LocalOrder } from "@/app/components/order-store";
+import { type LocalOrder } from "@/lib/services/order-store";
 import {
   deleteOrder,
   fetchOrderDetail,
@@ -10,7 +10,7 @@ import {
   fetchPublicOrdersWithMeta,
   patchOrder,
   syncChainOrder,
-} from "@/app/components/order-service";
+} from "@/lib/services/order-service";
 import { Activity, Clock3, Car, MapPin, Loader2 } from "lucide-react";
 import {
   type ChainOrder,
@@ -33,22 +33,10 @@ import { useBackoffPoll } from "@/app/components/use-backoff-poll";
 import { MotionCard } from "@/components/ui/motion";
 import { StateBlock } from "@/app/components/state-block";
 import { ConfirmDialog } from "@/app/components/confirm-dialog";
-import { extractErrorMessage, formatErrorMessage } from "@/app/components/error-utils";
+import { extractErrorMessage, formatErrorMessage } from "@/lib/shared/error-utils";
 import { useGuardianStatus } from "@/app/components/guardian-role";
-
-function getLocalChainStatus(order?: LocalOrder | null) {
-  if (!order) return undefined;
-  const meta = (order.meta || {}) as { chain?: { status?: number } };
-  const status = order.chainStatus ?? meta.chain?.status;
-  return typeof status === "number" ? status : undefined;
-}
-
-function mergeChainStatus(local?: number, remote?: number) {
-  if (typeof local === "number" && typeof remote === "number") {
-    return Math.max(local, remote);
-  }
-  return typeof local === "number" ? local : remote;
-}
+import { GAME_PROFILE_KEY } from "@/lib/shared/constants";
+import { getLocalChainStatus, mergeChainStatus } from "@/lib/chain/chain-status";
 
 export default function Showcase() {
   const router = useRouter();
@@ -69,21 +57,25 @@ export default function Showcase() {
   const [chainAction, setChainAction] = useState<string | null>(null);
   const [chainAddress, setChainAddress] = useState("");
   const [chainUpdatedAt, setChainUpdatedAt] = useState<number | null>(null);
-  const [disputeOpen, setDisputeOpen] = useState<{ orderId: string; evidence: string } | null>(null);
+  const [disputeOpen, setDisputeOpen] = useState<{ orderId: string; evidence: string } | null>(
+    null
+  );
   const [debugOpen, setDebugOpen] = useState(false);
   const [copiedOrderId, setCopiedOrderId] = useState<string | null>(null);
   const [publicCursor, setPublicCursor] = useState<string | null>(null);
   const [publicLoading, setPublicLoading] = useState(false);
   const [myOrders, setMyOrders] = useState<LocalOrder[]>([]);
   const [myOrdersLoading, setMyOrdersLoading] = useState(false);
-  const [orderMetaOverrides, setOrderMetaOverrides] = useState<Record<string, Record<string, unknown>>>({});
+  const [orderMetaOverrides, setOrderMetaOverrides] = useState<
+    Record<string, Record<string, unknown>>
+  >({});
   const [orderMetaLoading, setOrderMetaLoading] = useState<Record<string, boolean>>({});
   const [pendingScrollToAccepted, setPendingScrollToAccepted] = useState(false);
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
   const acceptedRef = useRef<HTMLDivElement | null>(null);
-  const GAME_PROFILE_KEY = "qy_game_profile_v1";
   const ORDER_SOURCE =
-    process.env.NEXT_PUBLIC_ORDER_SOURCE || (process.env.NEXT_PUBLIC_CHAIN_ORDERS === "1" ? "server" : "local");
+    process.env.NEXT_PUBLIC_ORDER_SOURCE ||
+    (process.env.NEXT_PUBLIC_CHAIN_ORDERS === "1" ? "server" : "local");
   const showOrderSourceWarning = isChainOrdersEnabled() && ORDER_SOURCE !== "server";
   const myAcceptedOrders = useMemo(() => {
     const address = chainAddress || getCurrentAddress();
@@ -127,7 +119,13 @@ export default function Showcase() {
     (order: ChainOrder) => {
       const local = localDisputeDeadlineById.get(order.orderId);
       const remote = Number(order.disputeDeadline);
-      if (local !== undefined && Number.isFinite(local) && local > 0 && Number.isFinite(remote) && remote > 0) {
+      if (
+        local !== undefined &&
+        Number.isFinite(local) &&
+        local > 0 &&
+        Number.isFinite(remote) &&
+        remote > 0
+      ) {
         return Math.max(local, remote);
       }
       if (local !== undefined && Number.isFinite(local) && local > 0) return local;
@@ -158,30 +156,36 @@ export default function Showcase() {
     }
   };
 
-  const refreshOrders = async (force = false) => {
-    if (!canAccessShowcase) return true;
-    setPublicLoading(true);
-    try {
-      const result = await fetchPublicOrdersWithMeta(undefined, { force });
-      setOrders(result.items);
-      setPublicCursor(result.nextCursor || null);
-      return !result.meta.error;
-    } finally {
-      setPublicLoading(false);
-    }
-  };
+  const refreshOrders = useCallback(
+    async (force = false) => {
+      if (!canAccessShowcase) return true;
+      setPublicLoading(true);
+      try {
+        const result = await fetchPublicOrdersWithMeta(undefined, { force });
+        setOrders(result.items);
+        setPublicCursor(result.nextCursor || null);
+        return !result.meta.error;
+      } finally {
+        setPublicLoading(false);
+      }
+    },
+    [canAccessShowcase]
+  );
 
-  const refreshMyOrders = useCallback(async (force = false) => {
-    if (!canAccessShowcase) return true;
-    setMyOrdersLoading(true);
-    try {
-      const result = await fetchOrdersWithMeta({ force });
-      setMyOrders(result.items);
-      return !result.meta.error;
-    } finally {
-      setMyOrdersLoading(false);
-    }
-  }, [canAccessShowcase]);
+  const refreshMyOrders = useCallback(
+    async (force = false) => {
+      if (!canAccessShowcase) return true;
+      setMyOrdersLoading(true);
+      try {
+        const result = await fetchOrdersWithMeta({ force });
+        setMyOrders(result.items);
+        return !result.meta.error;
+      } finally {
+        setMyOrdersLoading(false);
+      }
+    },
+    [canAccessShowcase]
+  );
 
   const loadMoreOrders = useCallback(async () => {
     if (!canAccessShowcase) return;
@@ -199,7 +203,7 @@ export default function Showcase() {
   useEffect(() => {
     if (!canAccessShowcase) return;
     refreshOrders();
-  }, [canAccessShowcase]);
+  }, [canAccessShowcase, refreshOrders]);
 
   useEffect(() => {
     if (!canAccessShowcase) return;
@@ -324,14 +328,16 @@ export default function Showcase() {
       if (found) return found;
 
       if (synced?.order && typeof synced.chainStatus === "number") {
-        const serviceFeeCny = typeof synced.order.serviceFee === "number" ? synced.order.serviceFee : 0;
+        const serviceFeeCny =
+          typeof synced.order.serviceFee === "number" ? synced.order.serviceFee : 0;
         const depositCny = typeof synced.order.deposit === "number" ? synced.order.deposit : 0;
         return {
           orderId,
           user: synced.order.userAddress || "0x0",
           companion: synced.order.companionAddress || "0x0",
           ruleSetId: String(
-            (synced.order.meta as { chain?: { ruleSetId?: string | number } } | undefined)?.chain?.ruleSetId ?? "0"
+            (synced.order.meta as { chain?: { ruleSetId?: string | number } } | undefined)?.chain
+              ?.ruleSetId ?? "0"
           ),
           serviceFee: String(Math.round(serviceFeeCny * 100)),
           deposit: String(Math.round(depositCny * 100)),
@@ -340,8 +346,8 @@ export default function Showcase() {
           createdAt: String(synced.order.createdAt || Date.now()),
           finishAt: "0",
           disputeDeadline: String(
-            (synced.order.meta as { chain?: { disputeDeadline?: string | number } } | undefined)?.chain
-              ?.disputeDeadline ?? "0"
+            (synced.order.meta as { chain?: { disputeDeadline?: string | number } } | undefined)
+              ?.chain?.disputeDeadline ?? "0"
           ),
           vaultService: "0",
           vaultDeposit: "0",
@@ -379,12 +385,14 @@ export default function Showcase() {
     const localOrder = orders.find((order) => order.id === id);
     const digest =
       localOrder?.chainDigest ||
-      (localOrder?.meta as { lastChainDigest?: string; chainDigest?: string } | undefined)?.lastChainDigest ||
+      (localOrder?.meta as { lastChainDigest?: string; chainDigest?: string } | undefined)
+        ?.lastChainDigest ||
       (localOrder?.meta as { chainDigest?: string } | undefined)?.chainDigest;
     const hasChainMarker =
       Boolean(localOrder?.chainDigest) ||
       localOrder?.chainStatus !== undefined ||
-      (localOrder?.meta as { chain?: { status?: number } } | undefined)?.chain?.status !== undefined;
+      (localOrder?.meta as { chain?: { status?: number } } | undefined)?.chain?.status !==
+        undefined;
     const needsChain = isChainOrdersEnabled() && !isVisualTestMode() && hasChainMarker;
     let chainOrder: ChainOrder | null = null;
     if (needsChain) {
@@ -415,11 +423,21 @@ export default function Showcase() {
         return;
       }
       if (chainOrder.companion !== address) {
-        const ok = await runChainAction(`claim-${id}`, () => claimOrderOnChain(id), "已认领订单", id);
+        const ok = await runChainAction(
+          `claim-${id}`,
+          () => claimOrderOnChain(id),
+          "已认领订单",
+          id
+        );
         if (!ok) return;
       }
       if (effectiveStatus === 1) {
-        const ok = await runChainAction(`deposit-${id}`, () => lockDepositOnChain(id), "押金已锁定", id);
+        const ok = await runChainAction(
+          `deposit-${id}`,
+          () => lockDepositOnChain(id),
+          "押金已锁定",
+          id
+        );
         if (!ok) return;
       }
     }
@@ -604,7 +622,10 @@ export default function Showcase() {
       try {
         const detail = await fetchOrderDetail(orderId);
         if (detail?.meta && typeof detail.meta === "object") {
-          setOrderMetaOverrides((prev) => ({ ...prev, [orderId]: detail.meta as Record<string, unknown> }));
+          setOrderMetaOverrides((prev) => ({
+            ...prev,
+            [orderId]: detail.meta as Record<string, unknown>,
+          }));
         }
         return detail;
       } catch (error) {
@@ -639,8 +660,14 @@ export default function Showcase() {
     return map;
   }, [orders, orderMetaOverrides]);
 
-  const copyGameProfile = async (orderId: string, profile: { gameName?: string; gameId?: string }) => {
-    const text = [profile.gameName ? `游戏名 ${profile.gameName}` : "", profile.gameId ? `ID ${profile.gameId}` : ""]
+  const copyGameProfile = async (
+    orderId: string,
+    profile: { gameName?: string; gameId?: string }
+  ) => {
+    const text = [
+      profile.gameName ? `游戏名 ${profile.gameName}` : "",
+      profile.gameId ? `ID ${profile.gameId}` : "",
+    ]
       .filter(Boolean)
       .join(" · ");
     if (!text) return;
@@ -766,12 +793,19 @@ export default function Showcase() {
     return order.companion === defaultCompanion;
   });
 
-  const visibleOrders = orders.filter((o) => !o.status.includes("完成") && !o.status.includes("取消"));
+  const visibleOrders = orders.filter(
+    (o) => !o.status.includes("完成") && !o.status.includes("取消")
+  );
 
   if (guardianState === "checking") {
     return (
       <div className="dl-main">
-        <StateBlock tone="loading" size="compact" title="权限校验中" description="正在确认访问权限" />
+        <StateBlock
+          tone="loading"
+          size="compact"
+          title="权限校验中"
+          description="正在确认访问权限"
+        />
       </div>
     );
   }
@@ -779,7 +813,12 @@ export default function Showcase() {
   if (!canAccessShowcase) {
     return (
       <div className="dl-main">
-        <StateBlock tone="empty" size="compact" title="暂无权限访问" description="请使用陪练账号访问接单大厅" />
+        <StateBlock
+          tone="empty"
+          size="compact"
+          title="暂无权限访问"
+          description="请使用陪练账号访问接单大厅"
+        />
       </div>
     );
   }
@@ -789,7 +828,11 @@ export default function Showcase() {
       <header className="dl-topbar">
         <div className="dl-time">
           <span className="dl-time-text">接单大厅</span>
-          {isChainOrdersEnabled() ? <span className="dl-chip">系统 + 客户端</span> : <span className="dl-chip">客户端缓存</span>}
+          {isChainOrdersEnabled() ? (
+            <span className="dl-chip">系统 + 客户端</span>
+          ) : (
+            <span className="dl-chip">客户端缓存</span>
+          )}
         </div>
         <div className="dl-actions">
           <span className="dl-icon-circle">
@@ -803,7 +846,11 @@ export default function Showcase() {
               disabled={chainLoading}
               title={chainLoading ? "刷新中..." : "刷新订单"}
             >
-              {chainLoading ? <Loader2 className="h-4 w-4 spin" /> : <span style={{ fontSize: 12 }}>链</span>}
+              {chainLoading ? (
+                <Loader2 className="h-4 w-4 spin" />
+              ) : (
+                <span style={{ fontSize: 12 }}>链</span>
+              )}
             </button>
           )}
           <button
@@ -813,7 +860,11 @@ export default function Showcase() {
             disabled={publicLoading}
             title={publicLoading ? "刷新中..." : "刷新公开订单"}
           >
-            {publicLoading ? <Loader2 className="h-4 w-4 spin" /> : <span style={{ fontSize: 12 }}>公</span>}
+            {publicLoading ? (
+              <Loader2 className="h-4 w-4 spin" />
+            ) : (
+              <span style={{ fontSize: 12 }}>公</span>
+            )}
           </button>
           <button className="dl-icon-circle" onClick={clearAll} aria-label="清空订单">
             <span style={{ fontSize: 12 }}>清</span>
@@ -825,7 +876,9 @@ export default function Showcase() {
         <div className="space-y-3 mb-6">
           <div className="dl-card text-xs text-gray-500">
             <div>未接单的公开链单（{chainAddress ? "已登录" : "未登录"}）</div>
-            <div className="mt-1">上次刷新：{chainUpdatedAt ? new Date(chainUpdatedAt).toLocaleTimeString() : "-"}</div>
+            <div className="mt-1">
+              上次刷新：{chainUpdatedAt ? new Date(chainUpdatedAt).toLocaleTimeString() : "-"}
+            </div>
             {chainLoading && <div className="mt-1 text-amber-600">加载中…</div>}
             {chainError && <div className="mt-1 text-rose-500">{chainError}</div>}
             {chainToast && <div className="mt-1 text-emerald-600">{chainToast}</div>}
@@ -838,8 +891,16 @@ export default function Showcase() {
           {visibleChainOrders.length === 0 ? (
             <StateBlock
               tone={chainLoading ? "loading" : chainError ? "danger" : "empty"}
-              title={chainLoading ? "正在同步链上订单" : chainError ? "链上订单加载失败" : "暂时没有可接订单"}
-              description={chainLoading ? "索引刷新中，请稍等片刻" : chainError || "点击刷新获取最新订单"}
+              title={
+                chainLoading
+                  ? "正在同步链上订单"
+                  : chainError
+                    ? "链上订单加载失败"
+                    : "暂时没有可接订单"
+              }
+              description={
+                chainLoading ? "索引刷新中，请稍等片刻" : chainError || "点击刷新获取最新订单"
+              }
               actions={
                 chainLoading ? null : (
                   <button className="dl-tab-btn" onClick={refreshAll} disabled={chainLoading}>
@@ -850,7 +911,7 @@ export default function Showcase() {
             />
           ) : (
             <div className="space-y-3 motion-stack">
-                {visibleChainOrders.map((o) => {
+              {visibleChainOrders.map((o) => {
                 const isUser = chainAddress && o.user === chainAddress;
                 const isCompanion = chainAddress && o.companion === chainAddress;
                 const now = Date.now();
@@ -859,17 +920,28 @@ export default function Showcase() {
                 const hasDeadline = Number.isFinite(deadline) && deadline > 0;
                 const inDisputeWindow = hasDeadline && now <= deadline;
                 const canDispute = effectiveStatus === 3 && inDisputeWindow;
-                const canFinalize = effectiveStatus === 3 && (isUser ? true : hasDeadline && !inDisputeWindow);
+                const canFinalize =
+                  effectiveStatus === 3 && (isUser ? true : hasDeadline && !inDisputeWindow);
                 const meta = orderMetaById.get(o.orderId) || null;
-                const gameProfile = (meta?.gameProfile || null) as { gameName?: string; gameId?: string } | null;
-                const companionEndedAt = (meta as { companionEndedAt?: number | string } | null)?.companionEndedAt;
+                const gameProfile = (meta?.gameProfile || null) as {
+                  gameName?: string;
+                  gameId?: string;
+                } | null;
+                const companionEndedAt = (meta as { companionEndedAt?: number | string } | null)
+                  ?.companionEndedAt;
                 const companionEnded = Boolean(companionEndedAt);
                 const metaLoading = Boolean(orderMetaLoading[o.orderId]);
-                  return (
-                    <MotionCard key={`chain-${o.orderId}`} className="dl-card" style={{ padding: 14 }}>
+                return (
+                  <MotionCard
+                    key={`chain-${o.orderId}`}
+                    className="dl-card"
+                    style={{ padding: 14 }}
+                  >
                     <div className="flex items-center justify-between">
                       <div className="text-sm font-semibold text-gray-900">订单 #{o.orderId}</div>
-                      <div className="text-sm font-bold text-amber-600">¥{formatAmount(o.serviceFee)}</div>
+                      <div className="text-sm font-bold text-amber-600">
+                        ¥{formatAmount(o.serviceFee)}
+                      </div>
                     </div>
                     <div className="mt-2 text-xs text-gray-500">
                       用户 {shortAddr(o.user)} · 陪玩 {shortAddr(o.companion)}
@@ -926,7 +998,8 @@ export default function Showcase() {
                       状态：{statusLabel(effectiveStatus)} · 押金 ¥{formatAmount(o.deposit)}
                     </div>
                     <div className="mt-2 text-xs text-gray-500">
-                      创建时间：{formatTime(o.createdAt)} · 争议截止：{formatTime(String(deadline || 0))}
+                      创建时间：{formatTime(o.createdAt)} · 争议截止：
+                      {formatTime(String(deadline || 0))}
                     </div>
                     {effectiveStatus === 3 && (
                       <div className="mt-1 text-xs text-amber-700">
@@ -990,9 +1063,12 @@ export default function Showcase() {
                                 );
                                 if (!ok) return;
                                 try {
-                                  const companionProfile = chainAddress ? loadGameProfile(chainAddress) : null;
+                                  const companionProfile = chainAddress
+                                    ? loadGameProfile(chainAddress)
+                                    : null;
                                   const profilePayload =
-                                    companionProfile && (companionProfile.gameName || companionProfile.gameId)
+                                    companionProfile &&
+                                    (companionProfile.gameName || companionProfile.gameId)
                                       ? {
                                           gameName: companionProfile.gameName,
                                           gameId: companionProfile.gameId,
@@ -1015,8 +1091,14 @@ export default function Showcase() {
                                 }
                                 await hydrateOrderMeta(o.orderId, { toastOnError: true });
                                 try {
-                                  const creditBody = JSON.stringify({ orderId: o.orderId, address: chainAddress });
-                                  const auth = await signAuthIntent(`mantou:credit:${o.orderId}`, creditBody);
+                                  const creditBody = JSON.stringify({
+                                    orderId: o.orderId,
+                                    address: chainAddress,
+                                  });
+                                  const auth = await signAuthIntent(
+                                    `mantou:credit:${o.orderId}`,
+                                    creditBody
+                                  );
                                   const res = await fetch("/api/mantou/credit", {
                                     method: "POST",
                                     headers: {
@@ -1086,12 +1168,15 @@ export default function Showcase() {
                           className="dl-tab-btn"
                           style={{ padding: "8px 10px" }}
                           disabled={chainAction === `finalize-${o.orderId}`}
-                        onClick={() => {
+                          onClick={() => {
                             if (isUser && inDisputeWindow) {
-                              const deadlineText = hasDeadline && deadline ? new Date(deadline).toLocaleString() : "";
+                              const deadlineText =
+                                hasDeadline && deadline ? new Date(deadline).toLocaleString() : "";
                               openConfirm({
                                 title: "确认放弃争议期并立即结算？",
-                                description: deadlineText ? `争议截止：${deadlineText}` : "争议期内放弃争议将立即结算。",
+                                description: deadlineText
+                                  ? `争议截止：${deadlineText}`
+                                  : "争议期内放弃争议将立即结算。",
                                 confirmLabel: "确认结算",
                                 action: async () => {
                                   await runChainAction(
@@ -1116,9 +1201,9 @@ export default function Showcase() {
                         </button>
                       )}
                     </div>
-                    </MotionCard>
-                  );
-                })}
+                  </MotionCard>
+                );
+              })}
             </div>
           )}
         </div>
@@ -1131,9 +1216,13 @@ export default function Showcase() {
             {myOrdersLoading && <div className="mt-1 text-amber-600">加载中…</div>}
           </div>
           {myAcceptedOrders.map((order) => {
-            const gameProfile = (order.meta?.gameProfile || null) as { gameName?: string; gameId?: string } | null;
-            const companionEndedAt = (order.meta as { companionEndedAt?: number | string } | undefined)
-              ?.companionEndedAt;
+            const gameProfile = (order.meta?.gameProfile || null) as {
+              gameName?: string;
+              gameId?: string;
+            } | null;
+            const companionEndedAt = (
+              order.meta as { companionEndedAt?: number | string } | undefined
+            )?.companionEndedAt;
             const companionEnded = Boolean(companionEndedAt);
             return (
               <MotionCard key={`accepted-${order.id}`} className="dl-card" style={{ padding: 14 }}>
@@ -1145,9 +1234,13 @@ export default function Showcase() {
                   状态：{order.status} · 订单号：{order.id}
                 </div>
                 {order.userAddress ? (
-                  <div className="mt-2 text-xs text-gray-500">用户地址：{shortAddr(order.userAddress)}</div>
+                  <div className="mt-2 text-xs text-gray-500">
+                    用户地址：{shortAddr(order.userAddress)}
+                  </div>
                 ) : null}
-                <div className="mt-2 text-xs text-gray-500">{new Date(order.time).toLocaleString()}</div>
+                <div className="mt-2 text-xs text-gray-500">
+                  {new Date(order.time).toLocaleString()}
+                </div>
                 {gameProfile?.gameName || gameProfile?.gameId ? (
                   <div className="mt-2 text-xs text-emerald-700">
                     游戏名 {gameProfile?.gameName || "-"} · ID {gameProfile?.gameId || "-"}
@@ -1184,65 +1277,86 @@ export default function Showcase() {
         <div className="space-y-3 motion-stack">
           {visibleOrders.map((o, idx) =>
             o.driver ? (
-              <MotionCard key={`${o.id}-${idx}`} className="dl-card" style={{ padding: 14, borderColor: "#fed7aa", background: "#fff7ed" }}>
+              <MotionCard
+                key={`${o.id}-${idx}`}
+                className="dl-card"
+                style={{ padding: 14, borderColor: "#fed7aa", background: "#fff7ed" }}
+              >
                 {(() => {
-                  const profile = (o.meta?.gameProfile || null) as { gameName?: string; gameId?: string } | null;
+                  const profile = (o.meta?.gameProfile || null) as {
+                    gameName?: string;
+                    gameId?: string;
+                  } | null;
                   const hasProfile = Boolean(profile?.gameName || profile?.gameId);
                   return (
                     <>
-                <div className="flex items-center gap-2 text-amber-600 text-sm font-semibold">
-                  <Car size={16} />
-                  陪练已接单
-                </div>
-                {hasProfile ? (
-                  <div className="mt-2 text-sm text-gray-900">
-                    <div className="font-bold">下单人游戏设置</div>
-                    <div className="text-xs text-gray-500">
-                      游戏名 {profile?.gameName || "-"} · ID {profile?.gameId || "-"}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="mt-2 flex items-center gap-6 text-sm text-gray-900">
-                    <div>
-                      <div className="font-bold">{o.driver.name}</div>
-                      <div className="text-xs text-gray-500">{o.driver.car}</div>
-                    </div>
-                    <div className="text-right text-sm">
-                      <div className="font-semibold text-emerald-600">{o.driver.eta}</div>
-                      {o.driver.price && <div className="text-xs text-gray-500">一口价 {o.driver.price} 钻石</div>}
-                    </div>
-                  </div>
-                )}
-                <div className="mt-2 text-xs text-gray-500 flex items-center gap-2">
-                  <MapPin size={14} />
-                  服务信息
-                </div>
-                <div className="mt-2 text-xs">
-                  <span className="text-emerald-600 font-semibold mr-2">押金已付</span>
-                  {o.playerPaid ? (
-                    <span className="text-emerald-700 font-semibold">陪练费已付，进行中</span>
-                  ) : (
-                    <span className="text-red-500 font-semibold">等待用户支付陪练费</span>
-                  )}
-                </div>
-                <div className="mt-3 flex items-center gap-10 text-sm">
-                  <div>
-                    <div className="text-gray-900">{o.item}</div>
-                    <div className="text-xs text-gray-500">订单号：{o.id}</div>
-                  </div>
-                  <div className="text-xs text-gray-500">{new Date(o.time).toLocaleString()}</div>
-                </div>
-                <div className="mt-3 flex gap-2">
-                  <button className="dl-tab-btn" style={{ padding: "8px 10px" }} onClick={() => cancel(o.id)}>
-                    取消订单
-                  </button>
-                  <button className="dl-tab-btn" style={{ padding: "8px 10px" }} onClick={() => complete(o.id)}>
-                    完成
-                  </button>
-                  <button className="dl-tab-btn accent" style={{ padding: "8px 10px" }}>
-                    联系陪练
-                  </button>
-                </div>
+                      <div className="flex items-center gap-2 text-amber-600 text-sm font-semibold">
+                        <Car size={16} />
+                        陪练已接单
+                      </div>
+                      {hasProfile ? (
+                        <div className="mt-2 text-sm text-gray-900">
+                          <div className="font-bold">下单人游戏设置</div>
+                          <div className="text-xs text-gray-500">
+                            游戏名 {profile?.gameName || "-"} · ID {profile?.gameId || "-"}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="mt-2 flex items-center gap-6 text-sm text-gray-900">
+                          <div>
+                            <div className="font-bold">{o.driver.name}</div>
+                            <div className="text-xs text-gray-500">{o.driver.car}</div>
+                          </div>
+                          <div className="text-right text-sm">
+                            <div className="font-semibold text-emerald-600">{o.driver.eta}</div>
+                            {o.driver.price && (
+                              <div className="text-xs text-gray-500">
+                                一口价 {o.driver.price} 钻石
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                      <div className="mt-2 text-xs text-gray-500 flex items-center gap-2">
+                        <MapPin size={14} />
+                        服务信息
+                      </div>
+                      <div className="mt-2 text-xs">
+                        <span className="text-emerald-600 font-semibold mr-2">押金已付</span>
+                        {o.playerPaid ? (
+                          <span className="text-emerald-700 font-semibold">陪练费已付，进行中</span>
+                        ) : (
+                          <span className="text-red-500 font-semibold">等待用户支付陪练费</span>
+                        )}
+                      </div>
+                      <div className="mt-3 flex items-center gap-10 text-sm">
+                        <div>
+                          <div className="text-gray-900">{o.item}</div>
+                          <div className="text-xs text-gray-500">订单号：{o.id}</div>
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          {new Date(o.time).toLocaleString()}
+                        </div>
+                      </div>
+                      <div className="mt-3 flex gap-2">
+                        <button
+                          className="dl-tab-btn"
+                          style={{ padding: "8px 10px" }}
+                          onClick={() => cancel(o.id)}
+                        >
+                          取消订单
+                        </button>
+                        <button
+                          className="dl-tab-btn"
+                          style={{ padding: "8px 10px" }}
+                          onClick={() => complete(o.id)}
+                        >
+                          完成
+                        </button>
+                        <button className="dl-tab-btn accent" style={{ padding: "8px 10px" }}>
+                          联系陪练
+                        </button>
+                      </div>
                     </>
                   );
                 })()}
@@ -1259,7 +1373,8 @@ export default function Showcase() {
                   <span className="text-amber-600 font-semibold">等待支付押金后接单</span>
                 </div>
                 <div className="mt-2 text-xs text-gray-500">
-                  状态：{o.status} · 撮合费{typeof o.serviceFee === "number" ? ` ¥${o.serviceFee.toFixed(2)}` : "已付"}
+                  状态：{o.status} · 撮合费
+                  {typeof o.serviceFee === "number" ? ` ¥${o.serviceFee.toFixed(2)}` : "已付"}
                 </div>
                 {o.userAddress && o.userAddress === chainAddress ? (
                   <div className="mt-2 text-xs text-rose-500">不能接自己发的单</div>
@@ -1271,14 +1386,27 @@ export default function Showcase() {
                     className="dl-tab-btn"
                     style={{ padding: "8px 10px" }}
                     onClick={() =>
-                      confirmDepositAccept(o.id, typeof o.deposit === "number" ? `¥${formatAmount(String(o.deposit))}` : undefined)
+                      confirmDepositAccept(
+                        o.id,
+                        typeof o.deposit === "number"
+                          ? `¥${formatAmount(String(o.deposit))}`
+                          : undefined
+                      )
                     }
                     disabled={Boolean(o.userAddress && o.userAddress === chainAddress)}
-                    title={o.userAddress && o.userAddress === chainAddress ? "不能接自己发的单" : undefined}
+                    title={
+                      o.userAddress && o.userAddress === chainAddress
+                        ? "不能接自己发的单"
+                        : undefined
+                    }
                   >
                     付押金并接单
                   </button>
-                  <button className="dl-tab-btn" style={{ padding: "8px 10px" }} onClick={() => cancel(o.id)}>
+                  <button
+                    className="dl-tab-btn"
+                    style={{ padding: "8px 10px" }}
+                    onClick={() => cancel(o.id)}
+                  >
                     取消
                   </button>
                 </div>
@@ -1287,8 +1415,8 @@ export default function Showcase() {
           )}
         </div>
       )}
-        <div className="mt-4 flex justify-center" ref={loadMoreRef}>
-          {publicCursor ? (
+      <div className="mt-4 flex justify-center" ref={loadMoreRef}>
+        {publicCursor ? (
           <button
             className="dl-tab-btn"
             style={{ padding: "8px 12px" }}
@@ -1302,7 +1430,11 @@ export default function Showcase() {
         )}
       </div>
       <div className="mt-3 flex justify-center">
-        <button className="dl-tab-btn" style={{ padding: "6px 12px" }} onClick={() => setDebugOpen(true)}>
+        <button
+          className="dl-tab-btn"
+          style={{ padding: "6px 12px" }}
+          onClick={() => setDebugOpen(true)}
+        >
           链上调试信息
         </button>
       </div>
@@ -1321,11 +1453,14 @@ export default function Showcase() {
                 className="dl-textarea"
                 placeholder="请输入争议说明或证据哈希"
                 value={disputeEvidence}
-                onChange={(e) => setDisputeOpen({ orderId: disputeOpen.orderId, evidence: e.target.value })}
+                onChange={(e) =>
+                  setDisputeOpen({ orderId: disputeOpen.orderId, evidence: e.target.value })
+                }
               />
               {disputeOrder?.disputeDeadline ? (
                 <div className="text-xs text-gray-500">
-                  争议截止：{formatTime(String(disputeDeadline || 0))}（剩余 {formatRemaining(String(disputeDeadline || 0))}）
+                  争议截止：{formatTime(String(disputeDeadline || 0))}（剩余{" "}
+                  {formatRemaining(String(disputeDeadline || 0))}）
                 </div>
               ) : null}
             </div>
@@ -1388,9 +1523,7 @@ export default function Showcase() {
         onConfirm={runConfirmAction}
         onClose={() => setConfirmAction(null)}
       />
-      <div className="text-xs text-gray-500 mt-6">
-        订单来自服务端；可执行押金/结算流程。
-      </div>
+      <div className="text-xs text-gray-500 mt-6">订单来自服务端；可执行押金/结算流程。</div>
     </div>
   );
 }

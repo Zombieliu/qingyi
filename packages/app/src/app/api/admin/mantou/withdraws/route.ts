@@ -15,7 +15,12 @@ export async function GET(req: Request) {
   const cursor = decodeCursorParam(cursorRaw);
   const useCursor = !searchParams.has("page") || cursorRaw !== null;
   if (useCursor) {
-    const result = await queryMantouWithdrawsCursor({ pageSize, status, address, cursor: cursor || undefined });
+    const result = await queryMantouWithdrawsCursor({
+      pageSize,
+      status,
+      address,
+      cursor: cursor || undefined,
+    });
     return NextResponse.json({
       items: result.items,
       nextCursor: encodeCursorParam(result.nextCursor),

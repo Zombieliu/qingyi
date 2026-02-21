@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { Megaphone, Pencil, PlusCircle, Trash2, Archive } from "lucide-react";
 import type { AdminAnnouncement, AnnouncementStatus } from "@/lib/admin/admin-types";
 import { ANNOUNCEMENT_STATUS_OPTIONS } from "@/lib/admin/admin-types";
-import { readCache, writeCache } from "@/app/components/client-cache";
+import { readCache, writeCache } from "@/lib/shared/client-cache";
 import { StateBlock } from "@/app/components/state-block";
 import { roleRank, useAdminSession } from "../admin-session";
 
@@ -139,7 +139,9 @@ export default function AnnouncementsPage() {
 
   const toggleSelect = (id: string) => {
     if (!canEdit) return;
-    setSelectedIds((prev) => (prev.includes(id) ? prev.filter((itemId) => itemId !== id) : [...prev, id]));
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((itemId) => itemId !== id) : [...prev, id]
+    );
   };
 
   const toggleSelectAll = (checked: boolean) => {
@@ -202,7 +204,9 @@ export default function AnnouncementsPage() {
                   className="admin-textarea"
                   placeholder="公告正文内容"
                   value={form.content}
-                  onChange={(event) => setForm((prev) => ({ ...prev, content: event.target.value }))}
+                  onChange={(event) =>
+                    setForm((prev) => ({ ...prev, content: event.target.value }))
+                  }
                 />
               </label>
               <label className="admin-field">
@@ -211,7 +215,10 @@ export default function AnnouncementsPage() {
                   className="admin-select"
                   value={form.status}
                   onChange={(event) =>
-                    setForm((prev) => ({ ...prev, status: event.target.value as AnnouncementStatus }))
+                    setForm((prev) => ({
+                      ...prev,
+                      status: event.target.value as AnnouncementStatus,
+                    }))
                   }
                 >
                   {ANNOUNCEMENT_STATUS_OPTIONS.map((status) => (
@@ -236,7 +243,12 @@ export default function AnnouncementsPage() {
           </>
         ) : (
           <div style={{ marginTop: 12 }}>
-            <StateBlock tone="warning" size="compact" title="只读权限" description="当前账号无法编辑公告内容" />
+            <StateBlock
+              tone="warning"
+              size="compact"
+              title="只读权限"
+              description="当前账号无法编辑公告内容"
+            />
           </div>
         )}
       </div>
@@ -250,13 +262,19 @@ export default function AnnouncementsPage() {
                 <label className="admin-check">
                   <input
                     type="checkbox"
-                    checked={announcements.length > 0 && selectedIds.length === announcements.length}
+                    checked={
+                      announcements.length > 0 && selectedIds.length === announcements.length
+                    }
                     onChange={(event) => toggleSelectAll(event.target.checked)}
                     disabled={announcements.length === 0}
                   />
                   全选
                 </label>
-                <button className="admin-btn ghost" disabled={selectedIds.length === 0} onClick={bulkDelete}>
+                <button
+                  className="admin-btn ghost"
+                  disabled={selectedIds.length === 0}
+                  onClick={bulkDelete}
+                >
                   <Trash2 size={14} style={{ marginRight: 4 }} />
                   批量删除{selectedIds.length > 0 ? `（${selectedIds.length}）` : ""}
                 </button>
@@ -269,12 +287,20 @@ export default function AnnouncementsPage() {
         {loading ? (
           <StateBlock tone="loading" size="compact" title="加载中" description="正在同步公告列表" />
         ) : announcements.length === 0 ? (
-          <StateBlock tone="empty" size="compact" title="暂无公告记录" description="发布第一条公告吧" />
+          <StateBlock
+            tone="empty"
+            size="compact"
+            title="暂无公告记录"
+            description="发布第一条公告吧"
+          />
         ) : (
           <div className="admin-stack">
             {announcements.map((item) => (
               <div key={item.id} className="admin-card admin-card--subtle">
-                <div className="admin-card-header" style={{ alignItems: "flex-start", flexWrap: "wrap" }}>
+                <div
+                  className="admin-card-header"
+                  style={{ alignItems: "flex-start", flexWrap: "wrap" }}
+                >
                   <div>
                     <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                       {canEdit ? (
@@ -286,7 +312,9 @@ export default function AnnouncementsPage() {
                       ) : null}
                       <Megaphone size={16} />
                       <strong>{item.title}</strong>
-                      <span className={`admin-badge ${item.status === "published" ? "" : "neutral"}`}>
+                      <span
+                        className={`admin-badge ${item.status === "published" ? "" : "neutral"}`}
+                      >
                         {item.status}
                       </span>
                     </div>
@@ -298,18 +326,27 @@ export default function AnnouncementsPage() {
                     </div>
                   </div>
                   {canEdit ? (
-                    <div className="admin-card-actions" style={{ flexDirection: "column", alignItems: "stretch" }}>
+                    <div
+                      className="admin-card-actions"
+                      style={{ flexDirection: "column", alignItems: "stretch" }}
+                    >
                       <button className="admin-btn ghost" onClick={() => handleEdit(item)}>
                         <Pencil size={14} style={{ marginRight: 4 }} />
                         编辑
                       </button>
                       {item.status !== "archived" ? (
-                        <button className="admin-btn ghost" onClick={() => updateStatus(item.id, "archived")}>
+                        <button
+                          className="admin-btn ghost"
+                          onClick={() => updateStatus(item.id, "archived")}
+                        >
                           <Archive size={14} style={{ marginRight: 4 }} />
                           归档
                         </button>
                       ) : (
-                        <button className="admin-btn ghost" onClick={() => updateStatus(item.id, "draft")}>
+                        <button
+                          className="admin-btn ghost"
+                          onClick={() => updateStatus(item.id, "draft")}
+                        >
                           <Archive size={14} style={{ marginRight: 4 }} />
                           取消归档
                         </button>

@@ -2,25 +2,24 @@ import { NextResponse } from "next/server";
 import { isValidSuiAddress, normalizeSuiAddress } from "@mysten/sui/utils";
 import { creditMantou, getOrderById } from "@/lib/admin/admin-store";
 import { requireUserAuth } from "@/lib/auth/user-auth";
+import { z } from "zod";
+import { parseBodyRaw } from "@/lib/shared/api-validation";
+
+const creditSchema = z.object({
+  address: z.string().min(1),
+  orderId: z.string().trim().min(1),
+});
 
 export async function POST(req: Request) {
-  let rawBody = "";
-  let payload: { address?: string; orderId?: string } = {};
-  try {
-    rawBody = await req.text();
-    payload = rawBody ? (JSON.parse(rawBody) as { address?: string; orderId?: string }) : {};
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
+  const parsed = await parseBodyRaw(req, creditSchema);
+  if (!parsed.success) return parsed.response;
+  const { data: payload, rawBody } = parsed;
 
-  const address = normalizeSuiAddress(payload.address || "");
+  const address = normalizeSuiAddress(payload.address);
   if (!address || !isValidSuiAddress(address)) {
     return NextResponse.json({ error: "invalid address" }, { status: 400 });
   }
-  const orderId = String(payload.orderId || "").trim();
-  if (!orderId) {
-    return NextResponse.json({ error: "orderId required" }, { status: 400 });
-  }
+  const orderId = payload.orderId;
 
   const auth = await requireUserAuth(req, {
     intent: `mantou:credit:${orderId}`,
@@ -53,6 +52,9 @@ export async function POST(req: Request) {
     });
     return NextResponse.json({ ok: true, duplicated: result.duplicated, wallet: result.wallet });
   } catch (error) {
-    return NextResponse.json({ error: (error as Error).message || "credit failed" }, { status: 500 });
+    return NextResponse.json(
+      { error: (error as Error).message || "credit failed" },
+      { status: 500 }
+    );
   }
 }

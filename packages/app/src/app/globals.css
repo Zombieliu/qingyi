@@ -78,7 +78,13 @@
     transparent 1px,
     transparent 16px
   );
-  --brand-sigil: linear-gradient(135deg, var(--brand) 0%, #38bdf8 28%, var(--brand-2) 62%, var(--accent) 110%);
+  --brand-sigil: linear-gradient(
+    135deg,
+    var(--brand) 0%,
+    #38bdf8 28%,
+    var(--brand-2) 62%,
+    var(--accent) 110%
+  );
   --brand-halo: radial-gradient(circle at 30% 30%, rgba(14, 165, 233, 0.5), transparent 60%);
 }
 
@@ -284,7 +290,9 @@ html[data-senior="1"] {
   font-family: inherit;
   background: #ffffff;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
-  transition: border-color var(--motion-fast) var(--motion-ease), box-shadow var(--motion-fast) var(--motion-ease);
+  transition:
+    border-color var(--motion-fast) var(--motion-ease),
+    box-shadow var(--motion-fast) var(--motion-ease);
 }
 .dl-input:hover,
 .dl-textarea:hover {
@@ -313,16 +321,36 @@ html[data-senior="1"] {
   transform: translateY(10px);
   animation: stack-rise 0.5s var(--motion-ease) forwards;
 }
-.motion-stack > *:nth-child(1) { animation-delay: 60ms; }
-.motion-stack > *:nth-child(2) { animation-delay: 120ms; }
-.motion-stack > *:nth-child(3) { animation-delay: 180ms; }
-.motion-stack > *:nth-child(4) { animation-delay: 240ms; }
-.motion-stack > *:nth-child(5) { animation-delay: 300ms; }
-.motion-stack > *:nth-child(6) { animation-delay: 360ms; }
-.motion-stack > *:nth-child(7) { animation-delay: 420ms; }
-.motion-stack > *:nth-child(8) { animation-delay: 480ms; }
-.motion-stack > *:nth-child(9) { animation-delay: 540ms; }
-.motion-stack > *:nth-child(10) { animation-delay: 600ms; }
+.motion-stack > *:nth-child(1) {
+  animation-delay: 60ms;
+}
+.motion-stack > *:nth-child(2) {
+  animation-delay: 120ms;
+}
+.motion-stack > *:nth-child(3) {
+  animation-delay: 180ms;
+}
+.motion-stack > *:nth-child(4) {
+  animation-delay: 240ms;
+}
+.motion-stack > *:nth-child(5) {
+  animation-delay: 300ms;
+}
+.motion-stack > *:nth-child(6) {
+  animation-delay: 360ms;
+}
+.motion-stack > *:nth-child(7) {
+  animation-delay: 420ms;
+}
+.motion-stack > *:nth-child(8) {
+  animation-delay: 480ms;
+}
+.motion-stack > *:nth-child(9) {
+  animation-delay: 540ms;
+}
+.motion-stack > *:nth-child(10) {
+  animation-delay: 600ms;
+}
 
 @keyframes stack-rise {
   to {
@@ -364,14 +392,19 @@ html[data-senior="1"] {
 }
 
 body {
-  background: var(--bg-texture),
-    radial-gradient(circle at 18% -5%, var(--bg-accent-1), transparent 40%),
+  background:
+    var(--bg-texture), radial-gradient(circle at 18% -5%, var(--bg-accent-1), transparent 40%),
     radial-gradient(circle at 82% 0%, var(--bg-accent-2), transparent 38%),
     radial-gradient(circle at 12% 16%, rgba(56, 189, 248, 0.08), transparent 55%),
-    linear-gradient(180deg, #f9fbff 0%, #f2f7ff 45%, #f9fbff 100%),
-    var(--bg);
+    linear-gradient(180deg, #f9fbff 0%, #f2f7ff 45%, #f9fbff 100%), var(--bg);
   color: var(--text);
-  font-family: var(--font-sans, "Space Grotesk"), system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family:
+    var(--font-sans, "Space Grotesk"),
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
   margin: 0;
   min-height: 100%;
   line-height: var(--leading-base);
@@ -426,10 +459,8 @@ button,
 .public-shell {
   min-height: 100vh;
   background:
-    var(--bg-texture),
-    radial-gradient(circle at 10% 0%, rgba(14, 165, 233, 0.16), transparent 45%),
-    radial-gradient(circle at 90% 10%, rgba(20, 184, 166, 0.14), transparent 40%),
-    var(--bg);
+    var(--bg-texture), radial-gradient(circle at 10% 0%, rgba(14, 165, 233, 0.16), transparent 45%),
+    radial-gradient(circle at 90% 10%, rgba(20, 184, 166, 0.14), transparent 40%), var(--bg);
   color: var(--text);
 }
 .public-wrap {
@@ -482,7 +513,10 @@ button,
   background: #ffffff;
   color: var(--text);
   box-shadow: var(--shadow-sm);
-  transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    filter 0.2s ease;
 }
 .public-btn:hover {
   transform: translateY(-1px);
@@ -557,7 +591,9 @@ button,
   border: 1px solid var(--border);
   box-shadow: var(--shadow-sm);
   animation: public-rise 0.6s ease both;
-  transition: transform var(--motion-base) var(--motion-ease), box-shadow var(--motion-base) var(--motion-ease),
+  transition:
+    transform var(--motion-base) var(--motion-ease),
+    box-shadow var(--motion-base) var(--motion-ease),
     border-color var(--motion-base) var(--motion-ease);
 }
 .public-core .public-card {
@@ -762,7 +798,9 @@ button,
   font-weight: 700;
   letter-spacing: -0.01em;
   box-shadow: var(--shadow-xs);
-  transition: transform var(--motion-fast) var(--motion-ease), box-shadow var(--motion-fast) var(--motion-ease),
+  transition:
+    transform var(--motion-fast) var(--motion-ease),
+    box-shadow var(--motion-fast) var(--motion-ease),
     border-color var(--motion-fast) var(--motion-ease);
 }
 .dl-chip-soft {
@@ -785,7 +823,9 @@ button,
   background: var(--surface);
   box-shadow: var(--shadow-sm);
   color: var(--text);
-  transition: transform var(--motion-fast) var(--motion-ease), box-shadow var(--motion-fast) var(--motion-ease);
+  transition:
+    transform var(--motion-fast) var(--motion-ease),
+    box-shadow var(--motion-fast) var(--motion-ease);
 }
 .dl-icon-circle:hover {
   transform: translateY(-1px);
@@ -808,8 +848,11 @@ button,
   box-shadow: var(--shadow-md);
   margin-bottom: 14px;
   border: 1px solid var(--border-soft);
-  transition: transform var(--motion-base) var(--motion-ease), box-shadow var(--motion-base) var(--motion-ease),
-    border-color var(--motion-base) var(--motion-ease), filter var(--motion-base) var(--motion-ease);
+  transition:
+    transform var(--motion-base) var(--motion-ease),
+    box-shadow var(--motion-base) var(--motion-ease),
+    border-color var(--motion-base) var(--motion-ease),
+    filter var(--motion-base) var(--motion-ease);
 }
 .dl-card::before {
   content: "";
@@ -819,7 +862,12 @@ button,
   right: 14px;
   height: 3px;
   border-radius: 999px;
-  background: linear-gradient(90deg, rgba(14, 165, 233, 0.45), rgba(34, 197, 94, 0.28), rgba(245, 158, 11, 0.32));
+  background: linear-gradient(
+    90deg,
+    rgba(14, 165, 233, 0.45),
+    rgba(34, 197, 94, 0.28),
+    rgba(245, 158, 11, 0.32)
+  );
   opacity: 0.45;
 }
 .dl-card:hover {
@@ -850,8 +898,11 @@ button,
   font-weight: 600;
   letter-spacing: -0.01em;
   box-shadow: var(--shadow-xs);
-  transition: transform var(--motion-fast) var(--motion-ease), box-shadow var(--motion-fast) var(--motion-ease),
-    background-color var(--motion-fast) var(--motion-ease), border-color var(--motion-fast) var(--motion-ease),
+  transition:
+    transform var(--motion-fast) var(--motion-ease),
+    box-shadow var(--motion-fast) var(--motion-ease),
+    background-color var(--motion-fast) var(--motion-ease),
+    border-color var(--motion-fast) var(--motion-ease),
     color var(--motion-fast) var(--motion-ease);
 }
 .dl-tab-btn:hover {
@@ -869,27 +920,44 @@ button,
 }
 .dl-tab-btn.primary {
   border: none;
-  background: linear-gradient(135deg, var(--brand) 0%, var(--brand-2) 55%, rgba(245, 158, 11, 0.85) 120%);
+  background: linear-gradient(
+    135deg,
+    var(--brand) 0%,
+    var(--brand-2) 55%,
+    rgba(245, 158, 11, 0.85) 120%
+  );
   color: #fff;
-  box-shadow: 0 10px 24px rgba(14, 165, 233, 0.25), 0 4px 10px rgba(15, 23, 42, 0.12);
+  box-shadow:
+    0 10px 24px rgba(14, 165, 233, 0.25),
+    0 4px 10px rgba(15, 23, 42, 0.12);
 }
 .dl-tab-btn.primary:hover {
-  box-shadow: 0 14px 30px rgba(14, 165, 233, 0.3), 0 6px 12px rgba(15, 23, 42, 0.16);
+  box-shadow:
+    0 14px 30px rgba(14, 165, 233, 0.3),
+    0 6px 12px rgba(15, 23, 42, 0.16);
 }
 .dl-tab-btn.primary:active {
-  box-shadow: 0 8px 18px rgba(14, 165, 233, 0.2), 0 4px 10px rgba(15, 23, 42, 0.12);
+  box-shadow:
+    0 8px 18px rgba(14, 165, 233, 0.2),
+    0 4px 10px rgba(15, 23, 42, 0.12);
 }
 .dl-tab-btn.accent {
   border: none;
   background: linear-gradient(135deg, #f97316 0%, #f59e0b 70%, #fbbf24 120%);
   color: #fff;
-  box-shadow: 0 10px 24px rgba(249, 115, 22, 0.28), 0 4px 10px rgba(15, 23, 42, 0.12);
+  box-shadow:
+    0 10px 24px rgba(249, 115, 22, 0.28),
+    0 4px 10px rgba(15, 23, 42, 0.12);
 }
 .dl-tab-btn.accent:hover {
-  box-shadow: 0 14px 30px rgba(249, 115, 22, 0.32), 0 6px 12px rgba(15, 23, 42, 0.16);
+  box-shadow:
+    0 14px 30px rgba(249, 115, 22, 0.32),
+    0 6px 12px rgba(15, 23, 42, 0.16);
 }
 .dl-tab-btn.accent:active {
-  box-shadow: 0 8px 18px rgba(249, 115, 22, 0.22), 0 4px 10px rgba(15, 23, 42, 0.12);
+  box-shadow:
+    0 8px 18px rgba(249, 115, 22, 0.22),
+    0 4px 10px rgba(15, 23, 42, 0.12);
 }
 .dl-tab-btn:disabled {
   opacity: 0.6;
@@ -906,7 +974,8 @@ button,
   content: "";
   position: absolute;
   inset: 0;
-  background: radial-gradient(circle at 25% 20%, rgba(255, 201, 255, 0.3), transparent 45%),
+  background:
+    radial-gradient(circle at 25% 20%, rgba(255, 201, 255, 0.3), transparent 45%),
     radial-gradient(circle at 85% 0%, rgba(163, 196, 255, 0.3), transparent 40%);
   pointer-events: none;
 }
@@ -946,7 +1015,9 @@ button,
   font-weight: 600;
   color: #374151;
   box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
-  transition: transform var(--motion-fast) var(--motion-ease), box-shadow var(--motion-fast) var(--motion-ease),
+  transition:
+    transform var(--motion-fast) var(--motion-ease),
+    box-shadow var(--motion-fast) var(--motion-ease),
     border-color var(--motion-fast) var(--motion-ease);
 }
 .dl-edit:hover {
@@ -1003,7 +1074,8 @@ button,
   content: "";
   position: absolute;
   inset: 0;
-  background: radial-gradient(circle at 10% 20%, rgba(255, 255, 255, 0.16), transparent 35%),
+  background:
+    radial-gradient(circle at 10% 20%, rgba(255, 255, 255, 0.16), transparent 35%),
     radial-gradient(circle at 80% 0%, rgba(64, 202, 255, 0.18), transparent 40%);
   pointer-events: none;
 }
@@ -1034,7 +1106,9 @@ button,
   border-radius: 18px;
   padding: 12px;
   box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
-  transition: transform var(--motion-base) var(--motion-ease), box-shadow var(--motion-base) var(--motion-ease);
+  transition:
+    transform var(--motion-base) var(--motion-ease),
+    box-shadow var(--motion-base) var(--motion-ease);
 }
 .dl-quick-card:hover {
   transform: translateY(-2px);
@@ -1074,7 +1148,9 @@ button,
   color: #475569;
   text-decoration: none;
   cursor: pointer;
-  transition: transform var(--motion-fast) var(--motion-ease), color var(--motion-fast) var(--motion-ease);
+  transition:
+    transform var(--motion-fast) var(--motion-ease),
+    color var(--motion-fast) var(--motion-ease);
 }
 .dl-grid-item:hover {
   transform: translateY(-2px);
@@ -1150,8 +1226,11 @@ button,
   padding: 6px 10px;
   border-radius: 12px;
   font-weight: 600;
-  transition: transform var(--motion-fast) var(--motion-ease), color var(--motion-fast) var(--motion-ease),
-    background-color var(--motion-fast) var(--motion-ease), box-shadow var(--motion-fast) var(--motion-ease);
+  transition:
+    transform var(--motion-fast) var(--motion-ease),
+    color var(--motion-fast) var(--motion-ease),
+    background-color var(--motion-fast) var(--motion-ease),
+    box-shadow var(--motion-fast) var(--motion-ease);
 }
 .dl-tab:hover {
   transform: translateY(-1px);
@@ -1213,7 +1292,9 @@ button,
   justify-content: center;
   box-shadow: 0 16px 34px rgba(14, 165, 233, 0.4);
   border: 1px solid rgba(255, 255, 255, 0.6);
-  transition: transform var(--motion-fast) var(--motion-ease), box-shadow var(--motion-fast) var(--motion-ease);
+  transition:
+    transform var(--motion-fast) var(--motion-ease),
+    box-shadow var(--motion-fast) var(--motion-ease);
 }
 .dl-tab:active .dl-tab-center {
   transform: scale(0.95);
@@ -1242,7 +1323,9 @@ button,
   background: linear-gradient(135deg, #1f2937 0%, #0b0f17 100%);
   border: 1px solid rgba(255, 255, 255, 0.06);
   box-shadow: 0 14px 32px rgba(0, 0, 0, 0.45);
-  transition: transform var(--motion-fast) var(--motion-ease), box-shadow var(--motion-fast) var(--motion-ease),
+  transition:
+    transform var(--motion-fast) var(--motion-ease),
+    box-shadow var(--motion-fast) var(--motion-ease),
     border-color var(--motion-fast) var(--motion-ease);
 }
 .yx-row {
@@ -1259,8 +1342,11 @@ button,
   background: #111827;
   border: 1px solid rgba(255, 255, 255, 0.08);
   box-shadow: 0 10px 24px rgba(0, 0, 0, 0.4);
-  transition: transform var(--motion-fast) var(--motion-ease), box-shadow var(--motion-fast) var(--motion-ease),
-    border-color var(--motion-fast) var(--motion-ease), filter var(--motion-fast) var(--motion-ease);
+  transition:
+    transform var(--motion-fast) var(--motion-ease),
+    box-shadow var(--motion-fast) var(--motion-ease),
+    border-color var(--motion-fast) var(--motion-ease),
+    filter var(--motion-fast) var(--motion-ease);
 }
 .yx-btn.secondary {
   background: linear-gradient(135deg, #1f2937 0%, #0b0f17 100%);
@@ -1314,13 +1400,16 @@ button,
   border-radius: 12px;
   padding: 10px;
   box-shadow: 0 14px 32px rgba(0, 0, 0, 0.45);
-  transition: transform var(--motion-base) var(--motion-ease), box-shadow var(--motion-base) var(--motion-ease),
+  transition:
+    transform var(--motion-base) var(--motion-ease),
+    box-shadow var(--motion-base) var(--motion-ease),
     border-color var(--motion-base) var(--motion-ease);
 }
 .yx-card-img {
   height: 110px;
   border-radius: 10px;
-  background: radial-gradient(circle at 40% 30%, rgba(255, 255, 255, 0.16), transparent 50%),
+  background:
+    radial-gradient(circle at 40% 30%, rgba(255, 255, 255, 0.16), transparent 50%),
     linear-gradient(180deg, #1f2937 0%, #0b0f17 100%);
   margin-bottom: 10px;
 }
@@ -1343,7 +1432,9 @@ button,
   color: #e2e8f0;
   font-size: 11px;
   border: 1px solid rgba(255, 255, 255, 0.12);
-  transition: transform var(--motion-fast) var(--motion-ease), box-shadow var(--motion-fast) var(--motion-ease);
+  transition:
+    transform var(--motion-fast) var(--motion-ease),
+    box-shadow var(--motion-fast) var(--motion-ease);
 }
 .yx-tag:hover {
   transform: translateY(-1px);
@@ -1385,7 +1476,9 @@ button,
   background: linear-gradient(135deg, #1f2937 0%, #0b0f17 100%);
   border: 1px solid rgba(255, 255, 255, 0.05);
   box-shadow: 0 14px 32px rgba(0, 0, 0, 0.5);
-  transition: transform var(--motion-fast) var(--motion-ease), box-shadow var(--motion-fast) var(--motion-ease),
+  transition:
+    transform var(--motion-fast) var(--motion-ease),
+    box-shadow var(--motion-fast) var(--motion-ease),
     border-color var(--motion-fast) var(--motion-ease);
 }
 .yx-cta {
@@ -1434,7 +1527,9 @@ button,
   font-weight: 700;
   text-align: center;
   letter-spacing: -0.01em;
-  transition: transform var(--motion-fast) var(--motion-ease), border-color var(--motion-fast) var(--motion-ease),
+  transition:
+    transform var(--motion-fast) var(--motion-ease),
+    border-color var(--motion-fast) var(--motion-ease),
     box-shadow var(--motion-fast) var(--motion-ease);
 }
 .yx-tab-btn:hover {
@@ -1454,7 +1549,9 @@ button,
   border-radius: 12px;
   padding: 12px;
   box-shadow: 0 14px 32px rgba(0, 0, 0, 0.45);
-  transition: transform var(--motion-base) var(--motion-ease), box-shadow var(--motion-base) var(--motion-ease),
+  transition:
+    transform var(--motion-base) var(--motion-ease),
+    box-shadow var(--motion-base) var(--motion-ease),
     border-color var(--motion-base) var(--motion-ease);
 }
 
@@ -1520,7 +1617,9 @@ button,
   font-size: 16px;
   font-weight: 700;
   box-shadow: 0 14px 32px rgba(14, 165, 233, 0.25);
-  transition: transform var(--motion-fast) var(--motion-ease), box-shadow var(--motion-fast) var(--motion-ease),
+  transition:
+    transform var(--motion-fast) var(--motion-ease),
+    box-shadow var(--motion-fast) var(--motion-ease),
     filter var(--motion-fast) var(--motion-ease);
 }
 .login-btn:hover {
@@ -1550,7 +1649,9 @@ button,
   align-items: center;
   justify-content: center;
   box-shadow: var(--shadow-sm);
-  transition: transform var(--motion-fast) var(--motion-ease), box-shadow var(--motion-fast) var(--motion-ease),
+  transition:
+    transform var(--motion-fast) var(--motion-ease),
+    box-shadow var(--motion-fast) var(--motion-ease),
     border-color var(--motion-fast) var(--motion-ease);
 }
 .login-alt button:hover {
@@ -1665,7 +1766,9 @@ button,
   font-size: 12px;
   border: 1px solid #fed7aa;
   box-shadow: 0 8px 18px rgba(251, 146, 60, 0.12);
-  transition: transform var(--motion-fast) var(--motion-ease), box-shadow var(--motion-fast) var(--motion-ease);
+  transition:
+    transform var(--motion-fast) var(--motion-ease),
+    box-shadow var(--motion-fast) var(--motion-ease);
 }
 .ride-content {
   display: flex;
@@ -1688,8 +1791,11 @@ button,
   box-shadow: 0 4px 12px rgba(15, 23, 42, 0.04);
   border: 1px solid var(--border-soft);
   font-weight: 600;
-  transition: transform var(--motion-fast) var(--motion-ease), box-shadow var(--motion-fast) var(--motion-ease),
-    border-color var(--motion-fast) var(--motion-ease), background-color var(--motion-fast) var(--motion-ease),
+  transition:
+    transform var(--motion-fast) var(--motion-ease),
+    box-shadow var(--motion-fast) var(--motion-ease),
+    border-color var(--motion-fast) var(--motion-ease),
+    background-color var(--motion-fast) var(--motion-ease),
     color var(--motion-fast) var(--motion-ease);
 }
 .ride-side-tab:hover {
@@ -1725,8 +1831,11 @@ button,
   padding: 8px 0;
   box-shadow: var(--shadow-sm);
   border: 1px solid rgba(148, 163, 184, 0.2);
-  transition: transform var(--motion-base) var(--motion-ease), box-shadow var(--motion-base) var(--motion-ease),
-    border-color var(--motion-base) var(--motion-ease), filter var(--motion-base) var(--motion-ease);
+  transition:
+    transform var(--motion-base) var(--motion-ease),
+    box-shadow var(--motion-base) var(--motion-ease),
+    border-color var(--motion-base) var(--motion-ease),
+    filter var(--motion-base) var(--motion-ease);
 }
 .ride-block:hover {
   transform: translateY(-1px);
@@ -1764,7 +1873,9 @@ button,
   gap: 10px;
   padding: 8px 14px;
   border-top: 1px solid rgba(15, 23, 42, 0.06);
-  transition: background var(--motion-fast) var(--motion-ease), transform var(--motion-fast) var(--motion-ease),
+  transition:
+    background var(--motion-fast) var(--motion-ease),
+    transform var(--motion-fast) var(--motion-ease),
     box-shadow var(--motion-fast) var(--motion-ease);
 }
 .ride-row:hover {
@@ -1800,7 +1911,9 @@ button,
   border-radius: 999px;
   border: 1px solid var(--tag-warn-border);
   font-weight: 700;
-  transition: transform var(--motion-fast) var(--motion-ease), box-shadow var(--motion-fast) var(--motion-ease);
+  transition:
+    transform var(--motion-fast) var(--motion-ease),
+    box-shadow var(--motion-fast) var(--motion-ease);
 }
 .ride-tag:hover {
   transform: translateY(-1px);
@@ -1850,7 +1963,9 @@ button,
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: transform var(--motion-fast) var(--motion-ease), box-shadow var(--motion-fast) var(--motion-ease);
+  transition:
+    transform var(--motion-fast) var(--motion-ease),
+    box-shadow var(--motion-fast) var(--motion-ease);
 }
 .ride-info-dot:hover {
   transform: translateY(-1px);
@@ -1897,7 +2012,9 @@ button,
   border: 1px solid #cbd5e1;
   display: block;
   background: #fff;
-  transition: transform var(--motion-fast) var(--motion-ease), box-shadow var(--motion-fast) var(--motion-ease),
+  transition:
+    transform var(--motion-fast) var(--motion-ease),
+    box-shadow var(--motion-fast) var(--motion-ease),
     border-color var(--motion-fast) var(--motion-ease);
 }
 .ride-checkbox:hover .ride-checkbox-box {
@@ -1950,7 +2067,9 @@ button,
   padding: 4px 10px;
   border-radius: 999px;
   width: fit-content;
-  transition: transform var(--motion-fast) var(--motion-ease), box-shadow var(--motion-fast) var(--motion-ease);
+  transition:
+    transform var(--motion-fast) var(--motion-ease),
+    box-shadow var(--motion-fast) var(--motion-ease);
 }
 .ride-discount-tag:hover {
   transform: translateY(-1px);
@@ -1966,7 +2085,9 @@ button,
   font-weight: 800;
   min-width: 150px;
   letter-spacing: 0.01em;
-  transition: transform var(--motion-fast) var(--motion-ease), box-shadow var(--motion-fast) var(--motion-ease),
+  transition:
+    transform var(--motion-fast) var(--motion-ease),
+    box-shadow var(--motion-fast) var(--motion-ease),
     filter var(--motion-fast) var(--motion-ease);
 }
 .ride-call:hover {
@@ -2024,7 +2145,12 @@ button,
   right: 18px;
   height: 3px;
   border-radius: 999px;
-  background: linear-gradient(90deg, rgba(14, 165, 233, 0.45), rgba(34, 197, 94, 0.3), rgba(245, 158, 11, 0.35));
+  background: linear-gradient(
+    90deg,
+    rgba(14, 165, 233, 0.45),
+    rgba(34, 197, 94, 0.3),
+    rgba(245, 158, 11, 0.35)
+  );
   opacity: 0.5;
 }
 .ride-modal-head {
@@ -2116,7 +2242,9 @@ button,
   font-weight: 700;
   border: 1px solid var(--chip-border);
   width: fit-content;
-  transition: transform var(--motion-fast) var(--motion-ease), box-shadow var(--motion-fast) var(--motion-ease);
+  transition:
+    transform var(--motion-fast) var(--motion-ease),
+    box-shadow var(--motion-fast) var(--motion-ease);
 }
 .ride-chip:hover {
   transform: translateY(-1px);
@@ -2146,7 +2274,9 @@ button,
   background: #f8fafc;
   font-size: 12px;
   color: #475569;
-  transition: transform var(--motion-fast) var(--motion-ease), box-shadow var(--motion-fast) var(--motion-ease),
+  transition:
+    transform var(--motion-fast) var(--motion-ease),
+    box-shadow var(--motion-fast) var(--motion-ease),
     border-color var(--motion-fast) var(--motion-ease);
 }
 .ride-step.is-done {
@@ -2182,7 +2312,9 @@ button,
   background: var(--tag-bg);
   border: 1px solid var(--tag-border);
   font-weight: 600;
-  transition: transform var(--motion-fast) var(--motion-ease), box-shadow var(--motion-fast) var(--motion-ease),
+  transition:
+    transform var(--motion-fast) var(--motion-ease),
+    box-shadow var(--motion-fast) var(--motion-ease),
     border-color var(--motion-fast) var(--motion-ease);
 }
 .ride-status-toggle:hover {
@@ -2199,7 +2331,9 @@ button,
   display: flex;
   flex-direction: column;
   gap: 10px;
-  transition: transform var(--motion-base) var(--motion-ease), box-shadow var(--motion-base) var(--motion-ease),
+  transition:
+    transform var(--motion-base) var(--motion-ease),
+    box-shadow var(--motion-base) var(--motion-ease),
     border-color var(--motion-base) var(--motion-ease);
 }
 .ride-pay-box:hover {
@@ -2346,7 +2480,9 @@ button,
   border: 1px solid rgba(255, 255, 255, 0.06);
   margin-bottom: 14px;
   isolation: isolate;
-  transition: transform var(--motion-base) var(--motion-ease), box-shadow var(--motion-base) var(--motion-ease);
+  transition:
+    transform var(--motion-base) var(--motion-ease),
+    box-shadow var(--motion-base) var(--motion-ease);
 }
 .member-card:hover {
   transform: translateY(-2px);
@@ -2376,7 +2512,9 @@ button,
   font-size: 12px;
   font-weight: 700;
   box-shadow: 0 10px 22px rgba(249, 115, 22, 0.3);
-  transition: transform var(--motion-fast) var(--motion-ease), box-shadow var(--motion-fast) var(--motion-ease);
+  transition:
+    transform var(--motion-fast) var(--motion-ease),
+    box-shadow var(--motion-fast) var(--motion-ease);
 }
 .member-btn:hover {
   transform: translateY(-1px);
@@ -2402,7 +2540,9 @@ button,
   padding: 10px 8px;
   text-align: center;
   backdrop-filter: blur(4px);
-  transition: transform var(--motion-fast) var(--motion-ease), box-shadow var(--motion-fast) var(--motion-ease);
+  transition:
+    transform var(--motion-fast) var(--motion-ease),
+    box-shadow var(--motion-fast) var(--motion-ease);
 }
 .member-item:hover {
   transform: translateY(-1px);
@@ -2473,7 +2613,9 @@ button,
   justify-content: center;
   color: #0f172a;
   box-shadow: 0 6px 12px rgba(15, 23, 42, 0.06);
-  transition: transform var(--motion-fast) var(--motion-ease), box-shadow var(--motion-fast) var(--motion-ease),
+  transition:
+    transform var(--motion-fast) var(--motion-ease),
+    box-shadow var(--motion-fast) var(--motion-ease),
     border-color var(--motion-fast) var(--motion-ease);
 }
 .settings-back {
@@ -2499,7 +2641,9 @@ button,
   border: 1px solid #e5e7eb;
   margin-bottom: 12px;
   overflow: hidden;
-  transition: transform var(--motion-base) var(--motion-ease), box-shadow var(--motion-base) var(--motion-ease),
+  transition:
+    transform var(--motion-base) var(--motion-ease),
+    box-shadow var(--motion-base) var(--motion-ease),
     border-color var(--motion-base) var(--motion-ease);
 }
 .settings-block:hover {
@@ -2616,7 +2760,9 @@ button,
   color: #f8fafc;
   opacity: 0;
   transform: translateX(12px);
-  transition: opacity 300ms ease, transform 300ms ease;
+  transition:
+    opacity 300ms ease,
+    transform 300ms ease;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -2674,38 +2820,6 @@ button,
   background: #38bdf8;
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 /* payment screen */
 .pay-screen {
   background: linear-gradient(180deg, #f5f8ff 0%, #ffffff 60%);
@@ -2736,7 +2850,9 @@ button,
   padding: 16px;
   text-align: center;
   box-shadow: var(--shadow-sm);
-  transition: transform var(--motion-base) var(--motion-ease), box-shadow var(--motion-base) var(--motion-ease),
+  transition:
+    transform var(--motion-base) var(--motion-ease),
+    box-shadow var(--motion-base) var(--motion-ease),
     border-color var(--motion-base) var(--motion-ease);
 }
 .pay-balance-card:hover {
@@ -2774,7 +2890,9 @@ button,
   text-align: left;
   box-shadow: var(--shadow-sm);
   cursor: pointer;
-  transition: transform var(--motion-fast) var(--motion-ease), box-shadow var(--motion-fast) var(--motion-ease),
+  transition:
+    transform var(--motion-fast) var(--motion-ease),
+    box-shadow var(--motion-fast) var(--motion-ease),
     border-color var(--motion-fast) var(--motion-ease);
 }
 .pay-option:hover {
@@ -2798,7 +2916,9 @@ button,
   border: 1px solid #e5e7eb;
   border-radius: 12px;
   background: #ffffff;
-  transition: border-color var(--motion-fast) var(--motion-ease), box-shadow var(--motion-fast) var(--motion-ease);
+  transition:
+    border-color var(--motion-fast) var(--motion-ease),
+    box-shadow var(--motion-fast) var(--motion-ease);
 }
 .pay-custom-input:focus {
   outline: none;
@@ -2808,7 +2928,9 @@ button,
 .pay-custom-btn {
   padding: 6px 10px;
   white-space: nowrap;
-  transition: transform var(--motion-fast) var(--motion-ease), box-shadow var(--motion-fast) var(--motion-ease);
+  transition:
+    transform var(--motion-fast) var(--motion-ease),
+    box-shadow var(--motion-fast) var(--motion-ease);
 }
 .pay-option.is-active {
   border-color: rgba(14, 165, 233, 0.6);
@@ -2844,7 +2966,9 @@ button,
   border: 1px solid var(--border);
   background: #ffffff;
   box-shadow: var(--shadow-sm);
-  transition: transform var(--motion-base) var(--motion-ease), box-shadow var(--motion-base) var(--motion-ease),
+  transition:
+    transform var(--motion-base) var(--motion-ease),
+    box-shadow var(--motion-base) var(--motion-ease),
     border-color var(--motion-base) var(--motion-ease);
 }
 .pay-qr-card:hover {
@@ -2914,7 +3038,9 @@ button,
   background: var(--tag-bg);
   border: 1px solid var(--tag-border);
   font-weight: 600;
-  transition: transform var(--motion-fast) var(--motion-ease), box-shadow var(--motion-fast) var(--motion-ease),
+  transition:
+    transform var(--motion-fast) var(--motion-ease),
+    box-shadow var(--motion-fast) var(--motion-ease),
     border-color var(--motion-fast) var(--motion-ease);
 }
 .pay-status-toggle:hover {
@@ -2953,7 +3079,9 @@ button,
   font-weight: 700;
   font-size: 15px;
   box-shadow: 0 18px 36px rgba(14, 165, 233, 0.3);
-  transition: transform var(--motion-fast) var(--motion-ease), box-shadow var(--motion-fast) var(--motion-ease);
+  transition:
+    transform var(--motion-fast) var(--motion-ease),
+    box-shadow var(--motion-fast) var(--motion-ease);
 }
 .pay-submit:hover {
   transform: translateY(-1px);
@@ -3009,13 +3137,16 @@ button,
   letter-spacing: -0.01em;
 }
 .vip-card {
-  background: radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.05), transparent 40%),
+  background:
+    radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.05), transparent 40%),
     linear-gradient(135deg, #1f2027 0%, #0f1118 100%);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 18px;
   padding: 16px;
   box-shadow: 0 14px 32px rgba(0, 0, 0, 0.5);
-  transition: transform var(--motion-base) var(--motion-ease), box-shadow var(--motion-base) var(--motion-ease),
+  transition:
+    transform var(--motion-base) var(--motion-ease),
+    box-shadow var(--motion-base) var(--motion-ease),
     border-color var(--motion-base) var(--motion-ease);
 }
 .vip-card:hover {
@@ -3072,7 +3203,9 @@ button,
   border-radius: 12px;
   background: #0f1118;
   border: 1px solid rgba(255, 255, 255, 0.05);
-  transition: transform var(--motion-fast) var(--motion-ease), box-shadow var(--motion-fast) var(--motion-ease),
+  transition:
+    transform var(--motion-fast) var(--motion-ease),
+    box-shadow var(--motion-fast) var(--motion-ease),
     border-color var(--motion-fast) var(--motion-ease);
 }
 .vip-perk:hover {
@@ -3105,9 +3238,6 @@ button,
 }
 
 @media (max-width: 480px) {
-
-
-
   .dl-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -3186,9 +3316,9 @@ button,
     --tabbar-height: 0px;
   }
   body {
-    background: radial-gradient(circle at 20% 0%, rgba(255, 207, 255, 0.2), transparent 32%),
-      radial-gradient(circle at 80% 0%, rgba(169, 215, 255, 0.25), transparent 30%),
-      #f7f8ff;
+    background:
+      radial-gradient(circle at 20% 0%, rgba(255, 207, 255, 0.2), transparent 32%),
+      radial-gradient(circle at 80% 0%, rgba(169, 215, 255, 0.25), transparent 30%), #f7f8ff;
   }
   .dl-shell {
     max-width: 1280px;
@@ -3250,5 +3380,4 @@ button,
 }
 
 @media (min-width: 1280px) {
-
 }

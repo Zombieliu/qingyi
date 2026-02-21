@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { getCurrentAddress } from "@/lib/chain/qy-chain";
-import { fetchWithUserAuth } from "@/app/components/user-auth-client";
+import { fetchWithUserAuth } from "@/lib/auth/user-auth-client";
 
 const REF_STORAGE_KEY = "qy_ref_code";
 
@@ -34,7 +34,7 @@ export function RefBinder() {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ address, refCode }),
           },
-          address,
+          address
         );
         if (res.ok || res.status === 409) {
           localStorage.removeItem(REF_STORAGE_KEY);

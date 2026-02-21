@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin/admin-auth";
 import { getCacheStats, clearCache, getChainOrderStats } from "@/lib/chain/chain-order-cache";
 import { fetchChainOrdersCached } from "@/lib/chain/chain-sync";
+import { env } from "@/lib/env";
 
 /**
  * 链上订单缓存监控和管理 API
@@ -33,13 +34,20 @@ export async function GET(req: Request) {
       hitRate: stats.hits + stats.misses > 0 ? stats.hits / (stats.hits + stats.misses) : 0,
     },
     config: {
-      cacheTtlMs: Number(process.env.CHAIN_ORDER_CACHE_TTL_MS || "30000"),
-      cacheTtlSec: Math.round(Number(process.env.CHAIN_ORDER_CACHE_TTL_MS || "30000") / 1000),
-      maxCacheAgeMs: Number(process.env.CHAIN_ORDER_MAX_CACHE_AGE_MS || "300000"),
-      maxCacheAgeSec: Math.round(Number(process.env.CHAIN_ORDER_MAX_CACHE_AGE_MS || "300000") / 1000),
-      eventLimit: Number(process.env.ADMIN_CHAIN_EVENT_LIMIT || process.env.NEXT_PUBLIC_QY_EVENT_LIMIT || "1000"),
+      cacheTtlMs: env.CHAIN_ORDER_CACHE_TTL_MS,
+      cacheTtlSec: Math.round(env.CHAIN_ORDER_CACHE_TTL_MS / 1000),
+      maxCacheAgeMs: env.CHAIN_ORDER_MAX_CACHE_AGE_MS,
+      maxCacheAgeSec: Math.round(env.CHAIN_ORDER_MAX_CACHE_AGE_MS / 1000),
+      eventLimit: env.ADMIN_CHAIN_EVENT_LIMIT,
     },
-    status: stats.cacheAgeMs === null ? "empty" : stats.cacheAgeMs < 30000 ? "fresh" : stats.cacheAgeMs < 300000 ? "stale" : "expired",
+    status:
+      stats.cacheAgeMs === null
+        ? "empty"
+        : stats.cacheAgeMs < 30000
+          ? "fresh"
+          : stats.cacheAgeMs < 300000
+            ? "stale"
+            : "expired",
   };
 
   return NextResponse.json(response);

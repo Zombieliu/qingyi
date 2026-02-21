@@ -11,6 +11,9 @@ import {
 import { isValidSuiAddress, normalizeSuiAddress } from "@mysten/sui/utils";
 import { requireUserAuth } from "@/lib/auth/user-auth";
 import { getOrderById, updateOrder } from "@/lib/admin/admin-store";
+import { z } from "zod";
+import { parseBodyRaw } from "@/lib/shared/api-validation";
+import { env } from "@/lib/env";
 
 type RouteContext = {
   params: Promise<{ orderId: string }>;
@@ -37,6 +40,11 @@ function buildDigestFallback(orderId: string, order: LocalOrderRecord | null | u
   };
 }
 
+const chainSyncSchema = z.object({
+  userAddress: z.string().optional(),
+  digest: z.string().optional(),
+});
+
 /**
  * 链上订单同步 API
  *
@@ -53,19 +61,13 @@ export async function POST(req: Request, { params }: RouteContext) {
     return NextResponse.json({ error: "orderId required" }, { status: 400 });
   }
 
-  let rawBody = "";
-  let body: { userAddress?: string; digest?: string } = {};
-  try {
-    rawBody = await req.text();
-    body = rawBody ? (JSON.parse(rawBody) as { userAddress?: string; digest?: string }) : {};
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
+  const parsed = await parseBodyRaw(req, chainSyncSchema);
+  if (!parsed.success) return parsed.response;
+  const { data: body, rawBody } = parsed;
 
   const admin = await requireAdmin(req, { role: "viewer", requireOrigin: false, allowToken: true });
   const url = new URL(req.url);
-  const force =
-    url.searchParams.get("force") === "1" || url.searchParams.get("force") === "true";
+  const force = url.searchParams.get("force") === "1" || url.searchParams.get("force") === "true";
   const maxWaitMs = Number(url.searchParams.get("maxWaitMs") || "3000");
   const digestFromQuery = url.searchParams.get("digest")?.trim();
   const digestFromBody = typeof body.digest === "string" ? body.digest.trim() : "";
@@ -141,14 +143,17 @@ export async function POST(req: Request, { params }: RouteContext) {
             lastFetch: cacheStats.lastFetch,
           },
           retries: delays.length,
-          totalWaitTime: `${Math.min(maxWaitMs, delays.reduce((sum, value) => sum + value, 0))}ms`,
+          totalWaitTime: `${Math.min(
+            maxWaitMs,
+            delays.reduce((sum, value) => sum + value, 0)
+          )}ms`,
           forced: force,
         },
         possibleReasons: [
           "订单事件尚未被 Dubhe 索引器索引（已等待）",
           "订单未在区块链上成功创建",
-          "订单超出查询范围（超过 " + (process.env.ADMIN_CHAIN_EVENT_LIMIT || "1000") + " 条）",
-          "网络配置错误（当前：" + (process.env.SUI_NETWORK || process.env.NEXT_PUBLIC_SUI_NETWORK || "testnet") + "）",
+          "订单超出查询范围（超过 " + env.ADMIN_CHAIN_EVENT_LIMIT + " 条）",
+          "网络配置错误（当前：" + env.SUI_NETWORK + "）",
         ],
         troubleshooting: [
           "等待几秒后重试",

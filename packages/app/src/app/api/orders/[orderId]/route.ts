@@ -1,10 +1,34 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin/admin-auth";
-import { getOrderById, getPlayerByAddress, updateOrder, updateOrderIfUnassigned, processReferralReward } from "@/lib/admin/admin-store";
+import {
+  getOrderById,
+  getPlayerByAddress,
+  updateOrder,
+  updateOrderIfUnassigned,
+  processReferralReward,
+} from "@/lib/admin/admin-store";
 import { isValidSuiAddress, normalizeSuiAddress } from "@mysten/sui/utils";
 import { canTransitionStage, isChainOrder } from "@/lib/order-guard";
 import type { AdminOrder } from "@/lib/admin/admin-types";
 import { requireUserAuth } from "@/lib/auth/user-auth";
+import { z } from "zod";
+import { parseBodyRaw } from "@/lib/shared/api-validation";
+
+const patchOrderSchema = z.object({
+  paymentStatus: z.string().optional(),
+  note: z.string().optional(),
+  assignedTo: z.string().optional(),
+  stage: z.enum(["待处理", "已确认", "进行中", "已完成", "已取消"]).optional(),
+  user: z.string().optional(),
+  userAddress: z.string().optional(),
+  companionAddress: z.string().optional(),
+  chainDigest: z.string().optional(),
+  chainStatus: z.number().optional(),
+  serviceFee: z.number().optional(),
+  deposit: z.number().optional(),
+  status: z.string().optional(),
+  meta: z.record(z.string(), z.unknown()).optional(),
+});
 
 async function tryReferralReward(order: AdminOrder, prevStage: string | undefined) {
   if (order.stage !== "已完成" || prevStage === "已完成") return;
@@ -24,7 +48,8 @@ function mapStatusToStage(status?: string) {
   if (!status) return undefined;
   if (status.includes("取消")) return "已取消";
   if (status.includes("完成")) return "已完成";
-  if (status.includes("进行") || status.includes("派单") || status.includes("接单")) return "进行中";
+  if (status.includes("进行") || status.includes("派单") || status.includes("接单"))
+    return "进行中";
   return undefined;
 }
 
@@ -41,9 +66,16 @@ export async function GET(req: Request, { params }: RouteContext) {
     if (!isValidSuiAddress(normalized)) {
       return NextResponse.json({ error: "invalid userAddress" }, { status: 400 });
     }
-    const auth = await requireUserAuth(req, { intent: `orders:read:${orderId}`, address: normalized });
+    const auth = await requireUserAuth(req, {
+      intent: `orders:read:${orderId}`,
+      address: normalized,
+    });
     if (!auth.ok) return auth.response;
-    if (order.userAddress && order.userAddress !== normalized && order.companionAddress !== normalized) {
+    if (
+      order.userAddress &&
+      order.userAddress !== normalized &&
+      order.companionAddress !== normalized
+    ) {
       return NextResponse.json({ error: "forbidden" }, { status: 403 });
     }
     return NextResponse.json(order);
@@ -61,19 +93,9 @@ export async function PATCH(req: Request, { params }: RouteContext) {
     return NextResponse.json({ error: "not found" }, { status: 404 });
   }
 
-  let rawBody = "";
-  let body: Partial<AdminOrder> & {
-    userAddress?: string;
-    companionAddress?: string;
-    status?: string;
-    meta?: Record<string, unknown>;
-  } = {};
-  try {
-    rawBody = await req.text();
-    body = rawBody ? (JSON.parse(rawBody) as Partial<AdminOrder> & { userAddress?: string; status?: string }) : {};
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
+  const parsed = await parseBodyRaw(req, patchOrderSchema);
+  if (!parsed.success) return parsed.response;
+  const { data: body, rawBody } = parsed;
 
   const chainOrder = isChainOrder(order);
   const admin = await requireAdmin(req, { role: "viewer", requireOrigin: false, allowToken: true });
@@ -130,7 +152,10 @@ export async function PATCH(req: Request, { params }: RouteContext) {
       return NextResponse.json({ error: "cannot accept own order" }, { status: 403 });
     }
     if (companion !== actor) {
-      return NextResponse.json({ error: "companionAddress must match userAddress" }, { status: 400 });
+      return NextResponse.json(
+        { error: "companionAddress must match userAddress" },
+        { status: 400 }
+      );
     }
     if (order.companionAddress) {
       if (order.companionAddress !== companion) {

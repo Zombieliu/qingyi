@@ -1,23 +1,19 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { requireAdmin } from "@/lib/admin/admin-auth";
 import { removeOrders } from "@/lib/admin/admin-store";
 import { recordAudit } from "@/lib/admin/admin-audit";
+import { parseBody } from "@/lib/shared/api-validation";
+
+const schema = z.object({ ids: z.array(z.string().min(1)).min(1) });
 
 export async function POST(req: Request) {
   const auth = await requireAdmin(req, { role: "ops" });
   if (!auth.ok) return auth.response;
 
-  let body: { ids?: string[] } = {};
-  try {
-    body = (await req.json()) as { ids?: string[] };
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
-
-  const ids = Array.isArray(body.ids) ? body.ids.filter((id) => typeof id === "string" && id.trim()) : [];
-  if (ids.length === 0) {
-    return NextResponse.json({ error: "ids required" }, { status: 400 });
-  }
+  const parsed = await parseBody(req, schema);
+  if (!parsed.success) return parsed.response;
+  const { ids } = parsed.data;
 
   const count = await removeOrders(ids);
   await recordAudit(req, auth, "orders.bulk_delete", "order", ids.join(","), { count, ids });

@@ -4,17 +4,9 @@ import { useCallback, useEffect, useState } from "react";
 import { RefreshCw } from "lucide-react";
 import type { MantouWithdrawRequest, MantouWithdrawStatus } from "@/lib/admin/admin-types";
 import { MANTOU_WITHDRAW_STATUS_OPTIONS } from "@/lib/admin/admin-types";
-import { readCache, writeCache } from "@/app/components/client-cache";
+import { readCache, writeCache } from "@/lib/shared/client-cache";
+import { formatShortDateTime } from "@/lib/shared/date-utils";
 import { StateBlock } from "@/app/components/state-block";
-
-function formatTime(ts: number) {
-  return new Date(ts).toLocaleString("zh-CN", {
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
 
 export default function MantouWithdrawPage() {
   const [requests, setRequests] = useState<MantouWithdrawRequest[]>([]);
@@ -133,7 +125,11 @@ export default function MantouWithdrawPage() {
           </div>
         </div>
         <div className="admin-toolbar">
-          <select className="admin-select" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
+          <select
+            className="admin-select"
+            value={statusFilter}
+            onChange={(event) => setStatusFilter(event.target.value)}
+          >
             <option value="全部">全部状态</option>
             {MANTOU_WITHDRAW_STATUS_OPTIONS.map((status) => (
               <option key={status} value={status}>
@@ -164,9 +160,19 @@ export default function MantouWithdrawPage() {
           </div>
         </div>
         {loading ? (
-          <StateBlock tone="loading" size="compact" title="加载提现申请中" description="正在同步最新提现记录" />
+          <StateBlock
+            tone="loading"
+            size="compact"
+            title="加载提现申请中"
+            description="正在同步最新提现记录"
+          />
         ) : requests.length === 0 ? (
-          <StateBlock tone="empty" size="compact" title="暂无提现申请" description="目前没有待处理的提现" />
+          <StateBlock
+            tone="empty"
+            size="compact"
+            title="暂无提现申请"
+            description="目前没有待处理的提现"
+          />
         ) : (
           <div className="admin-table-wrap">
             <table className="admin-table">
@@ -197,7 +203,9 @@ export default function MantouWithdrawPage() {
                         value={item.status}
                         onChange={(event) => {
                           const next = event.target.value as MantouWithdrawStatus;
-                          setRequests((prev) => prev.map((r) => (r.id === item.id ? { ...r, status: next } : r)));
+                          setRequests((prev) =>
+                            prev.map((r) => (r.id === item.id ? { ...r, status: next } : r))
+                          );
                           updateRequest(item.id, next, item.note);
                         }}
                       >
@@ -215,15 +223,19 @@ export default function MantouWithdrawPage() {
                         value={item.note || ""}
                         onChange={(event) =>
                           setRequests((prev) =>
-                            prev.map((r) => (r.id === item.id ? { ...r, note: event.target.value } : r))
+                            prev.map((r) =>
+                              r.id === item.id ? { ...r, note: event.target.value } : r
+                            )
                           )
                         }
                         onBlur={(event) => updateRequest(item.id, item.status, event.target.value)}
                       />
                     </td>
-                    <td data-label="时间">{formatTime(item.createdAt)}</td>
+                    <td data-label="时间">{formatShortDateTime(item.createdAt)}</td>
                     <td data-label="操作">
-                      <span className="admin-badge neutral">{saving[item.id] ? "保存中" : "已同步"}</span>
+                      <span className="admin-badge neutral">
+                        {saving[item.id] ? "保存中" : "已同步"}
+                      </span>
                     </td>
                   </tr>
                 ))}
@@ -232,21 +244,11 @@ export default function MantouWithdrawPage() {
           </div>
         )}
         <div className="admin-pagination">
-          <button
-            className="admin-btn ghost"
-            disabled={prevCursors.length === 0}
-            onClick={goPrev}
-          >
+          <button className="admin-btn ghost" disabled={prevCursors.length === 0} onClick={goPrev}>
             上一页
           </button>
-          <span className="admin-meta">
-            第 {page} 页
-          </span>
-          <button
-            className="admin-btn ghost"
-            disabled={!nextCursor}
-            onClick={goNext}
-          >
+          <span className="admin-meta">第 {page} 页</span>
+          <button className="admin-btn ghost" disabled={!nextCursor} onClick={goNext}>
             下一页
           </button>
         </div>

@@ -1,8 +1,20 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { requireAdmin } from "@/lib/admin/admin-auth";
 import { removeCoupon, updateCoupon } from "@/lib/admin/admin-store";
 import { recordAudit } from "@/lib/admin/admin-audit";
-import type { AdminCoupon } from "@/lib/admin/admin-types";
+import { parseBody } from "@/lib/shared/api-validation";
+
+const patchSchema = z.object({
+  title: z.string().optional(),
+  code: z.string().optional(),
+  description: z.string().optional(),
+  discount: z.number().optional(),
+  minSpend: z.number().optional(),
+  status: z.enum(["可用", "停用", "已过期"]).optional(),
+  startsAt: z.union([z.string(), z.number()]).optional().nullable(),
+  expiresAt: z.union([z.string(), z.number()]).optional().nullable(),
+});
 
 type RouteContext = { params: Promise<{ couponId: string }> };
 
@@ -17,12 +29,9 @@ export async function PATCH(req: Request, { params }: RouteContext) {
   const auth = await requireAdmin(req, { role: "ops" });
   if (!auth.ok) return auth.response;
 
-  let body: Partial<AdminCoupon> = {};
-  try {
-    body = (await req.json()) as Partial<AdminCoupon>;
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
+  const parsed = await parseBody(req, patchSchema);
+  if (!parsed.success) return parsed.response;
+  const body = parsed.data;
 
   const { couponId } = await params;
   const updated = await updateCoupon(couponId, {

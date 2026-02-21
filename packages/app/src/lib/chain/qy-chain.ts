@@ -3,7 +3,13 @@
 import { SuiClient, getFullnodeUrl, type EventId } from "@mysten/sui/client";
 import { bcs } from "@mysten/sui/bcs";
 import { Transaction, Inputs } from "@mysten/sui/transactions";
-import { fromBase64, isValidSuiAddress, normalizeSuiAddress, toBase64, toHex } from "@mysten/sui/utils";
+import {
+  fromBase64,
+  isValidSuiAddress,
+  normalizeSuiAddress,
+  toBase64,
+  toHex,
+} from "@mysten/sui/utils";
 import {
   PasskeyKeypair,
   BrowserPasskeyProvider,
@@ -196,7 +202,11 @@ function resolveDappHubId() {
 }
 
 function resolveDappHubInitialSharedVersion() {
-  return String(process.env.NEXT_PUBLIC_SUI_DAPP_HUB_INITIAL_SHARED_VERSION || DAPP_HUB_INITIAL_SHARED_VERSION || "");
+  return String(
+    process.env.NEXT_PUBLIC_SUI_DAPP_HUB_INITIAL_SHARED_VERSION ||
+      DAPP_HUB_INITIAL_SHARED_VERSION ||
+      ""
+  );
 }
 
 function resolvePackageId() {
@@ -333,7 +343,9 @@ async function executeSponsoredTransaction(tx: Transaction) {
   }
   const userSignature = await signer.signTransaction(fromBase64(txBytes));
   const signature =
-    typeof userSignature.signature === "string" ? userSignature.signature : toBase64(userSignature.signature);
+    typeof userSignature.signature === "string"
+      ? userSignature.signature
+      : toBase64(userSignature.signature);
   const execRes = await fetch("/api/chain/sponsor", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -358,7 +370,7 @@ async function executeTransaction(tx: Transaction) {
     message.toLowerCase().includes("fetch failed") ||
     message.toLowerCase().includes("socket");
 
-  const withRetry = async <T,>(fn: () => Promise<T>, attempts = 3): Promise<T> => {
+  const withRetry = async <T>(fn: () => Promise<T>, attempts = 3): Promise<T> => {
     let lastError: Error | null = null;
     for (let attempt = 0; attempt < attempts; attempt += 1) {
       try {
@@ -444,8 +456,12 @@ export async function createOrderOnChain(params: {
   ensureOrderId(params.orderId);
   const ruleSetId = params.ruleSetId ?? getRuleSetId();
   const companion = params.companion ?? getDefaultCompanion();
-  const serviceFee = params.rawAmount ? String(Math.round(params.serviceFee)) : toChainAmount(params.serviceFee);
-  const deposit = params.rawAmount ? String(Math.round(params.deposit ?? 0)) : toChainAmount(params.deposit ?? 0);
+  const serviceFee = params.rawAmount
+    ? String(Math.round(params.serviceFee))
+    : toChainAmount(params.serviceFee);
+  const deposit = params.rawAmount
+    ? String(Math.round(params.deposit ?? 0))
+    : toChainAmount(params.deposit ?? 0);
 
   const tx = new Transaction();
   const dappHub = getDappHubSharedRef();
@@ -637,7 +653,9 @@ export async function fetchChainOrders(): Promise<ChainOrder[]> {
       cursor = page.nextCursor ?? null;
     }
 
-    const result = Array.from(orders.values()).sort((a, b) => Number(b.createdAt) - Number(a.createdAt));
+    const result = Array.from(orders.values()).sort(
+      (a, b) => Number(b.createdAt) - Number(a.createdAt)
+    );
     cachedOrders = result;
     lastFetchMs = Date.now();
     return result;

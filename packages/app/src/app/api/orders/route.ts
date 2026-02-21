@@ -15,18 +15,13 @@ import { rateLimit } from "@/lib/rate-limit";
 import { clearChainOrderCache } from "@/lib/chain/chain-sync";
 import { getCache, setCache, computeJsonEtag } from "@/lib/server-cache";
 import { getIfNoneMatch, jsonWithEtag, notModified } from "@/lib/http-cache";
-
-const ORDER_RATE_LIMIT_WINDOW_MS = Number(process.env.ORDER_RATE_LIMIT_WINDOW_MS || "60000");
-const ORDER_RATE_LIMIT_MAX = Number(process.env.ORDER_RATE_LIMIT_MAX || "30");
-const PUBLIC_ORDER_RATE_LIMIT_MAX = Number(process.env.PUBLIC_ORDER_RATE_LIMIT_MAX || "120");
+import { getClientIp } from "@/lib/shared/api-utils";
+import { formatFullDateTime } from "@/lib/shared/date-utils";
+import { z } from "zod";
+import { parseBodyRaw } from "@/lib/shared/api-validation";
+import { env } from "@/lib/env";
 const PUBLIC_ORDER_CACHE_TTL_MS = 5000;
 const PUBLIC_ORDER_CACHE_CONTROL = "private, max-age=5, stale-while-revalidate=10";
-
-function getClientIp(req: Request): string {
-  const forwarded = req.headers.get("x-forwarded-for");
-  if (forwarded) return forwarded.split(",")[0].trim();
-  return req.headers.get("x-real-ip") || "unknown";
-}
 
 async function enforceRateLimit(req: Request, limit: number, windowMs: number) {
   const key = `orders:${req.method}:${getClientIp(req)}`;
@@ -78,36 +73,45 @@ async function resolveWecomMention(meta?: Record<string, unknown>) {
     };
   }
   if (isMobileNumber(contact)) {
-    return { mention: { type: "mobile", mobile: contact } as WecomMention, playerName: player?.name };
+    return {
+      mention: { type: "mobile", mobile: contact } as WecomMention,
+      playerName: player?.name,
+    };
   }
-  return { mention: { type: "user", tag: `<@${contact}>` } as WecomMention, playerName: player?.name };
+  return {
+    mention: { type: "user", tag: `<@${contact}>` } as WecomMention,
+    playerName: player?.name,
+  };
 }
 
-interface OrderPayload {
-  user: string;
-  userAddress?: string;
-  companionAddress?: string;
-  item: string;
-  amount: number; // 数量或价格数值
-  currency?: string; // 可选，默认 CNY
-  status?: "已支付" | "待支付" | string;
-  stage?: string;
-  paymentStatus?: string;
-  note?: string;
-  orderId?: string;
-  chainDigest?: string;
-  chainStatus?: number;
-  serviceFee?: number;
-  deposit?: number;
-  meta?: Record<string, unknown>;
-}
+const orderSchema = z.object({
+  user: z.string().min(1),
+  item: z.string().min(1),
+  amount: z.number(),
+  currency: z.string().default("CNY"),
+  status: z.string().default("已支付"),
+  note: z.string().optional(),
+  orderId: z.string().optional(),
+  userAddress: z.string().optional(),
+  companionAddress: z.string().optional(),
+  chainDigest: z.string().optional(),
+  chainStatus: z.number().optional(),
+  serviceFee: z.number().optional(),
+  deposit: z.number().optional(),
+  paymentStatus: z.string().optional(),
+  stage: z.enum(["待处理", "已确认", "进行中", "已完成", "已取消"]).optional(),
+  meta: z.record(z.string(), z.unknown()).optional(),
+});
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const page = Math.max(1, Number(searchParams.get("page") || "1"));
   const pageSize = Math.min(100, Math.max(5, Number(searchParams.get("pageSize") || "20")));
   const isPublicPool = searchParams.get("public") === "1";
-  if (isPublicPool && !(await enforceRateLimit(req, PUBLIC_ORDER_RATE_LIMIT_MAX, ORDER_RATE_LIMIT_WINDOW_MS))) {
+  if (
+    isPublicPool &&
+    !(await enforceRateLimit(req, env.PUBLIC_ORDER_RATE_LIMIT_MAX, env.ORDER_RATE_LIMIT_WINDOW_MS))
+  ) {
     return NextResponse.json({ error: "rate_limited" }, { status: 429 });
   }
   const userAddressRaw = searchParams.get("address") || searchParams.get("userAddress") || "";
@@ -226,23 +230,15 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  if (!(await enforceRateLimit(req, ORDER_RATE_LIMIT_MAX, ORDER_RATE_LIMIT_WINDOW_MS))) {
+  if (!(await enforceRateLimit(req, env.ORDER_RATE_LIMIT_MAX, env.ORDER_RATE_LIMIT_WINDOW_MS))) {
     return NextResponse.json({ error: "rate_limited" }, { status: 429 });
   }
 
-  let rawBody = "";
-  let payload: OrderPayload;
-  try {
-    rawBody = await req.text();
-    payload = rawBody ? (JSON.parse(rawBody) as OrderPayload) : ({} as OrderPayload);
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
+  const parsed = await parseBodyRaw(req, orderSchema);
+  if (!parsed.success) return parsed.response;
+  const { data: payload, rawBody } = parsed;
 
-  const { user, item, amount, currency = "CNY", status = "已支付", note } = payload;
-  if (!user || !item || typeof amount !== "number") {
-    return NextResponse.json({ error: "user, item, amount are required" }, { status: 400 });
-  }
+  const { user, item, amount, currency, status, note } = payload;
 
   const orderId = payload.orderId || `ORD-${Date.now()}-${crypto.randomInt(1000, 9999)}`;
   const createdAt = Date.now();
@@ -272,16 +268,25 @@ export async function POST(req: Request) {
     meta.time = new Date(createdAt).toISOString();
   }
 
-  const auth = await requireUserAuth(req, { intent: "orders:create", address: userAddress, body: rawBody });
+  const auth = await requireUserAuth(req, {
+    intent: "orders:create",
+    address: userAddress,
+    body: rawBody,
+  });
   if (!auth.ok) return auth.response;
 
-  const discountMeta = (payload.meta as { firstOrderDiscount?: Record<string, unknown> } | undefined)
-    ?.firstOrderDiscount;
+  const discountMeta = (
+    payload.meta as { firstOrderDiscount?: Record<string, unknown> } | undefined
+  )?.firstOrderDiscount;
   if (discountMeta) {
     const discount = Number((discountMeta as { amount?: number }).amount);
     const minSpend = Number((discountMeta as { minSpend?: number }).minSpend);
     const originalTotal = Number((discountMeta as { originalTotal?: number }).originalTotal);
-    if (!Number.isFinite(discount) || !Number.isFinite(minSpend) || !Number.isFinite(originalTotal)) {
+    if (
+      !Number.isFinite(discount) ||
+      !Number.isFinite(minSpend) ||
+      !Number.isFinite(originalTotal)
+    ) {
       return NextResponse.json({ error: "invalid_discount" }, { status: 400 });
     }
     if (originalTotal < minSpend || discount <= 0) {
@@ -325,11 +330,11 @@ export async function POST(req: Request) {
     console.error("Failed to persist order:", error);
     return NextResponse.json({ error: "persist_failed" }, { status: 500 });
   }
-  if (process.env.E2E_SKIP_WEBHOOK === "1") {
+  if (env.E2E_SKIP_WEBHOOK === "1") {
     return NextResponse.json({ orderId, sent: true, error: null });
   }
 
-  const webhook = process.env.WECHAT_WEBHOOK_URL;
+  const webhook = env.WECHAT_WEBHOOK_URL;
   let sent = false;
   let error: string | undefined;
 
@@ -346,7 +351,10 @@ export async function POST(req: Request) {
       status,
       orderId,
       note,
-      mentionTag: resolved.mention.type === "all" || resolved.mention.type === "user" ? resolved.mention.tag : "",
+      mentionTag:
+        resolved.mention.type === "all" || resolved.mention.type === "user"
+          ? resolved.mention.tag
+          : "",
       requestedPlayer: requestedName,
       fallbackAll: resolved.fallbackAll,
       fallbackReason: resolved.fallbackReason,
@@ -422,13 +430,7 @@ function buildMarkdown({
   fallbackReason?: "missing_id" | "missing_contact";
 }) {
   const priceLine = currency === "CNY" ? `¥${amount}` : `${amount} ${currency}`;
-  const now = new Intl.DateTimeFormat("zh-CN", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(Date.now());
+  const now = formatFullDateTime(Date.now());
 
   const noteLine = note ? `> 备注：${note}\n` : "";
   const mentionLine = mentionTag ? `${mentionTag}\n` : "";
@@ -479,13 +481,7 @@ function buildText({
   fallbackReason?: "missing_id" | "missing_contact";
 }) {
   const priceLine = currency === "CNY" ? `¥${amount}` : `${amount} ${currency}`;
-  const now = new Intl.DateTimeFormat("zh-CN", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(Date.now());
+  const now = formatFullDateTime(Date.now());
   const fallbackNote = fallbackAll
     ? fallbackReason === "missing_id"
       ? "（无法定位陪练，已@全部）"

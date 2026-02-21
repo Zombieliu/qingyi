@@ -5,7 +5,8 @@ import { ArrowLeft, ShieldCheck, Send } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { PASSKEY_STORAGE_KEY } from "@/app/components/passkey-wallet";
 import { StateBlock } from "@/app/components/state-block";
-import { fetchWithUserAuth } from "@/app/components/user-auth-client";
+import { fetchWithUserAuth } from "@/lib/auth/user-auth-client";
+import { formatFullDateTime } from "@/lib/shared/date-utils";
 
 const STORAGE_KEY = "qy_guardian_applications_v1";
 
@@ -183,7 +184,9 @@ export default function GuardianPage() {
               className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm"
               placeholder="工作日晚 19:00-24:00"
               value={form.availability}
-              onChange={(event) => setForm((prev) => ({ ...prev, availability: event.target.value }))}
+              onChange={(event) =>
+                setForm((prev) => ({ ...prev, availability: event.target.value }))
+              }
             />
           </div>
           <div className="grid gap-2">
@@ -212,7 +215,12 @@ export default function GuardianPage() {
         <div className="text-sm font-semibold text-gray-900">申请进度</div>
         {applications.length === 0 ? (
           <div className="mt-3">
-            <StateBlock tone="empty" size="compact" title="暂无申请记录" description="提交申请后会显示进度" />
+            <StateBlock
+              tone="empty"
+              size="compact"
+              title="暂无申请记录"
+              description="提交申请后会显示进度"
+            />
           </div>
         ) : (
           <div className="mt-3 grid gap-3">
@@ -227,12 +235,7 @@ export default function GuardianPage() {
                 </div>
                 <div className="text-xs text-slate-500 mt-1">申请号：{item.id}</div>
                 <div className="text-[11px] text-slate-400 mt-2">
-                  {new Date(item.createdAt).toLocaleString("zh-CN", {
-                    month: "2-digit",
-                    day: "2-digit",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
+                  {formatFullDateTime(item.createdAt)}
                 </div>
               </div>
             ))}

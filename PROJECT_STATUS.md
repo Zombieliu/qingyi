@@ -1,6 +1,6 @@
 # 情谊电竞 (Qingyi Esports) — 项目状态总览
 
-> 生成时间: 2026-02-19
+> 更新时间: 2026-02-19 (第二次更新)
 > 项目: 三角洲行动 电竞陪玩平台
 > 技术栈: Next.js 16 + React 19 + Sui 区块链 + Stripe 支付 + PostgreSQL
 
@@ -14,7 +14,7 @@ qingyi/
 │   ├── src/app/           # 页面、API 路由、组件
 │   ├── src/lib/           # 核心业务逻辑 (已重构为子目录)
 │   ├── src/i18n/          # 国际化翻译文件 (zh/en)
-│   ├── prisma/            # 数据库 Schema (25 个模型, 12 次迁移)
+│   ├── prisma/            # 数据库 Schema (24 个模型, 12 次迁移)
 │   └── public/            # 静态资源
 ├── packages/contracts/    # Sui Move 智能合约 (Dubhe/Obelisk 框架)
 ├── tests/                 # Playwright E2E + 视觉回归测试
@@ -58,6 +58,10 @@ qingyi/
 | PWA 离线 | ✅ | Service Worker, 离线缓存策略 |
 | 无障碍模式 | ✅ | 长辈模式 (大字体) |
 | 数据分析 | ✅ | 客户端埋点、UTM 归因、会话追踪 |
+| 订单详情页 | ✅ | 用户端订单详情、状态展示、陪练信息 |
+| 评价系统 | ✅ | 订单完成后评分(1-5星)、标签、文字评价，提交奖励 5 馒头 |
+| 邀请返利 | ✅ | 邀请码分享、双向馒头奖励、邀请记录 |
+| 排行榜 | ✅ | 消费榜、陪练榜、邀请榜，支持总榜/周榜/月榜 |
 
 ### 区块链
 
@@ -91,7 +95,9 @@ qingyi/
 | VIP 管理 | ✅ | 等级配置、会员管理、申请审批 |
 | 链上对账 | ✅ | 区块链订单对账工具 (finance 角色) |
 | 支付事件 | ✅ | Stripe Webhook 事件日志 |
-| 数据分析 | ✅ | 增长数据 (admin 角色) |
+| 数据分析 | ✅ | 增长数据、转化漏斗可视化、趋势折线、留存分析 (admin 角色) |
+| 邀请返利管理 | ✅ | 返利模式配置(固定/比例)、邀请记录查看、启停控制 |
+| 订单评价查看 | ✅ | 订单详情页内展示用户评价(评分、标签、内容) |
 
 ### 支付 & 对账
 
@@ -178,9 +184,7 @@ lib/
 |------|------|
 | 实时消息/聊天 | 用户与陪玩之间的即时通讯 (WebSocket/SSE) |
 | 推送通知 | PWA Push Notification，订单状态变更提醒 |
-| 评价系统 | 订单完成后的评分和评价，影响陪玩排名 |
 | 搜索优化 | 陪玩搜索支持筛选 (段位、价格、好评率) |
-| 订单详情页 | 用户端订单详情和状态追踪页面 |
 
 ### 中期
 
@@ -189,10 +193,7 @@ lib/
 | 陪玩端 App | 独立的陪玩接单界面，推送接单通知 |
 | 自动匹配 | 基于段位、时间、偏好的智能匹配算法 |
 | 优惠券自动发放 | 基于用户行为的自动营销 (首单、回流、生日) |
-| 数据看板增强 | 更丰富的运营数据可视化 (转化漏斗、留存分析) |
 | 多游戏支持 | 扩展到其他游戏 (架构已支持，需增加配置) |
-| 邀请返利 | 用户邀请机制，分享返钻石/馒头 |
-| 排行榜 | 陪玩排行、消费排行、活跃排行 |
 
 ### 长期
 
@@ -208,7 +209,7 @@ lib/
 
 ---
 
-## 五、数据库模型 (25 个)
+## 五、数据库模型 (24 个)
 
 ```
 AdminOrder              # 订单
@@ -232,6 +233,9 @@ MantouTransaction       # 馒头交易
 MantouWithdrawRequest   # 提现请求
 ChainEventCursor        # 链上事件游标
 UserSession             # 用户会话
+Referral                # 邀请关系
+ReferralConfig          # 邀请返利配置
+OrderReview             # 订单评价
 ```
 
 ---
@@ -242,6 +246,7 @@ UserSession             # 用户会话
 用户端:
   /api/auth/session              # 用户会话
   /api/orders/                   # 订单 CRUD + 链上同步
+  /api/orders/[orderId]/review   # 订单评价 (GET/POST)
   /api/pay/                      # Stripe 支付 + Webhook
   /api/ledger/                   # 钻石账本 (充值/记录)
   /api/mantou/                   # 馒头 (余额/提现/交易/充值/种子)
@@ -251,6 +256,7 @@ UserSession             # 用户会话
   /api/support/                  # 客服工单
   /api/coupons/                  # 优惠券
   /api/invoices/                 # 发票
+  /api/referral/                 # 邀请返利 (邀请码/记录/排行榜)
   /api/chain/sponsor             # Gas 代付
 
 定时任务:
@@ -260,11 +266,13 @@ UserSession             # 用户会话
   /api/cron/chain/cleanup-missing # 清理缺失订单
   /api/cron/pay/reconcile        # 支付对账
 
-管理后台 (23 个子路由):
+管理后台 (25+ 个子路由):
   /api/admin/login|logout|refresh|me
   /api/admin/orders|players|announcements|coupons
   /api/admin/earnings|guardians|invoices|support
   /api/admin/tokens|stats|analytics|audit
+  /api/admin/analytics/trend         # 趋势数据 + 留存分析
+  /api/admin/referral                # 邀请返利配置与记录管理
   /api/admin/ledger/credit
   /api/admin/mantou/withdraws
   /api/admin/vip/members|requests|tiers
@@ -294,11 +302,18 @@ UserSession             # 用户会话
 ## 八、当前 Git 状态
 
 - 分支: `main`
-- 已修改文件: ~110 个 (lib 重构导致大量导入路径更新)
-- 已删除文件: 25 个 (旧的 lib 平铺文件)
-- 新增目录: `lib/admin/`, `lib/auth/`, `lib/chain/`, `lib/i18n/`, `lib/shared/`
-- 状态: 未提交
+- 最近提交: `36f7e3d feat: 邀请返利与排行榜系统`
+- 未提交变更 (11 个文件):
+  - 修改: `prisma/schema.prisma` (新增 OrderReview 模型)
+  - 修改: `admin-store.ts`, `admin-types.ts` (评价相关方法和类型)
+  - 修改: `me/orders/page.tsx` (订单列表可点击跳转)
+  - 修改: `admin/orders/[orderId]/page.tsx` (管理端评价展示)
+  - 修改: `admin/analytics/page.tsx` (漏斗图、趋势线、留存卡片)
+  - 修改: `zh.json`, `en.json` (评价和订单详情 i18n)
+  - 新增: `me/orders/[orderId]/page.tsx` (用户端订单详情+评价)
+  - 新增: `api/admin/analytics/trend/route.ts` (趋势 API)
+  - 新增: `api/orders/[orderId]/review/route.ts` (评价 API)
 
 ---
 
-*此文档基于 2026-02-19 项目扫描生成，替代旧版 2026-02-16 状态文档。*
+*此文档基于 2026-02-19 项目扫描生成并更新，涵盖评价系统、订单详情页、数据看板增强、邀请返利与排行榜等新功能。*

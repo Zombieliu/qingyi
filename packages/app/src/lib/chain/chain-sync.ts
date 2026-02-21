@@ -1,14 +1,15 @@
 import "server-only";
-import { fetchChainOrdersAdmin, fetchChainOrdersAdminWithCursor, type ChainOrder } from "./chain-admin";
+import {
+  fetchChainOrdersAdmin,
+  fetchChainOrdersAdminWithCursor,
+  type ChainOrder,
+} from "./chain-admin";
 import { addOrder, getOrderById, updateOrder, processReferralReward } from "../admin/admin-store";
 import type { AdminOrder } from "../admin/admin-types";
 import { isValidSuiAddress, normalizeSuiAddress } from "@mysten/sui/utils";
-import {
-  findChainOrderCached,
-  clearCache,
-  getCacheStats,
-} from "./chain-order-cache";
+import { findChainOrderCached, clearCache, getCacheStats } from "./chain-order-cache";
 import { getChainEventCursor, updateChainEventCursor } from "./chain-event-cursor";
+import { env } from "@/lib/env";
 
 export function mapStage(status: number): AdminOrder["stage"] {
   if (status === 6) return "已取消";
@@ -62,7 +63,7 @@ function normalizeCompanionAddress(chainCompanion: string) {
   const normalized = normalizeSuiAddress(chainCompanion);
   if (!isValidSuiAddress(normalized)) return null;
   if (normalized === normalizeSuiAddress("0x0")) return null;
-  const defaultRaw = process.env.NEXT_PUBLIC_QY_DEFAULT_COMPANION || "";
+  const defaultRaw = env.NEXT_PUBLIC_QY_DEFAULT_COMPANION || "";
   if (defaultRaw) {
     const defaultNormalized = normalizeSuiAddress(defaultRaw);
     if (isValidSuiAddress(defaultNormalized) && defaultNormalized === normalized) {
@@ -79,7 +80,8 @@ export async function upsertChainOrder(chain: ChainOrder) {
   const deposit = toCny(chain.deposit);
   const amount = existing?.amount ?? Number((serviceFee + deposit).toFixed(2));
   const existingMeta = (existing?.meta || {}) as Record<string, unknown>;
-  const existingChainMeta = (existingMeta.chain as Record<string, unknown> | undefined) || undefined;
+  const existingChainMeta =
+    (existingMeta.chain as Record<string, unknown> | undefined) || undefined;
   const existingMetaStatusRaw = existingChainMeta?.status;
   const existingStatus =
     typeof existing?.chainStatus === "number"
@@ -88,8 +90,11 @@ export async function upsertChainOrder(chain: ChainOrder) {
         ? existingMetaStatusRaw
         : undefined;
   const effectiveStatus =
-    typeof existingStatus === "number" && existingStatus > chain.status ? existingStatus : chain.status;
-  const shouldPreserveChainMeta = typeof existingStatus === "number" && existingStatus > chain.status;
+    typeof existingStatus === "number" && existingStatus > chain.status
+      ? existingStatus
+      : chain.status;
+  const shouldPreserveChainMeta =
+    typeof existingStatus === "number" && existingStatus > chain.status;
   let meta = buildChainMeta(existing, chain);
   if (shouldPreserveChainMeta) {
     meta = {
@@ -133,7 +138,9 @@ export async function upsertChainOrder(chain: ChainOrder) {
     if (updated && updated.stage === "已完成" && existing.stage !== "已完成") {
       try {
         await processReferralReward(orderId, chain.user, amount);
-      } catch { /* non-critical */ }
+      } catch {
+        /* non-critical */
+      }
     }
     return updated;
   }
@@ -190,11 +197,19 @@ export async function syncChainOrders() {
       cursor.txDigest !== result.latestCursor.txDigest ||
       cursor.eventSeq !== result.latestCursor.eventSeq;
     if (shouldUpdate) {
-      await updateChainEventCursor({ cursor: result.latestCursor, lastEventMs: result.latestEventMs || undefined });
+      await updateChainEventCursor({
+        cursor: result.latestCursor,
+        lastEventMs: result.latestEventMs || undefined,
+      });
     }
   }
 
-  return { total: chainOrders.length, created, updated, mode: incremental ? "incremental" : "bootstrap" };
+  return {
+    total: chainOrders.length,
+    created,
+    updated,
+    mode: incremental ? "incremental" : "bootstrap",
+  };
 }
 
 /**

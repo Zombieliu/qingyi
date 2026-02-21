@@ -1,8 +1,8 @@
 "use client";
 
 import { addOrder, loadOrders, removeOrder, updateOrder, type LocalOrder } from "./order-store";
-import { readCache, writeCache } from "./client-cache";
-import { fetchWithUserAuth } from "./user-auth-client";
+import { readCache, writeCache } from "@/lib/shared/client-cache";
+import { fetchWithUserAuth } from "@/lib/auth/user-auth-client";
 import { getCurrentAddress, isChainOrdersEnabled } from "@/lib/chain/qy-chain";
 
 const ORDER_SOURCE = (() => {
@@ -45,9 +45,10 @@ function normalizeOrder(order: ServerOrder): LocalOrder {
   const chainMeta = meta.chain as { status?: number } | undefined;
   const hasChainStatus = order.chainStatus !== undefined && order.chainStatus !== null;
   const isChain = Boolean(order.chainDigest) || hasChainStatus || chainMeta?.status !== undefined;
-  const status = isChain ? order.stage || order.paymentStatus : metaStatus || order.stage || order.paymentStatus;
-  const time =
-    typeof meta.time === "string" ? meta.time : new Date(order.createdAt).toISOString();
+  const status = isChain
+    ? order.stage || order.paymentStatus
+    : metaStatus || order.stage || order.paymentStatus;
+  const time = typeof meta.time === "string" ? meta.time : new Date(order.createdAt).toISOString();
   return {
     id: order.id,
     user: order.user,
@@ -58,8 +59,11 @@ function normalizeOrder(order: ServerOrder): LocalOrder {
     status: status || "待处理",
     time,
     chainDigest: order.chainDigest || (meta.chainDigest as string | undefined),
-    chainStatus: order.chainStatus ?? (chainMeta?.status ?? undefined),
-    serviceFee: typeof order.serviceFee === "number" ? order.serviceFee : (meta.serviceFee as number | undefined),
+    chainStatus: order.chainStatus ?? chainMeta?.status ?? undefined,
+    serviceFee:
+      typeof order.serviceFee === "number"
+        ? order.serviceFee
+        : (meta.serviceFee as number | undefined),
     serviceFeePaid: meta.serviceFeePaid as boolean | undefined,
     depositPaid: meta.depositPaid as boolean | undefined,
     playerPaid: meta.playerPaid as boolean | undefined,
@@ -107,7 +111,9 @@ type FetchPublicOrdersResult = {
   meta: FetchMeta;
 };
 
-export async function fetchOrdersWithMeta(options: { force?: boolean } = {}): Promise<FetchOrdersResult> {
+export async function fetchOrdersWithMeta(
+  options: { force?: boolean } = {}
+): Promise<FetchOrdersResult> {
   if (ORDER_SOURCE !== "server") {
     return { items: loadOrders(), meta: { fromCache: true, stale: false } };
   }
@@ -148,7 +154,10 @@ export async function fetchOrders(options: { force?: boolean } = {}): Promise<Lo
   return result.items;
 }
 
-export async function fetchOrderDetail(orderId: string, userAddress?: string): Promise<LocalOrder | null> {
+export async function fetchOrderDetail(
+  orderId: string,
+  userAddress?: string
+): Promise<LocalOrder | null> {
   if (!orderId) return null;
   if (ORDER_SOURCE !== "server") {
     return loadOrders().find((order) => order.id === orderId) || null;
@@ -183,12 +192,21 @@ export async function fetchPublicOrdersWithMeta(
   if (!address) {
     return { items: [], nextCursor: null, meta: { fromCache: true, stale: false } };
   }
-  const cacheKey = cursor ? `cache:orders:public:${address}:${cursor}` : `cache:orders:public:${address}:first`;
-  let cached: { value: { items: LocalOrder[]; nextCursor?: string | null }; fresh?: boolean } | null = null;
+  const cacheKey = cursor
+    ? `cache:orders:public:${address}:${cursor}`
+    : `cache:orders:public:${address}:first`;
+  let cached: {
+    value: { items: LocalOrder[]; nextCursor?: string | null };
+    fresh?: boolean;
+  } | null = null;
   if (!options.force) {
     cached = readCache<{ items: LocalOrder[]; nextCursor?: string | null }>(cacheKey, 15_000, true);
     if (cached?.fresh) {
-      return { items: cached.value.items, nextCursor: cached.value.nextCursor, meta: { fromCache: true, stale: false } };
+      return {
+        items: cached.value.items,
+        nextCursor: cached.value.nextCursor,
+        meta: { fromCache: true, stale: false },
+      };
     }
   }
   const params = new URLSearchParams();
@@ -199,7 +217,11 @@ export async function fetchPublicOrdersWithMeta(
   const res = await fetchWithUserAuth(`/api/orders?${params.toString()}`, {}, address);
   if (!res.ok) {
     if (res.status === 401 || res.status === 403) {
-      return { items: [], nextCursor: null, meta: { fromCache: false, stale: false, error: `HTTP ${res.status}` } };
+      return {
+        items: [],
+        nextCursor: null,
+        meta: { fromCache: false, stale: false, error: `HTTP ${res.status}` },
+      };
     }
     const hasCache = Boolean(cached?.value);
     return {
@@ -246,11 +268,15 @@ export async function createOrder(
   if (requestBody.userAddress && address && requestBody.userAddress !== address) {
     throw new Error("userAddress mismatch");
   }
-  const res = await fetchWithUserAuth("/api/orders", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body,
-  }, address);
+  const res = await fetchWithUserAuth(
+    "/api/orders",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body,
+    },
+    address
+  );
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     throw new Error(data?.error || "创建订单失败");
@@ -286,15 +312,21 @@ export async function patchOrder(
   if (patch.companionAddress && address && patch.companionAddress !== address) {
     throw new Error("companionAddress mismatch");
   }
-  const res = await fetchWithUserAuth(`/api/orders/${orderId}`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body,
-  }, address);
+  const res = await fetchWithUserAuth(
+    `/api/orders/${orderId}`,
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body,
+    },
+    address
+  );
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
     const detail = data?.message || data?.error;
-    throw new Error(detail ? `${detail} (HTTP ${res.status})` : `order patch failed (HTTP ${res.status})`);
+    throw new Error(
+      detail ? `${detail} (HTTP ${res.status})` : `order patch failed (HTTP ${res.status})`
+    );
   }
 }
 
@@ -308,11 +340,15 @@ export async function deleteOrder(orderId: string, userAddress?: string) {
   if (userAddress && address && userAddress !== address) {
     throw new Error("userAddress mismatch");
   }
-  await fetchWithUserAuth(`/api/orders/${orderId}`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body,
-  }, address);
+  await fetchWithUserAuth(
+    `/api/orders/${orderId}`,
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body,
+    },
+    address
+  );
 }
 
 export async function syncChainOrder(orderId: string, userAddress?: string, digest?: string) {
@@ -324,15 +360,21 @@ export async function syncChainOrder(orderId: string, userAddress?: string, dige
   if (userAddress && address && userAddress !== address) {
     throw new Error("userAddress mismatch");
   }
-  const res = await fetchWithUserAuth(`/api/orders/${orderId}/chain-sync`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body,
-  }, address);
+  const res = await fetchWithUserAuth(
+    `/api/orders/${orderId}/chain-sync`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body,
+    },
+    address
+  );
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
     const detail = data?.message || data?.error;
-    throw new Error(detail ? `${detail} (HTTP ${res.status})` : `chain sync failed (HTTP ${res.status})`);
+    throw new Error(
+      detail ? `${detail} (HTTP ${res.status})` : `chain sync failed (HTTP ${res.status})`
+    );
   }
   return res.json();
 }

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { RefreshCw } from "lucide-react";
-import { readCache, writeCache } from "@/app/components/client-cache";
+import { readCache, writeCache } from "@/lib/shared/client-cache";
 import * as chainOrderUtils from "@/lib/chain/chain-order-utils";
 import { StateBlock } from "@/app/components/state-block";
 import { ConfirmDialog } from "@/app/components/confirm-dialog";
@@ -23,7 +23,9 @@ type ChainOrder = {
 export default function ChainPage() {
   const [chainOrders, setChainOrders] = useState<ChainOrder[]>([]);
   const [missingLocal, setMissingLocal] = useState<ChainOrder[]>([]);
-  const [missingChain, setMissingChain] = useState<Array<{ id: string; user: string; item: string }>>([]);
+  const [missingChain, setMissingChain] = useState<
+    Array<{ id: string; user: string; item: string }>
+  >([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [action, setAction] = useState<string | null>(null);
@@ -372,12 +374,20 @@ export default function ChainPage() {
         {loading ? (
           <StateBlock tone="loading" size="compact" title="加载中" description="正在同步争议订单" />
         ) : disputedOrders.length === 0 ? (
-          <StateBlock tone="empty" size="compact" title="暂无争议订单" description="目前没有待处理争议" />
+          <StateBlock
+            tone="empty"
+            size="compact"
+            title="暂无争议订单"
+            description="目前没有待处理争议"
+          />
         ) : (
           <div className="admin-stack">
             {disputedOrders.map((order) => (
               <div key={order.orderId} className="admin-card admin-card--subtle">
-                <div className="admin-card-header" style={{ alignItems: "flex-start", flexWrap: "wrap" }}>
+                <div
+                  className="admin-card-header"
+                  style={{ alignItems: "flex-start", flexWrap: "wrap" }}
+                >
                   <div>
                     <div className="admin-text-strong">订单 #{order.orderId}</div>
                     <div className="admin-meta">
@@ -388,7 +398,10 @@ export default function ChainPage() {
                       撮合费 ¥{formatAmount(order.serviceFee)} · 押金 ¥{formatAmount(order.deposit)}
                     </div>
                   </div>
-                  <div className="admin-card-actions" style={{ flexDirection: "column", alignItems: "stretch" }}>
+                  <div
+                    className="admin-card-actions"
+                    style={{ flexDirection: "column", alignItems: "stretch" }}
+                  >
                     <div style={{ display: "flex", gap: 8 }}>
                       <input
                         className="admin-input"
@@ -398,7 +411,10 @@ export default function ChainPage() {
                         onChange={(event) =>
                           setBps((prev) => ({
                             ...prev,
-                            [order.orderId]: { ...prev[order.orderId], service: event.target.value },
+                            [order.orderId]: {
+                              ...prev[order.orderId],
+                              service: event.target.value,
+                            },
                           }))
                         }
                       />
@@ -410,7 +426,10 @@ export default function ChainPage() {
                         onChange={(event) =>
                           setBps((prev) => ({
                             ...prev,
-                            [order.orderId]: { ...prev[order.orderId], deposit: event.target.value },
+                            [order.orderId]: {
+                              ...prev[order.orderId],
+                              deposit: event.target.value,
+                            },
                           }))
                         }
                       />
@@ -463,7 +482,11 @@ export default function ChainPage() {
                   const canCancel = chainOrderUtils.isChainOrderCancelable(effectiveStatus);
                   const isExpired =
                     autoCancelMs !== null &&
-                    chainOrderUtils.isChainOrderAutoCancelable({ ...order, status: effectiveStatus }, Date.now(), autoCancelMs);
+                    chainOrderUtils.isChainOrderAutoCancelable(
+                      { ...order, status: effectiveStatus },
+                      Date.now(),
+                      autoCancelMs
+                    );
                   return (
                     <tr key={order.orderId}>
                       <td data-label="订单号">{order.orderId}</td>
@@ -471,7 +494,8 @@ export default function ChainPage() {
                         <span className={statusBadgeClass(effectiveStatus)}>
                           {statusLabel(effectiveStatus)}
                         </span>
-                        {typeof order.localStatus === "number" && order.localStatus > order.status ? (
+                        {typeof order.localStatus === "number" &&
+                        order.localStatus > order.status ? (
                           <span className="admin-badge warm" style={{ marginLeft: 8 }}>
                             本地较新
                           </span>
@@ -485,7 +509,9 @@ export default function ChainPage() {
                       <td data-label="撮合费">¥{formatAmount(order.serviceFee)}</td>
                       <td data-label="押金">¥{formatAmount(order.deposit)}</td>
                       <td data-label="创建时间">
-                        {Number.isFinite(createdAt) && createdAt > 0 ? new Date(createdAt).toLocaleString() : "-"}
+                        {Number.isFinite(createdAt) && createdAt > 0
+                          ? new Date(createdAt).toLocaleString()
+                          : "-"}
                       </td>
                       <td data-label="争议截止">
                         {Number(order.disputeDeadline) > 0
@@ -533,7 +559,12 @@ export default function ChainPage() {
           </div>
         ) : null}
         {loading ? (
-          <StateBlock tone="loading" size="compact" title="加载中" description="正在对账链上/本地订单" />
+          <StateBlock
+            tone="loading"
+            size="compact"
+            title="加载中"
+            description="正在对账链上/本地订单"
+          />
         ) : (
           <div className="admin-stack">
             <div>

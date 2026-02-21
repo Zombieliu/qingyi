@@ -173,7 +173,10 @@ export default async function PricingPage() {
           </div>
         </section>
 
-        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
       </div>
     </div>
   );

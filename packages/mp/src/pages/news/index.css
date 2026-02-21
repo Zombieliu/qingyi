@@ -1,0 +1,32 @@
+.news .news-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.news .news-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 14px;
+  background: #ffffff;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08);
+}
+
+.news .news-item .pill {
+  flex-shrink: 0;
+}
+
+.news .news-title {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.news .news-arrow {
+  color: #94a3b8;
+  font-weight: 700;
+}

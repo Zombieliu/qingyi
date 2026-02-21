@@ -1,6 +1,7 @@
 import "server-only";
 import { fetchChainOrdersAdmin, type ChainOrder } from "./chain-admin";
 import { chainOrderLogger } from "./chain-order-logger";
+import { env } from "@/lib/env";
 
 /**
  * 链上订单缓存系统
@@ -27,11 +28,11 @@ type CacheStats = {
 };
 
 // 缓存配置
-const CACHE_TTL_MS = Number(process.env.CHAIN_ORDER_CACHE_TTL_MS || "30000"); // 默认30秒
-const MAX_CACHE_AGE_MS = Number(process.env.CHAIN_ORDER_MAX_CACHE_AGE_MS || "300000"); // 最大5分钟
+const CACHE_TTL_MS = env.CHAIN_ORDER_CACHE_TTL_MS;
+const MAX_CACHE_AGE_MS = env.CHAIN_ORDER_MAX_CACHE_AGE_MS;
 
 let cache: CacheEntry | null = null;
-let stats: CacheStats = {
+const stats: CacheStats = {
   hits: 0,
   misses: 0,
   lastFetch: null,

@@ -60,7 +60,10 @@ export async function getUserSessionByHash(tokenHash: string) {
   return row ? toRecord(row) : null;
 }
 
-export async function updateUserSessionByHash(tokenHash: string, patch: Partial<UserSessionRecord>) {
+export async function updateUserSessionByHash(
+  tokenHash: string,
+  patch: Partial<UserSessionRecord>
+) {
   const row = await prisma.userSession.update({
     where: { tokenHash },
     data: {

@@ -3,9 +3,11 @@ import { useEffect } from "react";
 
 declare global {
   interface Window {
-    serwist: {
-      register: () => void;
-    } | undefined;
+    serwist:
+      | {
+          register: () => void;
+        }
+      | undefined;
   }
 }
 

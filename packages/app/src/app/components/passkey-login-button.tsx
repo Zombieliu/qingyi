@@ -18,14 +18,17 @@ import {
   saveStoredWallet,
   shortAddress,
 } from "./passkey-wallet";
-import { trackEvent } from "@/app/components/analytics";
+import { trackEvent } from "@/lib/services/analytics";
 import { useI18n } from "@/lib/i18n/i18n-client";
-import { ensureUserSession } from "@/app/components/user-auth-client";
+import { ensureUserSession } from "@/lib/auth/user-auth-client";
 
-const toBase64 = (bytes: Uint8Array) =>
-  btoa(String.fromCharCode(...Array.from(bytes)));
+const toBase64 = (bytes: Uint8Array) => btoa(String.fromCharCode(...Array.from(bytes)));
 const fromBase64 = (b64: string) =>
-  new Uint8Array(atob(b64).split("").map((c) => c.charCodeAt(0)));
+  new Uint8Array(
+    atob(b64)
+      .split("")
+      .map((c) => c.charCodeAt(0))
+  );
 
 function isMissingCredential(error: unknown) {
   const err = error as Error & { name?: string };
@@ -91,7 +94,11 @@ export default function PasskeyLoginButton() {
     return () => controller.abort();
   }, []);
 
-  const persist = async (stored: StoredWallet, msg: string, meta?: { created?: boolean; recovered?: boolean }) => {
+  const persist = async (
+    stored: StoredWallet,
+    msg: string,
+    meta?: { created?: boolean; recovered?: boolean }
+  ) => {
     const next = saveStoredWallet(stored);
     if (!next) return;
     trackEvent("login_success", {
@@ -115,7 +122,7 @@ export default function PasskeyLoginButton() {
       setToast(t("passkey.error.nowallet"));
       return;
     }
-    let stage = "signin";
+    const stage = "signin";
     try {
       setLoading(true);
       setOverlay(true);
@@ -126,7 +133,9 @@ export default function PasskeyLoginButton() {
       await keypair.signPersonalMessage(new TextEncoder().encode("login-check"));
       await persist(target, t("passkey.success.login"));
     } catch (e) {
-      const message = isMissingCredential(e) ? t("passkey.error.missing") : (e as Error).message || t("passkey.error");
+      const message = isMissingCredential(e)
+        ? t("passkey.error.missing")
+        : (e as Error).message || t("passkey.error");
       trackEvent("login_failed", { method: "passkey", stage, message });
       setToast(message);
     } finally {
@@ -136,7 +145,7 @@ export default function PasskeyLoginButton() {
   };
 
   const createPasskey = async () => {
-    let stage = "register";
+    const stage = "register";
     try {
       setLoading(true);
       setOverlay(true);
@@ -147,7 +156,9 @@ export default function PasskeyLoginButton() {
       const publicKey = keypair.getPublicKey();
       const address = publicKey.toSuiAddress();
       const publicKeyB64 = toBase64(publicKey.toRawBytes());
-      await persist({ address, publicKey: publicKeyB64 }, t("passkey.success.create"), { created: true });
+      await persist({ address, publicKey: publicKeyB64 }, t("passkey.success.create"), {
+        created: true,
+      });
     } catch (e) {
       const message = (e as Error).message || t("passkey.error");
       trackEvent("login_failed", { method: "passkey", stage, message });
@@ -159,7 +170,7 @@ export default function PasskeyLoginButton() {
   };
 
   const recoverPasskey = async () => {
-    let stage = "recover";
+    const stage = "recover";
     try {
       setLoading(true);
       setOverlay(true);
@@ -171,7 +182,10 @@ export default function PasskeyLoginButton() {
       const pks2 = await PasskeyKeypair.signAndRecover(provider, msg2);
       const pk = findCommonPublicKey(pks1, pks2);
       const publicKeyRaw = pk.toRawBytes();
-      const stored: StoredWallet = { address: pk.toSuiAddress(), publicKey: toBase64(publicKeyRaw) };
+      const stored: StoredWallet = {
+        address: pk.toSuiAddress(),
+        publicKey: toBase64(publicKeyRaw),
+      };
       await persist(stored, t("passkey.success.recover"), { recovered: true });
     } catch (e) {
       const message = (e as Error).message || t("passkey.error");
@@ -192,9 +206,14 @@ export default function PasskeyLoginButton() {
           </div>
           <div className="space-y-2">
             {wallets.map((item) => (
-              <div key={item.address} className="flex items-center justify-between gap-3 text-xs text-gray-600">
+              <div
+                key={item.address}
+                className="flex items-center justify-between gap-3 text-xs text-gray-600"
+              >
                 <div>
-                  <div className="text-sm font-semibold text-gray-900">{item.label || shortAddress(item.address)}</div>
+                  <div className="text-sm font-semibold text-gray-900">
+                    {item.label || shortAddress(item.address)}
+                  </div>
                   <div className="text-[11px] text-gray-400">
                     {item.lastUsedAt ? new Date(item.lastUsedAt).toLocaleDateString("zh-CN") : ""}
                   </div>
@@ -227,7 +246,12 @@ export default function PasskeyLoginButton() {
         {loading ? t("passkey.processing") : t("passkey.login")}
       </button>
       <div className="mt-3 space-y-2">
-        <button className="lc-tab-btn" onClick={createPasskey} disabled={loading} style={{ padding: "10px 12px" }}>
+        <button
+          className="lc-tab-btn"
+          onClick={createPasskey}
+          disabled={loading}
+          style={{ padding: "10px 12px" }}
+        >
           {t("passkey.register")}
         </button>
         <button

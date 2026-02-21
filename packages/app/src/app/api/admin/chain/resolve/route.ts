@@ -1,29 +1,24 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { requireAdmin } from "@/lib/admin/admin-auth";
 import { resolveDisputeAdmin } from "@/lib/chain/chain-admin";
 import { syncChainOrder } from "@/lib/chain/chain-sync";
 import { recordAudit } from "@/lib/admin/admin-audit";
+import { parseBody } from "@/lib/shared/api-validation";
+
+const postSchema = z.object({
+  orderId: z.string().trim().min(1),
+  serviceRefundBps: z.number(),
+  depositSlashBps: z.number(),
+});
 
 export async function POST(req: Request) {
   const auth = await requireAdmin(req, { role: "finance" });
   if (!auth.ok) return auth.response;
 
-  let body: { orderId?: string; serviceRefundBps?: number; depositSlashBps?: number } = {};
-  try {
-    body = (await req.json()) as { orderId?: string; serviceRefundBps?: number; depositSlashBps?: number };
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
-
-  const orderId = body.orderId?.trim() || "";
-  const serviceRefundBps = Number(body.serviceRefundBps ?? NaN);
-  const depositSlashBps = Number(body.depositSlashBps ?? NaN);
-  if (!orderId) {
-    return NextResponse.json({ error: "orderId required" }, { status: 400 });
-  }
-  if (!Number.isFinite(serviceRefundBps) || !Number.isFinite(depositSlashBps)) {
-    return NextResponse.json({ error: "bps required" }, { status: 400 });
-  }
+  const parsed = await parseBody(req, postSchema);
+  if (!parsed.success) return parsed.response;
+  const { orderId, serviceRefundBps, depositSlashBps } = parsed.data;
 
   try {
     const result = await resolveDisputeAdmin({

@@ -4,8 +4,10 @@ import Link from "next/link";
 import { ArrowLeft, Gamepad2, Save } from "lucide-react";
 import { useMemo, useState } from "react";
 import { PASSKEY_STORAGE_KEY } from "@/app/components/passkey-wallet";
+import { GAME_PROFILE_KEY } from "@/lib/shared/constants";
+import { formatFullDateTime } from "@/lib/shared/date-utils";
 
-const STORAGE_KEY = "qy_game_profile_v1";
+const STORAGE_KEY = GAME_PROFILE_KEY;
 
 type GameProfile = {
   gameName: string;
@@ -75,7 +77,13 @@ export default function GameSettingsPage() {
   );
 }
 
-function GameSettingsForm({ profileKey, walletAddress }: { profileKey: string; walletAddress: string }) {
+function GameSettingsForm({
+  profileKey,
+  walletAddress,
+}: {
+  profileKey: string;
+  walletAddress: string;
+}) {
   const initialProfile = loadProfile(profileKey);
   const [form, setForm] = useState(() => ({
     gameName: initialProfile?.gameName ?? "",
@@ -140,7 +148,7 @@ function GameSettingsForm({ profileKey, walletAddress }: { profileKey: string; w
       {hint && <div className="mt-3 text-xs text-emerald-600">{hint}</div>}
       {savedAt && (
         <div className="mt-2 text-[11px] text-slate-400">
-          最近保存：{new Date(savedAt).toLocaleString("zh-CN")}
+          最近保存：{formatFullDateTime(savedAt)}
         </div>
       )}
     </section>

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { RefreshCw, Search, Save } from "lucide-react";
 import { StateBlock } from "@/app/components/state-block";
+import { formatShortDateTime } from "@/lib/shared/date-utils";
 
 type ReferralItem = {
   id: string;
@@ -70,25 +71,28 @@ export default function AdminReferralPage() {
     }
   };
 
-  const loadList = useCallback(async (cursorValue: string | null, nextPage: number) => {
-    setLoading(true);
-    try {
-      const params = new URLSearchParams();
-      params.set("pageSize", String(pageSize));
-      if (cursorValue) params.set("cursor", cursorValue);
-      if (statusFilter && statusFilter !== "全部") params.set("status", statusFilter);
-      if (query.trim()) params.set("q", query.trim());
-      const res = await fetch(`/api/admin/referral/list?${params.toString()}`);
-      if (res.ok) {
-        const data = await res.json();
-        setReferrals(Array.isArray(data?.items) ? data.items : []);
-        setPage(nextPage);
-        setNextCursor(data?.nextCursor || null);
+  const loadList = useCallback(
+    async (cursorValue: string | null, nextPage: number) => {
+      setLoading(true);
+      try {
+        const params = new URLSearchParams();
+        params.set("pageSize", String(pageSize));
+        if (cursorValue) params.set("cursor", cursorValue);
+        if (statusFilter && statusFilter !== "全部") params.set("status", statusFilter);
+        if (query.trim()) params.set("q", query.trim());
+        const res = await fetch(`/api/admin/referral/list?${params.toString()}`);
+        if (res.ok) {
+          const data = await res.json();
+          setReferrals(Array.isArray(data?.items) ? data.items : []);
+          setPage(nextPage);
+          setNextCursor(data?.nextCursor || null);
+        }
+      } finally {
+        setLoading(false);
       }
-    } finally {
-      setLoading(false);
-    }
-  }, [query, statusFilter]);
+    },
+    [query, statusFilter]
+  );
 
   useEffect(() => {
     setPrevCursors([]);
@@ -135,13 +139,18 @@ export default function AdminReferralPage() {
           <StateBlock tone="loading" size="compact" title="加载配置中" />
         ) : (
           <>
-            <div className="admin-form" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
+            <div
+              className="admin-form"
+              style={{ gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}
+            >
               <label className="admin-field">
                 启用返利
                 <select
                   className="admin-select"
                   value={config.enabled ? "是" : "否"}
-                  onChange={(e) => setConfig((prev) => ({ ...prev, enabled: e.target.value === "是" }))}
+                  onChange={(e) =>
+                    setConfig((prev) => ({ ...prev, enabled: e.target.value === "是" }))
+                  }
                 >
                   <option value="是">启用</option>
                   <option value="否">停用</option>
@@ -152,7 +161,9 @@ export default function AdminReferralPage() {
                 <select
                   className="admin-select"
                   value={config.mode}
-                  onChange={(e) => setConfig((prev) => ({ ...prev, mode: e.target.value as "fixed" | "percent" }))}
+                  onChange={(e) =>
+                    setConfig((prev) => ({ ...prev, mode: e.target.value as "fixed" | "percent" }))
+                  }
                 >
                   <option value="fixed">固定金额</option>
                   <option value="percent">按比例</option>
@@ -166,7 +177,9 @@ export default function AdminReferralPage() {
                       className="admin-input"
                       type="number"
                       value={config.inviterReward}
-                      onChange={(e) => setConfig((prev) => ({ ...prev, inviterReward: Number(e.target.value) }))}
+                      onChange={(e) =>
+                        setConfig((prev) => ({ ...prev, inviterReward: Number(e.target.value) }))
+                      }
                     />
                   </label>
                   <label className="admin-field">
@@ -175,7 +188,9 @@ export default function AdminReferralPage() {
                       className="admin-input"
                       type="number"
                       value={config.inviteeReward}
-                      onChange={(e) => setConfig((prev) => ({ ...prev, inviteeReward: Number(e.target.value) }))}
+                      onChange={(e) =>
+                        setConfig((prev) => ({ ...prev, inviteeReward: Number(e.target.value) }))
+                      }
                     />
                   </label>
                 </>
@@ -186,7 +201,9 @@ export default function AdminReferralPage() {
                     className="admin-input"
                     type="number"
                     value={config.percentBps}
-                    onChange={(e) => setConfig((prev) => ({ ...prev, percentBps: Number(e.target.value) }))}
+                    onChange={(e) =>
+                      setConfig((prev) => ({ ...prev, percentBps: Number(e.target.value) }))
+                    }
                   />
                 </label>
               )}
@@ -217,7 +234,11 @@ export default function AdminReferralPage() {
               onChange={(e) => setQuery(e.target.value)}
             />
           </div>
-          <select className="admin-select" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+          <select
+            className="admin-select"
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+          >
             <option value="全部">全部状态</option>
             <option value="pending">待返利</option>
             <option value="rewarded">已返利</option>
@@ -246,7 +267,12 @@ export default function AdminReferralPage() {
         {loading ? (
           <StateBlock tone="loading" size="compact" title="加载邀请记录中" />
         ) : referrals.length === 0 ? (
-          <StateBlock tone="empty" size="compact" title="暂无邀请记录" description="用户通过邀请链接注册后会显示在这里" />
+          <StateBlock
+            tone="empty"
+            size="compact"
+            title="暂无邀请记录"
+            description="用户通过邀请链接注册后会显示在这里"
+          />
         ) : (
           <div className="admin-table-wrap">
             <table className="admin-table">
@@ -267,14 +293,18 @@ export default function AdminReferralPage() {
                     <td data-label="邀请人">{shortAddr(r.inviterAddress)}</td>
                     <td data-label="被邀请人">{shortAddr(r.inviteeAddress)}</td>
                     <td data-label="状态">
-                      <span className={`admin-badge ${r.status === "rewarded" ? "success" : "neutral"}`}>
+                      <span
+                        className={`admin-badge ${r.status === "rewarded" ? "success" : "neutral"}`}
+                      >
                         {r.status === "rewarded" ? "已返利" : "待返利"}
                       </span>
                     </td>
                     <td data-label="邀请人奖励">{r.rewardInviter ?? "—"}</td>
                     <td data-label="被邀请人奖励">{r.rewardInvitee ?? "—"}</td>
-                    <td data-label="邀请时间">{new Date(r.createdAt).toLocaleString("zh-CN")}</td>
-                    <td data-label="返利时间">{r.rewardedAt ? new Date(r.rewardedAt).toLocaleString("zh-CN") : "—"}</td>
+                    <td data-label="邀请时间">{formatShortDateTime(r.createdAt)}</td>
+                    <td data-label="返利时间">
+                      {r.rewardedAt ? formatShortDateTime(r.rewardedAt) : "—"}
+                    </td>
                   </tr>
                 ))}
               </tbody>

@@ -35,7 +35,11 @@ export default async function News() {
 
       <div className="space-y-3">
         {articles.map((a, index) => (
-          <div key={a.id ?? `${a.title}-${a.tag}-${index}`} className="dl-card" style={{ padding: 14 }}>
+          <div
+            key={a.id ?? `${a.title}-${a.tag}-${index}`}
+            className="dl-card"
+            style={{ padding: 14 }}
+          >
             <div className="flex items-center gap-3">
               <span className="dl-grid-icon" style={{ color: "#ef4444", width: 44, height: 44 }}>
                 <Flame size={18} />

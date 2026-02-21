@@ -1,10 +1,21 @@
 import { NextResponse } from "next/server";
 import crypto from "crypto";
+import { z } from "zod";
 import { isValidSuiAddress, normalizeSuiAddress } from "@mysten/sui/utils";
 import { requireAdmin } from "@/lib/admin/admin-auth";
-import { addPlayer, getPlayerByAddress, removeGuardianApplication, updateGuardianApplication } from "@/lib/admin/admin-store";
+import {
+  addPlayer,
+  getPlayerByAddress,
+  removeGuardianApplication,
+  updateGuardianApplication,
+} from "@/lib/admin/admin-store";
 import { recordAudit } from "@/lib/admin/admin-audit";
-import type { AdminGuardianApplication } from "@/lib/admin/admin-types";
+import { parseBody } from "@/lib/shared/api-validation";
+
+const patchSchema = z.object({
+  status: z.enum(["待审核", "面试中", "已通过", "已拒绝"]).optional(),
+  note: z.string().optional(),
+});
 
 type RouteContext = { params: Promise<{ applicationId: string }> };
 
@@ -12,12 +23,9 @@ export async function PATCH(req: Request, { params }: RouteContext) {
   const auth = await requireAdmin(req, { role: "ops" });
   if (!auth.ok) return auth.response;
 
-  let body: Partial<AdminGuardianApplication> = {};
-  try {
-    body = (await req.json()) as Partial<AdminGuardianApplication>;
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
+  const parsed = await parseBody(req, patchSchema);
+  if (!parsed.success) return parsed.response;
+  const body = parsed.data;
 
   const { applicationId } = await params;
   const updated = await updateGuardianApplication(applicationId, {
@@ -32,10 +40,7 @@ export async function PATCH(req: Request, { params }: RouteContext) {
     if (normalized && isValidSuiAddress(normalized)) {
       const existing = await getPlayerByAddress(normalized);
       if (!existing.player && !existing.conflict) {
-        const name =
-          (updated.user || "").trim() ||
-          (updated.contact || "").trim() ||
-          "陪练";
+        const name = (updated.user || "").trim() || (updated.contact || "").trim() || "陪练";
         const noteParts: string[] = [];
         if (updated.games) noteParts.push(`擅长游戏：${updated.games}`);
         if (updated.experience) noteParts.push(`段位经验：${updated.experience}`);

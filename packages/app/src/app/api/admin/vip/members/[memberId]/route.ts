@@ -1,8 +1,20 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { requireAdmin } from "@/lib/admin/admin-auth";
 import { removeMember, updateMember } from "@/lib/admin/admin-store";
 import { recordAudit } from "@/lib/admin/admin-audit";
-import type { AdminMember } from "@/lib/admin/admin-types";
+import { parseBody } from "@/lib/shared/api-validation";
+
+const patchSchema = z.object({
+  userAddress: z.string().optional(),
+  userName: z.string().optional(),
+  tierId: z.string().optional(),
+  tierName: z.string().optional(),
+  points: z.number().optional(),
+  status: z.enum(["有效", "已过期", "待开通"]).optional(),
+  expiresAt: z.number().optional(),
+  note: z.string().optional(),
+});
 
 type RouteContext = { params: Promise<{ memberId: string }> };
 
@@ -10,12 +22,9 @@ export async function PATCH(req: Request, { params }: RouteContext) {
   const auth = await requireAdmin(req, { role: "ops" });
   if (!auth.ok) return auth.response;
 
-  let body: Partial<AdminMember> = {};
-  try {
-    body = (await req.json()) as Partial<AdminMember>;
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
+  const parsed = await parseBody(req, patchSchema);
+  if (!parsed.success) return parsed.response;
+  const body = parsed.data;
 
   const { memberId } = await params;
   const updated = await updateMember(memberId, body);

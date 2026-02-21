@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
 import crypto from "crypto";
 import { requireAdmin } from "@/lib/admin/admin-auth";
-import { addSupportTicket, querySupportTickets, querySupportTicketsCursor } from "@/lib/admin/admin-store";
+import {
+  addSupportTicket,
+  querySupportTickets,
+  querySupportTicketsCursor,
+} from "@/lib/admin/admin-store";
 import { recordAudit } from "@/lib/admin/admin-audit";
 import type { AdminSupportTicket, SupportStatus } from "@/lib/admin/admin-types";
 import { decodeCursorParam, encodeCursorParam } from "@/lib/cursor-utils";

@@ -9,7 +9,7 @@ import {
   findCommonPublicKey,
 } from "@mysten/sui/keypairs/passkey";
 import { StateBlock } from "@/app/components/state-block";
-import { ensureUserSession } from "@/app/components/user-auth-client";
+import { ensureUserSession } from "@/lib/auth/user-auth-client";
 
 export const PASSKEY_STORAGE_KEY = "qy_passkey_wallet_v3";
 export const PASSKEY_WALLETS_KEY = "qy_passkey_wallets_v1";
@@ -23,10 +23,13 @@ export type StoredWallet = {
   lastUsedAt?: number;
 };
 
-const toBase64 = (bytes: Uint8Array) =>
-  btoa(String.fromCharCode(...Array.from(bytes)));
+const toBase64 = (bytes: Uint8Array) => btoa(String.fromCharCode(...Array.from(bytes)));
 const fromBase64 = (b64: string) =>
-  new Uint8Array(atob(b64).split("").map((c) => c.charCodeAt(0)));
+  new Uint8Array(
+    atob(b64)
+      .split("")
+      .map((c) => c.charCodeAt(0))
+  );
 
 export function shortAddress(address: string) {
   if (!address) return "";
@@ -305,9 +308,14 @@ export default function PasskeyWallet() {
         <div className="mt-3 space-y-2">
           <div className="text-xs text-gray-500">最近账号</div>
           {wallets.map((item) => (
-            <div key={item.address} className="flex items-center justify-between gap-3 text-xs text-gray-600">
+            <div
+              key={item.address}
+              className="flex items-center justify-between gap-3 text-xs text-gray-600"
+            >
               <div>
-                <div className="text-sm font-semibold text-gray-900">{item.label || shortAddress(item.address)}</div>
+                <div className="text-sm font-semibold text-gray-900">
+                  {item.label || shortAddress(item.address)}
+                </div>
                 <div className="text-[11px] text-gray-400">
                   {item.lastUsedAt ? new Date(item.lastUsedAt).toLocaleDateString("zh-CN") : ""}
                 </div>
@@ -336,10 +344,20 @@ export default function PasskeyWallet() {
       )}
 
       <div className="mt-3 space-y-2">
-        <button onClick={() => login()} disabled={busy} className="lc-tab-btn" style={{ padding: "10px 12px" }}>
+        <button
+          onClick={() => login()}
+          disabled={busy}
+          className="lc-tab-btn"
+          style={{ padding: "10px 12px" }}
+        >
           {busy ? "登录中..." : "登录已有账号"}
         </button>
-        <button onClick={create} disabled={busy} className="lc-tab-btn" style={{ padding: "10px 12px" }}>
+        <button
+          onClick={create}
+          disabled={busy}
+          className="lc-tab-btn"
+          style={{ padding: "10px 12px" }}
+        >
           {busy ? "创建中..." : "创建新账号"}
         </button>
         <button
@@ -353,7 +371,9 @@ export default function PasskeyWallet() {
       </div>
 
       {hasCredential && (
-        <div className="mt-2 text-xs text-amber-600">检测到设备已有 Passkey，建议优先登录或找回。</div>
+        <div className="mt-2 text-xs text-amber-600">
+          检测到设备已有 Passkey，建议优先登录或找回。
+        </div>
       )}
 
       {wallet && (
@@ -362,7 +382,12 @@ export default function PasskeyWallet() {
           <button
             onClick={reset}
             className="lc-tab-btn"
-            style={{ marginLeft: 8, padding: "4px 8px", backgroundColor: "#f3f4f6", color: "#111827" }}
+            style={{
+              marginLeft: 8,
+              padding: "4px 8px",
+              backgroundColor: "#f3f4f6",
+              color: "#111827",
+            }}
           >
             清除本地缓存
           </button>

@@ -1,0 +1,111 @@
+.me .profile-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.me .profile-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.me .profile-avatar {
+  width: 52px;
+  height: 52px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, #0ea5e9 0%, #38bdf8 100%);
+  color: #ffffff;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+}
+
+.me .profile-info {
+  flex: 1;
+}
+
+.me .profile-name {
+  font-weight: 700;
+  font-size: 16px;
+  color: #0f172a;
+}
+
+.me .profile-id {
+  font-size: 12px;
+  color: #64748b;
+  margin-top: 2px;
+}
+
+.me .stat-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.me .stat-item {
+  background: #f8fafc;
+  border-radius: 12px;
+  padding: 8px;
+  text-align: center;
+  border: 1px solid rgba(15, 23, 42, 0.06);
+}
+
+.me .stat-value {
+  font-weight: 700;
+  color: #0f172a;
+  font-size: 12px;
+  word-break: break-all;
+}
+
+.me .stat-label {
+  font-size: 11px;
+  color: #64748b;
+  margin-top: 2px;
+}
+
+.me .action-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.me .action-row .button {
+  width: 100%;
+}
+
+.me .tool-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+
+.me .tool-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.me .tool-icon {
+  width: 46px;
+  height: 46px;
+  border-radius: 16px;
+  background: #f1f5f9;
+  color: #0f172a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 12px;
+}
+
+.me .tool-label {
+  font-size: 11px;
+  color: #475569;
+  text-align: center;
+}

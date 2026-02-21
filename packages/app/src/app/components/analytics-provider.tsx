@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
-import { syncAttributionFromLocation, trackEvent } from "./analytics";
+import { syncAttributionFromLocation, trackEvent } from "@/lib/services/analytics";
 
 export default function AnalyticsProvider() {
   const pathname = usePathname();

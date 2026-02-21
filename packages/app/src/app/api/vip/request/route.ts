@@ -1,37 +1,43 @@
 import { NextResponse } from "next/server";
 import crypto from "crypto";
-import { addMembershipRequest, getMembershipTierById, listActiveMembershipTiers } from "@/lib/admin/admin-store";
+import {
+  addMembershipRequest,
+  getMembershipTierById,
+  listActiveMembershipTiers,
+} from "@/lib/admin/admin-store";
 import type { AdminMembershipRequest, MembershipRequestStatus } from "@/lib/admin/admin-types";
 import { isValidSuiAddress, normalizeSuiAddress } from "@mysten/sui/utils";
 import { requireUserAuth } from "@/lib/auth/user-auth";
+import { z } from "zod";
+import { parseBodyRaw } from "@/lib/shared/api-validation";
+
+const vipRequestSchema = z.object({
+  userAddress: z.string().trim().min(1),
+  userName: z.string().trim().optional(),
+  contact: z.string().trim().optional(),
+  tierId: z.string().trim().optional(),
+});
 
 export async function POST(req: Request) {
-  let rawBody = "";
-  let body: {
-    userAddress?: string;
-    userName?: string;
-    contact?: string;
-    tierId?: string;
-  } = {};
-  try {
-    rawBody = await req.text();
-    body = rawBody ? (JSON.parse(rawBody) as typeof body) : {};
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
+  const parsed = await parseBodyRaw(req, vipRequestSchema);
+  if (!parsed.success) return parsed.response;
+  const { data: body, rawBody } = parsed;
 
-  const userAddressRaw = body.userAddress?.trim() || "";
-  const userAddress = normalizeSuiAddress(userAddressRaw);
+  const userAddress = normalizeSuiAddress(body.userAddress);
   if (!userAddress) {
     return NextResponse.json({ error: "userAddress required" }, { status: 400 });
   }
   if (!isValidSuiAddress(userAddress)) {
     return NextResponse.json({ error: "invalid userAddress" }, { status: 400 });
   }
-  const auth = await requireUserAuth(req, { intent: "vip:request:create", address: userAddress, body: rawBody });
+  const auth = await requireUserAuth(req, {
+    intent: "vip:request:create",
+    address: userAddress,
+    body: rawBody,
+  });
   if (!auth.ok) return auth.response;
 
-  let tierId = body.tierId?.trim() || "";
+  let tierId = body.tierId || "";
   let tier = tierId ? await getMembershipTierById(tierId) : null;
   if (!tier) {
     const tiers = await listActiveMembershipTiers();
@@ -45,8 +51,8 @@ export async function POST(req: Request) {
   const request: AdminMembershipRequest = {
     id: `VIP-${Date.now()}-${crypto.randomInt(1000, 9999)}`,
     userAddress: auth.address,
-    userName: body.userName?.trim(),
-    contact: body.contact?.trim(),
+    userName: body.userName,
+    contact: body.contact,
     tierId: tierId,
     tierName: tier.name,
     status: "待审核" as MembershipRequestStatus,

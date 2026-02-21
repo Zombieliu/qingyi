@@ -5,6 +5,7 @@ import { Check, Copy, RefreshCw, Trash2 } from "lucide-react";
 import type { AdminAccessToken, AdminRole, AdminTokenStatus } from "@/lib/admin/admin-types";
 import { ADMIN_ROLE_OPTIONS } from "@/lib/admin/admin-types";
 import { StateBlock } from "@/app/components/state-block";
+import { formatFullDateTime } from "@/lib/shared/date-utils";
 
 type TokenView = Omit<AdminAccessToken, "tokenHash">;
 
@@ -27,13 +28,7 @@ const statusLabels: Record<AdminTokenStatus, string> = {
 
 function formatTime(ts?: number) {
   if (!ts) return "-";
-  return new Date(ts).toLocaleString("zh-CN", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  return formatFullDateTime(ts);
 }
 
 export default function AdminTokensPage() {
@@ -150,13 +145,11 @@ export default function AdminTokensPage() {
     setSaving((prev) => ({ ...prev, [tokenId]: true }));
     setError(null);
     try {
-      const res = await fetch(`/api/admin/tokens/${tokenId}`,
-        {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(patch),
-        }
-      );
+      const res = await fetch(`/api/admin/tokens/${tokenId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(patch),
+      });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         setError(data?.error || "更新失败");
@@ -207,13 +200,18 @@ export default function AdminTokensPage() {
             </button>
           </div>
         </div>
-        <div className="admin-form" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))" }}>
+        <div
+          className="admin-form"
+          style={{ gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))" }}
+        >
           <label className="admin-field">
             角色
             <select
               className="admin-select"
               value={form.role}
-              onChange={(event) => setForm((prev) => ({ ...prev, role: event.target.value as AdminRole }))}
+              onChange={(event) =>
+                setForm((prev) => ({ ...prev, role: event.target.value as AdminRole }))
+              }
             >
               {ADMIN_ROLE_OPTIONS.map((role) => (
                 <option key={role} value={role}>
@@ -248,23 +246,25 @@ export default function AdminTokensPage() {
                 <p>{createHint}</p>
               </div>
               <div className="admin-card-actions">
-                <button
-                  className="admin-btn ghost"
-                  onClick={() => copyText(createdToken.token)}
-                >
+                <button className="admin-btn ghost" onClick={() => copyText(createdToken.token)}>
                   {copiedToken ? (
                     <>
-                      <Check size={14} style={{ marginRight: 4 }} />已复制
+                      <Check size={14} style={{ marginRight: 4 }} />
+                      已复制
                     </>
                   ) : (
                     <>
-                      <Copy size={14} style={{ marginRight: 4 }} />复制密钥
+                      <Copy size={14} style={{ marginRight: 4 }} />
+                      复制密钥
                     </>
                   )}
                 </button>
               </div>
             </div>
-            <div className="admin-text-body" style={{ wordBreak: "break-all", fontFamily: "monospace" }}>
+            <div
+              className="admin-text-body"
+              style={{ wordBreak: "break-all", fontFamily: "monospace" }}
+            >
               {createdToken.token}
             </div>
           </div>
@@ -307,7 +307,9 @@ export default function AdminTokensPage() {
                         onChange={(event) => {
                           const value = event.target.value;
                           setTokens((prev) =>
-                            prev.map((item) => (item.id === token.id ? { ...item, label: value } : item))
+                            prev.map((item) =>
+                              item.id === token.id ? { ...item, label: value } : item
+                            )
                           );
                         }}
                         onBlur={(event) => {
@@ -336,7 +338,9 @@ export default function AdminTokensPage() {
                       <span className="admin-text-strong">{token.tokenPrefix}****</span>
                     </td>
                     <td data-label="状态">
-                      <span className={`admin-badge ${token.status === "disabled" ? "neutral" : ""}`}>
+                      <span
+                        className={`admin-badge ${token.status === "disabled" ? "neutral" : ""}`}
+                      >
                         {statusLabels[token.status] || token.status}
                       </span>
                     </td>
@@ -362,11 +366,13 @@ export default function AdminTokensPage() {
                         >
                           {copiedId === token.id ? (
                             <>
-                              <Check size={14} style={{ marginRight: 4 }} />已复制前缀
+                              <Check size={14} style={{ marginRight: 4 }} />
+                              已复制前缀
                             </>
                           ) : (
                             <>
-                              <Copy size={14} style={{ marginRight: 4 }} />复制前缀
+                              <Copy size={14} style={{ marginRight: 4 }} />
+                              复制前缀
                             </>
                           )}
                         </button>
@@ -375,7 +381,8 @@ export default function AdminTokensPage() {
                           onClick={() => removeToken(token.id)}
                           disabled={saving[token.id]}
                         >
-                          <Trash2 size={14} style={{ marginRight: 4 }} />删除
+                          <Trash2 size={14} style={{ marginRight: 4 }} />
+                          删除
                         </button>
                       </div>
                     </td>

@@ -12,7 +12,7 @@ export async function generateMetadata({ params }: { params: { id: string } }) {
   }
   const description = item.content ? item.content.slice(0, 120) : "情谊电竞公告更新。";
   return {
-    title: `${item.title} | 情谊电竞` ,
+    title: `${item.title} | 情谊电竞`,
     description,
     alternates: { canonical: `/updates/${item.id}` },
     openGraph: {
@@ -44,7 +44,14 @@ export default async function UpdateDetailPage({ params }: { params: { id: strin
   return (
     <div style={{ minHeight: "100vh", background: "#f8fafc" }}>
       <div style={{ maxWidth: 860, margin: "0 auto", padding: "40px 20px 64px" }}>
-        <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16 }}>
+        <header
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            gap: 16,
+          }}
+        >
           <Link href="/updates" style={{ fontSize: 14, color: "#0f172a" }}>
             返回公告列表
           </Link>
@@ -53,9 +60,26 @@ export default async function UpdateDetailPage({ params }: { params: { id: strin
           </Link>
         </header>
 
-        <article style={{ marginTop: 20, padding: 20, borderRadius: 16, background: "#fff", border: "1px solid #e2e8f0" }}>
+        <article
+          style={{
+            marginTop: 20,
+            padding: 20,
+            borderRadius: 16,
+            background: "#fff",
+            border: "1px solid #e2e8f0",
+          }}
+        >
           <div style={{ fontSize: 22, fontWeight: 700, color: "#0f172a" }}>{item.title}</div>
-          <div style={{ marginTop: 6, display: "flex", gap: 12, alignItems: "center", color: "#94a3b8", fontSize: 12 }}>
+          <div
+            style={{
+              marginTop: 6,
+              display: "flex",
+              gap: 12,
+              alignItems: "center",
+              color: "#94a3b8",
+              fontSize: 12,
+            }}
+          >
             <span>{item.tag}</span>
             <span>{new Date(item.updatedAt || item.createdAt).toLocaleDateString("zh-CN")}</span>
           </div>
@@ -63,7 +87,10 @@ export default async function UpdateDetailPage({ params }: { params: { id: strin
             {item.content || "（无正文）"}
           </div>
         </article>
-        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
       </div>
     </div>
   );

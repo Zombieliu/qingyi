@@ -1,21 +1,23 @@
 import { NextResponse } from "next/server";
-import { buildSponsoredTransactionFromKind, executeSponsoredTransaction } from "@/lib/chain/chain-sponsor";
+import { z } from "zod";
+import {
+  buildSponsoredTransactionFromKind,
+  executeSponsoredTransaction,
+} from "@/lib/chain/chain-sponsor";
+import { parseBody } from "@/lib/shared/api-validation";
+
+const postSchema = z.object({
+  step: z.enum(["prepare", "execute"]),
+  sender: z.string().optional(),
+  kindBytes: z.string().optional(),
+  txBytes: z.string().optional(),
+  userSignature: z.string().optional(),
+});
 
 export async function POST(req: Request) {
-  let body: unknown;
-  try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
-
-  const payload = body as {
-    step?: "prepare" | "execute";
-    sender?: string;
-    kindBytes?: string;
-    txBytes?: string;
-    userSignature?: string;
-  };
+  const parsed = await parseBody(req, postSchema);
+  if (!parsed.success) return parsed.response;
+  const payload = parsed.data;
 
   if (payload.step === "prepare") {
     if (!payload.sender || !payload.kindBytes) {
@@ -34,7 +36,10 @@ export async function POST(req: Request) {
 
   if (payload.step === "execute") {
     if (!payload.txBytes || !payload.userSignature) {
-      return NextResponse.json({ error: "txBytes and userSignature are required" }, { status: 400 });
+      return NextResponse.json(
+        { error: "txBytes and userSignature are required" },
+        { status: 400 }
+      );
     }
     try {
       const result = await executeSponsoredTransaction({

@@ -11,11 +11,13 @@ export function Hero() {
             专注《三角洲行动》陪玩 / 组队
           </div>
           <h1 className="text-3xl font-semibold leading-tight text-white sm:text-4xl lg:text-5xl">
-            找到可靠队友、实时语音、战术指挥<br className="hidden sm:block" />
+            找到可靠队友、实时语音、战术指挥
+            <br className="hidden sm:block" />
             全部在一个 PWA 里
           </h1>
           <p className="max-w-2xl text-lg text-cyan-50/80">
-            Delta Link 帮你在 PC 与移动端快速匹配高质量陪玩、战术教练，提供一键开黑、房间语音、约战排期与战绩快照。
+            Delta Link 帮你在 PC
+            与移动端快速匹配高质量陪玩、战术教练，提供一键开黑、房间语音、约战排期与战绩快照。
           </p>
           <div className="flex flex-wrap gap-3">
             <button className="inline-flex items-center gap-2 rounded-full bg-cyan-500 px-4 py-2 text-base font-semibold text-slate-900 shadow-lg shadow-cyan-500/30 transition hover:-translate-y-[1px] hover:bg-cyan-400">

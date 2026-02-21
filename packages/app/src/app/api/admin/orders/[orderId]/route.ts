@@ -1,18 +1,24 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { requireAdmin } from "@/lib/admin/admin-auth";
 import { getOrderById, listPlayers, updateOrder } from "@/lib/admin/admin-store";
 import { recordAudit } from "@/lib/admin/admin-audit";
 import { canTransitionStage, isChainOrder } from "@/lib/order-guard";
 import type { AdminOrder, OrderStage } from "@/lib/admin/admin-types";
+import { parseBody } from "@/lib/shared/api-validation";
+
+const patchSchema = z.object({
+  paymentStatus: z.string().optional(),
+  note: z.string().optional(),
+  assignedTo: z.string().optional(),
+  stage: z.string().optional(),
+});
 
 type RouteContext = {
   params: Promise<{ orderId: string }>;
 };
 
-export async function PATCH(
-  req: Request,
-  { params }: RouteContext
-) {
+export async function PATCH(req: Request, { params }: RouteContext) {
   const auth = await requireAdmin(req, { role: "ops" });
   if (!auth.ok) return auth.response;
 
@@ -26,18 +32,15 @@ export async function PATCH(
     return NextResponse.json({ error: "not found" }, { status: 404 });
   }
 
-  let body: Partial<AdminOrder> = {};
-  try {
-    body = (await req.json()) as Partial<AdminOrder>;
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
+  const parsed = await parseBody(req, patchSchema);
+  if (!parsed.success) return parsed.response;
 
   const patch: Partial<AdminOrder> = {};
-  if (typeof body.paymentStatus === "string") patch.paymentStatus = body.paymentStatus;
-  if (typeof body.note === "string") patch.note = body.note;
-  if (typeof body.assignedTo === "string") patch.assignedTo = body.assignedTo.trim();
-  if (typeof body.stage === "string") patch.stage = body.stage as OrderStage;
+  if (typeof parsed.data.paymentStatus === "string")
+    patch.paymentStatus = parsed.data.paymentStatus;
+  if (typeof parsed.data.note === "string") patch.note = parsed.data.note;
+  if (typeof parsed.data.assignedTo === "string") patch.assignedTo = parsed.data.assignedTo.trim();
+  if (typeof parsed.data.stage === "string") patch.stage = parsed.data.stage as OrderStage;
 
   const chainOrder = isChainOrder(current);
   if (chainOrder && (patch.stage || patch.paymentStatus)) {
@@ -94,10 +97,7 @@ export async function PATCH(
   return NextResponse.json(updated);
 }
 
-export async function GET(
-  req: Request,
-  { params }: RouteContext
-) {
+export async function GET(req: Request, { params }: RouteContext) {
   const auth = await requireAdmin(req, { role: "viewer" });
   if (!auth.ok) return auth.response;
   const { orderId } = await params;

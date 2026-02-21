@@ -1,7 +1,12 @@
 import { Dubhe, Transaction, type SuiMoveNormalizedModules } from "@0xobelisk/sui-client";
 import { Inputs } from "@mysten/sui/transactions";
 import contractMetadata from "contracts/metadata.json";
-import { DAPP_HUB_ID, DAPP_HUB_INITIAL_SHARED_VERSION, NETWORK, PACKAGE_ID } from "contracts/deployment";
+import {
+  DAPP_HUB_ID,
+  DAPP_HUB_INITIAL_SHARED_VERSION,
+  NETWORK,
+  PACKAGE_ID,
+} from "contracts/deployment";
 
 const metadata = contractMetadata as SuiMoveNormalizedModules;
 const hasMetadata = Object.keys(metadata as Record<string, unknown>).length > 0;

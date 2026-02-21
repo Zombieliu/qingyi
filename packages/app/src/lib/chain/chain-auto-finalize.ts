@@ -1,12 +1,14 @@
 import "server-only";
-import { fetchChainOrdersAdmin, markCompletedAdmin, finalizeNoDisputeAdmin, type ChainOrder } from "./chain-admin";
+import {
+  fetchChainOrdersAdmin,
+  markCompletedAdmin,
+  finalizeNoDisputeAdmin,
+  type ChainOrder,
+} from "./chain-admin";
 import { listChainOrdersForAutoFinalize } from "../admin/admin-store";
 import { syncChainOrder } from "./chain-sync";
 import { isChainOrder } from "../order-guard";
-
-const DEFAULT_AUTO_COMPLETE_HOURS = 24;
-const DEFAULT_AUTO_COMPLETE_MAX = 10;
-const DEFAULT_AUTO_FINALIZE_MAX = 10;
+import { env } from "@/lib/env";
 
 const CHAIN_ORDER_STATUS = {
   DEPOSITED: 2,
@@ -63,25 +65,22 @@ function getCompanionEndedAt(meta: Record<string, unknown> | undefined): number 
 }
 
 export function getAutoCompleteConfig(): AutoCompleteConfig {
-  const hoursRaw = process.env.CHAIN_ORDER_AUTO_COMPLETE_HOURS;
-  const maxRaw = process.env.CHAIN_ORDER_AUTO_COMPLETE_MAX;
-  const hours = hoursRaw === undefined || hoursRaw === "" ? DEFAULT_AUTO_COMPLETE_HOURS : Number(hoursRaw);
-  const max = maxRaw === undefined || maxRaw === "" ? DEFAULT_AUTO_COMPLETE_MAX : Number(maxRaw);
+  const hours = env.CHAIN_ORDER_AUTO_COMPLETE_HOURS;
+  const max = env.CHAIN_ORDER_AUTO_COMPLETE_MAX;
   const enabled = Number.isFinite(hours) && hours > 0;
   return {
     enabled,
-    hours: Number.isFinite(hours) ? hours : DEFAULT_AUTO_COMPLETE_HOURS,
-    max: Number.isFinite(max) && max > 0 ? Math.floor(max) : DEFAULT_AUTO_COMPLETE_MAX,
+    hours,
+    max,
   };
 }
 
 export function getAutoFinalizeConfig(): AutoFinalizeConfig {
-  const maxRaw = process.env.CHAIN_ORDER_AUTO_FINALIZE_MAX;
-  const max = maxRaw === undefined || maxRaw === "" ? DEFAULT_AUTO_FINALIZE_MAX : Number(maxRaw);
+  const max = env.CHAIN_ORDER_AUTO_FINALIZE_MAX;
   const enabled = Number.isFinite(max) && max > 0;
   return {
     enabled,
-    max: Number.isFinite(max) && max > 0 ? Math.floor(max) : DEFAULT_AUTO_FINALIZE_MAX,
+    max,
   };
 }
 
@@ -132,7 +131,9 @@ async function buildCompanionEndedAtMap() {
   return map;
 }
 
-export async function autoCompleteChainOrders(options: { dryRun?: boolean; limit?: number } = {}): Promise<AutoCompleteResult> {
+export async function autoCompleteChainOrders(
+  options: { dryRun?: boolean; limit?: number } = {}
+): Promise<AutoCompleteResult> {
   const config = getAutoCompleteConfig();
   const thresholdMs = config.hours * 60 * 60 * 1000;
   if (!config.enabled || thresholdMs <= 0) {
@@ -150,8 +151,14 @@ export async function autoCompleteChainOrders(options: { dryRun?: boolean; limit
   }
 
   const nowMs = Date.now();
-  const [orders, companionEndedAtMap] = await Promise.all([fetchChainOrdersAdmin(), buildCompanionEndedAtMap()]);
-  const limit = Number.isFinite(options.limit) && Number(options.limit) > 0 ? Math.floor(Number(options.limit)) : config.max;
+  const [orders, companionEndedAtMap] = await Promise.all([
+    fetchChainOrdersAdmin(),
+    buildCompanionEndedAtMap(),
+  ]);
+  const limit =
+    Number.isFinite(options.limit) && Number(options.limit) > 0
+      ? Math.floor(Number(options.limit))
+      : config.max;
   const targets = pickAutoCompleteOrders(orders, companionEndedAtMap, nowMs, thresholdMs, limit);
 
   if (options.dryRun) {
@@ -202,7 +209,9 @@ export async function autoCompleteChainOrders(options: { dryRun?: boolean; limit
   };
 }
 
-export async function autoFinalizeChainOrders(options: { dryRun?: boolean; limit?: number } = {}): Promise<AutoFinalizeResult> {
+export async function autoFinalizeChainOrders(
+  options: { dryRun?: boolean; limit?: number } = {}
+): Promise<AutoFinalizeResult> {
   const config = getAutoFinalizeConfig();
   if (!config.enabled) {
     return {
@@ -218,7 +227,10 @@ export async function autoFinalizeChainOrders(options: { dryRun?: boolean; limit
 
   const nowMs = Date.now();
   const orders = await fetchChainOrdersAdmin();
-  const limit = Number.isFinite(options.limit) && Number(options.limit) > 0 ? Math.floor(Number(options.limit)) : config.max;
+  const limit =
+    Number.isFinite(options.limit) && Number(options.limit) > 0
+      ? Math.floor(Number(options.limit))
+      : config.max;
   const targets = pickAutoFinalizeOrders(orders, nowMs, limit);
 
   if (options.dryRun) {
@@ -265,12 +277,20 @@ export async function autoFinalizeChainOrders(options: { dryRun?: boolean; limit
   };
 }
 
-export async function autoFinalizeChainOrdersSummary(options: {
-  dryRun?: boolean;
-  completeLimit?: number;
-  finalizeLimit?: number;
-} = {}): Promise<AutoFinalizeSummary> {
-  const complete = await autoCompleteChainOrders({ dryRun: options.dryRun, limit: options.completeLimit });
-  const finalize = await autoFinalizeChainOrders({ dryRun: options.dryRun, limit: options.finalizeLimit });
+export async function autoFinalizeChainOrdersSummary(
+  options: {
+    dryRun?: boolean;
+    completeLimit?: number;
+    finalizeLimit?: number;
+  } = {}
+): Promise<AutoFinalizeSummary> {
+  const complete = await autoCompleteChainOrders({
+    dryRun: options.dryRun,
+    limit: options.completeLimit,
+  });
+  const finalize = await autoFinalizeChainOrders({
+    dryRun: options.dryRun,
+    limit: options.finalizeLimit,
+  });
   return { complete, finalize };
 }

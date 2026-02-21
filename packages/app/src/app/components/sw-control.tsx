@@ -46,7 +46,12 @@ export default function SwControl() {
     const reg = await navigator.serviceWorker.getRegistration();
     if (!reg) {
       setStatus("no-sw");
-      setState((prev) => ({ ...prev, active: undefined, waiting: undefined, installing: undefined }));
+      setState((prev) => ({
+        ...prev,
+        active: undefined,
+        waiting: undefined,
+        installing: undefined,
+      }));
       return null;
     }
     setState({
@@ -151,7 +156,11 @@ export default function SwControl() {
   return (
     <div>
       <div className="admin-meta">SW：{label}</div>
-      {message ? <div className="admin-meta-faint" style={{ marginTop: 4 }}>{message}</div> : null}
+      {message ? (
+        <div className="admin-meta-faint" style={{ marginTop: 4 }}>
+          {message}
+        </div>
+      ) : null}
       <div className="admin-actions" style={{ marginTop: 8, justifyContent: "flex-start" }}>
         <button
           className="admin-btn ghost"
@@ -161,11 +170,19 @@ export default function SwControl() {
           <RefreshCw size={14} />
           {status === "checking" ? "检查中..." : "检查更新"}
         </button>
-        <button className="admin-btn secondary" onClick={forceUpdate} disabled={status === "checking" || status === "forcing" || status === "clearing"}>
+        <button
+          className="admin-btn secondary"
+          onClick={forceUpdate}
+          disabled={status === "checking" || status === "forcing" || status === "clearing"}
+        >
           <ArrowUpCircle size={14} />
           {status === "forcing" ? "更新中..." : "强制更新"}
         </button>
-        <button className="admin-btn ghost" onClick={clearCache} disabled={status === "checking" || status === "forcing" || status === "clearing"}>
+        <button
+          className="admin-btn ghost"
+          onClick={clearCache}
+          disabled={status === "checking" || status === "forcing" || status === "clearing"}
+        >
           {status === "clearing" ? "清理中..." : "清理缓存"}
         </button>
       </div>

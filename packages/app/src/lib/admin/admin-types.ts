@@ -9,6 +9,9 @@ export type MembershipTierStatus = "上架" | "下架";
 export type MemberStatus = "有效" | "已过期" | "待开通";
 export type MembershipRequestStatus = "待审核" | "已通过" | "已拒绝";
 export type MantouWithdrawStatus = "待审核" | "已通过" | "已打款" | "已拒绝" | "已退回";
+export type RedeemRewardType = "mantou" | "diamond" | "vip" | "coupon" | "custom";
+export type RedeemCodeStatus = "active" | "disabled" | "exhausted" | "expired";
+export type RedeemRecordStatus = "pending" | "success" | "failed";
 export const MANTOU_WITHDRAW_STATUS_OPTIONS: MantouWithdrawStatus[] = [
   "待审核",
   "已通过",
@@ -178,6 +181,55 @@ export interface AdminCoupon {
   updatedAt?: number;
 }
 
+export interface AdminRedeemBatch {
+  id: string;
+  title: string;
+  description?: string;
+  rewardType: RedeemRewardType;
+  rewardPayload?: Record<string, unknown>;
+  status: RedeemCodeStatus;
+  maxRedeem?: number | null;
+  maxRedeemPerUser?: number | null;
+  totalCodes?: number | null;
+  usedCount?: number | null;
+  startsAt?: number | null;
+  expiresAt?: number | null;
+  createdAt: number;
+  updatedAt?: number;
+}
+
+export interface AdminRedeemCode {
+  id: string;
+  batchId?: string | null;
+  code: string;
+  status: RedeemCodeStatus;
+  maxRedeem: number;
+  maxRedeemPerUser: number;
+  usedCount: number;
+  rewardType?: RedeemRewardType;
+  rewardPayload?: Record<string, unknown>;
+  startsAt?: number | null;
+  expiresAt?: number | null;
+  note?: string;
+  createdAt: number;
+  updatedAt?: number;
+  lastRedeemedAt?: number;
+}
+
+export interface AdminRedeemRecord {
+  id: string;
+  codeId: string;
+  batchId?: string | null;
+  userAddress: string;
+  rewardType: RedeemRewardType;
+  rewardPayload?: Record<string, unknown>;
+  status: RedeemRecordStatus;
+  createdAt: number;
+  ip?: string;
+  userAgent?: string;
+  meta?: Record<string, unknown>;
+}
+
 export interface AdminInvoiceRequest {
   id: string;
   user?: string;
@@ -343,5 +395,45 @@ export const INVOICE_STATUS_OPTIONS: InvoiceStatus[] = ["待审核", "已开票"
 export const GUARDIAN_STATUS_OPTIONS: GuardianStatus[] = ["待审核", "面试中", "已通过", "已拒绝"];
 export const MEMBERSHIP_TIER_STATUS_OPTIONS: MembershipTierStatus[] = ["上架", "下架"];
 export const MEMBER_STATUS_OPTIONS: MemberStatus[] = ["有效", "已过期", "待开通"];
-export const MEMBERSHIP_REQUEST_STATUS_OPTIONS: MembershipRequestStatus[] = ["待审核", "已通过", "已拒绝"];
+export const MEMBERSHIP_REQUEST_STATUS_OPTIONS: MembershipRequestStatus[] = [
+  "待审核",
+  "已通过",
+  "已拒绝",
+];
+export const REDEEM_REWARD_TYPE_OPTIONS: RedeemRewardType[] = [
+  "mantou",
+  "diamond",
+  "vip",
+  "coupon",
+  "custom",
+];
+export const REDEEM_CODE_STATUS_OPTIONS: RedeemCodeStatus[] = [
+  "active",
+  "disabled",
+  "exhausted",
+  "expired",
+];
+export const REDEEM_RECORD_STATUS_OPTIONS: RedeemRecordStatus[] = ["pending", "success", "failed"];
 export const ADMIN_ROLE_OPTIONS: AdminRole[] = ["admin", "ops", "finance", "viewer"];
+
+export interface OrderReview {
+  id: string;
+  orderId: string;
+  reviewerAddress: string;
+  companionAddress: string;
+  rating: number;
+  content?: string;
+  tags?: string[];
+  createdAt: number;
+}
+
+export const REVIEW_TAG_OPTIONS = [
+  "技术好",
+  "态度好",
+  "有耐心",
+  "配合默契",
+  "准时上线",
+  "沟通顺畅",
+  "带飞能力强",
+  "氛围轻松",
+];

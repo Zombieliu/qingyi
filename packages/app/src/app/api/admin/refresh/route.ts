@@ -6,6 +6,7 @@ import {
   rotateAdminSession,
 } from "@/lib/admin/admin-auth";
 import { recordAudit } from "@/lib/admin/admin-audit";
+import { env } from "@/lib/env";
 
 export async function POST(req: Request) {
   const auth = await requireAdmin(req, { role: "viewer" });
@@ -26,7 +27,7 @@ export async function POST(req: Request) {
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
     path: "/",
-    maxAge: 60 * 60 * Number(process.env.ADMIN_SESSION_TTL_HOURS || "12"),
+    maxAge: 60 * 60 * env.ADMIN_SESSION_TTL_HOURS,
   });
   await recordAudit(req, auth, "auth.rotate");
   return response;

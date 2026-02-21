@@ -5,6 +5,7 @@ import { Transaction } from "@mysten/sui/transactions";
 import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
 import { fromBase64, isValidSuiAddress, normalizeSuiAddress, toBase64 } from "@mysten/sui/utils";
 import { PACKAGE_ID } from "contracts/deployment";
+import { env } from "@/lib/env";
 
 const DEFAULT_SPONSOR_GAS_BUDGET = 50_000_000;
 
@@ -20,14 +21,14 @@ const ALLOWED_TARGETS = new Set([
 ]);
 
 function getRpcUrl(): string {
-  const explicit = process.env.SUI_RPC_URL || process.env.NEXT_PUBLIC_SUI_RPC_URL;
+  const explicit = env.SUI_RPC_URL || env.NEXT_PUBLIC_SUI_RPC_URL;
   if (explicit) return explicit;
-  const network = process.env.SUI_NETWORK || process.env.NEXT_PUBLIC_SUI_NETWORK || "testnet";
+  const network = env.SUI_NETWORK;
   return getFullnodeUrl(network as "testnet" | "mainnet" | "devnet" | "localnet");
 }
 
 function getSponsorSigner() {
-  const key = process.env.SUI_SPONSOR_PRIVATE_KEY || process.env.SUI_ADMIN_PRIVATE_KEY;
+  const key = env.SUI_SPONSOR_PRIVATE_KEY || env.SUI_ADMIN_PRIVATE_KEY;
   if (!key) {
     throw new Error("Missing SUI_SPONSOR_PRIVATE_KEY");
   }
@@ -35,13 +36,12 @@ function getSponsorSigner() {
 }
 
 function resolveGasBudget(): number {
-  const raw = process.env.SUI_SPONSOR_GAS_BUDGET;
-  if (!raw) return DEFAULT_SPONSOR_GAS_BUDGET;
-  const parsed = Number(raw);
-  if (!Number.isFinite(parsed) || parsed <= 0) {
+  const budget = env.SUI_SPONSOR_GAS_BUDGET;
+  if (!budget) return DEFAULT_SPONSOR_GAS_BUDGET;
+  if (budget <= 0) {
     throw new Error("Invalid SUI_SPONSOR_GAS_BUDGET");
   }
-  return parsed;
+  return budget;
 }
 
 function ensureAllowedSponsoredTransaction(tx: Transaction) {
@@ -65,7 +65,10 @@ function ensureAllowedSponsoredTransaction(tx: Transaction) {
   return data;
 }
 
-export async function buildSponsoredTransactionFromKind(params: { sender: string; kindBytes: string }) {
+export async function buildSponsoredTransactionFromKind(params: {
+  sender: string;
+  kindBytes: string;
+}) {
   const sender = normalizeSuiAddress(params.sender);
   if (!isValidSuiAddress(sender)) {
     throw new Error("Invalid sender address");
@@ -96,7 +99,10 @@ export async function buildSponsoredTransactionFromKind(params: { sender: string
   };
 }
 
-export async function executeSponsoredTransaction(params: { txBytes: string; userSignature: string }) {
+export async function executeSponsoredTransaction(params: {
+  txBytes: string;
+  userSignature: string;
+}) {
   const bytes = fromBase64(params.txBytes);
   const tx = Transaction.from(bytes);
   const data = ensureAllowedSponsoredTransaction(tx);

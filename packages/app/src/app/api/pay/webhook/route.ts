@@ -1,15 +1,21 @@
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
-import { addPaymentEvent, getOrderById, updateOrder, upsertLedgerRecord } from "@/lib/admin/admin-store";
+import {
+  addPaymentEvent,
+  getOrderById,
+  updateOrder,
+  upsertLedgerRecord,
+} from "@/lib/admin/admin-store";
 import { recordAudit } from "@/lib/admin/admin-audit";
+import { env } from "@/lib/env";
 
-const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
+const stripeSecretKey = env.STRIPE_SECRET_KEY;
 const stripe = stripeSecretKey ? new Stripe(stripeSecretKey) : null;
 
 export async function POST(req: Request) {
   const rawBody = await req.text();
   const signature = req.headers.get("stripe-signature") || "";
-  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+  const webhookSecret = env.STRIPE_WEBHOOK_SECRET;
   if (!webhookSecret && process.env.NODE_ENV === "production") {
     return NextResponse.json({ error: "webhook_secret_required" }, { status: 503 });
   }
@@ -36,7 +42,8 @@ export async function POST(req: Request) {
   }
 
   const eventType = event?.type || "unknown";
-  const object = (event?.data as { object?: Stripe.PaymentIntent | Stripe.Charge } | undefined)?.object;
+  const object = (event?.data as { object?: Stripe.PaymentIntent | Stripe.Charge } | undefined)
+    ?.object;
 
   let orderId: string | undefined;
   let userAddress: string | undefined;
@@ -94,14 +101,14 @@ export async function POST(req: Request) {
   }
 
   let creditOk = false;
-  if (isPaid && userAddress && diamondAmount && process.env.LEDGER_ADMIN_TOKEN && paymentIntentId) {
+  if (isPaid && userAddress && diamondAmount && env.LEDGER_ADMIN_TOKEN && paymentIntentId) {
     try {
       const url = new URL("/api/ledger/credit", req.url);
       const res = await fetch(url, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${process.env.LEDGER_ADMIN_TOKEN}`,
+          Authorization: `Bearer ${env.LEDGER_ADMIN_TOKEN}`,
         },
         body: JSON.stringify({
           user: userAddress,
@@ -146,10 +153,17 @@ export async function POST(req: Request) {
     }
   }
 
-  await recordAudit(req, { role: "finance", authType: "webhook" }, "payments.webhook", "payment", orderId, {
-    event: eventType,
-    verified,
-  });
+  await recordAudit(
+    req,
+    { role: "finance", authType: "webhook" },
+    "payments.webhook",
+    "payment",
+    orderId,
+    {
+      event: eventType,
+      verified,
+    }
+  );
 
   return NextResponse.json({ ok: true, verified });
 }

@@ -26,7 +26,9 @@ export async function GET(req: Request) {
   );
 
   const missingLocal = chainOrders.filter((order) => !localById.has(order.orderId));
-  const missingChain = localOrders.filter((order) => /^[0-9]+$/.test(order.id) && !chainById.has(order.id));
+  const missingChain = localOrders.filter(
+    (order) => /^[0-9]+$/.test(order.id) && !chainById.has(order.id)
+  );
   const chainOrdersWithLocal = chainOrders.map((order) => {
     const localStatus = localStatusById.get(order.orderId);
     const effectiveStatus =

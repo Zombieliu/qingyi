@@ -5,6 +5,7 @@ import { ArrowLeft, Headset, MessageCircle, Send, Clock3 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { PASSKEY_STORAGE_KEY } from "@/app/components/passkey-wallet";
 import { StateBlock } from "@/app/components/state-block";
+import { formatFullDateTime } from "@/lib/shared/date-utils";
 
 const STORAGE_KEY = "qy_support_requests_v1";
 
@@ -147,7 +148,9 @@ export default function SupportPage() {
             </div>
           ))}
         </div>
-        <div className="mt-3 text-xs text-slate-500">紧急问题可直接拨打客服电话，其他问题建议提交工单。</div>
+        <div className="mt-3 text-xs text-slate-500">
+          紧急问题可直接拨打客服电话，其他问题建议提交工单。
+        </div>
       </section>
 
       <section className="dl-card" style={{ padding: 16 }}>
@@ -222,7 +225,12 @@ export default function SupportPage() {
         </div>
         {requests.length === 0 ? (
           <div className="mt-3">
-            <StateBlock tone="empty" size="compact" title="暂无记录" description="提交工单后会在这里显示" />
+            <StateBlock
+              tone="empty"
+              size="compact"
+              title="暂无记录"
+              description="提交工单后会在这里显示"
+            />
           </div>
         ) : (
           <div className="mt-3 grid gap-3">
@@ -237,12 +245,7 @@ export default function SupportPage() {
                 </div>
                 <div className="text-xs text-slate-500 mt-2">{item.message}</div>
                 <div className="text-[11px] text-slate-400 mt-2">
-                  {new Date(item.createdAt).toLocaleString("zh-CN", {
-                    month: "2-digit",
-                    day: "2-digit",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
+                  {formatFullDateTime(item.createdAt)}
                 </div>
               </div>
             ))}

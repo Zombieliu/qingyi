@@ -3,8 +3,10 @@
 import Link from "next/link";
 import { ArrowLeft, TicketPercent, Sparkles } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { readCache, writeCache } from "@/app/components/client-cache";
+import { readCache, writeCache } from "@/lib/shared/client-cache";
 import { StateBlock } from "@/app/components/state-block";
+import { getCurrentAddress } from "@/lib/chain/qy-chain";
+import { fetchWithUserAuth } from "@/lib/auth/user-auth-client";
 
 type Coupon = {
   id: string;
@@ -42,6 +44,17 @@ export default function CouponsPage() {
   const [loading, setLoading] = useState(true);
   const [claims, setClaims] = useState<string[]>([]);
   const [hint, setHint] = useState<string | null>(null);
+  const [redeemCode, setRedeemCode] = useState("");
+  const [redeemLoading, setRedeemLoading] = useState(false);
+  const [redeemHint, setRedeemHint] = useState<string | null>(null);
+  const [redeemReward, setRedeemReward] = useState<{
+    type: string;
+    amount?: number;
+    days?: number;
+    tierName?: string;
+    coupon?: { title?: string; code?: string };
+    message?: string;
+  } | null>(null);
   const cacheTtlMs = 60_000;
 
   useEffect(() => {
@@ -83,6 +96,59 @@ export default function CouponsPage() {
     setTimeout(() => setHint(null), 2500);
   };
 
+  const redeemSummary = useMemo(() => {
+    if (!redeemReward) return null;
+    if (redeemReward.type === "mantou") return `已到账 ${redeemReward.amount ?? 0} 馒头`;
+    if (redeemReward.type === "diamond") return `已到账 ${redeemReward.amount ?? 0} 钻石`;
+    if (redeemReward.type === "vip")
+      return `会员已延长 ${redeemReward.days ?? 0} 天${redeemReward.tierName ? `（${redeemReward.tierName}）` : ""}`;
+    if (redeemReward.type === "coupon") {
+      return redeemReward.coupon?.title
+        ? `已领取优惠券：${redeemReward.coupon.title}`
+        : "已领取优惠券";
+    }
+    return redeemReward.message || "兑换成功";
+  }, [redeemReward]);
+
+  const handleRedeem = async () => {
+    const raw = redeemCode.trim();
+    if (!raw) {
+      setRedeemHint("请输入卡密");
+      return;
+    }
+    const address = getCurrentAddress();
+    if (!address) {
+      setRedeemHint("请先登录账号");
+      return;
+    }
+    if (redeemLoading) return;
+    setRedeemLoading(true);
+    setRedeemHint(null);
+    try {
+      const res = await fetchWithUserAuth(
+        "/api/redeem",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ address, code: raw }),
+        },
+        address
+      );
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setRedeemHint(data?.error || "兑换失败");
+        return;
+      }
+      setRedeemReward(data?.reward || null);
+      setRedeemCode("");
+      setRedeemHint(data?.duplicated ? "已兑换过该卡密" : "兑换成功");
+    } catch {
+      setRedeemHint("兑换失败，请稍后再试");
+    } finally {
+      setRedeemLoading(false);
+    }
+  };
+
   return (
     <div className="dl-main">
       <header className="dl-topbar">
@@ -104,10 +170,36 @@ export default function CouponsPage() {
         <div className="flex items-center justify-between">
           <div>
             <div className="text-sm font-semibold text-gray-900">我的卡包</div>
-            <div className="text-xs text-slate-500 mt-1">已领取 {claimedCount} 张，可用 {availableCount} 张</div>
+            <div className="text-xs text-slate-500 mt-1">
+              已领取 {claimedCount} 张，可用 {availableCount} 张
+            </div>
           </div>
           <div className="text-xs text-slate-500">自动叠加最优优惠</div>
         </div>
+      </section>
+
+      <section className="dl-card" style={{ padding: 16, marginTop: 12 }}>
+        <div className="text-sm font-semibold text-gray-900">卡密兑换</div>
+        <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+          <input
+            className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-900"
+            placeholder="输入卡密"
+            value={redeemCode}
+            onChange={(event) => setRedeemCode(event.target.value)}
+          />
+          <button
+            type="button"
+            onClick={handleRedeem}
+            disabled={redeemLoading}
+            className={`h-10 rounded-xl px-4 text-sm font-semibold ${
+              redeemLoading ? "bg-slate-200 text-slate-500" : "bg-slate-900 text-white"
+            }`}
+          >
+            {redeemLoading ? "兑换中..." : "立即兑换"}
+          </button>
+        </div>
+        {redeemHint && <div className="mt-2 text-xs text-emerald-600">{redeemHint}</div>}
+        {redeemSummary && <div className="mt-1 text-xs text-slate-500">{redeemSummary}</div>}
       </section>
 
       <section className="dl-card" style={{ padding: 16 }}>
@@ -121,7 +213,12 @@ export default function CouponsPage() {
           </div>
         ) : coupons.length === 0 ? (
           <div className="mt-3">
-            <StateBlock tone="empty" size="compact" title="暂无可用优惠券" description="稍后再试或留意活动" />
+            <StateBlock
+              tone="empty"
+              size="compact"
+              title="暂无可用优惠券"
+              description="稍后再试或留意活动"
+            />
           </div>
         ) : (
           <div className="mt-3 grid gap-3">
@@ -154,9 +251,7 @@ export default function CouponsPage() {
                       disabled={claimed}
                       onClick={() => handleClaim(coupon.id)}
                       className={`h-8 px-3 rounded-full text-xs font-semibold ${
-                        claimed
-                          ? "bg-slate-200 text-slate-500"
-                          : "bg-slate-900 text-white"
+                        claimed ? "bg-slate-200 text-slate-500" : "bg-slate-900 text-white"
                       }`}
                     >
                       {claimed ? "已领取" : "领取"}

@@ -4,7 +4,14 @@ import { getMantouWallet } from "@/lib/admin/admin-store";
 import { requireUserAuth } from "@/lib/auth/user-auth";
 
 const MANTOU_BALANCE_CACHE_TTL_MS = 10_000;
-const mantouCache = new Map<string, { value: { balance: number; frozen: number }; updatedAt: number; inflight?: Promise<{ balance: number; frozen: number }> }>();
+const mantouCache = new Map<
+  string,
+  {
+    value: { balance: number; frozen: number };
+    updatedAt: number;
+    inflight?: Promise<{ balance: number; frozen: number }>;
+  }
+>();
 
 export async function GET(req: Request) {
   const referer = req.headers.get("referer") || "";
@@ -61,7 +68,13 @@ export async function GET(req: Request) {
     mantouCache.delete(resolvedAddress);
     if (cached?.value) {
       return NextResponse.json(
-        { ok: true, balance: cached.value.balance, frozen: cached.value.frozen, cached: true, fallback: true },
+        {
+          ok: true,
+          balance: cached.value.balance,
+          frozen: cached.value.frozen,
+          cached: true,
+          fallback: true,
+        },
         { headers: { "Cache-Control": "private, max-age=2, stale-while-revalidate=30" } }
       );
     }

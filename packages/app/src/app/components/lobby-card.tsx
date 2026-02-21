@@ -28,9 +28,13 @@ export function LobbyCard({ title, level, mode, slots, voice, verified }: LobbyC
           {level} · {mode}
         </div>
         <div className="flex items-center gap-3 text-xs text-white/70">
-          <div className="flex items-center gap-1"><Users className="h-4 w-4" /> {slots}</div>
+          <div className="flex items-center gap-1">
+            <Users className="h-4 w-4" /> {slots}
+          </div>
           {voice && (
-            <div className="flex items-center gap-1"><Mic2 className="h-4 w-4" /> 语音中</div>
+            <div className="flex items-center gap-1">
+              <Mic2 className="h-4 w-4" /> 语音中
+            </div>
           )}
         </div>
       </div>

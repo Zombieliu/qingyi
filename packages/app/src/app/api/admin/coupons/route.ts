@@ -1,10 +1,24 @@
 import { NextResponse } from "next/server";
 import crypto from "crypto";
+import { z } from "zod";
 import { requireAdmin } from "@/lib/admin/admin-auth";
 import { addCoupon, queryCoupons, queryCouponsCursor } from "@/lib/admin/admin-store";
 import { recordAudit } from "@/lib/admin/admin-audit";
-import type { AdminCoupon, CouponStatus } from "@/lib/admin/admin-types";
+import { parseBody } from "@/lib/shared/api-validation";
+import type { CouponStatus } from "@/lib/admin/admin-types";
 import { decodeCursorParam, encodeCursorParam } from "@/lib/cursor-utils";
+
+const postSchema = z.object({
+  id: z.string().optional(),
+  title: z.string().min(1),
+  code: z.string().optional(),
+  description: z.string().optional(),
+  discount: z.number().optional(),
+  minSpend: z.number().optional(),
+  status: z.enum(["可用", "停用", "已过期"]).default("可用"),
+  startsAt: z.union([z.string(), z.number()]).optional().nullable(),
+  expiresAt: z.union([z.string(), z.number()]).optional().nullable(),
+});
 
 function parseDate(value?: string | number | null) {
   if (!value) return undefined;
@@ -45,25 +59,18 @@ export async function POST(req: Request) {
   const auth = await requireAdmin(req, { role: "ops" });
   if (!auth.ok) return auth.response;
 
-  let body: Partial<AdminCoupon> = {};
-  try {
-    body = (await req.json()) as Partial<AdminCoupon>;
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
+  const parsed = await parseBody(req, postSchema);
+  if (!parsed.success) return parsed.response;
+  const body = parsed.data;
 
-  if (!body.title) {
-    return NextResponse.json({ error: "title required" }, { status: 400 });
-  }
-
-  const coupon: AdminCoupon = {
+  const coupon = {
     id: body.id || `CPN-${Date.now()}-${crypto.randomInt(1000, 9999)}`,
     title: body.title,
     code: body.code,
     description: body.description,
     discount: body.discount,
     minSpend: body.minSpend,
-    status: (body.status as CouponStatus) || "可用",
+    status: body.status as CouponStatus,
     startsAt: parseDate(body.startsAt),
     expiresAt: parseDate(body.expiresAt),
     createdAt: Date.now(),

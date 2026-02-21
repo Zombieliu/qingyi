@@ -7,6 +7,15 @@ type RouteContext = {
   params: Promise<{ orderId: string }>;
 };
 
+type ChainOrderComparison = {
+  statusMatch: boolean;
+  chainStatus: number;
+  localChainStatus: number | null;
+  userAddressMatch: boolean;
+  companionAddressMatch: boolean;
+  needsSync: boolean;
+};
+
 /**
  * 查询单个链上订单的详细信息
  *
@@ -45,7 +54,26 @@ export async function GET(req: Request, { params }: RouteContext) {
     );
   }
 
-  const response = {
+  type ChainOrderResult = Awaited<ReturnType<typeof findChainOrder>>;
+  type LocalOrderSummary = {
+    id: string;
+    stage: string;
+    paymentStatus: string;
+    source: string | null;
+    chainStatus: number | null;
+    userAddress: string | null;
+    companionAddress: string | null;
+    serviceFee: number | null;
+    deposit: number | null;
+    createdAt: number;
+  };
+
+  const response: {
+    orderId: string;
+    chainOrder: ChainOrderResult | null;
+    localOrder: LocalOrderSummary | null;
+    comparison: ChainOrderComparison | null;
+  } = {
     orderId,
     chainOrder: chainOrder || null,
     localOrder: localOrder
@@ -53,27 +81,30 @@ export async function GET(req: Request, { params }: RouteContext) {
           id: localOrder.id,
           stage: localOrder.stage,
           paymentStatus: localOrder.paymentStatus,
-          source: localOrder.source,
-          chainStatus: localOrder.chainStatus,
-          userAddress: localOrder.userAddress,
-          companionAddress: localOrder.companionAddress,
-          serviceFee: localOrder.serviceFee,
-          deposit: localOrder.deposit,
+          source: localOrder.source ?? null,
+          chainStatus: localOrder.chainStatus ?? null,
+          userAddress: localOrder.userAddress ?? null,
+          companionAddress: localOrder.companionAddress ?? null,
+          serviceFee: localOrder.serviceFee ?? null,
+          deposit: localOrder.deposit ?? null,
           createdAt: localOrder.createdAt,
         }
       : null,
-    comparison: null as any,
+    comparison: null,
   };
 
   // 如果两边都有数据，进行比较
   if (chainOrder && localOrder) {
+    const localChainStatus = localOrder.chainStatus ?? null;
+    const localUserAddress = localOrder.userAddress ?? null;
+    const localCompanionAddress = localOrder.companionAddress ?? null;
     response.comparison = {
-      statusMatch: chainOrder.status === localOrder.chainStatus,
+      statusMatch: chainOrder.status === localChainStatus,
       chainStatus: chainOrder.status,
-      localChainStatus: localOrder.chainStatus,
-      userAddressMatch: chainOrder.user === localOrder.userAddress,
-      companionAddressMatch: chainOrder.companion === localOrder.companionAddress,
-      needsSync: chainOrder.status !== localOrder.chainStatus,
+      localChainStatus,
+      userAddressMatch: chainOrder.user === localUserAddress,
+      companionAddressMatch: chainOrder.companion === localCompanionAddress,
+      needsSync: chainOrder.status !== localChainStatus,
     };
   }
 

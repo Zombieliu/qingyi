@@ -4,9 +4,10 @@ import Link from "next/link";
 import { ArrowLeft, RefreshCw, CalendarCheck } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { fetchOrders } from "@/app/components/order-service";
-import type { LocalOrder } from "@/app/components/order-store";
+import { fetchOrders } from "@/lib/services/order-service";
+import type { LocalOrder } from "@/lib/services/order-store";
 import { StateBlock } from "@/app/components/state-block";
+import { formatShortDateTime } from "@/lib/shared/date-utils";
 
 const filters = [
   { key: "all", label: "全部订单" },
@@ -18,12 +19,7 @@ function formatTime(value?: string) {
   if (!value) return "";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleString("zh-CN", {
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  return formatShortDateTime(date);
 }
 
 function isPendingStart(order: LocalOrder) {
@@ -106,7 +102,12 @@ export default function OrderCenterPage() {
         </div>
         {loading ? (
           <div className="mt-3">
-            <StateBlock tone="loading" size="compact" title="加载中" description="正在同步订单列表" />
+            <StateBlock
+              tone="loading"
+              size="compact"
+              title="加载中"
+              description="正在同步订单列表"
+            />
           </div>
         ) : filtered.length === 0 ? (
           <div className="mt-4">
@@ -125,9 +126,10 @@ export default function OrderCenterPage() {
         ) : (
           <div className="mt-3 grid gap-3">
             {filtered.map((order) => (
-              <div
+              <Link
                 key={order.id}
-                className="rounded-2xl border border-slate-100 bg-white px-4 py-3 shadow-[0_10px_30px_rgba(15,23,42,0.06)]"
+                href={`/me/orders/${order.id}`}
+                className="block rounded-2xl border border-slate-100 bg-white px-4 py-3 shadow-[0_10px_30px_rgba(15,23,42,0.06)] transition-colors hover:border-slate-200"
               >
                 <div className="flex items-center justify-between">
                   <div className="text-sm font-semibold text-gray-900">{order.item}</div>
@@ -144,7 +146,7 @@ export default function OrderCenterPage() {
                     {order.driver.tier ? ` · ${order.driver.tier}` : ""}
                   </div>
                 ) : null}
-              </div>
+              </Link>
             ))}
           </div>
         )}

@@ -10,28 +10,28 @@ import {
   setUserSessionCookie,
 } from "@/lib/auth/user-auth";
 import { rateLimit } from "@/lib/rate-limit";
+import { getClientIp } from "@/lib/shared/api-utils";
+import { env } from "@/lib/env";
+import { z } from "zod";
+import { parseBodyRaw } from "@/lib/shared/api-validation";
 
-const AUTH_SESSION_RATE_LIMIT_WINDOW_MS = Number(process.env.AUTH_SESSION_RATE_LIMIT_WINDOW_MS || "60000");
-const AUTH_SESSION_RATE_LIMIT_MAX = Number(process.env.AUTH_SESSION_RATE_LIMIT_MAX || "20");
-
-function getClientIp(req: Request): string {
-  const forwarded = req.headers.get("x-forwarded-for");
-  if (forwarded) return forwarded.split(",")[0].trim();
-  return req.headers.get("x-real-ip") || "unknown";
-}
+const sessionSchema = z.object({
+  address: z.string().optional(),
+});
 
 export async function POST(req: Request) {
-  if (!(await rateLimit(`auth:session:${getClientIp(req)}`, AUTH_SESSION_RATE_LIMIT_MAX, AUTH_SESSION_RATE_LIMIT_WINDOW_MS))) {
+  if (
+    !(await rateLimit(
+      `auth:session:${getClientIp(req)}`,
+      env.AUTH_SESSION_RATE_LIMIT_MAX,
+      env.AUTH_SESSION_RATE_LIMIT_WINDOW_MS
+    ))
+  ) {
     return NextResponse.json({ error: "rate_limited" }, { status: 429 });
   }
-  let rawBody = "";
-  let payload: { address?: string } = {};
-  try {
-    rawBody = await req.text();
-    payload = rawBody ? (JSON.parse(rawBody) as { address?: string }) : {};
-  } catch {
-    return NextResponse.json({ error: "invalid_json" }, { status: 400 });
-  }
+  const parsed = await parseBodyRaw(req, sessionSchema);
+  if (!parsed.success) return parsed.response;
+  const { data: payload, rawBody } = parsed;
 
   const headerAddress = req.headers.get("x-auth-address") || "";
   const address = normalizeSuiAddress(payload.address || headerAddress || "");

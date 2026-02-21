@@ -1,22 +1,24 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { requireAdmin } from "@/lib/admin/admin-auth";
 import { recordAudit } from "@/lib/admin/admin-audit";
+import { parseBody } from "@/lib/shared/api-validation";
+import { env } from "@/lib/env";
+
+const postSchema = z.object({}).passthrough();
 
 export async function POST(req: Request) {
   const auth = await requireAdmin(req, { role: "finance" });
   if (!auth.ok) return auth.response;
 
-  const adminToken = process.env.LEDGER_ADMIN_TOKEN;
+  const adminToken = env.LEDGER_ADMIN_TOKEN;
   if (!adminToken) {
     return NextResponse.json({ error: "LEDGER_ADMIN_TOKEN 未配置" }, { status: 500 });
   }
 
-  let body: unknown = {};
-  try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
+  const parsed = await parseBody(req, postSchema);
+  if (!parsed.success) return parsed.response;
+  const body = parsed.data;
 
   const url = new URL("/api/ledger/credit", req.url);
   const res = await fetch(url, {

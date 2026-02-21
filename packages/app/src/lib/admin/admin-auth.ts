@@ -13,15 +13,16 @@ import {
 } from "./admin-store";
 import { rateLimit } from "../rate-limit";
 import { isIpAllowed, normalizeClientIp } from "./admin-ip-utils";
+import { env } from "@/lib/env";
 
 export const ADMIN_SESSION_COOKIE = "admin_session";
 export const LEGACY_ADMIN_COOKIE = "admin_token";
-const DEFAULT_SESSION_TTL_HOURS = Number(process.env.ADMIN_SESSION_TTL_HOURS || "12");
-const RATE_LIMIT_WINDOW_MS = Number(process.env.ADMIN_RATE_LIMIT_WINDOW_MS || "60000");
-const RATE_LIMIT_MAX = Number(process.env.ADMIN_RATE_LIMIT_MAX || "120");
-const LOGIN_RATE_LIMIT_MAX = Number(process.env.ADMIN_LOGIN_RATE_LIMIT_MAX || "10");
-const ADMIN_IP_ALLOWLIST = (process.env.ADMIN_IP_ALLOWLIST || "").trim();
-const ADMIN_REQUIRE_SESSION = process.env.ADMIN_REQUIRE_SESSION === "1";
+const DEFAULT_SESSION_TTL_HOURS = env.ADMIN_SESSION_TTL_HOURS;
+const RATE_LIMIT_WINDOW_MS = env.ADMIN_RATE_LIMIT_WINDOW_MS;
+const RATE_LIMIT_MAX = env.ADMIN_RATE_LIMIT_MAX;
+const LOGIN_RATE_LIMIT_MAX = env.ADMIN_LOGIN_RATE_LIMIT_MAX;
+const ADMIN_IP_ALLOWLIST = (env.ADMIN_IP_ALLOWLIST || "").trim();
+const ADMIN_REQUIRE_SESSION = env.ADMIN_REQUIRE_SESSION === "1";
 
 type AdminTokenEntry = {
   token: string;
@@ -48,7 +49,6 @@ type RequireResult =
     }
   | { ok: false; response: NextResponse };
 
-
 function hashToken(token: string): string {
   return crypto.createHash("sha256").update(token).digest("hex");
 }
@@ -68,7 +68,7 @@ function roleRank(role: AdminRole): number {
 
 function parseAdminTokens(): AdminTokenEntry[] {
   const entries: AdminTokenEntry[] = [];
-  const json = process.env.ADMIN_TOKENS_JSON;
+  const json = env.ADMIN_TOKENS_JSON;
   if (json) {
     try {
       const parsed = JSON.parse(json) as unknown;
@@ -100,7 +100,7 @@ function parseAdminTokens(): AdminTokenEntry[] {
     }
   }
 
-  const raw = process.env.ADMIN_TOKENS;
+  const raw = env.ADMIN_TOKENS;
   if (raw) {
     for (const segment of raw.split(/[;,]/)) {
       const trimmed = segment.trim();
@@ -112,8 +112,8 @@ function parseAdminTokens(): AdminTokenEntry[] {
     }
   }
 
-  const adminToken = process.env.ADMIN_DASH_TOKEN;
-  const ledgerToken = process.env.LEDGER_ADMIN_TOKEN;
+  const adminToken = env.ADMIN_DASH_TOKEN;
+  const ledgerToken = env.LEDGER_ADMIN_TOKEN;
   if (adminToken) {
     entries.push({ token: adminToken, role: "admin", label: "ADMIN_DASH_TOKEN" });
   }
@@ -151,7 +151,9 @@ async function getRoleForToken(token?: string | null): Promise<AdminTokenEntry |
 
 function getClientIp(req: Request): string {
   const forwarded = req.headers.get("x-forwarded-for");
-  const raw = forwarded ? forwarded.split(",")[0].trim() : req.headers.get("x-real-ip") || "unknown";
+  const raw = forwarded
+    ? forwarded.split(",")[0].trim()
+    : req.headers.get("x-real-ip") || "unknown";
   return normalizeClientIp(raw);
 }
 
@@ -256,7 +258,10 @@ export async function getAdminSession() {
   return null;
 }
 
-export async function requireAdmin(req: Request, options: RequireOptions = {}): Promise<RequireResult> {
+export async function requireAdmin(
+  req: Request,
+  options: RequireOptions = {}
+): Promise<RequireResult> {
   const { role = "viewer", allowToken = true, requireOrigin = req.method !== "GET" } = options;
 
   if (!(await enforceRateLimit(req, RATE_LIMIT_MAX, RATE_LIMIT_WINDOW_MS))) {
@@ -339,5 +344,8 @@ export async function getAdminRoleForToken(token?: string | null) {
 }
 
 export function getAdminTokensSummary() {
-  return parseAdminTokens().map((entry) => ({ role: entry.role, label: entry.label || entry.role }));
+  return parseAdminTokens().map((entry) => ({
+    role: entry.role,
+    label: entry.label || entry.role,
+  }));
 }

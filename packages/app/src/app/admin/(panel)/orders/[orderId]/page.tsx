@@ -3,9 +3,80 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import type { AdminOrder } from "@/lib/admin/admin-types";
-import { readCache, writeCache } from "@/app/components/client-cache";
+import type { AdminOrder, OrderReview } from "@/lib/admin/admin-types";
+import { readCache, writeCache } from "@/lib/shared/client-cache";
 import { StateBlock } from "@/app/components/state-block";
+
+function ReviewSection({ orderId }: { orderId: string }) {
+  const [review, setReview] = useState<OrderReview | null | undefined>(undefined);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch(`/api/orders/${orderId}/review`);
+        if (res.ok) {
+          setReview(await res.json());
+        } else {
+          setReview(null);
+        }
+      } catch {
+        setReview(null);
+      }
+    })();
+  }, [orderId]);
+
+  if (review === undefined) return null;
+  if (!review) {
+    return (
+      <div className="admin-card" style={{ marginTop: 16 }}>
+        <div className="admin-card-header">
+          <h3>用户评价</h3>
+        </div>
+        <p className="admin-meta" style={{ marginTop: 8 }}>
+          暂无评价
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="admin-card" style={{ marginTop: 16 }}>
+      <div className="admin-card-header">
+        <h3>用户评价</h3>
+      </div>
+      <div className="admin-form" style={{ marginTop: 12 }}>
+        <label className="admin-field">
+          评分
+          <input
+            className="admin-input"
+            readOnly
+            value={`${"★".repeat(review.rating)}${"☆".repeat(5 - review.rating)} (${review.rating}/5)`}
+          />
+        </label>
+        {review.tags && review.tags.length > 0 && (
+          <label className="admin-field">
+            标签
+            <input className="admin-input" readOnly value={review.tags.join("、")} />
+          </label>
+        )}
+        {review.content && (
+          <label className="admin-field">
+            评价内容
+            <input className="admin-input" readOnly value={review.content} />
+          </label>
+        )}
+        <label className="admin-field">
+          评价时间
+          <input
+            className="admin-input"
+            readOnly
+            value={new Date(review.createdAt).toLocaleString()}
+          />
+        </label>
+      </div>
+    </div>
+  );
+}
 
 export default function OrderDetailPage() {
   const params = useParams();
@@ -129,7 +200,11 @@ export default function OrderDetailPage() {
           </label>
           <label className="admin-field">
             创建时间
-            <input className="admin-input" readOnly value={new Date(order.createdAt).toLocaleString()} />
+            <input
+              className="admin-input"
+              readOnly
+              value={new Date(order.createdAt).toLocaleString()}
+            />
           </label>
           <label className="admin-field">
             更新时间
@@ -141,6 +216,7 @@ export default function OrderDetailPage() {
           </label>
         </div>
       </div>
+      <ReviewSection orderId={orderId} />
     </div>
   );
 }

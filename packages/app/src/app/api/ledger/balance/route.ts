@@ -3,22 +3,29 @@ import { SuiClient } from "@mysten/sui/client";
 import { bcs } from "@mysten/sui/bcs";
 import { Inputs, Transaction } from "@mysten/sui/transactions";
 import { isValidSuiAddress, normalizeSuiAddress } from "@mysten/sui/utils";
+import { env } from "@/lib/env";
 
-const REQUIRED_ENVS = ["SUI_RPC_URL", "SUI_PACKAGE_ID", "SUI_DAPP_HUB_ID", "SUI_DAPP_HUB_INITIAL_SHARED_VERSION"] as const;
 const BALANCE_CACHE_TTL_MS = 10_000;
-const balanceCache = new Map<string, { value: string; updatedAt: number; inflight?: Promise<string> }>();
+const balanceCache = new Map<
+  string,
+  { value: string; updatedAt: number; inflight?: Promise<string> }
+>();
 
 function getEnv() {
-  const missing = REQUIRED_ENVS.filter((key) => !process.env[key]);
-  if (missing.length) {
+  const rpcUrl = env.SUI_RPC_URL;
+  const packageId = env.SUI_PACKAGE_ID;
+  const dappHubId = env.SUI_DAPP_HUB_ID;
+  const dappHubInitialVersion = env.SUI_DAPP_HUB_INITIAL_SHARED_VERSION;
+  if (!rpcUrl || !packageId || !dappHubId || !dappHubInitialVersion) {
+    const missing = [
+      !rpcUrl && "SUI_RPC_URL",
+      !packageId && "SUI_PACKAGE_ID",
+      !dappHubId && "SUI_DAPP_HUB_ID",
+      !dappHubInitialVersion && "SUI_DAPP_HUB_INITIAL_SHARED_VERSION",
+    ].filter(Boolean);
     throw new Error(`Missing env: ${missing.join(", ")}`);
   }
-  return {
-    rpcUrl: process.env.SUI_RPC_URL as string,
-    packageId: process.env.SUI_PACKAGE_ID as string,
-    dappHubId: process.env.SUI_DAPP_HUB_ID as string,
-    dappHubInitialVersion: process.env.SUI_DAPP_HUB_INITIAL_SHARED_VERSION as string,
-  };
+  return { rpcUrl, packageId, dappHubId, dappHubInitialVersion };
 }
 
 function decodeU64(value: unknown): string {
@@ -55,14 +62,18 @@ export async function GET(req: Request) {
     if (cached && now - cached.updatedAt < BALANCE_CACHE_TTL_MS) {
       return NextResponse.json(
         { ok: true, balance: cached.value, cached: true },
-        { headers: { "Cache-Control": "public, max-age=2, s-maxage=10, stale-while-revalidate=30" } }
+        {
+          headers: { "Cache-Control": "public, max-age=2, s-maxage=10, stale-while-revalidate=30" },
+        }
       );
     }
     if (cached?.inflight) {
       const value = await cached.inflight;
       return NextResponse.json(
         { ok: true, balance: value, cached: true },
-        { headers: { "Cache-Control": "public, max-age=2, s-maxage=10, stale-while-revalidate=30" } }
+        {
+          headers: { "Cache-Control": "public, max-age=2, s-maxage=10, stale-while-revalidate=30" },
+        }
       );
     }
 
@@ -94,25 +105,38 @@ export async function GET(req: Request) {
       return decodeU64(rawValue);
     })();
 
-    balanceCache.set(address, { value: cached?.value ?? "0", updatedAt: cached?.updatedAt ?? 0, inflight: task });
+    balanceCache.set(address, {
+      value: cached?.value ?? "0",
+      updatedAt: cached?.updatedAt ?? 0,
+      inflight: task,
+    });
     try {
       const balance = await task;
       balanceCache.set(address, { value: balance, updatedAt: Date.now() });
       return NextResponse.json(
         { ok: true, balance },
-        { headers: { "Cache-Control": "public, max-age=2, s-maxage=10, stale-while-revalidate=30" } }
+        {
+          headers: { "Cache-Control": "public, max-age=2, s-maxage=10, stale-while-revalidate=30" },
+        }
       );
     } catch (error) {
       balanceCache.delete(address);
       if (cached?.value !== undefined) {
         return NextResponse.json(
           { ok: true, balance: cached.value, cached: true, fallback: true },
-          { headers: { "Cache-Control": "public, max-age=2, s-maxage=10, stale-while-revalidate=30" } }
+          {
+            headers: {
+              "Cache-Control": "public, max-age=2, s-maxage=10, stale-while-revalidate=30",
+            },
+          }
         );
       }
       throw error;
     }
   } catch (error) {
-    return NextResponse.json({ error: (error as Error).message || "balance query failed" }, { status: 500 });
+    return NextResponse.json(
+      { error: (error as Error).message || "balance query failed" },
+      { status: 500 }
+    );
   }
 }

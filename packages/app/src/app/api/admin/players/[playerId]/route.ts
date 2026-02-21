@@ -1,9 +1,25 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { requireAdmin } from "@/lib/admin/admin-auth";
 import { getPlayerByAddress, removePlayer, updatePlayer } from "@/lib/admin/admin-store";
 import { recordAudit } from "@/lib/admin/admin-audit";
-import type { AdminPlayer, PlayerStatus } from "@/lib/admin/admin-types";
+import { parseBody } from "@/lib/shared/api-validation";
+import type { PlayerStatus } from "@/lib/admin/admin-types";
 import { isValidSuiAddress, normalizeSuiAddress } from "@mysten/sui/utils";
+
+const patchSchema = z.object({
+  name: z.string().optional(),
+  role: z.string().optional(),
+  contact: z.string().optional(),
+  address: z.string().optional(),
+  wechatQr: z.string().optional(),
+  alipayQr: z.string().optional(),
+  depositBase: z.number().optional(),
+  depositLocked: z.number().optional(),
+  creditMultiplier: z.number().optional(),
+  notes: z.string().optional(),
+  status: z.enum(["可接单", "忙碌", "停用"]).optional(),
+});
 
 function normalizePlayerAddress(raw?: string | null) {
   const trimmed = (raw || "").trim();
@@ -25,10 +41,7 @@ type RouteContext = {
   params: Promise<{ playerId: string }>;
 };
 
-export async function PATCH(
-  req: Request,
-  { params }: RouteContext
-) {
+export async function PATCH(req: Request, { params }: RouteContext) {
   const auth = await requireAdmin(req, { role: "viewer" });
   if (!auth.ok) return auth.response;
 
@@ -37,17 +50,14 @@ export async function PATCH(
     return NextResponse.json({ error: "Missing playerId" }, { status: 400 });
   }
 
-  let body: Partial<AdminPlayer> = {};
-  try {
-    body = (await req.json()) as Partial<AdminPlayer>;
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
+  const parsed = await parseBody(req, patchSchema);
+  if (!parsed.success) return parsed.response;
+  const body = parsed.data;
 
-  const patch: Partial<AdminPlayer> = {};
-  if (typeof body.name === "string") patch.name = body.name;
-  if (typeof body.role === "string") patch.role = body.role;
-  if (typeof body.contact === "string") {
+  const patch: z.infer<typeof patchSchema> & { status?: PlayerStatus } = {};
+  if (body.name !== undefined) patch.name = body.name;
+  if (body.role !== undefined) patch.role = body.role;
+  if (body.contact !== undefined) {
     const contact = body.contact.trim();
     if (!contact) {
       return NextResponse.json({ error: "contact_required" }, { status: 400 });
@@ -57,7 +67,7 @@ export async function PATCH(
     }
     patch.contact = contact;
   }
-  if (typeof body.address === "string") {
+  if (body.address !== undefined) {
     const rawAddress = body.address.trim();
     if (!rawAddress) {
       patch.address = "";
@@ -73,13 +83,13 @@ export async function PATCH(
       patch.address = normalized;
     }
   }
-  if (typeof body.wechatQr === "string") patch.wechatQr = body.wechatQr;
-  if (typeof body.alipayQr === "string") patch.alipayQr = body.alipayQr;
-  if (typeof body.depositBase === "number") patch.depositBase = body.depositBase;
-  if (typeof body.depositLocked === "number") patch.depositLocked = body.depositLocked;
-  if (typeof body.creditMultiplier === "number") patch.creditMultiplier = body.creditMultiplier;
-  if (typeof body.notes === "string") patch.notes = body.notes;
-  if (typeof body.status === "string") patch.status = body.status as PlayerStatus;
+  if (body.wechatQr !== undefined) patch.wechatQr = body.wechatQr;
+  if (body.alipayQr !== undefined) patch.alipayQr = body.alipayQr;
+  if (body.depositBase !== undefined) patch.depositBase = body.depositBase;
+  if (body.depositLocked !== undefined) patch.depositLocked = body.depositLocked;
+  if (body.creditMultiplier !== undefined) patch.creditMultiplier = body.creditMultiplier;
+  if (body.notes !== undefined) patch.notes = body.notes;
+  if (body.status !== undefined) patch.status = body.status as PlayerStatus;
 
   if (patch.depositBase !== undefined && patch.depositBase < 0) {
     return NextResponse.json({ error: "depositBase must be >= 0" }, { status: 400 });
@@ -99,10 +109,7 @@ export async function PATCH(
   return NextResponse.json(updated);
 }
 
-export async function DELETE(
-  req: Request,
-  { params }: RouteContext
-) {
+export async function DELETE(req: Request, { params }: RouteContext) {
   const auth = await requireAdmin(req, { role: "viewer" });
   if (!auth.ok) return auth.response;
 

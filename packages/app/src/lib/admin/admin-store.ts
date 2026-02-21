@@ -23,13 +23,17 @@ import type {
   LeaderboardEntry,
   LeaderboardType,
   LeaderboardPeriod,
+  OrderReview,
 } from "./admin-types";
 import { prisma } from "../db";
 import { Prisma } from "@prisma/client";
 import { getCache, setCache } from "../server-cache";
+import { TZDate } from "@date-fns/tz";
+import { startOfWeek, startOfMonth } from "date-fns";
+import { env } from "@/lib/env";
 
-const MAX_AUDIT_LOGS = Number(process.env.ADMIN_AUDIT_LOG_LIMIT || "1000");
-const MAX_PAYMENT_EVENTS = Number(process.env.ADMIN_PAYMENT_EVENT_LIMIT || "1000");
+const MAX_AUDIT_LOGS = env.ADMIN_AUDIT_LOG_LIMIT;
+const MAX_PAYMENT_EVENTS = env.ADMIN_PAYMENT_EVENT_LIMIT;
 
 type CursorPayload = { createdAt: number; id: string };
 
@@ -41,10 +45,7 @@ function appendCursorWhere(where: { AND?: unknown }, cursor?: CursorPayload) {
   if (!cursor) return;
   const cursorDate = new Date(cursor.createdAt);
   const condition = {
-    OR: [
-      { createdAt: { lt: cursorDate } },
-      { createdAt: cursorDate, id: { lt: cursor.id } },
-    ],
+    OR: [{ createdAt: { lt: cursorDate } }, { createdAt: cursorDate, id: { lt: cursor.id } }],
   };
   if (where.AND) {
     const existing = Array.isArray(where.AND) ? where.AND : [where.AND];
@@ -621,7 +622,16 @@ function buildOrderWhere(params: {
   companionMissing?: boolean;
   excludeStages?: string[];
 }): Prisma.AdminOrderWhereInput {
-  const { stage, q, paymentStatus, assignedTo, userAddress, address, companionMissing, excludeStages } = params;
+  const {
+    stage,
+    q,
+    paymentStatus,
+    assignedTo,
+    userAddress,
+    address,
+    companionMissing,
+    excludeStages,
+  } = params;
   const keyword = (q || "").trim();
   const where: Prisma.AdminOrderWhereInput = {};
   const andConditions: Prisma.AdminOrderWhereInput[] = [];
@@ -648,7 +658,11 @@ function buildOrderWhere(params: {
   }
   if (keyword) {
     andConditions.push({
-      OR: [{ user: { contains: keyword } }, { item: { contains: keyword } }, { id: { contains: keyword } }],
+      OR: [
+        { user: { contains: keyword } },
+        { item: { contains: keyword } },
+        { id: { contains: keyword } },
+      ],
     });
   }
   if (andConditions.length > 0) {
@@ -669,8 +683,18 @@ export async function queryOrders(params: {
   companionMissing?: boolean;
   excludeStages?: string[];
 }) {
-  const { page, pageSize, stage, q, paymentStatus, assignedTo, userAddress, address, companionMissing, excludeStages } =
-    params;
+  const {
+    page,
+    pageSize,
+    stage,
+    q,
+    paymentStatus,
+    assignedTo,
+    userAddress,
+    address,
+    companionMissing,
+    excludeStages,
+  } = params;
   const where = buildOrderWhere({
     stage,
     q,
@@ -713,8 +737,18 @@ export async function queryOrdersCursor(params: {
   excludeStages?: string[];
   cursor?: CursorPayload;
 }) {
-  const { pageSize, stage, q, paymentStatus, assignedTo, userAddress, address, companionMissing, excludeStages, cursor } =
-    params;
+  const {
+    pageSize,
+    stage,
+    q,
+    paymentStatus,
+    assignedTo,
+    userAddress,
+    address,
+    companionMissing,
+    excludeStages,
+    cursor,
+  } = params;
   const where = buildOrderWhere({
     stage,
     q,
@@ -765,10 +799,7 @@ export async function queryPublicOrdersCursor(params: {
     const cursorDate = new Date(cursor.createdAt);
     where.AND = [
       {
-        OR: [
-          { createdAt: { lt: cursorDate } },
-          { createdAt: cursorDate, id: { lt: cursor.id } },
-        ],
+        OR: [{ createdAt: { lt: cursorDate } }, { createdAt: cursorDate, id: { lt: cursor.id } }],
       },
     ];
   }
@@ -996,7 +1027,7 @@ export async function listPlayers() {
     exposure.set(key, Number(order._sum.amount || 0));
   }
 
-  const DIAMOND_RATE = 10;
+  const { DIAMOND_RATE } = await import("@/lib/shared/constants");
   return players.map((player) => {
     const keys = [player.id, player.name].filter(Boolean) as string[];
     const used = keys.reduce((sum, key) => sum + (exposure.get(key) || 0), 0);
@@ -1020,7 +1051,11 @@ export async function getPlayerById(playerId: string) {
   return row ? mapPlayer(row) : null;
 }
 
-export async function getCompanionEarnings(params?: { from?: number; to?: number; limit?: number }) {
+export async function getCompanionEarnings(params?: {
+  from?: number;
+  to?: number;
+  limit?: number;
+}) {
   const where: Prisma.AdminOrderWhereInput = {
     stage: "已完成",
     companionAddress: { not: null },
@@ -1050,9 +1085,7 @@ export async function getCompanionEarnings(params?: { from?: number; to?: number
     }),
   ]);
 
-  const addresses = grouped
-    .map((row) => (row.companionAddress || "").trim())
-    .filter(Boolean);
+  const addresses = grouped.map((row) => (row.companionAddress || "").trim()).filter(Boolean);
   const playerRows = addresses.length
     ? await prisma.adminPlayer.findMany({
         where: { address: { in: addresses } },
@@ -1228,7 +1261,10 @@ export async function addAnnouncement(announcement: AdminAnnouncement) {
   return mapAnnouncement(row);
 }
 
-export async function updateAnnouncement(announcementId: string, patch: Partial<AdminAnnouncement>) {
+export async function updateAnnouncement(
+  announcementId: string,
+  patch: Partial<AdminAnnouncement>
+) {
   try {
     const row = await prisma.adminAnnouncement.update({
       where: { id: announcementId },
@@ -1280,7 +1316,12 @@ export async function listPublicAnnouncements() {
   return items;
 }
 
-export async function querySupportTickets(params: { page: number; pageSize: number; status?: string; q?: string }) {
+export async function querySupportTickets(params: {
+  page: number;
+  pageSize: number;
+  status?: string;
+  q?: string;
+}) {
   const { page, pageSize, status, q } = params;
   const keyword = (q || "").trim();
   const where: Prisma.AdminSupportTicketWhereInput = {};
@@ -1390,7 +1431,12 @@ export async function removeSupportTicket(ticketId: string) {
   }
 }
 
-export async function queryCoupons(params: { page: number; pageSize: number; status?: string; q?: string }) {
+export async function queryCoupons(params: {
+  page: number;
+  pageSize: number;
+  status?: string;
+  q?: string;
+}) {
   const { page, pageSize, status, q } = params;
   const keyword = (q || "").trim();
   const where: Prisma.AdminCouponWhereInput = {};
@@ -1427,7 +1473,11 @@ export async function queryCouponsCursor(params: {
   const where: Prisma.AdminCouponWhereInput = {};
   if (status && status !== "全部") where.status = status;
   if (keyword) {
-    where.OR = [{ title: { contains: keyword } }, { code: { contains: keyword } }, { id: { contains: keyword } }];
+    where.OR = [
+      { title: { contains: keyword } },
+      { code: { contains: keyword } },
+      { id: { contains: keyword } },
+    ];
   }
   appendCursorWhere(where, cursor);
   const rows = await prisma.adminCoupon.findMany({
@@ -1458,6 +1508,18 @@ export async function listActiveCoupons() {
   return rows.map(mapCoupon);
 }
 
+export async function getCouponById(couponId: string) {
+  const row = await prisma.adminCoupon.findUnique({ where: { id: couponId } });
+  return row ? mapCoupon(row) : null;
+}
+
+export async function getCouponByCode(code: string) {
+  const row = await prisma.adminCoupon.findFirst({
+    where: { code: { equals: code, mode: "insensitive" } },
+  });
+  return row ? mapCoupon(row) : null;
+}
+
 export async function addCoupon(coupon: AdminCoupon) {
   const row = await prisma.adminCoupon.create({
     data: {
@@ -1486,12 +1548,28 @@ export async function updateCoupon(couponId: string, patch: Partial<AdminCoupon>
         code: patch.code,
         description: patch.description,
         discount:
-          typeof patch.discount === "number" ? patch.discount : patch.discount === null ? null : undefined,
+          typeof patch.discount === "number"
+            ? patch.discount
+            : patch.discount === null
+              ? null
+              : undefined,
         minSpend:
-          typeof patch.minSpend === "number" ? patch.minSpend : patch.minSpend === null ? null : undefined,
+          typeof patch.minSpend === "number"
+            ? patch.minSpend
+            : patch.minSpend === null
+              ? null
+              : undefined,
         status: patch.status,
-        startsAt: patch.startsAt ? new Date(patch.startsAt) : patch.startsAt === null ? null : undefined,
-        expiresAt: patch.expiresAt ? new Date(patch.expiresAt) : patch.expiresAt === null ? null : undefined,
+        startsAt: patch.startsAt
+          ? new Date(patch.startsAt)
+          : patch.startsAt === null
+            ? null
+            : undefined,
+        expiresAt: patch.expiresAt
+          ? new Date(patch.expiresAt)
+          : patch.expiresAt === null
+            ? null
+            : undefined,
         updatedAt: new Date(),
       },
     });
@@ -1510,7 +1588,12 @@ export async function removeCoupon(couponId: string) {
   }
 }
 
-export async function queryInvoiceRequests(params: { page: number; pageSize: number; status?: string; q?: string }) {
+export async function queryInvoiceRequests(params: {
+  page: number;
+  pageSize: number;
+  status?: string;
+  q?: string;
+}) {
   const { page, pageSize, status, q } = params;
   const keyword = (q || "").trim();
   const where: Prisma.AdminInvoiceRequestWhereInput = {};
@@ -1624,7 +1707,12 @@ export async function removeInvoiceRequest(requestId: string) {
   }
 }
 
-export async function queryGuardianApplications(params: { page: number; pageSize: number; status?: string; q?: string }) {
+export async function queryGuardianApplications(params: {
+  page: number;
+  pageSize: number;
+  status?: string;
+  q?: string;
+}) {
   const { page, pageSize, status, q } = params;
   const keyword = (q || "").trim();
   const where: Prisma.AdminGuardianApplicationWhereInput = {};
@@ -1718,7 +1806,10 @@ export async function addGuardianApplication(application: AdminGuardianApplicati
   return mapGuardianApplication(row);
 }
 
-export async function updateGuardianApplication(applicationId: string, patch: Partial<AdminGuardianApplication>) {
+export async function updateGuardianApplication(
+  applicationId: string,
+  patch: Partial<AdminGuardianApplication>
+) {
   try {
     const row = await prisma.adminGuardianApplication.update({
       where: { id: applicationId },
@@ -1743,7 +1834,12 @@ export async function removeGuardianApplication(applicationId: string) {
   }
 }
 
-export async function queryMembershipTiers(params: { page: number; pageSize: number; status?: string; q?: string }) {
+export async function queryMembershipTiers(params: {
+  page: number;
+  pageSize: number;
+  status?: string;
+  q?: string;
+}) {
   const { page, pageSize, status, q } = params;
   const keyword = (q || "").trim();
   const where: Prisma.AdminMembershipTierWhereInput = {};
@@ -1839,7 +1935,8 @@ export async function updateMembershipTier(tierId: string, patch: Partial<AdminM
         name: patch.name,
         level: typeof patch.level === "number" ? patch.level : undefined,
         badge: patch.badge,
-        price: typeof patch.price === "number" ? patch.price : patch.price === null ? null : undefined,
+        price:
+          typeof patch.price === "number" ? patch.price : patch.price === null ? null : undefined,
         durationDays:
           typeof patch.durationDays === "number"
             ? patch.durationDays
@@ -1853,7 +1950,11 @@ export async function updateMembershipTier(tierId: string, patch: Partial<AdminM
               ? null
               : undefined,
         status: patch.status,
-        perks: patch.perks ? (patch.perks as Prisma.InputJsonValue) : patch.perks === null ? Prisma.DbNull : undefined,
+        perks: patch.perks
+          ? (patch.perks as Prisma.InputJsonValue)
+          : patch.perks === null
+            ? Prisma.DbNull
+            : undefined,
         updatedAt: new Date(),
       },
     });
@@ -1872,7 +1973,12 @@ export async function removeMembershipTier(tierId: string) {
   }
 }
 
-export async function queryMembers(params: { page: number; pageSize: number; status?: string; q?: string }) {
+export async function queryMembers(params: {
+  page: number;
+  pageSize: number;
+  status?: string;
+  q?: string;
+}) {
   const { page, pageSize, status, q } = params;
   const keyword = (q || "").trim();
   const where: Prisma.AdminMemberWhereInput = {};
@@ -1969,7 +2075,12 @@ export async function updateMember(memberId: string, patch: Partial<AdminMember>
       data: {
         tierId: patch.tierId,
         tierName: patch.tierName,
-        points: typeof patch.points === "number" ? patch.points : patch.points === null ? null : undefined,
+        points:
+          typeof patch.points === "number"
+            ? patch.points
+            : patch.points === null
+              ? null
+              : undefined,
         status: patch.status,
         expiresAt:
           typeof patch.expiresAt === "number"
@@ -1996,7 +2107,12 @@ export async function removeMember(memberId: string) {
   }
 }
 
-export async function queryMembershipRequests(params: { page: number; pageSize: number; status?: string; q?: string }) {
+export async function queryMembershipRequests(params: {
+  page: number;
+  pageSize: number;
+  status?: string;
+  q?: string;
+}) {
   const { page, pageSize, status, q } = params;
   const keyword = (q || "").trim();
   const where: Prisma.AdminMembershipRequestWhereInput = {};
@@ -2078,7 +2194,10 @@ export async function addMembershipRequest(request: AdminMembershipRequest) {
   return mapMembershipRequest(row);
 }
 
-export async function updateMembershipRequest(requestId: string, patch: Partial<AdminMembershipRequest>) {
+export async function updateMembershipRequest(
+  requestId: string,
+  patch: Partial<AdminMembershipRequest>
+) {
   try {
     const row = await prisma.adminMembershipRequest.update({
       where: { id: requestId },
@@ -2186,7 +2305,11 @@ export async function queryAuditLogs(params: { page: number; pageSize: number; q
   };
 }
 
-export async function queryAuditLogsCursor(params: { pageSize: number; q?: string; cursor?: CursorPayload }) {
+export async function queryAuditLogsCursor(params: {
+  pageSize: number;
+  q?: string;
+  cursor?: CursorPayload;
+}) {
   const { pageSize, q, cursor } = params;
   const keyword = (q || "").trim();
   const where: Prisma.AdminAuditLogWhereInput = {};
@@ -2291,7 +2414,11 @@ export async function upsertLedgerRecord(entry: LedgerRecordInput) {
   return mapLedgerRecord(row);
 }
 
-export async function queryLedgerRecords(params: { page: number; pageSize: number; address: string }) {
+export async function queryLedgerRecords(params: {
+  page: number;
+  pageSize: number;
+  address: string;
+}) {
   const { page, pageSize, address } = params;
   const total = await prisma.ledgerRecord.count({ where: { userAddress: address } });
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
@@ -2331,7 +2458,10 @@ export async function queryPaymentEvents(params: { page: number; pageSize: numbe
   };
 }
 
-export async function queryPaymentEventsCursor(params: { pageSize: number; cursor?: CursorPayload }) {
+export async function queryPaymentEventsCursor(params: {
+  pageSize: number;
+  cursor?: CursorPayload;
+}) {
   const { pageSize, cursor } = params;
   const where: Prisma.AdminPaymentEventWhereInput = {};
   appendCursorWhere(where, cursor);
@@ -2437,7 +2567,7 @@ export async function updateAccessToken(tokenId: string, patch: Partial<AdminAcc
       where: { id: tokenId },
       data: {
         role: patch.role,
-        label: patch.label === "" ? null : patch.label ?? undefined,
+        label: patch.label === "" ? null : (patch.label ?? undefined),
         status: patch.status,
         updatedAt: new Date(),
         lastUsedAt: patch.lastUsedAt ? new Date(patch.lastUsedAt) : undefined,
@@ -2483,7 +2613,12 @@ export async function getMantouWallet(address: string) {
   return mapMantouWallet(row);
 }
 
-export async function creditMantou(params: { address: string; amount: number; orderId?: string; note?: string }) {
+export async function creditMantou(params: {
+  address: string;
+  amount: number;
+  orderId?: string;
+  note?: string;
+}) {
   const amount = Math.floor(params.amount);
   if (!Number.isFinite(amount) || amount <= 0) {
     throw new Error("amount must be positive integer");
@@ -2519,7 +2654,11 @@ export async function creditMantou(params: { address: string; amount: number; or
         createdAt: now,
       },
     });
-    return { wallet: mapMantouWallet(wallet), transaction: mapMantouTransaction(transaction), duplicated: false };
+    return {
+      wallet: mapMantouWallet(wallet),
+      transaction: mapMantouTransaction(transaction),
+      duplicated: false,
+    };
   });
 }
 
@@ -2721,7 +2860,11 @@ export async function updateMantouWithdrawStatus(params: {
   });
 }
 
-export async function queryMantouTransactions(params: { page: number; pageSize: number; address: string }) {
+export async function queryMantouTransactions(params: {
+  page: number;
+  pageSize: number;
+  address: string;
+}) {
   const { page, pageSize, address } = params;
   const total = await prisma.mantouTransaction.count({ where: { address } });
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
@@ -2862,7 +3005,11 @@ export async function updateReferralConfig(patch: Partial<Omit<ReferralConfig, "
   return mapReferralConfig(row);
 }
 
-export async function processReferralReward(orderId: string, userAddress: string, orderAmount: number) {
+export async function processReferralReward(
+  orderId: string,
+  userAddress: string,
+  orderAmount: number
+) {
   const referral = await prisma.referral.findUnique({ where: { inviteeAddress: userAddress } });
   if (!referral || referral.status !== "pending") return null;
   const config = await getReferralConfig();
@@ -2891,7 +3038,10 @@ export async function processReferralReward(orderId: string, userAddress: string
     },
   });
 
-  const results: { inviter?: Awaited<ReturnType<typeof creditMantou>>; invitee?: Awaited<ReturnType<typeof creditMantou>> } = {};
+  const results: {
+    inviter?: Awaited<ReturnType<typeof creditMantou>>;
+    invitee?: Awaited<ReturnType<typeof creditMantou>>;
+  } = {};
   if (inviterReward > 0) {
     results.inviter = await creditMantou({
       address: referral.inviterAddress,
@@ -2909,7 +3059,12 @@ export async function processReferralReward(orderId: string, userAddress: string
   return { inviterReward, inviteeReward, ...results };
 }
 
-export async function queryReferrals(params: { page: number; pageSize: number; status?: string; q?: string }) {
+export async function queryReferrals(params: {
+  page: number;
+  pageSize: number;
+  status?: string;
+  q?: string;
+}) {
   const { page, pageSize, status, q } = params;
   const keyword = (q || "").trim();
   const where: Prisma.ReferralWhereInput = {};
@@ -2946,28 +3101,20 @@ export async function queryReferrals(params: { page: number; pageSize: number; s
 
 function getPeriodStart(period: LeaderboardPeriod): Date | null {
   if (period === "all") return null;
-  const now = new Date();
-  // Use Asia/Shanghai timezone
-  const formatter = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Shanghai", year: "numeric", month: "2-digit", day: "2-digit" });
-  const parts = formatter.formatToParts(now);
-  const year = Number(parts.find((p) => p.type === "year")!.value);
-  const month = Number(parts.find((p) => p.type === "month")!.value);
-  const day = Number(parts.find((p) => p.type === "day")!.value);
+  const now = new TZDate(Date.now(), "Asia/Shanghai");
 
   if (period === "month") {
-    // 1st of current month in Asia/Shanghai
-    const d = new Date(`${year}-${String(month).padStart(2, "0")}-01T00:00:00+08:00`);
-    return d;
+    return startOfMonth(now);
   }
   // week: Monday 00:00 Asia/Shanghai
-  const currentDate = new Date(`${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}T00:00:00+08:00`);
-  const dayOfWeek = currentDate.getUTCDay(); // 0=Sun
-  const mondayOffset = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-  currentDate.setUTCDate(currentDate.getUTCDate() - mondayOffset);
-  return currentDate;
+  return startOfWeek(now, { weekStartsOn: 1 });
 }
 
-export async function getLeaderboard(type: LeaderboardType, period: LeaderboardPeriod, limit = 50): Promise<LeaderboardEntry[]> {
+export async function getLeaderboard(
+  type: LeaderboardType,
+  period: LeaderboardPeriod,
+  limit = 50
+): Promise<LeaderboardEntry[]> {
   const cacheKey = `leaderboard:${type}:${period}`;
   const cached = getCache<LeaderboardEntry[]>(cacheKey);
   if (cached) return cached.value;
@@ -3024,4 +3171,77 @@ export async function getLeaderboard(type: LeaderboardType, period: LeaderboardP
 
   setCache(cacheKey, entries, 60_000);
   return entries;
+}
+
+// ---------------------------------------------------------------------------
+// Order Review
+// ---------------------------------------------------------------------------
+
+function mapReview(row: {
+  id: string;
+  orderId: string;
+  reviewerAddress: string;
+  companionAddress: string;
+  rating: number;
+  content: string | null;
+  tags: Prisma.JsonValue | null;
+  createdAt: Date;
+}): OrderReview {
+  return {
+    id: row.id,
+    orderId: row.orderId,
+    reviewerAddress: row.reviewerAddress,
+    companionAddress: row.companionAddress,
+    rating: row.rating,
+    content: row.content || undefined,
+    tags: Array.isArray(row.tags) ? (row.tags as string[]) : undefined,
+    createdAt: row.createdAt.getTime(),
+  };
+}
+
+export async function getReviewByOrderId(orderId: string): Promise<OrderReview | null> {
+  const row = await prisma.orderReview.findUnique({ where: { orderId } });
+  return row ? mapReview(row) : null;
+}
+
+export async function createReview(params: {
+  orderId: string;
+  reviewerAddress: string;
+  companionAddress: string;
+  rating: number;
+  content?: string;
+  tags?: string[];
+}): Promise<OrderReview> {
+  const now = new Date();
+  const row = await prisma.orderReview.create({
+    data: {
+      id: `RV-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
+      orderId: params.orderId,
+      reviewerAddress: params.reviewerAddress,
+      companionAddress: params.companionAddress,
+      rating: params.rating,
+      content: params.content ?? null,
+      tags: params.tags ?? [],
+      createdAt: now,
+    },
+  });
+  return mapReview(row);
+}
+
+export async function getReviewsByCompanion(
+  companionAddress: string,
+  limit = 20
+): Promise<{ items: OrderReview[]; avgRating: number; total: number }> {
+  const [rows, total] = await Promise.all([
+    prisma.orderReview.findMany({
+      where: { companionAddress },
+      orderBy: { createdAt: "desc" },
+      take: limit,
+    }),
+    prisma.orderReview.count({ where: { companionAddress } }),
+  ]);
+  const items = rows.map(mapReview);
+  const avgRating =
+    items.length > 0 ? items.reduce((sum, r) => sum + r.rating, 0) / items.length : 0;
+  return { items, avgRating: Math.round(avgRating * 10) / 10, total };
 }

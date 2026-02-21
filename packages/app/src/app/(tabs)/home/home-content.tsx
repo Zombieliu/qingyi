@@ -118,7 +118,13 @@ function getInitial(name: string) {
   return trimmed.slice(0, 2);
 }
 
-export default function HomeContent({ players, news }: { players: HomePlayer[]; news: HomeNews[] }) {
+export default function HomeContent({
+  players,
+  news,
+}: {
+  players: HomePlayer[];
+  news: HomeNews[];
+}) {
   const [query, setQuery] = useState("");
   const keyword = query.trim();
   const normalized = keyword.toLowerCase();
@@ -144,83 +150,96 @@ export default function HomeContent({ players, news }: { players: HomePlayer[]; 
     : "";
 
   return (
-    <div className={styles['lc-screen']}>
-      <header className={styles['lc-topbar']}>
-        <span className={styles['lc-time']}>08:18</span>
-        <span className={styles['lc-title']}>情谊俱乐部</span>
+    <div className={styles["lc-screen"]}>
+      <header className={styles["lc-topbar"]}>
+        <span className={styles["lc-time"]}>08:18</span>
+        <span className={styles["lc-title"]}>情谊俱乐部</span>
         <MoreHorizontal className="text-slate-500" size={18} />
       </header>
 
-      <div className={styles['lc-search']}>
+      <div className={styles["lc-search"]}>
         <Search size={16} />
         <input
-          className={styles['lc-search-input']}
+          className={styles["lc-search-input"]}
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           placeholder="输入关键词搜索陪练或套餐"
         />
       </div>
-      {searchHint ? <div className={styles['lc-search-hint']}>{searchHint}</div> : null}
+      {searchHint ? <div className={styles["lc-search-hint"]}>{searchHint}</div> : null}
 
-      <div className={styles['lc-banner']}>
-        <div className={styles['lc-banner-img']} />
-        <div className={styles['lc-banner-content']}>
-          <div className={styles['lc-banner-title']}>新客首单立减</div>
-          <div className={styles['lc-banner-desc']}>满 99 减 10 · 30 秒极速开局</div>
-          <Link href="/schedule" className={styles['lc-banner-btn']}>
+      <div className={styles["lc-banner"]}>
+        <div className={styles["lc-banner-img"]} />
+        <div className={styles["lc-banner-content"]}>
+          <div className={styles["lc-banner-title"]}>新客首单立减</div>
+          <div className={styles["lc-banner-desc"]}>满 99 减 10 · 30 秒极速开局</div>
+          <Link href="/schedule" className={styles["lc-banner-btn"]}>
             立即下单
           </Link>
         </div>
       </div>
 
-      <div className={styles['lc-quick-grid']}>
+      <div className={styles["lc-quick-grid"]}>
         {quickActions.map((item) => {
           const Icon = item.icon;
           return (
-            <Link key={item.label} href={item.href} className={styles['lc-quick-card']} data-tone={item.tone}>
-              <span className={styles['lc-quick-icon']}>
+            <Link
+              key={item.label}
+              href={item.href}
+              className={styles["lc-quick-card"]}
+              data-tone={item.tone}
+            >
+              <span className={styles["lc-quick-icon"]}>
                 <Icon size={18} />
               </span>
-              <div className={styles['lc-quick-body']}>
-                <div className={styles['lc-quick-title']}>{item.label}</div>
-                <div className={styles['lc-quick-desc']}>{item.desc}</div>
+              <div className={styles["lc-quick-body"]}>
+                <div className={styles["lc-quick-title"]}>{item.label}</div>
+                <div className={styles["lc-quick-desc"]}>{item.desc}</div>
               </div>
-              <ChevronRight size={16} className={styles['lc-quick-arrow']} />
+              <ChevronRight size={16} className={styles["lc-quick-arrow"]} />
             </Link>
           );
         })}
       </div>
 
-      <section className={styles['lc-section']}>
-        <div className={styles['lc-section-head']}>
+      <section className={styles["lc-section"]}>
+        <div className={styles["lc-section-head"]}>
           <div>
-            <div className={styles['lc-section-title']}>{hasQuery ? "搜索套餐" : "推荐套餐"}</div>
-            <div className={styles['lc-section-sub']}>更快匹配，更高胜率</div>
+            <div className={styles["lc-section-title"]}>{hasQuery ? "搜索套餐" : "推荐套餐"}</div>
+            <div className={styles["lc-section-sub"]}>更快匹配，更高胜率</div>
           </div>
-          <Link href="/schedule" className={styles['lc-section-link']}>
+          <Link href="/schedule" className={styles["lc-section-link"]}>
             全部套餐
             <ChevronRight size={14} />
           </Link>
         </div>
         {filteredPackages.length === 0 ? (
-          <StateBlock tone="empty" size="compact" title="未找到匹配套餐" description="试试其他关键词" />
+          <StateBlock
+            tone="empty"
+            size="compact"
+            title="未找到匹配套餐"
+            description="试试其他关键词"
+          />
         ) : (
-          <Stagger className={styles['lc-package-grid']}>
+          <Stagger className={styles["lc-package-grid"]}>
             {filteredPackages.map((item) => (
               <StaggerItem key={item.name}>
-                <MotionCard className={styles['lc-package-card']} data-highlight={item.highlight ? "1" : undefined}>
-                  <div className={styles['lc-package-top']}>
+                <MotionCard
+                  className={styles["lc-package-card"]}
+                  data-highlight={item.highlight ? "1" : undefined}
+                >
+                  <div className={styles["lc-package-top"]}>
                     <div>
-                      <div className={styles['lc-package-title']}>{item.name}</div>
-                      <div className={styles['lc-package-desc']}>{item.desc}</div>
+                      <div className={styles["lc-package-title"]}>{item.name}</div>
+                      <div className={styles["lc-package-desc"]}>{item.desc}</div>
                     </div>
-                    <span className={styles['lc-package-pill']}>{item.eta}</span>
+                    <span className={styles["lc-package-pill"]}>{item.eta}</span>
                   </div>
-                  <div className={styles['lc-package-meta']}>
-                    <div className={styles['lc-package-price']}>{item.price}</div>
-                    <span className={styles['lc-package-tag']}>{item.tag}</span>
+                  <div className={styles["lc-package-meta"]}>
+                    <div className={styles["lc-package-price"]}>{item.price}</div>
+                    <span className={styles["lc-package-tag"]}>{item.tag}</span>
                   </div>
-                  <Link href="/schedule" className={styles['lc-package-btn']}>
+                  <Link href="/schedule" className={styles["lc-package-btn"]}>
                     去下单
                   </Link>
                 </MotionCard>
@@ -230,13 +249,13 @@ export default function HomeContent({ players, news }: { players: HomePlayer[]; 
         )}
       </section>
 
-      <section className={styles['lc-section']}>
-        <div className={styles['lc-section-head']}>
+      <section className={styles["lc-section"]}>
+        <div className={styles["lc-section-head"]}>
           <div>
-            <div className={styles['lc-section-title']}>{hasQuery ? "搜索陪练" : "可接陪练"}</div>
-            <div className={styles['lc-section-sub']}>在线陪护，极速响应</div>
+            <div className={styles["lc-section-title"]}>{hasQuery ? "搜索陪练" : "可接陪练"}</div>
+            <div className={styles["lc-section-sub"]}>在线陪护，极速响应</div>
           </div>
-          <Link href="/schedule" className={styles['lc-section-link']}>
+          <Link href="/schedule" className={styles["lc-section-link"]}>
             去指定
             <ChevronRight size={14} />
           </Link>
@@ -250,22 +269,22 @@ export default function HomeContent({ players, news }: { players: HomePlayer[]; 
             description={hasQuery ? "换个关键词试试" : "请稍后刷新或前往套餐下单"}
           />
         ) : (
-          <Stagger className={styles['lc-player-grid']}>
+          <Stagger className={styles["lc-player-grid"]}>
             {displayPlayers.map((player) => {
               const target = `/schedule?playerId=${encodeURIComponent(player.id)}&playerName=${encodeURIComponent(
                 player.name
               )}`;
               return (
                 <StaggerItem key={player.id}>
-                  <MotionCard className={styles['lc-player-card']}>
-                    <div className={styles['lc-player-avatar']}>{getInitial(player.name)}</div>
-                    <div className={styles['lc-player-body']}>
-                      <div className={styles['lc-player-name']}>{player.name}</div>
-                      <div className={styles['lc-player-role']}>{player.role || "认证陪练"}</div>
+                  <MotionCard className={styles["lc-player-card"]}>
+                    <div className={styles["lc-player-avatar"]}>{getInitial(player.name)}</div>
+                    <div className={styles["lc-player-body"]}>
+                      <div className={styles["lc-player-name"]}>{player.name}</div>
+                      <div className={styles["lc-player-role"]}>{player.role || "认证陪练"}</div>
                     </div>
-                    <div className={styles['lc-player-actions']}>
-                      <span className={styles['lc-player-status']}>可接单</span>
-                      <Link href={target} className={styles['lc-player-btn']}>
+                    <div className={styles["lc-player-actions"]}>
+                      <span className={styles["lc-player-status"]}>可接单</span>
+                      <Link href={target} className={styles["lc-player-btn"]}>
                         去指定
                       </Link>
                     </div>
@@ -277,24 +296,24 @@ export default function HomeContent({ players, news }: { players: HomePlayer[]; 
         )}
       </section>
 
-      <section className={styles['lc-section']}>
-        <div className={styles['lc-section-head']}>
+      <section className={styles["lc-section"]}>
+        <div className={styles["lc-section-head"]}>
           <div>
-            <div className={styles['lc-section-title']}>服务保障</div>
-            <div className={styles['lc-section-sub']}>清晰规则，放心下单</div>
+            <div className={styles["lc-section-title"]}>服务保障</div>
+            <div className={styles["lc-section-sub"]}>清晰规则，放心下单</div>
           </div>
         </div>
-        <div className={styles['lc-assurance-grid']}>
+        <div className={styles["lc-assurance-grid"]}>
           {assurances.map((item) => {
             const Icon = item.icon;
             return (
-              <div key={item.title} className={styles['lc-assurance-card']}>
-                <span className={styles['lc-assurance-icon']}>
+              <div key={item.title} className={styles["lc-assurance-card"]}>
+                <span className={styles["lc-assurance-icon"]}>
                   <Icon size={18} />
                 </span>
                 <div>
-                  <div className={styles['lc-assurance-title']}>{item.title}</div>
-                  <div className={styles['lc-assurance-desc']}>{item.desc}</div>
+                  <div className={styles["lc-assurance-title"]}>{item.title}</div>
+                  <div className={styles["lc-assurance-desc"]}>{item.desc}</div>
                 </div>
               </div>
             );
@@ -302,45 +321,45 @@ export default function HomeContent({ players, news }: { players: HomePlayer[]; 
         </div>
       </section>
 
-      <section className={styles['lc-section']}>
-        <div className={styles['lc-section-head']}>
+      <section className={styles["lc-section"]}>
+        <div className={styles["lc-section-head"]}>
           <div>
-            <div className={styles['lc-section-title']}>最新动态</div>
-            <div className={styles['lc-section-sub']}>公告更新与新手指南</div>
+            <div className={styles["lc-section-title"]}>最新动态</div>
+            <div className={styles["lc-section-sub"]}>公告更新与新手指南</div>
           </div>
-          <Link href="/news" className={styles['lc-section-link']}>
+          <Link href="/news" className={styles["lc-section-link"]}>
             查看全部
             <ChevronRight size={14} />
           </Link>
         </div>
-        <div className={styles['lc-news-list']}>
+        <div className={styles["lc-news-list"]}>
           {news.map((item) => (
-            <Link key={item.id} href="/news" className={styles['lc-news-item']}>
-              <span className={styles['lc-news-tag']}>{item.tag}</span>
-              <span className={styles['lc-news-title']}>{item.title}</span>
-              <ChevronRight size={16} className={styles['lc-news-arrow']} />
+            <Link key={item.id} href="/news" className={styles["lc-news-item"]}>
+              <span className={styles["lc-news-tag"]}>{item.tag}</span>
+              <span className={styles["lc-news-title"]}>{item.title}</span>
+              <ChevronRight size={16} className={styles["lc-news-arrow"]} />
             </Link>
           ))}
         </div>
       </section>
 
-      <section className={`${styles['lc-section']} ${styles['lc-footer-grid']}`}>
-        <Link href="/me/guide" className={styles['lc-footer-card']}>
-          <span className={styles['lc-footer-icon']}>
+      <section className={`${styles["lc-section"]} ${styles["lc-footer-grid"]}`}>
+        <Link href="/me/guide" className={styles["lc-footer-card"]}>
+          <span className={styles["lc-footer-icon"]}>
             <BookOpen size={18} />
           </span>
           <div>
-            <div className={styles['lc-footer-title']}>新手指南</div>
-            <div className={styles['lc-footer-desc']}>3 分钟掌握下单流程</div>
+            <div className={styles["lc-footer-title"]}>新手指南</div>
+            <div className={styles["lc-footer-desc"]}>3 分钟掌握下单流程</div>
           </div>
         </Link>
-        <Link href="/schedule" className={styles['lc-footer-card']}>
-          <span className={styles['lc-footer-icon']}>
+        <Link href="/schedule" className={styles["lc-footer-card"]}>
+          <span className={styles["lc-footer-icon"]}>
             <Users size={18} />
           </span>
           <div>
-            <div className={styles['lc-footer-title']}>陪练匹配</div>
-            <div className={styles['lc-footer-desc']}>选择指定陪练更安心</div>
+            <div className={styles["lc-footer-title"]}>陪练匹配</div>
+            <div className={styles["lc-footer-desc"]}>选择指定陪练更安心</div>
           </div>
         </Link>
       </section>

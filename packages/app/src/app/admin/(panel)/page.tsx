@@ -4,7 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { ClipboardList, Megaphone, Users, Zap } from "lucide-react";
 import type { AdminOrder, AdminPlayer } from "@/lib/admin/admin-types";
-import { readCache, writeCache } from "@/app/components/client-cache";
+import { readCache, writeCache } from "@/lib/shared/client-cache";
+import { formatShortDateTime } from "@/lib/shared/date-utils";
 import { StateBlock } from "@/app/components/state-block";
 
 interface AdminStats {
@@ -12,15 +13,6 @@ interface AdminStats {
   pendingOrders: number;
   activePlayers: number;
   publishedAnnouncements: number;
-}
-
-function formatTime(ts: number) {
-  return new Date(ts).toLocaleString("zh-CN", {
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
 }
 
 export default function AdminDashboard() {
@@ -118,7 +110,10 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      <div className="admin-section motion-stack" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))" }}>
+      <div
+        className="admin-section motion-stack"
+        style={{ gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))" }}
+      >
         <div className="admin-card">
           <div className="admin-card-header">
             <h3>待处理订单</h3>
@@ -130,9 +125,19 @@ export default function AdminDashboard() {
             </div>
           </div>
           {loading ? (
-            <StateBlock tone="loading" size="compact" title="正在加载" description="同步最新订单数据" />
+            <StateBlock
+              tone="loading"
+              size="compact"
+              title="正在加载"
+              description="同步最新订单数据"
+            />
           ) : recentOrders.length === 0 ? (
-            <StateBlock tone="empty" size="compact" title="暂无订单记录" description="稍后再来查看" />
+            <StateBlock
+              tone="empty"
+              size="compact"
+              title="暂无订单记录"
+              description="稍后再来查看"
+            />
           ) : (
             <div className="admin-table-wrap">
               <table className="admin-table">
@@ -154,13 +159,13 @@ export default function AdminDashboard() {
                         <span className="admin-badge">{order.stage}</span>
                       </td>
                       <td data-label="时间" className="admin-meta">
-                        {formatTime(order.createdAt)}
+                        {formatShortDateTime(order.createdAt)}
                       </td>
                     </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
 
@@ -177,7 +182,12 @@ export default function AdminDashboard() {
           {loading ? (
             <StateBlock tone="loading" size="compact" title="正在加载" description="同步陪练状态" />
           ) : activePlayers.length === 0 ? (
-            <StateBlock tone="empty" size="compact" title="暂无陪练档案" description="先去创建陪练资料" />
+            <StateBlock
+              tone="empty"
+              size="compact"
+              title="暂无陪练档案"
+              description="先去创建陪练资料"
+            />
           ) : (
             <div className="admin-table-wrap">
               <table className="admin-table">
@@ -197,10 +207,10 @@ export default function AdminDashboard() {
                         <span className="admin-badge neutral">{player.status}</span>
                       </td>
                     </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
 

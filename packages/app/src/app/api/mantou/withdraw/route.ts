@@ -2,42 +2,45 @@ import { NextResponse } from "next/server";
 import { isValidSuiAddress, normalizeSuiAddress } from "@mysten/sui/utils";
 import { queryMantouWithdraws, requestMantouWithdraw } from "@/lib/admin/admin-store";
 import { requireUserAuth } from "@/lib/auth/user-auth";
+import { z } from "zod";
+import { parseBodyRaw } from "@/lib/shared/api-validation";
+
+const withdrawSchema = z.object({
+  address: z.string().min(1),
+  amount: z.number().positive(),
+  account: z.string().trim().min(1),
+  note: z.string().trim().optional(),
+});
 
 export async function POST(req: Request) {
-  let rawBody = "";
-  let payload: { address?: string; amount?: number; account?: string; note?: string } = {};
-  try {
-    rawBody = await req.text();
-    payload = rawBody ? (JSON.parse(rawBody) as { address?: string; amount?: number; account?: string; note?: string }) : {};
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
+  const parsed = await parseBodyRaw(req, withdrawSchema);
+  if (!parsed.success) return parsed.response;
+  const { data: payload, rawBody } = parsed;
 
-  const address = normalizeSuiAddress(payload.address || "");
+  const address = normalizeSuiAddress(payload.address);
   if (!address || !isValidSuiAddress(address)) {
     return NextResponse.json({ error: "invalid address" }, { status: 400 });
   }
-  const auth = await requireUserAuth(req, { intent: "mantou:withdraw:create", address, body: rawBody });
+  const auth = await requireUserAuth(req, {
+    intent: "mantou:withdraw:create",
+    address,
+    body: rawBody,
+  });
   if (!auth.ok) return auth.response;
-  const amount = Number(payload.amount || 0);
-  if (!Number.isFinite(amount) || amount <= 0) {
-    return NextResponse.json({ error: "amount must be positive integer" }, { status: 400 });
-  }
-  const account = String(payload.account || "").trim();
-  if (!account) {
-    return NextResponse.json({ error: "account required" }, { status: 400 });
-  }
 
   try {
     const result = await requestMantouWithdraw({
       address: auth.address,
-      amount,
-      account,
-      note: payload.note ? String(payload.note).trim() : undefined,
+      amount: payload.amount,
+      account: payload.account,
+      note: payload.note || undefined,
     });
     return NextResponse.json({ ok: true, request: result.request, wallet: result.wallet });
   } catch (error) {
-    return NextResponse.json({ error: (error as Error).message || "withdraw failed" }, { status: 500 });
+    return NextResponse.json(
+      { error: (error as Error).message || "withdraw failed" },
+      { status: 500 }
+    );
   }
 }
 

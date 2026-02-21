@@ -7,8 +7,8 @@ import { useEffect, useMemo, useState } from "react";
 import { getCurrentAddress } from "@/lib/chain/qy-chain";
 import { useBalance } from "@/app/components/balance-provider";
 import { StateBlock } from "@/app/components/state-block";
-import { formatErrorMessage } from "@/app/components/error-utils";
-import { fetchWithUserAuth } from "@/app/components/user-auth-client";
+import { formatErrorMessage } from "@/lib/shared/error-utils";
+import { fetchWithUserAuth } from "@/lib/auth/user-auth-client";
 
 type Option = { amount: number; price: number };
 type PayChannel = "alipay" | "wechat_pay";
@@ -167,20 +167,25 @@ export default function Wallet() {
     setOrderId(nextOrderId);
 
     try {
-      const res = await fetchWithUserAuth("/api/pay", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          amount: selected.price,
-          channel,
-          orderId: nextOrderId,
-          userAddress: address,
-          diamondAmount: selected.amount,
-          subject: "钻石充值",
-          body: `钻石充值 ${selected.amount} 钻石`,
-          returnUrl: typeof window !== "undefined" ? `${window.location.origin}/wallet` : undefined,
-        }),
-      }, address);
+      const res = await fetchWithUserAuth(
+        "/api/pay",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            amount: selected.price,
+            channel,
+            orderId: nextOrderId,
+            userAddress: address,
+            diamondAmount: selected.amount,
+            subject: "钻石充值",
+            body: `钻石充值 ${selected.amount} 钻石`,
+            returnUrl:
+              typeof window !== "undefined" ? `${window.location.origin}/wallet` : undefined,
+          }),
+        },
+        address
+      );
       const data = (await res.json()) as PayResponse & { error?: string };
       if (!res.ok) {
         setStatus({ tone: "danger", title: data.error || "支付创建失败" });
@@ -280,9 +285,12 @@ export default function Wallet() {
               </button>
             </div>
             <div className="pay-option-price" style={{ marginTop: 6 }}>
-              预计 ¥{customOption ? customOption.price.toFixed(2) : "--"}（1 钻石 ≈ ¥{unitPrice.toFixed(2)}）
+              预计 ¥{customOption ? customOption.price.toFixed(2) : "--"}（1 钻石 ≈ ¥
+              {unitPrice.toFixed(2)}）
             </div>
-            {customError ? <div style={{ marginTop: 6, fontSize: 12, color: "#ef4444" }}>{customError}</div> : null}
+            {customError ? (
+              <div style={{ marginTop: 6, fontSize: 12, color: "#ef4444" }}>{customError}</div>
+            ) : null}
           </div>
         </div>
       </div>
@@ -368,10 +376,20 @@ export default function Wallet() {
 
       <div className="pay-footer">
         <label className="pay-agree">
-          <input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} aria-label="同意充值协议" />
+          <input
+            type="checkbox"
+            checked={agree}
+            onChange={(e) => setAgree(e.target.checked)}
+            aria-label="同意充值协议"
+          />
           <span>同意并阅读《充值服务协议》</span>
         </label>
-        <button type="button" className="pay-submit" disabled={!agree || loading} onClick={handleConfirm}>
+        <button
+          type="button"
+          className="pay-submit"
+          disabled={!agree || loading}
+          onClick={handleConfirm}
+        >
           {loading ? "创建支付中..." : `支付 ¥${selected.price.toFixed(2)}`}
         </button>
         {status && (

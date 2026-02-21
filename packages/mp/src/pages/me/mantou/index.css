@@ -1,0 +1,38 @@
+.mantou .mantou-hero {
+  margin-top: 4px;
+  margin-bottom: 12px;
+  padding: 16px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, #dcfce7 0%, #f0fdf4 60%, #ffffff 100%);
+  border: 1px solid rgba(34, 197, 94, 0.2);
+  box-shadow: 0 12px 26px rgba(15, 23, 42, 0.08);
+}
+
+.mantou .hero-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #166534;
+}
+
+.mantou .hero-value {
+  font-size: 26px;
+  font-weight: 700;
+  color: #0f172a;
+  margin-top: 8px;
+}
+
+.mantou .hero-desc {
+  font-size: 12px;
+  color: #4b5563;
+  margin-top: 6px;
+}
+
+.mantou .mantou-form {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.mantou .button {
+  width: 100%;
+}

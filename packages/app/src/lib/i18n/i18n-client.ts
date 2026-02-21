@@ -47,7 +47,10 @@ export function useI18n() {
   }, []);
 
   const messages = useMemo(() => MESSAGES[locale] || MESSAGES[DEFAULT_LOCALE], [locale]);
-  const t = useCallback((key: string, fallback?: string) => messages[key] || fallback || key, [messages]);
+  const t = useCallback(
+    (key: string, fallback?: string) => messages[key] || fallback || key,
+    [messages]
+  );
 
   return { locale, setLocale, t };
 }

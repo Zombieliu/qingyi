@@ -1,13 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  Home as HomeIcon,
-  Diamond,
-  CalendarCheck,
-  MessageCircle,
-  User,
-} from "lucide-react";
+import { Home as HomeIcon, Diamond, CalendarCheck, MessageCircle, User } from "lucide-react";
 import PasskeyGate from "../components/passkey-gate";
 import AutoTranslate from "../components/auto-translate";
 import { useI18n } from "@/lib/i18n/i18n-client";

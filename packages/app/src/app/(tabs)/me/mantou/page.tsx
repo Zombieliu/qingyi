@@ -5,12 +5,13 @@ import { ArrowLeft, Wallet } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { getCurrentAddress } from "@/lib/chain/qy-chain";
 import { useMantouBalance } from "@/app/components/mantou-provider";
-import { readCache, writeCache } from "@/app/components/client-cache";
-import { fetchWithUserAuth } from "@/app/components/user-auth-client";
+import { readCache, writeCache } from "@/lib/shared/client-cache";
+import { fetchWithUserAuth } from "@/lib/auth/user-auth-client";
 import { StateBlock } from "@/app/components/state-block";
-import { formatErrorMessage } from "@/app/components/error-utils";
+import { formatErrorMessage } from "@/lib/shared/error-utils";
 import { useGuardianStatus } from "@/app/components/guardian-role";
 import { PLAYER_STATUS_OPTIONS, type PlayerStatus } from "@/lib/admin/admin-types";
+import { formatFullDateTime } from "@/lib/shared/date-utils";
 
 type WithdrawItem = {
   id: string;
@@ -36,7 +37,10 @@ export default function MantouPage() {
   const [account, setAccount] = useState("");
   const [note, setNote] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [status, setStatus] = useState<{ tone: "success" | "warning" | "danger"; title: string } | null>(null);
+  const [status, setStatus] = useState<{
+    tone: "success" | "warning" | "danger";
+    title: string;
+  } | null>(null);
   const [withdraws, setWithdraws] = useState<WithdrawItem[]>([]);
   const [transactions, setTransactions] = useState<TxItem[]>([]);
   const [playerStatus, setPlayerStatus] = useState<PlayerStatus | null>(null);
@@ -64,8 +68,16 @@ export default function MantouPage() {
       }
       try {
         const [withdrawRes, txRes] = await Promise.all([
-          fetchWithUserAuth(`/api/mantou/withdraw?address=${address}&page=1&pageSize=10`, {}, address),
-          fetchWithUserAuth(`/api/mantou/transactions?address=${address}&page=1&pageSize=10`, {}, address),
+          fetchWithUserAuth(
+            `/api/mantou/withdraw?address=${address}&page=1&pageSize=10`,
+            {},
+            address
+          ),
+          fetchWithUserAuth(
+            `/api/mantou/transactions?address=${address}&page=1&pageSize=10`,
+            {},
+            address
+          ),
         ]);
         if (withdrawRes.ok) {
           const data = await withdrawRes.json();
@@ -103,7 +115,11 @@ export default function MantouPage() {
       setStatusLoading(true);
       setStatusHint(null);
       try {
-        const res = await fetchWithUserAuth(`/api/players/me/status?address=${address}`, {}, address);
+        const res = await fetchWithUserAuth(
+          `/api/players/me/status?address=${address}`,
+          {},
+          address
+        );
         if (!res.ok) {
           const data = await res.json().catch(() => ({}));
           if (res.status === 404) {
@@ -181,11 +197,15 @@ export default function MantouPage() {
     setSubmitting(true);
     setStatus(null);
     try {
-      const res = await fetchWithUserAuth("/api/mantou/withdraw", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ address, amount, account: account.trim(), note: note.trim() }),
-      }, address);
+      const res = await fetchWithUserAuth(
+        "/api/mantou/withdraw",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ address, amount, account: account.trim(), note: note.trim() }),
+        },
+        address
+      );
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         setStatus({ tone: "danger", title: data?.error || "提交失败" });
@@ -248,11 +268,21 @@ export default function MantouPage() {
           </div>
         ) : !guardianAddress ? (
           <div className="mt-3">
-            <StateBlock tone="warning" size="compact" title="请先登录账号" description="登录后可设置接单状态" />
+            <StateBlock
+              tone="warning"
+              size="compact"
+              title="请先登录账号"
+              description="登录后可设置接单状态"
+            />
           </div>
         ) : !isGuardian ? (
           <div className="mt-3">
-            <StateBlock tone="warning" size="compact" title="未绑定陪练档案" description="请联系运营绑定陪练" />
+            <StateBlock
+              tone="warning"
+              size="compact"
+              title="未绑定陪练档案"
+              description="请联系运营绑定陪练"
+            />
           </div>
         ) : playerStatus ? (
           <div className="mt-3">
@@ -342,7 +372,12 @@ export default function MantouPage() {
         <div className="text-sm font-semibold text-gray-900">提现记录</div>
         {withdraws.length === 0 ? (
           <div className="mt-3">
-            <StateBlock tone="empty" size="compact" title="暂无提现记录" description="提交提现后会出现在这里" />
+            <StateBlock
+              tone="empty"
+              size="compact"
+              title="暂无提现记录"
+              description="提交提现后会出现在这里"
+            />
           </div>
         ) : (
           <div className="mt-3 grid gap-3">
@@ -355,7 +390,7 @@ export default function MantouPage() {
                 <div className="mt-1 text-slate-500">状态：{item.status}</div>
                 {item.account && <div className="mt-1 text-slate-500">账号：{item.account}</div>}
                 {item.note && <div className="mt-1 text-slate-500">备注：{item.note}</div>}
-                <div className="mt-1 text-slate-400">{new Date(item.createdAt).toLocaleString("zh-CN")}</div>
+                <div className="mt-1 text-slate-400">{formatFullDateTime(item.createdAt)}</div>
               </div>
             ))}
           </div>
@@ -366,7 +401,12 @@ export default function MantouPage() {
         <div className="text-sm font-semibold text-gray-900">馒头流水</div>
         {transactions.length === 0 ? (
           <div className="mt-3">
-            <StateBlock tone="empty" size="compact" title="暂无流水" description="暂无馒头流水记录" />
+            <StateBlock
+              tone="empty"
+              size="compact"
+              title="暂无流水"
+              description="暂无馒头流水记录"
+            />
           </div>
         ) : (
           <div className="mt-3 grid gap-3">
@@ -377,7 +417,7 @@ export default function MantouPage() {
                   <span className="font-semibold text-emerald-600">{item.amount}</span>
                 </div>
                 {item.note && <div className="mt-1 text-slate-500">备注：{item.note}</div>}
-                <div className="mt-1 text-slate-400">{new Date(item.createdAt).toLocaleString("zh-CN")}</div>
+                <div className="mt-1 text-slate-400">{formatFullDateTime(item.createdAt)}</div>
               </div>
             ))}
           </div>

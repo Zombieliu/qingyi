@@ -108,7 +108,10 @@ export default async function LandingPage() {
           <div className="public-grid">
             {[
               { title: t("landing.feature.fast.title"), desc: t("landing.feature.fast.desc") },
-              { title: t("landing.feature.deposit.title"), desc: t("landing.feature.deposit.desc") },
+              {
+                title: t("landing.feature.deposit.title"),
+                desc: t("landing.feature.deposit.desc"),
+              },
               { title: t("landing.feature.flow.title"), desc: t("landing.feature.flow.desc") },
             ].map((item) => (
               <div key={item.title} className="public-card">

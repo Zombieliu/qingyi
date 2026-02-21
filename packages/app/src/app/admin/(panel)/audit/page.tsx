@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { RefreshCw, Search } from "lucide-react";
-import { readCache, writeCache } from "@/app/components/client-cache";
+import { readCache, writeCache } from "@/lib/shared/client-cache";
 import { StateBlock } from "@/app/components/state-block";
 
 type AuditLog = {
@@ -27,36 +27,43 @@ export default function AuditPage() {
   const pageSize = 30;
   const cacheTtlMs = 60_000;
 
-  const load = useCallback(async (cursorValue: string | null, nextPage: number) => {
-    setLoading(true);
-    try {
-      setCacheHint(null);
-      const params = new URLSearchParams();
-      params.set("pageSize", String(pageSize));
-      if (cursorValue) params.set("cursor", cursorValue);
-      if (query.trim()) params.set("q", query.trim());
-      const cacheKey = `cache:admin:audit:${params.toString()}`;
-      const cached = readCache<{ items: AuditLog[]; nextCursor?: string | null }>(cacheKey, cacheTtlMs, true);
-      if (cached) {
-        setLogs(Array.isArray(cached.value?.items) ? cached.value.items : []);
-        setPage(nextPage);
-        setNextCursor(cached.value?.nextCursor || null);
-        setCacheHint(cached.fresh ? null : "显示缓存数据，正在刷新…");
-      }
-      const res = await fetch(`/api/admin/audit?${params.toString()}`);
-      if (res.ok) {
-        const data = await res.json();
-        const next = Array.isArray(data?.items) ? data.items : [];
-        setLogs(next);
-        setPage(nextPage);
-        setNextCursor(data?.nextCursor || null);
+  const load = useCallback(
+    async (cursorValue: string | null, nextPage: number) => {
+      setLoading(true);
+      try {
         setCacheHint(null);
-        writeCache(cacheKey, { items: next, nextCursor: data?.nextCursor || null });
+        const params = new URLSearchParams();
+        params.set("pageSize", String(pageSize));
+        if (cursorValue) params.set("cursor", cursorValue);
+        if (query.trim()) params.set("q", query.trim());
+        const cacheKey = `cache:admin:audit:${params.toString()}`;
+        const cached = readCache<{ items: AuditLog[]; nextCursor?: string | null }>(
+          cacheKey,
+          cacheTtlMs,
+          true
+        );
+        if (cached) {
+          setLogs(Array.isArray(cached.value?.items) ? cached.value.items : []);
+          setPage(nextPage);
+          setNextCursor(cached.value?.nextCursor || null);
+          setCacheHint(cached.fresh ? null : "显示缓存数据，正在刷新…");
+        }
+        const res = await fetch(`/api/admin/audit?${params.toString()}`);
+        if (res.ok) {
+          const data = await res.json();
+          const next = Array.isArray(data?.items) ? data.items : [];
+          setLogs(next);
+          setPage(nextPage);
+          setNextCursor(data?.nextCursor || null);
+          setCacheHint(null);
+          writeCache(cacheKey, { items: next, nextCursor: data?.nextCursor || null });
+        }
+      } finally {
+        setLoading(false);
       }
-    } finally {
-      setLoading(false);
-    }
-  }, [cacheTtlMs, pageSize, query]);
+    },
+    [cacheTtlMs, pageSize, query]
+  );
 
   useEffect(() => {
     const handle = setTimeout(() => {
@@ -100,10 +107,7 @@ export default function AuditPage() {
         </div>
         <div className="admin-toolbar">
           <div className="admin-toolbar-grow" style={{ position: "relative" }}>
-            <Search
-              size={16}
-              className="admin-input-icon"
-            />
+            <Search size={16} className="admin-input-icon" />
             <input
               className="admin-input"
               style={{ paddingLeft: 36 }}
@@ -137,7 +141,12 @@ export default function AuditPage() {
         {loading ? (
           <StateBlock tone="loading" size="compact" title="加载中" description="正在同步审计日志" />
         ) : logs.length === 0 ? (
-          <StateBlock tone="empty" size="compact" title="暂无审计记录" description="暂时没有可展示的日志" />
+          <StateBlock
+            tone="empty"
+            size="compact"
+            title="暂无审计记录"
+            description="暂时没有可展示的日志"
+          />
         ) : (
           <div className="admin-table-wrap">
             <table className="admin-table">
@@ -156,7 +165,9 @@ export default function AuditPage() {
                     <td data-label="时间">{new Date(log.createdAt).toLocaleString()}</td>
                     <td data-label="角色">{log.actorRole}</td>
                     <td data-label="操作">{log.action}</td>
-                    <td data-label="目标">{log.targetType ? `${log.targetType}:${log.targetId || "-"}` : "-"}</td>
+                    <td data-label="目标">
+                      {log.targetType ? `${log.targetType}:${log.targetId || "-"}` : "-"}
+                    </td>
                     <td data-label="IP">{log.ip || "-"}</td>
                   </tr>
                 ))}
@@ -168,9 +179,7 @@ export default function AuditPage() {
           <button className="admin-btn ghost" disabled={prevCursors.length === 0} onClick={goPrev}>
             上一页
           </button>
-          <div className="admin-meta">
-            第 {page} 页
-          </div>
+          <div className="admin-meta">第 {page} 页</div>
           <button className="admin-btn ghost" disabled={!nextCursor} onClick={goNext}>
             下一页
           </button>

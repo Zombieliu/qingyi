@@ -15,7 +15,11 @@ export async function POST(req: Request) {
     const session = await getAdminSession();
     await revokeAdminSession(sessionToken);
     if (session) {
-      await recordAudit(req, { role: session.role, sessionId: session.id, authType: "logout" }, "auth.logout");
+      await recordAudit(
+        req,
+        { role: session.role, sessionId: session.id, authType: "logout" },
+        "auth.logout"
+      );
     }
   }
   const response = NextResponse.json({ ok: true });

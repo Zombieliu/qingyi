@@ -4,17 +4,9 @@ import { useCallback, useEffect, useState } from "react";
 import { RefreshCw, Search } from "lucide-react";
 import type { AdminInvoiceRequest, InvoiceStatus } from "@/lib/admin/admin-types";
 import { INVOICE_STATUS_OPTIONS } from "@/lib/admin/admin-types";
-import { readCache, writeCache } from "@/app/components/client-cache";
+import { readCache, writeCache } from "@/lib/shared/client-cache";
+import { formatShortDateTime } from "@/lib/shared/date-utils";
 import { StateBlock } from "@/app/components/state-block";
-
-function formatTime(ts: number) {
-  return new Date(ts).toLocaleString("zh-CN", {
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
 
 export default function InvoicesPage() {
   const [requests, setRequests] = useState<AdminInvoiceRequest[]>([]);
@@ -30,41 +22,44 @@ export default function InvoicesPage() {
   const pageSize = 20;
   const cacheTtlMs = 60_000;
 
-  const load = useCallback(async (cursorValue: string | null, nextPage: number) => {
-    setLoading(true);
-    try {
-      setCacheHint(null);
-      const params = new URLSearchParams();
-      params.set("pageSize", String(pageSize));
-      if (cursorValue) params.set("cursor", cursorValue);
-      if (statusFilter && statusFilter !== "全部") params.set("status", statusFilter);
-      if (query.trim()) params.set("q", query.trim());
-      const cacheKey = `cache:admin:invoices:${params.toString()}`;
-      const cached = readCache<{ items: AdminInvoiceRequest[]; nextCursor?: string | null }>(
-        cacheKey,
-        cacheTtlMs,
-        true
-      );
-      if (cached) {
-        setRequests(Array.isArray(cached.value?.items) ? cached.value.items : []);
-        setPage(nextPage);
-        setNextCursor(cached.value?.nextCursor || null);
-        setCacheHint(cached.fresh ? null : "显示缓存数据，正在刷新…");
-      }
-      const res = await fetch(`/api/admin/invoices?${params.toString()}`);
-      if (res.ok) {
-        const data = await res.json();
-        const next = Array.isArray(data?.items) ? data.items : [];
-        setRequests(next);
-        setPage(nextPage);
-        setNextCursor(data?.nextCursor || null);
+  const load = useCallback(
+    async (cursorValue: string | null, nextPage: number) => {
+      setLoading(true);
+      try {
         setCacheHint(null);
-        writeCache(cacheKey, { items: next, nextCursor: data?.nextCursor || null });
+        const params = new URLSearchParams();
+        params.set("pageSize", String(pageSize));
+        if (cursorValue) params.set("cursor", cursorValue);
+        if (statusFilter && statusFilter !== "全部") params.set("status", statusFilter);
+        if (query.trim()) params.set("q", query.trim());
+        const cacheKey = `cache:admin:invoices:${params.toString()}`;
+        const cached = readCache<{ items: AdminInvoiceRequest[]; nextCursor?: string | null }>(
+          cacheKey,
+          cacheTtlMs,
+          true
+        );
+        if (cached) {
+          setRequests(Array.isArray(cached.value?.items) ? cached.value.items : []);
+          setPage(nextPage);
+          setNextCursor(cached.value?.nextCursor || null);
+          setCacheHint(cached.fresh ? null : "显示缓存数据，正在刷新…");
+        }
+        const res = await fetch(`/api/admin/invoices?${params.toString()}`);
+        if (res.ok) {
+          const data = await res.json();
+          const next = Array.isArray(data?.items) ? data.items : [];
+          setRequests(next);
+          setPage(nextPage);
+          setNextCursor(data?.nextCursor || null);
+          setCacheHint(null);
+          writeCache(cacheKey, { items: next, nextCursor: data?.nextCursor || null });
+        }
+      } finally {
+        setLoading(false);
       }
-    } finally {
-      setLoading(false);
-    }
-  }, [cacheTtlMs, pageSize, query, statusFilter]);
+    },
+    [cacheTtlMs, pageSize, query, statusFilter]
+  );
 
   useEffect(() => {
     const handle = setTimeout(() => {
@@ -134,10 +129,7 @@ export default function InvoicesPage() {
         </div>
         <div className="admin-toolbar">
           <div className="admin-toolbar-grow" style={{ position: "relative" }}>
-            <Search
-              size={16}
-              className="admin-input-icon"
-            />
+            <Search size={16} className="admin-input-icon" />
             <input
               className="admin-input"
               style={{ paddingLeft: 36 }}
@@ -146,7 +138,11 @@ export default function InvoicesPage() {
               onChange={(event) => setQuery(event.target.value)}
             />
           </div>
-          <select className="admin-select" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
+          <select
+            className="admin-select"
+            value={statusFilter}
+            onChange={(event) => setStatusFilter(event.target.value)}
+          >
             <option value="全部">全部状态</option>
             {INVOICE_STATUS_OPTIONS.map((status) => (
               <option key={status} value={status}>
@@ -177,9 +173,19 @@ export default function InvoicesPage() {
           </div>
         </div>
         {loading ? (
-          <StateBlock tone="loading" size="compact" title="加载发票申请中" description="正在同步最新发票申请" />
+          <StateBlock
+            tone="loading"
+            size="compact"
+            title="加载发票申请中"
+            description="正在同步最新发票申请"
+          />
         ) : requests.length === 0 ? (
-          <StateBlock tone="empty" size="compact" title="暂无发票申请" description="目前没有待处理申请" />
+          <StateBlock
+            tone="empty"
+            size="compact"
+            title="暂无发票申请"
+            description="目前没有待处理申请"
+          />
         ) : (
           <div className="admin-table-wrap">
             <table className="admin-table">
@@ -202,7 +208,9 @@ export default function InvoicesPage() {
                       <div className="admin-text-strong">{item.title || "-"}</div>
                       <div className="admin-meta">{item.taxId || "-"}</div>
                     </td>
-                    <td data-label="金额">{typeof item.amount === "number" ? `¥${item.amount}` : "-"}</td>
+                    <td data-label="金额">
+                      {typeof item.amount === "number" ? `¥${item.amount}` : "-"}
+                    </td>
                     <td data-label="订单号">
                       <div className="admin-meta">{item.orderId || "-"}</div>
                     </td>
@@ -236,15 +244,19 @@ export default function InvoicesPage() {
                         value={item.note || ""}
                         onChange={(event) =>
                           setRequests((prev) =>
-                            prev.map((r) => (r.id === item.id ? { ...r, note: event.target.value } : r))
+                            prev.map((r) =>
+                              r.id === item.id ? { ...r, note: event.target.value } : r
+                            )
                           )
                         }
                         onBlur={(event) => updateRequest(item.id, { note: event.target.value })}
                       />
                     </td>
-                    <td data-label="时间">{formatTime(item.createdAt)}</td>
+                    <td data-label="时间">{formatShortDateTime(item.createdAt)}</td>
                     <td data-label="更新">
-                      <span className="admin-badge neutral">{saving[item.id] ? "保存中" : "已同步"}</span>
+                      <span className="admin-badge neutral">
+                        {saving[item.id] ? "保存中" : "已同步"}
+                      </span>
                     </td>
                   </tr>
                 ))}
@@ -253,21 +265,11 @@ export default function InvoicesPage() {
           </div>
         )}
         <div className="admin-pagination">
-          <button
-            className="admin-btn ghost"
-            disabled={prevCursors.length === 0}
-            onClick={goPrev}
-          >
+          <button className="admin-btn ghost" disabled={prevCursors.length === 0} onClick={goPrev}>
             上一页
           </button>
-          <div className="admin-meta">
-            第 {page} 页
-          </div>
-          <button
-            className="admin-btn ghost"
-            disabled={!nextCursor}
-            onClick={goNext}
-          >
+          <div className="admin-meta">第 {page} 页</div>
+          <button className="admin-btn ghost" disabled={!nextCursor} onClick={goNext}>
             下一页
           </button>
         </div>

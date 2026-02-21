@@ -2,9 +2,7 @@ import "server-only";
 import { fetchChainOrdersAdmin, cancelOrderAdmin, type ChainOrder } from "./chain-admin";
 import { syncChainOrder } from "./chain-sync";
 import * as chainOrderUtils from "./chain-order-utils";
-
-const DEFAULT_AUTO_CANCEL_HOURS = 24;
-const DEFAULT_AUTO_CANCEL_MAX = 10;
+import { env } from "@/lib/env";
 
 export type AutoCancelConfig = {
   enabled: boolean;
@@ -13,19 +11,13 @@ export type AutoCancelConfig = {
 };
 
 export function getAutoCancelConfig(): AutoCancelConfig {
-  const hoursRaw = process.env.CHAIN_ORDER_AUTO_CANCEL_HOURS;
-  const maxRaw = process.env.CHAIN_ORDER_AUTO_CANCEL_MAX;
-  const hours = hoursRaw === undefined || hoursRaw === ""
-    ? DEFAULT_AUTO_CANCEL_HOURS
-    : Number(hoursRaw);
-  const max = maxRaw === undefined || maxRaw === ""
-    ? DEFAULT_AUTO_CANCEL_MAX
-    : Number(maxRaw);
+  const hours = env.CHAIN_ORDER_AUTO_CANCEL_HOURS;
+  const max = env.CHAIN_ORDER_AUTO_CANCEL_MAX;
   const enabled = Number.isFinite(hours) && hours > 0;
   return {
     enabled,
-    hours: Number.isFinite(hours) ? hours : DEFAULT_AUTO_CANCEL_HOURS,
-    max: Number.isFinite(max) && max > 0 ? Math.floor(max) : DEFAULT_AUTO_CANCEL_MAX,
+    hours,
+    max,
   };
 }
 
@@ -41,7 +33,9 @@ export type AutoCancelResult = {
   canceledIds: string[];
 };
 
-export async function autoCancelChainOrders(options: { dryRun?: boolean; limit?: number } = {}): Promise<AutoCancelResult> {
+export async function autoCancelChainOrders(
+  options: { dryRun?: boolean; limit?: number } = {}
+): Promise<AutoCancelResult> {
   const config = getAutoCancelConfig();
   const thresholdMs = config.hours * 60 * 60 * 1000;
   if (!config.enabled || thresholdMs <= 0) {
@@ -60,9 +54,10 @@ export async function autoCancelChainOrders(options: { dryRun?: boolean; limit?:
 
   const nowMs = Date.now();
   const orders = await fetchChainOrdersAdmin();
-  const limit = Number.isFinite(options.limit) && Number(options.limit) > 0
-    ? Math.floor(Number(options.limit))
-    : config.max;
+  const limit =
+    Number.isFinite(options.limit) && Number(options.limit) > 0
+      ? Math.floor(Number(options.limit))
+      : config.max;
   const targets = chainOrderUtils.pickAutoCancelableOrders(orders, nowMs, thresholdMs, limit);
 
   if (options.dryRun) {
@@ -115,7 +110,13 @@ export async function autoCancelChainOrders(options: { dryRun?: boolean; limit?:
   };
 }
 
-export function countAutoCancelableOrders(orders: ChainOrder[], nowMs: number, thresholdMs: number) {
+export function countAutoCancelableOrders(
+  orders: ChainOrder[],
+  nowMs: number,
+  thresholdMs: number
+) {
   if (!Array.isArray(orders)) return 0;
-  return orders.filter((order) => chainOrderUtils.isChainOrderAutoCancelable(order, nowMs, thresholdMs)).length;
+  return orders.filter((order) =>
+    chainOrderUtils.isChainOrderAutoCancelable(order, nowMs, thresholdMs)
+  ).length;
 }

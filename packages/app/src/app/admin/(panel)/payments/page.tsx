@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { RefreshCw } from "lucide-react";
-import { readCache, writeCache } from "@/app/components/client-cache";
+import { readCache, writeCache } from "@/lib/shared/client-cache";
 import { StateBlock } from "@/app/components/state-block";
 
 type PaymentEvent = {
@@ -27,35 +27,42 @@ export default function PaymentsPage() {
   const pageSize = 30;
   const cacheTtlMs = 60_000;
 
-  const load = useCallback(async (cursorValue: string | null, nextPage: number) => {
-    setLoading(true);
-    try {
-      setCacheHint(null);
-      const params = new URLSearchParams();
-      params.set("pageSize", String(pageSize));
-      if (cursorValue) params.set("cursor", cursorValue);
-      const cacheKey = `cache:admin:payments:${params.toString()}`;
-      const cached = readCache<{ items: PaymentEvent[]; nextCursor?: string | null }>(cacheKey, cacheTtlMs, true);
-      if (cached) {
-        setEvents(Array.isArray(cached.value?.items) ? cached.value.items : []);
-        setPage(nextPage);
-        setNextCursor(cached.value?.nextCursor || null);
-        setCacheHint(cached.fresh ? null : "显示缓存数据，正在刷新…");
-      }
-      const res = await fetch(`/api/admin/payments?${params.toString()}`);
-      if (res.ok) {
-        const data = await res.json();
-        const next = Array.isArray(data?.items) ? data.items : [];
-        setEvents(next);
-        setPage(nextPage);
-        setNextCursor(data?.nextCursor || null);
+  const load = useCallback(
+    async (cursorValue: string | null, nextPage: number) => {
+      setLoading(true);
+      try {
         setCacheHint(null);
-        writeCache(cacheKey, { items: next, nextCursor: data?.nextCursor || null });
+        const params = new URLSearchParams();
+        params.set("pageSize", String(pageSize));
+        if (cursorValue) params.set("cursor", cursorValue);
+        const cacheKey = `cache:admin:payments:${params.toString()}`;
+        const cached = readCache<{ items: PaymentEvent[]; nextCursor?: string | null }>(
+          cacheKey,
+          cacheTtlMs,
+          true
+        );
+        if (cached) {
+          setEvents(Array.isArray(cached.value?.items) ? cached.value.items : []);
+          setPage(nextPage);
+          setNextCursor(cached.value?.nextCursor || null);
+          setCacheHint(cached.fresh ? null : "显示缓存数据，正在刷新…");
+        }
+        const res = await fetch(`/api/admin/payments?${params.toString()}`);
+        if (res.ok) {
+          const data = await res.json();
+          const next = Array.isArray(data?.items) ? data.items : [];
+          setEvents(next);
+          setPage(nextPage);
+          setNextCursor(data?.nextCursor || null);
+          setCacheHint(null);
+          writeCache(cacheKey, { items: next, nextCursor: data?.nextCursor || null });
+        }
+      } finally {
+        setLoading(false);
       }
-    } finally {
-      setLoading(false);
-    }
-  }, [cacheTtlMs, pageSize]);
+    },
+    [cacheTtlMs, pageSize]
+  );
 
   useEffect(() => {
     load(cursor, page);
@@ -114,7 +121,12 @@ export default function PaymentsPage() {
         {loading ? (
           <StateBlock tone="loading" size="compact" title="加载中" description="正在同步支付事件" />
         ) : events.length === 0 ? (
-          <StateBlock tone="empty" size="compact" title="暂无支付事件" description="目前没有支付记录" />
+          <StateBlock
+            tone="empty"
+            size="compact"
+            title="暂无支付事件"
+            description="目前没有支付记录"
+          />
         ) : (
           <div className="admin-table-wrap">
             <table className="admin-table">
@@ -136,7 +148,9 @@ export default function PaymentsPage() {
                     </td>
                     <td data-label="事件">{event.event}</td>
                     <td data-label="订单号">{event.orderNo || "-"}</td>
-                    <td data-label="金额">{typeof event.amount === "number" ? event.amount : "-"}</td>
+                    <td data-label="金额">
+                      {typeof event.amount === "number" ? event.amount : "-"}
+                    </td>
                     <td data-label="状态">
                       {event.status ? (
                         <span className="admin-badge neutral">{event.status}</span>
@@ -159,9 +173,7 @@ export default function PaymentsPage() {
           <button className="admin-btn ghost" disabled={prevCursors.length === 0} onClick={goPrev}>
             上一页
           </button>
-          <div className="admin-meta">
-            第 {page} 页
-          </div>
+          <div className="admin-meta">第 {page} 页</div>
           <button className="admin-btn ghost" disabled={!nextCursor} onClick={goNext}>
             下一页
           </button>

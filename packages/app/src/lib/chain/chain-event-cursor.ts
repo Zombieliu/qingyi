@@ -18,7 +18,9 @@ function isEventId(value: unknown): value is EventId {
   return typeof raw.txDigest === "string" && typeof raw.eventSeq === "string";
 }
 
-export async function getChainEventCursor(id = DEFAULT_CURSOR_ID): Promise<ChainEventCursorState | null> {
+export async function getChainEventCursor(
+  id = DEFAULT_CURSOR_ID
+): Promise<ChainEventCursorState | null> {
   const row = await prisma.chainEventCursor.findUnique({ where: { id } });
   if (!row) return null;
   const rawCursor = row.cursor as Prisma.JsonValue | null;

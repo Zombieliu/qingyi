@@ -13,7 +13,8 @@ export default function LoginPage() {
     () => () => {},
     () => {
       if (typeof window === "undefined") return false;
-      const isLocal = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+      const isLocal =
+        window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
       const secure = window.isSecureContext || window.location.protocol === "https:";
       return !(secure || isLocal);
     },
@@ -41,7 +42,15 @@ export default function LoginPage() {
   return (
     <div className="login-shell">
       {showHttpsTip && (
-        <div className="dl-card" style={{ padding: 12, marginBottom: 14, border: "1px solid #fecdd3", background: "#fff1f2" }}>
+        <div
+          className="dl-card"
+          style={{
+            padding: 12,
+            marginBottom: 14,
+            border: "1px solid #fecdd3",
+            background: "#fff1f2",
+          }}
+        >
           <div className="flex items-center gap-2 text-sm text-rose-600">
             <AlertTriangle size={16} />
             <span>{t("login.tip")}</span>

@@ -1,12 +1,16 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { requireAdmin } from "@/lib/admin/admin-auth";
 import { recordAudit } from "@/lib/admin/admin-audit";
 import { removeAccessToken, updateAccessToken } from "@/lib/admin/admin-store";
-import type { AdminAccessToken, AdminRole, AdminTokenStatus } from "@/lib/admin/admin-types";
-import { ADMIN_ROLE_OPTIONS, ADMIN_TOKEN_STATUS_OPTIONS } from "@/lib/admin/admin-types";
+import type { AdminAccessToken } from "@/lib/admin/admin-types";
+import { parseBody } from "@/lib/shared/api-validation";
 
-const roleSet = new Set(ADMIN_ROLE_OPTIONS);
-const statusSet = new Set(ADMIN_TOKEN_STATUS_OPTIONS);
+const patchSchema = z.object({
+  label: z.string().trim().optional(),
+  role: z.enum(["admin", "ops", "finance", "viewer"]).optional(),
+  status: z.enum(["active", "disabled"]).optional(),
+});
 
 function toPublicToken(token: AdminAccessToken) {
   return {
@@ -21,41 +25,27 @@ function toPublicToken(token: AdminAccessToken) {
   };
 }
 
-async function resolveParams(context: { params: { tokenId: string } | Promise<{ tokenId: string }> }) {
+async function resolveParams(context: {
+  params: { tokenId: string } | Promise<{ tokenId: string }>;
+}) {
   return await Promise.resolve(context.params);
 }
 
-export async function PATCH(req: Request, context: { params: { tokenId: string } | Promise<{ tokenId: string }> }) {
+export async function PATCH(
+  req: Request,
+  context: { params: { tokenId: string } | Promise<{ tokenId: string }> }
+) {
   const auth = await requireAdmin(req, { role: "admin" });
   if (!auth.ok) return auth.response;
   const { tokenId } = await resolveParams(context);
 
-  let body: Partial<AdminAccessToken> = {};
-  try {
-    body = (await req.json()) as Partial<AdminAccessToken>;
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
+  const parsed = await parseBody(req, patchSchema);
+  if (!parsed.success) return parsed.response;
 
   const patch: Partial<AdminAccessToken> = {};
-  if (typeof body.label === "string") {
-    const trimmed = body.label.trim();
-    patch.label = trimmed ? trimmed : "";
-  }
-  if (typeof body.role === "string") {
-    const role = body.role as AdminRole;
-    if (!roleSet.has(role)) {
-      return NextResponse.json({ error: "invalid_role" }, { status: 400 });
-    }
-    patch.role = role;
-  }
-  if (typeof body.status === "string") {
-    const status = body.status as AdminTokenStatus;
-    if (!statusSet.has(status)) {
-      return NextResponse.json({ error: "invalid_status" }, { status: 400 });
-    }
-    patch.status = status;
-  }
+  if (parsed.data.label !== undefined) patch.label = parsed.data.label;
+  if (parsed.data.role !== undefined) patch.role = parsed.data.role;
+  if (parsed.data.status !== undefined) patch.status = parsed.data.status;
 
   if (Object.keys(patch).length === 0) {
     return NextResponse.json({ error: "empty_patch" }, { status: 400 });
@@ -75,7 +65,10 @@ export async function PATCH(req: Request, context: { params: { tokenId: string }
   return NextResponse.json(toPublicToken(updated));
 }
 
-export async function DELETE(req: Request, context: { params: { tokenId: string } | Promise<{ tokenId: string }> }) {
+export async function DELETE(
+  req: Request,
+  context: { params: { tokenId: string } | Promise<{ tokenId: string }> }
+) {
   const auth = await requireAdmin(req, { role: "admin" });
   if (!auth.ok) return auth.response;
   const { tokenId } = await resolveParams(context);

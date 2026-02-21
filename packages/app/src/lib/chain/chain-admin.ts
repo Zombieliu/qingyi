@@ -5,6 +5,7 @@ import { Transaction, Inputs } from "@mysten/sui/transactions";
 import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
 import { isValidSuiAddress, normalizeSuiAddress, toHex } from "@mysten/sui/utils";
 import { DAPP_HUB_ID, DAPP_HUB_INITIAL_SHARED_VERSION, PACKAGE_ID } from "contracts/deployment";
+import { env } from "@/lib/env";
 
 export type ChainOrder = {
   orderId: string;
@@ -27,7 +28,7 @@ export type ChainOrder = {
   lastUpdatedMs?: number;
 };
 
-const EVENT_LIMIT = Number(process.env.ADMIN_CHAIN_EVENT_LIMIT || process.env.NEXT_PUBLIC_QY_EVENT_LIMIT || "1000");
+const EVENT_LIMIT = env.ADMIN_CHAIN_EVENT_LIMIT;
 const RETRYABLE_RPC_PATTERNS = [
   "429",
   "too many requests",
@@ -134,9 +135,9 @@ function ensureChainEnv() {
 }
 
 function getRpcUrl(): string {
-  const explicit = process.env.SUI_RPC_URL || process.env.NEXT_PUBLIC_SUI_RPC_URL;
+  const explicit = env.SUI_RPC_URL || env.NEXT_PUBLIC_SUI_RPC_URL;
   if (explicit) return explicit;
-  const network = process.env.SUI_NETWORK || process.env.NEXT_PUBLIC_SUI_NETWORK || "testnet";
+  const network = env.SUI_NETWORK;
   return getFullnodeUrl(network as "testnet" | "mainnet" | "devnet" | "localnet");
 }
 
@@ -149,7 +150,7 @@ async function getDubhePackageId(client: SuiClient): Promise<string> {
 }
 
 function getAdminSigner() {
-  const key = process.env.SUI_ADMIN_PRIVATE_KEY;
+  const key = env.SUI_ADMIN_PRIVATE_KEY;
   if (!key) {
     throw new Error("Missing SUI_ADMIN_PRIVATE_KEY");
   }
@@ -179,7 +180,11 @@ async function fetchChainOrdersAdminInternal(options?: {
   const targetKey = normalizeDappKey(`${strip0x(pkg)}::dapp_key::DappKey`);
   const orders = new Map<string, ChainOrder>();
   let cursor: EventId | null = options?.cursor ?? null;
-  let remaining = Number.isFinite(options?.limit) ? Number(options?.limit) : Number.isFinite(EVENT_LIMIT) ? EVENT_LIMIT : 200;
+  let remaining = Number.isFinite(options?.limit)
+    ? Number(options?.limit)
+    : Number.isFinite(EVENT_LIMIT)
+      ? EVENT_LIMIT
+      : 200;
   const orderDirection = options?.order || "descending";
   let latestCursor: EventId | null = null;
   let latestEventMs: number | null = null;
@@ -325,13 +330,13 @@ export async function findChainOrderFromDigest(
   const finalizedEvent = events.find((event) => event.type === `${prefix}OrderFinalized`);
   const hasOrderEvent = Boolean(
     createdEvent ||
-      claimedEvent ||
-      paidEvent ||
-      depositEvent ||
-      completedEvent ||
-      disputedEvent ||
-      resolvedEvent ||
-      finalizedEvent
+    claimedEvent ||
+    paidEvent ||
+    depositEvent ||
+    completedEvent ||
+    disputedEvent ||
+    resolvedEvent ||
+    finalizedEvent
   );
   if (!hasOrderEvent) return null;
 
@@ -343,7 +348,7 @@ export async function findChainOrderFromDigest(
   const disputed = disputedEvent?.parsedJson as Record<string, unknown> | undefined;
   const resolved = resolvedEvent?.parsedJson as Record<string, unknown> | undefined;
   const finalized = finalizedEvent?.parsedJson as Record<string, unknown> | undefined;
-  let orderId =
+  const orderId =
     readStringField(created, "order_id", "") ||
     readOrderIdFromEvent(claimedEvent) ||
     readOrderIdFromEvent(paidEvent) ||
@@ -385,10 +390,7 @@ export async function findChainOrderFromDigest(
         : fallback?.companion
           ? normalizeSuiAddress(fallback.companion)
           : "0x0";
-  const ruleSetId =
-    readStringField(created, "rule_set_id", "") ||
-    fallback?.ruleSetId ||
-    "0";
+  const ruleSetId = readStringField(created, "rule_set_id", "") || fallback?.ruleSetId || "0";
   const chain: ChainOrder = {
     orderId,
     user,

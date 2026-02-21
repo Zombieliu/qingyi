@@ -29,9 +29,14 @@ export default function FetchThrottle() {
     const cache = new Map<string, CacheEntry>();
     const lastCalled = new Map<string, number>();
 
-    const minIntervalMs = getNumber(process.env.NEXT_PUBLIC_FETCH_MIN_INTERVAL_MS, DEFAULT_MIN_INTERVAL_MS);
+    const minIntervalMs = getNumber(
+      process.env.NEXT_PUBLIC_FETCH_MIN_INTERVAL_MS,
+      DEFAULT_MIN_INTERVAL_MS
+    );
     const cacheTtlMs = getNumber(process.env.NEXT_PUBLIC_FETCH_CACHE_TTL_MS, DEFAULT_CACHE_TTL_MS);
-    const scope = (process.env.NEXT_PUBLIC_FETCH_THROTTLE_SCOPE || DEFAULT_THROTTLE_SCOPE).toLowerCase();
+    const scope = (
+      process.env.NEXT_PUBLIC_FETCH_THROTTLE_SCOPE || DEFAULT_THROTTLE_SCOPE
+    ).toLowerCase();
     const exclude = (process.env.NEXT_PUBLIC_FETCH_THROTTLE_EXCLUDE || "")
       .split(",")
       .map((value) => value.trim())
@@ -48,14 +53,19 @@ export default function FetchThrottle() {
       exclude.some((item) => pathname === item || pathname.startsWith(`${item}/`));
 
     const shouldSkip = (input: RequestInfo | URL, init?: RequestInit) => {
-      const headers = new Headers(init?.headers || (input instanceof Request ? input.headers : undefined));
+      const headers = new Headers(
+        init?.headers || (input instanceof Request ? input.headers : undefined)
+      );
       if (headers.get("x-qy-skip-throttle") === "1") return true;
-      if ((init?.cache || (input instanceof Request ? input.cache : "")) === "no-store") return true;
+      if ((init?.cache || (input instanceof Request ? input.cache : "")) === "no-store")
+        return true;
       return false;
     };
 
     window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
-      const method = (init?.method || (input instanceof Request ? input.method : "GET")).toUpperCase();
+      const method = (
+        init?.method || (input instanceof Request ? input.method : "GET")
+      ).toUpperCase();
       if (method !== "GET" && method !== "HEAD") {
         return originalFetch(input, init);
       }

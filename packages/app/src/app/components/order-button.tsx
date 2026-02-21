@@ -1,16 +1,17 @@
 "use client";
 import { useState } from "react";
-import { createOrder } from "./order-service";
+import { createOrder } from "@/lib/services/order-service";
 import {
   createChainOrderId,
   createOrderOnChain,
   getCurrentAddress,
   isChainOrdersEnabled,
 } from "@/lib/chain/qy-chain";
-import { trackEvent } from "@/app/components/analytics";
+import { trackEvent } from "@/lib/services/analytics";
 import { Button } from "@/components/ui/button";
 import { StateBlock } from "@/app/components/state-block";
-import { formatErrorMessage } from "@/app/components/error-utils";
+import { formatErrorMessage } from "@/lib/shared/error-utils";
+import { GAME_PROFILE_KEY } from "@/lib/shared/constants";
 
 interface Props {
   user: string;
@@ -18,8 +19,6 @@ interface Props {
   amount: number;
   note?: string;
 }
-
-const GAME_PROFILE_KEY = "qy_game_profile_v1";
 
 type GameProfile = {
   gameName: string;
@@ -44,13 +43,10 @@ function loadGameProfile(address: string) {
 
 export default function OrderButton({ user, item, amount, note }: Props) {
   const [loading, setLoading] = useState(false);
-  const [status, setStatus] = useState<
-    | {
-        tone: "success" | "warning" | "danger" | "info";
-        title: string;
-      }
-    | null
-  >(null);
+  const [status, setStatus] = useState<{
+    tone: "success" | "warning" | "danger" | "info";
+    title: string;
+  } | null>(null);
 
   const submit = async () => {
     try {
@@ -84,7 +80,11 @@ export default function OrderButton({ user, item, amount, note }: Props) {
         meta: {
           publicPool: true,
           gameProfile: gameProfile
-            ? { gameName: gameProfile.gameName, gameId: gameProfile.gameId, updatedAt: gameProfile.updatedAt }
+            ? {
+                gameName: gameProfile.gameName,
+                gameId: gameProfile.gameId,
+                updatedAt: gameProfile.updatedAt,
+              }
             : null,
         },
       });
@@ -119,10 +119,19 @@ export default function OrderButton({ user, item, amount, note }: Props) {
         setStatus({ tone: "warning", title: result.error || "订单已创建，通知失败" });
       } else {
         trackEvent("order_create_success", { source: "home_card", user, item, amount });
-        setStatus({ tone: "success", title: chainDigest ? "已提交并同步到微信群" : "已同步到微信群" });
+        setStatus({
+          tone: "success",
+          title: chainDigest ? "已提交并同步到微信群" : "已同步到微信群",
+        });
       }
     } catch (e) {
-      trackEvent("order_create_failed", { source: "home_card", user, item, amount, reason: "exception" });
+      trackEvent("order_create_failed", {
+        source: "home_card",
+        user,
+        item,
+        amount,
+        reason: "exception",
+      });
       setStatus({ tone: "danger", title: formatErrorMessage(e, "下单失败") });
     } finally {
       setLoading(false);

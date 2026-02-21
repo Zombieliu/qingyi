@@ -4,7 +4,10 @@
  * 用于记录和调试链上订单相关操作
  */
 
+import { env } from "@/lib/env";
+
 type LogLevel = "debug" | "info" | "warn" | "error";
+type LogData = Record<string, unknown>;
 
 type LogEntry = {
   timestamp: string;
@@ -12,16 +15,17 @@ type LogEntry = {
   operation: string;
   orderId?: string;
   duration?: number;
-  data?: any;
   error?: string;
+  stack?: string;
+  [key: string]: unknown;
 };
 
 class ChainOrderLogger {
   private logs: LogEntry[] = [];
   private maxLogs = 1000;
-  private enabled = process.env.CHAIN_ORDER_DEBUG === "true";
+  private enabled = env.CHAIN_ORDER_DEBUG === "1";
 
-  log(level: LogLevel, operation: string, data?: any) {
+  log(level: LogLevel, operation: string, data: LogData = {}) {
     if (!this.enabled && level !== "error") return;
 
     const entry: LogEntry = {
@@ -51,19 +55,19 @@ class ChainOrderLogger {
     }
   }
 
-  debug(operation: string, data?: any) {
+  debug(operation: string, data?: LogData) {
     this.log("debug", operation, data);
   }
 
-  info(operation: string, data?: any) {
+  info(operation: string, data?: LogData) {
     this.log("info", operation, data);
   }
 
-  warn(operation: string, data?: any) {
+  warn(operation: string, data?: LogData) {
     this.log("warn", operation, data);
   }
 
-  error(operation: string, error: any, data?: any) {
+  error(operation: string, error: unknown, data: LogData = {}) {
     this.log("error", operation, {
       ...data,
       error: error instanceof Error ? error.message : String(error),
@@ -96,7 +100,11 @@ class ChainOrderLogger {
   /**
    * 性能跟踪辅助函数
    */
-  async trackPerformance<T>(operation: string, orderId: string | undefined, fn: () => Promise<T>): Promise<T> {
+  async trackPerformance<T>(
+    operation: string,
+    orderId: string | undefined,
+    fn: () => Promise<T>
+  ): Promise<T> {
     const start = Date.now();
     this.debug(operation, { orderId, status: "started" });
 
@@ -119,11 +127,11 @@ export const chainOrderLogger = new ChainOrderLogger();
 /**
  * 性能监控装饰器（用于函数）
  */
-export function logChainOrderOperation<T extends (...args: any[]) => Promise<any>>(
+export function logChainOrderOperation<T extends (...args: unknown[]) => Promise<unknown>>(
   operation: string,
   fn: T
 ): T {
-  return (async (...args: any[]) => {
+  return (async (...args: Parameters<T>) => {
     const orderId = typeof args[0] === "string" ? args[0] : undefined;
     return chainOrderLogger.trackPerformance(operation, orderId, () => fn(...args));
   }) as T;

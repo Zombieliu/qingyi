@@ -3,6 +3,7 @@ import { Diamond, Gamepad2, Gift, Phone, ShieldCheck, User, Settings } from "luc
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { PASSKEY_STORAGE_KEY } from "@/app/components/passkey-wallet";
+import { GAME_PROFILE_KEY } from "@/lib/shared/constants";
 import { useEffect, useState } from "react";
 import SettingsPanel from "@/app/components/settings-panel";
 import { useBalance } from "@/app/components/balance-provider";
@@ -14,7 +15,12 @@ const grid = [
   { label: "馒头提现", icon: Diamond, color: "#22c55e", href: "/me/mantou" },
   { label: "全部订单", icon: Gamepad2, color: "#0ea5e9", href: "/me/orders" },
   { label: "待开始", icon: Gamepad2, color: "#6366f1", href: "/me/orders?filter=pending-start" },
-  { label: "待确认", icon: ShieldCheck, color: "#f59e0b", href: "/me/orders?filter=pending-confirm" },
+  {
+    label: "待确认",
+    icon: ShieldCheck,
+    color: "#f59e0b",
+    href: "/me/orders?filter=pending-confirm",
+  },
   { label: "开发票", icon: Phone, color: "#22c55e", href: "/me/invoice" },
   { label: "成为陪练", icon: User, color: "#d946ef", href: "/me/guardian" },
   { label: "邀请返利", icon: Gift, color: "#ec4899", href: "/me/referral" },
@@ -77,7 +83,7 @@ export default function Me() {
     const loadProfile = () => {
       if (typeof window === "undefined") return;
       try {
-        const raw = localStorage.getItem("qy_game_profile_v1");
+        const raw = localStorage.getItem(GAME_PROFILE_KEY);
         if (!raw) {
           setGameProfile(null);
           return;
@@ -107,7 +113,7 @@ export default function Me() {
       if (event.key === PASSKEY_STORAGE_KEY) {
         loadWallet();
       }
-      if (event.key === "qy_game_profile_v1") {
+      if (event.key === GAME_PROFILE_KEY) {
         loadProfile();
       }
     };
@@ -170,7 +176,11 @@ export default function Me() {
               key={item.label}
               className="dl-stat"
               onClick={item.onClick}
-              style={{ cursor: item.onClick ? "pointer" : "default", background: "transparent", border: "none" }}
+              style={{
+                cursor: item.onClick ? "pointer" : "default",
+                background: "transparent",
+                border: "none",
+              }}
             >
               <div className="dl-stat-value">{item.value}</div>
               <div className="dl-stat-label">{item.label}</div>

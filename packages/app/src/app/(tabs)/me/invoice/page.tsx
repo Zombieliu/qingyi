@@ -5,6 +5,7 @@ import { ArrowLeft, FileText, Send } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { PASSKEY_STORAGE_KEY } from "@/app/components/passkey-wallet";
 import { StateBlock } from "@/app/components/state-block";
+import { formatFullDateTime } from "@/lib/shared/date-utils";
 
 const STORAGE_KEY = "qy_invoice_requests_v1";
 
@@ -229,7 +230,12 @@ export default function InvoicePage() {
         <div className="text-sm font-semibold text-gray-900">最近申请</div>
         {requests.length === 0 ? (
           <div className="mt-3">
-            <StateBlock tone="empty" size="compact" title="暂无记录" description="提交申请后会显示在这里" />
+            <StateBlock
+              tone="empty"
+              size="compact"
+              title="暂无记录"
+              description="提交申请后会显示在这里"
+            />
           </div>
         ) : (
           <div className="mt-3 grid gap-3">
@@ -247,12 +253,7 @@ export default function InvoicePage() {
                   <div className="text-xs text-slate-500 mt-1">金额：¥{item.amount}</div>
                 ) : null}
                 <div className="text-[11px] text-slate-400 mt-2">
-                  {new Date(item.createdAt).toLocaleString("zh-CN", {
-                    month: "2-digit",
-                    day: "2-digit",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
+                  {formatFullDateTime(item.createdAt)}
                 </div>
               </div>
             ))}

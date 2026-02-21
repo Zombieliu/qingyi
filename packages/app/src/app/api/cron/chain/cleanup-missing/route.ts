@@ -3,11 +3,10 @@ import { fetchChainOrdersAdmin } from "@/lib/chain/chain-admin";
 import { listChainOrdersForCleanup, removeOrders } from "@/lib/admin/admin-store";
 import { computeMissingChainCleanup } from "@/lib/chain/chain-missing-utils";
 import { acquireCronLock } from "@/lib/cron-lock";
-
-const CRON_LOCK_TTL_MS = Number(process.env.CRON_LOCK_TTL_MS || "600000");
+import { env } from "@/lib/env";
 
 function isAuthorized(req: Request) {
-  const secret = process.env.CRON_SECRET;
+  const secret = env.CRON_SECRET;
   const vercelCron = req.headers.get("x-vercel-cron") === "1";
   if (vercelCron) return true;
   if (!secret) {
@@ -22,19 +21,22 @@ export async function GET(req: Request) {
   if (!isAuthorized(req)) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
-  if (!(await acquireCronLock("chain-cleanup-missing", CRON_LOCK_TTL_MS))) {
+  if (!(await acquireCronLock("chain-cleanup-missing", env.CRON_LOCK_TTL_MS))) {
     return NextResponse.json({ error: "locked" }, { status: 429 });
   }
 
-  const enabled = process.env.CHAIN_MISSING_CLEANUP_ENABLED === "1";
-  const maxAgeHours = Number(process.env.CHAIN_MISSING_CLEANUP_MAX_AGE_HOURS || "0");
-  const maxDelete = Math.max(1, Number(process.env.CHAIN_MISSING_CLEANUP_MAX || "500"));
+  const enabled = env.CHAIN_MISSING_CLEANUP_ENABLED === "1";
+  const maxAgeHours = env.CHAIN_MISSING_CLEANUP_MAX_AGE_HOURS;
+  const maxDelete = Math.max(1, env.CHAIN_MISSING_CLEANUP_MAX);
 
   if (!enabled || !Number.isFinite(maxAgeHours) || maxAgeHours <= 0) {
     return NextResponse.json({ ok: true, enabled, deleted: 0 });
   }
 
-  const [chainOrders, localOrders] = await Promise.all([fetchChainOrdersAdmin(), listChainOrdersForCleanup()]);
+  const [chainOrders, localOrders] = await Promise.all([
+    fetchChainOrdersAdmin(),
+    listChainOrdersForCleanup(),
+  ]);
   const { ids, missing, eligible, cutoff, limit } = computeMissingChainCleanup({
     chainOrders,
     localOrders,

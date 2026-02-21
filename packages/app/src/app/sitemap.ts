@@ -1,7 +1,8 @@
 import type { MetadataRoute } from "next";
 import { listPublicAnnouncements } from "@/lib/admin/admin-store";
+import { env } from "@/lib/env";
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+const siteUrl = env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
 export const revalidate = 300;
 

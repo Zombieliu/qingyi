@@ -4,12 +4,13 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { PlusCircle, RefreshCw, Search } from "lucide-react";
 import type { AdminCoupon, CouponStatus } from "@/lib/admin/admin-types";
 import { COUPON_STATUS_OPTIONS } from "@/lib/admin/admin-types";
-import { readCache, writeCache } from "@/app/components/client-cache";
+import { readCache, writeCache } from "@/lib/shared/client-cache";
 import { StateBlock } from "@/app/components/state-block";
+import { formatDateISO } from "@/lib/shared/date-utils";
 
 function toDateInput(ts?: number | null) {
   if (!ts) return "";
-  return new Date(ts).toISOString().slice(0, 10);
+  return formatDateISO(ts);
 }
 
 export default function CouponsPage() {
@@ -37,37 +38,44 @@ export default function CouponsPage() {
     description: "",
   });
 
-  const load = useCallback(async (cursorValue: string | null, nextPage: number) => {
-    setLoading(true);
-    try {
-      setCacheHint(null);
-      const params = new URLSearchParams();
-      params.set("pageSize", String(pageSize));
-      if (cursorValue) params.set("cursor", cursorValue);
-      if (statusFilter && statusFilter !== "全部") params.set("status", statusFilter);
-      if (query.trim()) params.set("q", query.trim());
-      const cacheKey = `cache:admin:coupons:${params.toString()}`;
-      const cached = readCache<{ items: AdminCoupon[]; nextCursor?: string | null }>(cacheKey, cacheTtlMs, true);
-      if (cached) {
-        setCoupons(Array.isArray(cached.value?.items) ? cached.value.items : []);
-        setPage(nextPage);
-        setNextCursor(cached.value?.nextCursor || null);
-        setCacheHint(cached.fresh ? null : "显示缓存数据，正在刷新…");
-      }
-      const res = await fetch(`/api/admin/coupons?${params.toString()}`);
-      if (res.ok) {
-        const data = await res.json();
-        const next = Array.isArray(data?.items) ? data.items : [];
-        setCoupons(next);
-        setPage(nextPage);
-        setNextCursor(data?.nextCursor || null);
+  const load = useCallback(
+    async (cursorValue: string | null, nextPage: number) => {
+      setLoading(true);
+      try {
         setCacheHint(null);
-        writeCache(cacheKey, { items: next, nextCursor: data?.nextCursor || null });
+        const params = new URLSearchParams();
+        params.set("pageSize", String(pageSize));
+        if (cursorValue) params.set("cursor", cursorValue);
+        if (statusFilter && statusFilter !== "全部") params.set("status", statusFilter);
+        if (query.trim()) params.set("q", query.trim());
+        const cacheKey = `cache:admin:coupons:${params.toString()}`;
+        const cached = readCache<{ items: AdminCoupon[]; nextCursor?: string | null }>(
+          cacheKey,
+          cacheTtlMs,
+          true
+        );
+        if (cached) {
+          setCoupons(Array.isArray(cached.value?.items) ? cached.value.items : []);
+          setPage(nextPage);
+          setNextCursor(cached.value?.nextCursor || null);
+          setCacheHint(cached.fresh ? null : "显示缓存数据，正在刷新…");
+        }
+        const res = await fetch(`/api/admin/coupons?${params.toString()}`);
+        if (res.ok) {
+          const data = await res.json();
+          const next = Array.isArray(data?.items) ? data.items : [];
+          setCoupons(next);
+          setPage(nextPage);
+          setNextCursor(data?.nextCursor || null);
+          setCacheHint(null);
+          writeCache(cacheKey, { items: next, nextCursor: data?.nextCursor || null });
+        }
+      } finally {
+        setLoading(false);
       }
-    } finally {
-      setLoading(false);
-    }
-  }, [cacheTtlMs, pageSize, query, statusFilter]);
+    },
+    [cacheTtlMs, pageSize, query, statusFilter]
+  );
 
   useEffect(() => {
     const handle = setTimeout(() => {
@@ -167,10 +175,7 @@ export default function CouponsPage() {
     setPage((value) => value + 1);
   };
 
-  const totalActive = useMemo(
-    () => coupons.filter((c) => c.status === "可用").length,
-    [coupons]
-  );
+  const totalActive = useMemo(() => coupons.filter((c) => c.status === "可用").length, [coupons]);
 
   return (
     <div className="admin-section">
@@ -181,7 +186,10 @@ export default function CouponsPage() {
             <p>配置面向用户的优惠券规则。</p>
           </div>
         </div>
-        <div className="admin-form" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
+        <div
+          className="admin-form"
+          style={{ gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}
+        >
           <label className="admin-field">
             标题
             <input
@@ -223,7 +231,9 @@ export default function CouponsPage() {
             <select
               className="admin-select"
               value={form.status}
-              onChange={(event) => setForm((prev) => ({ ...prev, status: event.target.value as CouponStatus }))}
+              onChange={(event) =>
+                setForm((prev) => ({ ...prev, status: event.target.value as CouponStatus }))
+              }
             >
               {COUPON_STATUS_OPTIONS.map((status) => (
                 <option key={status} value={status}>
@@ -256,7 +266,9 @@ export default function CouponsPage() {
               className="admin-input"
               placeholder="使用说明"
               value={form.description}
-              onChange={(event) => setForm((prev) => ({ ...prev, description: event.target.value }))}
+              onChange={(event) =>
+                setForm((prev) => ({ ...prev, description: event.target.value }))
+              }
             />
           </label>
         </div>
@@ -278,10 +290,7 @@ export default function CouponsPage() {
         </div>
         <div className="admin-toolbar">
           <div className="admin-toolbar-grow" style={{ position: "relative" }}>
-            <Search
-              size={16}
-              className="admin-input-icon"
-            />
+            <Search size={16} className="admin-input-icon" />
             <input
               className="admin-input"
               style={{ paddingLeft: 36 }}
@@ -290,7 +299,11 @@ export default function CouponsPage() {
               onChange={(event) => setQuery(event.target.value)}
             />
           </div>
-          <select className="admin-select" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
+          <select
+            className="admin-select"
+            value={statusFilter}
+            onChange={(event) => setStatusFilter(event.target.value)}
+          >
             <option value="全部">全部状态</option>
             {COUPON_STATUS_OPTIONS.map((status) => (
               <option key={status} value={status}>
@@ -321,7 +334,12 @@ export default function CouponsPage() {
           </div>
         </div>
         {loading ? (
-          <StateBlock tone="loading" size="compact" title="加载优惠券中" description="正在同步最新优惠券" />
+          <StateBlock
+            tone="loading"
+            size="compact"
+            title="加载优惠券中"
+            description="正在同步最新优惠券"
+          />
         ) : coupons.length === 0 ? (
           <StateBlock tone="empty" size="compact" title="暂无优惠券" description="可以新建优惠券" />
         ) : (
@@ -416,14 +434,19 @@ export default function CouponsPage() {
                           setCoupons((prev) =>
                             prev.map((item) =>
                               item.id === coupon.id
-                                ? { ...item, startsAt: value ? new Date(value).getTime() : undefined }
+                                ? {
+                                    ...item,
+                                    startsAt: value ? new Date(value).getTime() : undefined,
+                                  }
                                 : item
                             )
                           );
                         }}
                         onBlur={(event) =>
                           updateCoupon(coupon.id, {
-                            startsAt: event.target.value ? new Date(event.target.value).getTime() : null,
+                            startsAt: event.target.value
+                              ? new Date(event.target.value).getTime()
+                              : null,
                           })
                         }
                       />
@@ -436,14 +459,19 @@ export default function CouponsPage() {
                           setCoupons((prev) =>
                             prev.map((item) =>
                               item.id === coupon.id
-                                ? { ...item, expiresAt: value ? new Date(value).getTime() : undefined }
+                                ? {
+                                    ...item,
+                                    expiresAt: value ? new Date(value).getTime() : undefined,
+                                  }
                                 : item
                             )
                           );
                         }}
                         onBlur={(event) =>
                           updateCoupon(coupon.id, {
-                            expiresAt: event.target.value ? new Date(event.target.value).getTime() : null,
+                            expiresAt: event.target.value
+                              ? new Date(event.target.value).getTime()
+                              : null,
                           })
                         }
                         style={{ marginTop: 6 }}
@@ -456,11 +484,15 @@ export default function CouponsPage() {
                         onChange={(event) =>
                           setCoupons((prev) =>
                             prev.map((item) =>
-                              item.id === coupon.id ? { ...item, description: event.target.value } : item
+                              item.id === coupon.id
+                                ? { ...item, description: event.target.value }
+                                : item
                             )
                           )
                         }
-                        onBlur={(event) => updateCoupon(coupon.id, { description: event.target.value })}
+                        onBlur={(event) =>
+                          updateCoupon(coupon.id, { description: event.target.value })
+                        }
                       />
                     </td>
                     <td data-label="更新">
@@ -475,21 +507,11 @@ export default function CouponsPage() {
           </div>
         )}
         <div className="admin-pagination">
-          <button
-            className="admin-btn ghost"
-            disabled={prevCursors.length === 0}
-            onClick={goPrev}
-          >
+          <button className="admin-btn ghost" disabled={prevCursors.length === 0} onClick={goPrev}>
             上一页
           </button>
-          <div className="admin-meta">
-            第 {page} 页
-          </div>
-          <button
-            className="admin-btn ghost"
-            disabled={!nextCursor}
-            onClick={goNext}
-          >
+          <div className="admin-meta">第 {page} 页</div>
+          <button className="admin-btn ghost" disabled={!nextCursor} onClick={goNext}>
             下一页
           </button>
         </div>

@@ -1,0 +1,50 @@
+.wallet-records .records-hero {
+  margin-top: 4px;
+  margin-bottom: 12px;
+  padding: 16px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, #f1f5f9 0%, #ffffff 60%, #f8fafc 100%);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  box-shadow: 0 12px 26px rgba(15, 23, 42, 0.08);
+}
+
+.wallet-records .hero-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.wallet-records .hero-count {
+  font-size: 26px;
+  font-weight: 700;
+  margin-top: 6px;
+  color: #0ea5e9;
+}
+
+.wallet-records .hero-desc {
+  font-size: 12px;
+  color: #64748b;
+  margin-top: 6px;
+}
+
+.wallet-records .record-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.wallet-records .record-card {
+  padding: 14px;
+  border-radius: 16px;
+  background: #ffffff;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.wallet-records .record-amount {
+  font-weight: 700;
+  color: #0f172a;
+}

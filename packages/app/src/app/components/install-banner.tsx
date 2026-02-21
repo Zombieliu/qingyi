@@ -2,7 +2,10 @@
 import { useEffect, useState } from "react";
 import { Download } from "lucide-react";
 
-type DeferredPrompt = Event & { prompt: () => Promise<void>; userChoice: Promise<{ outcome: "accepted" | "dismissed" }>; };
+type DeferredPrompt = Event & {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
+};
 
 export function InstallBanner() {
   const [deferred, setDeferred] = useState<DeferredPrompt | null>(null);

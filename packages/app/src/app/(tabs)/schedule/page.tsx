@@ -2,17 +2,19 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Clock3, ShieldCheck, QrCode, Loader2, CheckCircle2 } from "lucide-react";
-import { type LocalOrder } from "@/app/components/order-store";
+import { type LocalOrder } from "@/lib/services/order-store";
 import {
   createOrder,
   deleteOrder,
   fetchOrdersWithMeta,
   patchOrder,
   syncChainOrder,
-} from "@/app/components/order-service";
-import { readCache, writeCache } from "@/app/components/client-cache";
-import { trackEvent } from "@/app/components/analytics";
-import { fetchWithUserAuth } from "@/app/components/user-auth-client";
+} from "@/lib/services/order-service";
+import { readCache, writeCache } from "@/lib/shared/client-cache";
+import { trackEvent } from "@/lib/services/analytics";
+import { fetchWithUserAuth } from "@/lib/auth/user-auth-client";
+import { DIAMOND_RATE, GAME_PROFILE_KEY } from "@/lib/shared/constants";
+import { getLocalChainStatus, mergeChainStatus } from "@/lib/chain/chain-status";
 import { useBackoffPoll } from "@/app/components/use-backoff-poll";
 import {
   type ChainOrder,
@@ -32,7 +34,7 @@ import {
 import { resolveDisputePolicy } from "@/lib/risk-policy";
 import { StateBlock } from "@/app/components/state-block";
 import { ConfirmDialog, PromptDialog } from "@/app/components/confirm-dialog";
-import { extractErrorMessage, formatErrorMessage } from "@/app/components/error-utils";
+import { extractErrorMessage, formatErrorMessage } from "@/lib/shared/error-utils";
 
 type RideItem = {
   name: string;
@@ -64,24 +66,8 @@ type PublicPlayer = {
   alipayQr?: string;
 };
 
-function getLocalChainStatus(order?: LocalOrder | null) {
-  if (!order) return undefined;
-  const meta = (order.meta || {}) as { chain?: { status?: number } };
-  const status = order.chainStatus ?? meta.chain?.status;
-  return typeof status === "number" ? status : undefined;
-}
-
-function mergeChainStatus(local?: number, remote?: number) {
-  if (typeof local === "number" && typeof remote === "number") {
-    return Math.max(local, remote);
-  }
-  return typeof local === "number" ? local : remote;
-}
-
-const GAME_PROFILE_KEY = "qy_game_profile_v1";
 const FIRST_ORDER_STORAGE_KEY = "qy_first_order_discount_used_v1";
 const FIRST_ORDER_DISCOUNT = { minSpend: 99, amount: 10, label: "首单满99减10" };
-const DIAMOND_RATE = 10;
 
 type GameProfile = {
   gameName: string;
@@ -275,19 +261,22 @@ export default function Schedule() {
 
   const MATCH_RATE = 0.15;
 
-  const refreshOrders = useCallback(async (addrOverride?: string, force = true) => {
-    const result = await fetchOrdersWithMeta({ force });
-    const list = result.items;
-    const addr = addrOverride ?? userAddress ?? getCurrentAddress();
-    const filtered = list.filter((order) => {
-      if (!addr) return true;
-      if (!order.userAddress) return false;
-      return order.userAddress === addr;
-    });
-    setOrders(filtered);
-    setMode(deriveMode(filtered));
-    return !result.meta.error;
-  }, [userAddress]);
+  const refreshOrders = useCallback(
+    async (addrOverride?: string, force = true) => {
+      const result = await fetchOrdersWithMeta({ force });
+      const list = result.items;
+      const addr = addrOverride ?? userAddress ?? getCurrentAddress();
+      const filtered = list.filter((order) => {
+        if (!addr) return true;
+        if (!order.userAddress) return false;
+        return order.userAddress === addr;
+      });
+      setOrders(filtered);
+      setMode(deriveMode(filtered));
+      return !result.meta.error;
+    },
+    [userAddress]
+  );
 
   useEffect(() => {
     refreshOrders();
@@ -314,9 +303,7 @@ export default function Schedule() {
   useEffect(() => {
     const addr = userAddress || getCurrentAddress();
     const used = readDiscountUsage(addr);
-    const eligibleList = addr
-      ? orders.filter((order) => order.userAddress === addr)
-      : orders;
+    const eligibleList = addr ? orders.filter((order) => order.userAddress === addr) : orders;
     setFirstOrderEligible(!used && eligibleList.length === 0);
   }, [orders, userAddress]);
 
@@ -327,7 +314,11 @@ export default function Schedule() {
       return;
     }
     const vipCacheKey = `cache:vip:status:${addr}`;
-    const cachedVip = readCache<{ tier?: { level?: number; name?: string } }>(vipCacheKey, cacheTtlMs, true);
+    const cachedVip = readCache<{ tier?: { level?: number; name?: string } }>(
+      vipCacheKey,
+      cacheTtlMs,
+      true
+    );
     if (cachedVip?.value?.tier) {
       setVipTier({ level: cachedVip.value.tier.level, name: cachedVip.value.tier.name });
     }
@@ -382,14 +373,16 @@ export default function Schedule() {
       if (found) return found;
 
       if (synced?.order && typeof synced.chainStatus === "number") {
-        const serviceFeeCny = typeof synced.order.serviceFee === "number" ? synced.order.serviceFee : 0;
+        const serviceFeeCny =
+          typeof synced.order.serviceFee === "number" ? synced.order.serviceFee : 0;
         const depositCny = typeof synced.order.deposit === "number" ? synced.order.deposit : 0;
         return {
           orderId,
           user: synced.order.userAddress || "0x0",
           companion: synced.order.companionAddress || "0x0",
           ruleSetId: String(
-            (synced.order.meta as { chain?: { ruleSetId?: string | number } } | undefined)?.chain?.ruleSetId ?? "0"
+            (synced.order.meta as { chain?: { ruleSetId?: string | number } } | undefined)?.chain
+              ?.ruleSetId ?? "0"
           ),
           serviceFee: String(Math.round(serviceFeeCny * 100)),
           deposit: String(Math.round(depositCny * 100)),
@@ -398,8 +391,8 @@ export default function Schedule() {
           createdAt: String(synced.order.createdAt || Date.now()),
           finishAt: "0",
           disputeDeadline: String(
-            (synced.order.meta as { chain?: { disputeDeadline?: string | number } } | undefined)?.chain
-              ?.disputeDeadline ?? "0"
+            (synced.order.meta as { chain?: { disputeDeadline?: string | number } } | undefined)
+              ?.chain?.disputeDeadline ?? "0"
           ),
           vaultService: "0",
           vaultDeposit: "0",
@@ -490,7 +483,10 @@ export default function Schedule() {
       setSelectedPlayerId(match.id);
       setActive(PLAYER_SECTION_TITLE);
       setTimeout(() => {
-        sectionRefs.current[PLAYER_SECTION_TITLE]?.scrollIntoView({ behavior: "smooth", block: "start" });
+        sectionRefs.current[PLAYER_SECTION_TITLE]?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
       }, 0);
       setPrefillHint(null);
     } else {
@@ -529,9 +525,7 @@ export default function Schedule() {
   }, [orders]);
   const chainCurrentOrder = useMemo(() => {
     const addr = chainAddress;
-    const list = addr
-      ? chainOrders.filter((o) => o.user === addr)
-      : chainOrders;
+    const list = addr ? chainOrders.filter((o) => o.user === addr) : chainOrders;
     const active = list.filter((o) => o.status !== 6);
     return active.length > 0 ? active[0] : null;
   }, [chainOrders, chainAddress]);
@@ -547,13 +541,18 @@ export default function Schedule() {
     if (currentOrder && chainCurrentOrder.orderId === currentOrder.id) {
       const meta = (currentOrder.meta || {}) as { chain?: { disputeDeadline?: number | string } };
       const rawDeadline = meta.chain?.disputeDeadline;
-      const localDeadline = typeof rawDeadline === "string" ? Number(rawDeadline) : Number(rawDeadline ?? 0);
+      const localDeadline =
+        typeof rawDeadline === "string" ? Number(rawDeadline) : Number(rawDeadline ?? 0);
       const mergedDeadline =
         Number.isFinite(localDeadline) && localDeadline > 0
           ? String(localDeadline)
           : chainCurrentOrder.disputeDeadline;
       if (typeof chainCurrentStatus === "number") {
-        return { ...chainCurrentOrder, status: chainCurrentStatus, disputeDeadline: mergedDeadline };
+        return {
+          ...chainCurrentOrder,
+          status: chainCurrentStatus,
+          disputeDeadline: mergedDeadline,
+        };
       }
       return { ...chainCurrentOrder, disputeDeadline: mergedDeadline };
     }
@@ -586,9 +585,10 @@ export default function Schedule() {
     if (!currentOrder) return;
     const isChainOrder = isChainLocalOrder(currentOrder);
     if (isChainOrder) {
-      const effectiveStatus = chainCurrentOrder && chainCurrentOrder.orderId === currentOrder.id
-        ? chainCurrentStatus ?? chainCurrentOrder.status
-        : chainCurrentOrder?.status;
+      const effectiveStatus =
+        chainCurrentOrder && chainCurrentOrder.orderId === currentOrder.id
+          ? (chainCurrentStatus ?? chainCurrentOrder.status)
+          : chainCurrentOrder?.status;
       if (typeof effectiveStatus === "number" && effectiveStatus >= 2) {
         setToast("押金已锁定，无法取消，请走争议/客服处理");
         setTimeout(() => setToast(null), 3000);
@@ -672,7 +672,12 @@ export default function Schedule() {
     );
   };
 
-  const openConfirm = (payload: { title: string; description?: string; confirmLabel?: string; action: () => Promise<void> }) => {
+  const openConfirm = (payload: {
+    title: string;
+    description?: string;
+    confirmLabel?: string;
+    action: () => Promise<void>;
+  }) => {
     setConfirmAction(payload);
   };
 
@@ -843,9 +848,10 @@ export default function Schedule() {
   }, [feeOpen, balanceLoading, balanceReady, hasEnoughDiamonds]);
 
   if (mode === "await-user-pay" && currentOrder?.driver) {
-    const companionProfile = (currentOrder.meta?.companionProfile || null) as
-      | { gameName?: string; gameId?: string }
-      | null;
+    const companionProfile = (currentOrder.meta?.companionProfile || null) as {
+      gameName?: string;
+      gameId?: string;
+    } | null;
     const hasCompanionProfile = Boolean(companionProfile?.gameName || companionProfile?.gameId);
     const paymentMode = (currentOrder.meta as { paymentMode?: string } | undefined)?.paymentMode;
     const isEscrow = paymentMode === "diamond_escrow";
@@ -866,7 +872,8 @@ export default function Schedule() {
                 <>
                   <div className="text-lg font-bold text-gray-900">陪玩游戏设置</div>
                   <div className="text-xs text-gray-500">
-                    游戏名 {companionProfile?.gameName || "-"} · ID {companionProfile?.gameId || "-"}
+                    游戏名 {companionProfile?.gameName || "-"} · ID{" "}
+                    {companionProfile?.gameId || "-"}
                   </div>
                 </>
               ) : (
@@ -884,19 +891,23 @@ export default function Schedule() {
                 </>
               ) : (
                 <>
-                  <div className="text-emerald-600 font-semibold text-sm">{currentOrder.driver.eta}</div>
+                  <div className="text-emerald-600 font-semibold text-sm">
+                    {currentOrder.driver.eta}
+                  </div>
                   {currentOrder.driver.price && (
-                    <div className="text-xs text-gray-500">一口价 {currentOrder.driver.price} 钻石</div>
+                    <div className="text-xs text-gray-500">
+                      一口价 {currentOrder.driver.price} 钻石
+                    </div>
                   )}
                 </>
               )}
             </div>
           </div>
           <div className="ride-driver-actions">
-            <button className="dl-tab-btn" onClick={cancelOrder}>取消订单</button>
-            <button className="dl-tab-btn accent">
-              联系陪练
+            <button className="dl-tab-btn" onClick={cancelOrder}>
+              取消订单
             </button>
+            <button className="dl-tab-btn accent">联系陪练</button>
           </div>
           {chainStatusHint && (
             <div className="text-xs text-gray-500 mt-2 text-right">{chainStatusHint}</div>
@@ -913,12 +924,18 @@ export default function Schedule() {
             <div className="ride-pay-amount">¥{playerDue.toFixed(2)}</div>
           </div>
           <div className="ride-pay-actions">
-            <button className="dl-tab-btn" onClick={cancelOrder}>取消订单</button>
+            <button className="dl-tab-btn" onClick={cancelOrder}>
+              取消订单
+            </button>
             <button
               className="dl-tab-btn primary"
               onClick={async () => {
                 if (!currentOrder) return;
-                await patchOrder(currentOrder.id, { playerPaid: true, status: "陪练费已托管", userAddress: getCurrentAddress() });
+                await patchOrder(currentOrder.id, {
+                  playerPaid: true,
+                  status: "陪练费已托管",
+                  userAddress: getCurrentAddress(),
+                });
                 await refreshOrders();
                 setMode("enroute");
               }}
@@ -933,16 +950,25 @@ export default function Schedule() {
   }
 
   if (mode === "enroute" && currentOrder?.driver) {
-    const companionProfile = (currentOrder.meta?.companionProfile || null) as
-      | { gameName?: string; gameId?: string }
-      | null;
+    const companionProfile = (currentOrder.meta?.companionProfile || null) as {
+      gameName?: string;
+      gameId?: string;
+    } | null;
     const hasCompanionProfile = Boolean(companionProfile?.gameName || companionProfile?.gameId);
-    const companionEndedAt = (currentOrder.meta as { companionEndedAt?: number | string } | undefined)?.companionEndedAt;
+    const companionEndedAt = (
+      currentOrder.meta as { companionEndedAt?: number | string } | undefined
+    )?.companionEndedAt;
     const canConfirmCompletion = Boolean(companionEndedAt);
     return (
       <div className="ride-shell">
         <div className="ride-map-large">
-          <StateBlock tone="loading" size="compact" align="center" title="地图加载中" description="正在定位服务区域" />
+          <StateBlock
+            tone="loading"
+            size="compact"
+            align="center"
+            title="地图加载中"
+            description="正在定位服务区域"
+          />
         </div>
         {canConfirmCompletion && (
           <div className="ride-tip" style={{ marginTop: 0 }}>
@@ -959,7 +985,8 @@ export default function Schedule() {
                 <>
                   <div className="text-lg font-bold text-gray-900">陪玩游戏设置</div>
                   <div className="text-xs text-gray-500">
-                    游戏名 {companionProfile?.gameName || "-"} · ID {companionProfile?.gameId || "-"}
+                    游戏名 {companionProfile?.gameName || "-"} · ID{" "}
+                    {companionProfile?.gameId || "-"}
                   </div>
                 </>
               ) : (
@@ -977,17 +1004,23 @@ export default function Schedule() {
                 </>
               ) : (
                 <>
-                  <div className="text-emerald-600 font-semibold text-sm">{currentOrder.driver.eta}</div>
+                  <div className="text-emerald-600 font-semibold text-sm">
+                    {currentOrder.driver.eta}
+                  </div>
                   {currentOrder.driver.price && (
-                    <div className="text-xs text-gray-500">一口价 {currentOrder.driver.price} 钻石</div>
+                    <div className="text-xs text-gray-500">
+                      一口价 {currentOrder.driver.price} 钻石
+                    </div>
                   )}
                 </>
               )}
             </div>
-        </div>
-        <div className="ride-driver-actions">
+          </div>
+          <div className="ride-driver-actions">
             <button className="dl-tab-btn" onClick={cancelOrder}>
-              {currentOrder ? renderActionLabel(`cancel-${currentOrder.id}`, "取消订单") : "取消订单"}
+              {currentOrder
+                ? renderActionLabel(`cancel-${currentOrder.id}`, "取消订单")
+                : "取消订单"}
             </button>
             <button className="dl-tab-btn">安全中心</button>
             {canConfirmCompletion && (
@@ -997,12 +1030,13 @@ export default function Schedule() {
                   if (!currentOrder) return;
                   const isChainOrder = isChainLocalOrder(currentOrder);
                   if (isChainOrder) {
-                    let chainOrder = chainOrders.find((order) => order.orderId === currentOrder.id) || null;
+                    let chainOrder =
+                      chainOrders.find((order) => order.orderId === currentOrder.id) || null;
                     if (!chainOrder) {
                       try {
                         chainOrder = await fetchOrSyncChainOrder(currentOrder.id);
                       } catch (error) {
-                      setToast(formatErrorMessage(error, "链上订单加载失败，请检查链上配置"));
+                        setToast(formatErrorMessage(error, "链上订单加载失败，请检查链上配置"));
                         return;
                       }
                     }
@@ -1012,7 +1046,9 @@ export default function Schedule() {
                       return;
                     }
                     if (effectiveStatus !== 2) {
-                      setToast(`当前链上状态：${statusLabel(effectiveStatus)}，需“押金已锁定”后才能确认完成`);
+                      setToast(
+                        `当前链上状态：${statusLabel(effectiveStatus)}，需“押金已锁定”后才能确认完成`
+                      );
                       return;
                     }
                     await runChainAction(
@@ -1023,17 +1059,20 @@ export default function Schedule() {
                     );
                     return;
                   }
-                  await patchOrder(currentOrder.id, { status: "待结算", userAddress: getCurrentAddress() });
+                  await patchOrder(currentOrder.id, {
+                    status: "待结算",
+                    userAddress: getCurrentAddress(),
+                  });
                   await refreshOrders();
                   setMode("pending-settlement");
                 }}
               >
-                {currentOrder ? renderActionLabel(`complete-${currentOrder.id}`, "确认完成") : "确认完成"}
+                {currentOrder
+                  ? renderActionLabel(`complete-${currentOrder.id}`, "确认完成")
+                  : "确认完成"}
               </button>
             )}
-            <button className="dl-tab-btn accent">
-              联系陪练
-            </button>
+            <button className="dl-tab-btn accent">联系陪练</button>
           </div>
           <div className="text-xs text-gray-500 mt-2">订单：{currentOrder.item}</div>
         </div>
@@ -1043,9 +1082,10 @@ export default function Schedule() {
   }
 
   if (mode === "pending-settlement" && currentOrder?.driver) {
-    const companionProfile = (currentOrder.meta?.companionProfile || null) as
-      | { gameName?: string; gameId?: string }
-      | null;
+    const companionProfile = (currentOrder.meta?.companionProfile || null) as {
+      gameName?: string;
+      gameId?: string;
+    } | null;
     const hasCompanionProfile = Boolean(companionProfile?.gameName || companionProfile?.gameId);
     const chainOrder =
       currentOrder && chainOrders.length > 0
@@ -1053,9 +1093,13 @@ export default function Schedule() {
         : null;
     const effectiveStatus = mergeChainStatus(localChainStatus, chainOrder?.status);
     const canSettle = effectiveStatus === 3;
-    const localDeadline =
-      (currentOrder.meta as { chain?: { disputeDeadline?: number | string } } | undefined)?.chain?.disputeDeadline;
-    const deadlineRaw = typeof localDeadline === "string" ? Number(localDeadline) : Number(localDeadline ?? chainOrder?.disputeDeadline ?? 0);
+    const localDeadline = (
+      currentOrder.meta as { chain?: { disputeDeadline?: number | string } } | undefined
+    )?.chain?.disputeDeadline;
+    const deadlineRaw =
+      typeof localDeadline === "string"
+        ? Number(localDeadline)
+        : Number(localDeadline ?? chainOrder?.disputeDeadline ?? 0);
     const disputeDeadline = Number.isFinite(deadlineRaw) && deadlineRaw > 0 ? deadlineRaw : null;
     const now = Date.now();
     const inDisputeWindow = disputeDeadline ? now <= disputeDeadline : false;
@@ -1064,7 +1108,13 @@ export default function Schedule() {
     return (
       <div className="ride-shell">
         <div className="ride-map-large">
-          <StateBlock tone="loading" size="compact" align="center" title="地图加载中" description="正在定位服务区域" />
+          <StateBlock
+            tone="loading"
+            size="compact"
+            align="center"
+            title="地图加载中"
+            description="正在定位服务区域"
+          />
         </div>
         <div className="ride-driver-card dl-card">
           <div className="flex items-center gap-3">
@@ -1075,7 +1125,8 @@ export default function Schedule() {
                 <>
                   <div className="text-lg font-bold text-gray-900">陪玩游戏设置</div>
                   <div className="text-xs text-gray-500">
-                    游戏名 {companionProfile?.gameName || "-"} · ID {companionProfile?.gameId || "-"}
+                    游戏名 {companionProfile?.gameName || "-"} · ID{" "}
+                    {companionProfile?.gameId || "-"}
                   </div>
                 </>
               ) : (
@@ -1122,7 +1173,9 @@ export default function Schedule() {
                 });
               }}
             >
-              {currentOrder ? renderActionLabel(`dispute-${currentOrder.id}`, "发起争议") : "发起争议"}
+              {currentOrder
+                ? renderActionLabel(`dispute-${currentOrder.id}`, "发起争议")
+                : "发起争议"}
             </button>
             <button
               className="dl-tab-btn primary"
@@ -1133,10 +1186,14 @@ export default function Schedule() {
                   return;
                 }
                 if (inDisputeWindow) {
-                  const deadlineText = disputeDeadline ? new Date(disputeDeadline).toLocaleString() : "";
+                  const deadlineText = disputeDeadline
+                    ? new Date(disputeDeadline).toLocaleString()
+                    : "";
                   openConfirm({
                     title: "确认放弃争议期并立即结算？",
-                    description: deadlineText ? `争议截止：${deadlineText}` : "争议期内放弃争议将立即结算。",
+                    description: deadlineText
+                      ? `争议截止：${deadlineText}`
+                      : "争议期内放弃争议将立即结算。",
                     confirmLabel: "确认结算",
                     action: async () => {
                       await runChainAction(
@@ -1157,11 +1214,11 @@ export default function Schedule() {
                 );
               }}
             >
-              {currentOrder ? renderActionLabel(`finalize-${currentOrder.id}`, "无争议结算") : "无争议结算"}
+              {currentOrder
+                ? renderActionLabel(`finalize-${currentOrder.id}`, "无争议结算")
+                : "无争议结算"}
             </button>
-            <button className="dl-tab-btn accent">
-              联系陪练
-            </button>
+            <button className="dl-tab-btn accent">联系陪练</button>
           </div>
           {disputeDeadline && (
             <div className="text-xs text-gray-500 mt-2 text-right">
@@ -1182,7 +1239,10 @@ export default function Schedule() {
           正在通知陪练，需陪练支付押金后才能接单
         </div>
         <div className="ride-stepper">
-          <Step label={`托管费 ¥${escrowFeeDisplay.toFixed(2)} 已收`} done={!!currentOrder.serviceFeePaid} />
+          <Step
+            label={`托管费 ¥${escrowFeeDisplay.toFixed(2)} 已收`}
+            done={!!currentOrder.serviceFeePaid}
+          />
           <Step label="陪练支付押金" done={!!currentOrder.depositPaid} />
           <Step label="派单匹配" done={!!currentOrder.driver} />
         </div>
@@ -1193,8 +1253,12 @@ export default function Schedule() {
             <span>{currentOrder.item}</span>
             <span className="text-amber-600 font-bold">¥{currentOrder.amount}</span>
           </div>
-          <div className="text-xs text-gray-500 mt-2">{new Date(currentOrder.time).toLocaleString()}</div>
-          <div className="text-xs text-gray-500 mt-3">押金未付前不会进入服务阶段，费用已由钻石托管。</div>
+          <div className="text-xs text-gray-500 mt-2">
+            {new Date(currentOrder.time).toLocaleString()}
+          </div>
+          <div className="text-xs text-gray-500 mt-3">
+            押金未付前不会进入服务阶段，费用已由钻石托管。
+          </div>
         </div>
       </div>
     );
@@ -1380,7 +1444,11 @@ export default function Schedule() {
             </div>
           ) : null}
           <div className="mt-2 flex justify-end">
-            <button className="dl-tab-btn" style={{ padding: "6px 10px" }} onClick={() => setDebugOpen(true)}>
+            <button
+              className="dl-tab-btn"
+              style={{ padding: "6px 10px" }}
+              onClick={() => setDebugOpen(true)}
+            >
               链上调试信息
             </button>
           </div>
@@ -1565,11 +1633,17 @@ export default function Schedule() {
                 </div>
                 <div className="text-xs text-gray-500" style={{ marginTop: 4 }}>
                   已选陪练：
-                  {selectedPlayer ? `${selectedPlayer.name}${selectedPlayer.role ? `（${selectedPlayer.role}）` : ""}` : "系统匹配"}
+                  {selectedPlayer
+                    ? `${selectedPlayer.name}${selectedPlayer.role ? `（${selectedPlayer.role}）` : ""}`
+                    : "系统匹配"}
                 </div>
                 <div className="text-xs text-gray-500" style={{ marginTop: 6 }}>
                   当前余额：
-                  {balanceLoading ? "查询中..." : balanceReady ? `${diamondBalance} 钻石` : "查询失败，请刷新"}
+                  {balanceLoading
+                    ? "查询中..."
+                    : balanceReady
+                      ? `${diamondBalance} 钻石`
+                      : "查询失败，请刷新"}
                 </div>
                 {balanceReady && !hasEnoughDiamonds && (
                   <div className="text-xs text-rose-500" style={{ marginTop: 4 }}>
@@ -1673,7 +1747,10 @@ export default function Schedule() {
             className={`ride-side-tab ${active === PLAYER_SECTION_TITLE ? "is-active" : ""}`}
             onClick={() => {
               setActive(PLAYER_SECTION_TITLE);
-              sectionRefs.current[PLAYER_SECTION_TITLE]?.scrollIntoView({ behavior: "smooth", block: "start" });
+              sectionRefs.current[PLAYER_SECTION_TITLE]?.scrollIntoView({
+                behavior: "smooth",
+                block: "start",
+              });
             }}
           >
             可接陪练
@@ -1684,7 +1761,10 @@ export default function Schedule() {
               className={`ride-side-tab ${active === s.title ? "is-active" : ""}`}
               onClick={() => {
                 setActive(s.title);
-                sectionRefs.current[s.title]?.scrollIntoView({ behavior: "smooth", block: "start" });
+                sectionRefs.current[s.title]?.scrollIntoView({
+                  behavior: "smooth",
+                  block: "start",
+                });
               }}
             >
               {s.title}
@@ -1701,7 +1781,9 @@ export default function Schedule() {
               className="ride-block"
             >
               <div className="ride-block-title">
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <div
+                  style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}
+                >
                   <span>可接陪练</span>
                   <button
                     className="dl-tab-btn"
@@ -1716,7 +1798,12 @@ export default function Schedule() {
               </div>
               <div className="ride-items">
                 {playersLoading && players.length === 0 ? (
-                  <StateBlock tone="loading" size="compact" title="加载中" description="正在获取可接陪练" />
+                  <StateBlock
+                    tone="loading"
+                    size="compact"
+                    title="加载中"
+                    description="正在获取可接陪练"
+                  />
                 ) : playersError && players.length === 0 ? (
                   <StateBlock
                     tone="danger"
@@ -1724,7 +1811,12 @@ export default function Schedule() {
                     title="陪练列表加载失败"
                     description={playersError}
                     actions={
-                      <button className="dl-tab-btn" onClick={loadPlayers} type="button" disabled={playersLoading}>
+                      <button
+                        className="dl-tab-btn"
+                        onClick={loadPlayers}
+                        type="button"
+                        disabled={playersLoading}
+                      >
                         {renderLoadingLabel(playersLoading, "重新加载", "加载中")}
                       </button>
                     }
@@ -1759,7 +1851,10 @@ export default function Schedule() {
                         <div className="ride-row-desc">{player.role || "擅长位置待完善"}</div>
                       </div>
                       <div className="ride-row-side">
-                        <label className="ride-checkbox" onClick={(event) => event.stopPropagation()}>
+                        <label
+                          className="ride-checkbox"
+                          onClick={(event) => event.stopPropagation()}
+                        >
                           <input
                             type="radio"
                             name="selected-player"
@@ -1776,7 +1871,9 @@ export default function Schedule() {
                   ))
                 )}
                 {playersError && players.length > 0 && (
-                  <div className="px-4 pb-2 text-xs text-rose-500">陪练列表更新失败：{playersError}</div>
+                  <div className="px-4 pb-2 text-xs text-rose-500">
+                    陪练列表更新失败：{playersError}
+                  </div>
                 )}
               </div>
               <div className="px-4 pb-2 text-[11px] text-slate-400">
@@ -1819,18 +1916,26 @@ export default function Schedule() {
                             <button
                               type="button"
                               className="ride-info-dot"
-                              onClick={() => setInfoOpen((prev) => (prev === item.name ? null : item.name))}
+                              onClick={() =>
+                                setInfoOpen((prev) => (prev === item.name ? null : item.name))
+                              }
                               onMouseEnter={() => setInfoOpen(item.name)}
                               onMouseLeave={() => setInfoOpen(null)}
                               aria-label={item.info}
                             >
                               !
                             </button>
-                            {infoOpen === item.name && <div className="ride-tooltip">{item.info}</div>}
+                            {infoOpen === item.name && (
+                              <div className="ride-tooltip">{item.info}</div>
+                            )}
                           </div>
                         )}
                         <label className="ride-checkbox">
-                          <input type="checkbox" checked={!!checked[item.name]} onChange={() => toggle(item.name)} />
+                          <input
+                            type="checkbox"
+                            checked={!!checked[item.name]}
+                            onChange={() => toggle(item.name)}
+                          />
                           <span className="ride-checkbox-box" />
                         </label>
                       </div>
@@ -1866,7 +1971,7 @@ export default function Schedule() {
 function deriveMode(list: LocalOrder[]): Mode {
   const latest = list.find((o) => !o.status.includes("取消") && !o.status.includes("完成")) || null;
   if (!latest) return "select";
-  const chainStatus = ((latest.meta as { chain?: { status?: number } } | undefined)?.chain?.status);
+  const chainStatus = (latest.meta as { chain?: { status?: number } } | undefined)?.chain?.status;
   if (typeof chainStatus === "number") {
     if (chainStatus === 3) return "pending-settlement";
     if (chainStatus >= 2) return "enroute";
@@ -1885,7 +1990,9 @@ function deriveMode(list: LocalOrder[]): Mode {
 function Step({ label, done }: { label: string; done?: boolean }) {
   return (
     <div className={`ride-step ${done ? "is-done" : ""}`}>
-      <div className="ride-step-icon">{done ? <ShieldCheck size={16} /> : <Loader2 size={16} className="spin" />}</div>
+      <div className="ride-step-icon">
+        {done ? <ShieldCheck size={16} /> : <Loader2 size={16} className="spin" />}
+      </div>
       <div className="ride-step-text">{label}</div>
     </div>
   );

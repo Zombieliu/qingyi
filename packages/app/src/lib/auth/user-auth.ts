@@ -13,14 +13,22 @@ import {
   type UserSessionRecord,
 } from "./user-session-store";
 import crypto from "crypto";
+import { env } from "@/lib/env";
 
-const AUTH_MAX_SKEW_MS = Number(process.env.AUTH_MAX_SKEW_MS || "300000");
-const AUTH_NONCE_TTL_MS = Number(process.env.AUTH_NONCE_TTL_MS || "600000");
-const USER_SESSION_TTL_HOURS = Number(process.env.USER_SESSION_TTL_HOURS || "12");
+const AUTH_MAX_SKEW_MS = env.AUTH_MAX_SKEW_MS;
+const AUTH_NONCE_TTL_MS = env.AUTH_NONCE_TTL_MS;
+const USER_SESSION_TTL_HOURS = env.USER_SESSION_TTL_HOURS;
 const USER_SESSION_COOKIE = "user_session";
 
 function getHeaderValue(req: Request, key: string) {
   return req.headers.get(key) || "";
+}
+
+function getBearerToken(req: Request) {
+  const header = getHeaderValue(req, "authorization");
+  if (!header) return "";
+  const match = header.match(/^Bearer\s+(.+)$/i);
+  return match?.[1]?.trim() || "";
 }
 
 function hashBody(body: string) {
@@ -47,7 +55,24 @@ async function getUserSessionTokenFromCookies() {
   return cookieStore.get(USER_SESSION_COOKIE)?.value || "";
 }
 
-export async function createUserSession(params: { address: string; ip?: string; userAgent?: string }) {
+export async function getUserSessionFromToken(token: string) {
+  if (!token) return null;
+  const sessionHash = hashToken(token);
+  const session = await getUserSessionByHash(sessionHash);
+  if (!session) return null;
+  if (session.expiresAt <= Date.now()) {
+    await removeUserSessionByHash(sessionHash);
+    return null;
+  }
+  await updateUserSessionByHash(sessionHash, { lastSeenAt: Date.now() });
+  return session;
+}
+
+export async function createUserSession(params: {
+  address: string;
+  ip?: string;
+  userAgent?: string;
+}) {
   const token = crypto.randomBytes(32).toString("hex");
   const tokenHash = hashToken(token);
   const now = Date.now();
@@ -111,7 +136,7 @@ export async function getUserSessionFromCookies() {
 export async function requireUserSignature(
   req: Request,
   params: { intent: string; address: string; body?: string }
-): Promise<{ ok: true } | { ok: false; response: NextResponse } > {
+): Promise<{ ok: true } | { ok: false; response: NextResponse }> {
   const signature = getHeaderValue(req, "x-auth-signature");
   const timestampRaw = getHeaderValue(req, "x-auth-timestamp");
   const nonce = getHeaderValue(req, "x-auth-nonce");
@@ -124,7 +149,10 @@ export async function requireUserSignature(
 
   const timestamp = Number(timestampRaw);
   if (!Number.isFinite(timestamp)) {
-    return { ok: false, response: NextResponse.json({ error: "invalid_timestamp" }, { status: 400 }) };
+    return {
+      ok: false,
+      response: NextResponse.json({ error: "invalid_timestamp" }, { status: 400 }),
+    };
   }
 
   const now = Date.now();
@@ -134,29 +162,44 @@ export async function requireUserSignature(
 
   const address = normalizeSuiAddress(params.address || "");
   if (!address || !isValidSuiAddress(address)) {
-    return { ok: false, response: NextResponse.json({ error: "invalid_address" }, { status: 400 }) };
+    return {
+      ok: false,
+      response: NextResponse.json({ error: "invalid_address" }, { status: 400 }),
+    };
   }
 
   if (headerAddress) {
     const normalizedHeader = normalizeSuiAddress(headerAddress);
     if (normalizedHeader !== address) {
-      return { ok: false, response: NextResponse.json({ error: "address_mismatch" }, { status: 401 }) };
+      return {
+        ok: false,
+        response: NextResponse.json({ error: "address_mismatch" }, { status: 401 }),
+      };
     }
   }
 
   const nonceKey = `${address}:${nonce}`;
   const nonceOk = await consumeNonce(nonceKey, AUTH_NONCE_TTL_MS);
   if (!nonceOk) {
-    return { ok: false, response: NextResponse.json({ error: "replay_detected" }, { status: 401 }) };
+    return {
+      ok: false,
+      response: NextResponse.json({ error: "replay_detected" }, { status: 401 }),
+    };
   }
 
   if (params.body !== undefined) {
     if (!bodyHashHeader) {
-      return { ok: false, response: NextResponse.json({ error: "body_hash_required" }, { status: 401 }) };
+      return {
+        ok: false,
+        response: NextResponse.json({ error: "body_hash_required" }, { status: 401 }),
+      };
     }
     const expected = hashBody(params.body);
     if (expected !== bodyHashHeader) {
-      return { ok: false, response: NextResponse.json({ error: "body_hash_mismatch" }, { status: 401 }) };
+      return {
+        ok: false,
+        response: NextResponse.json({ error: "body_hash_mismatch" }, { status: 401 }),
+      };
     }
   }
 
@@ -170,7 +213,10 @@ export async function requireUserSignature(
   try {
     await verifyPersonalMessageSignature(new TextEncoder().encode(message), signature, { address });
   } catch {
-    return { ok: false, response: NextResponse.json({ error: "invalid_signature" }, { status: 401 }) };
+    return {
+      ok: false,
+      response: NextResponse.json({ error: "invalid_signature" }, { status: 401 }),
+    };
   }
 
   return { ok: true };
@@ -180,14 +226,43 @@ export async function requireUserAuth(
   req: Request,
   params: { intent: string; address: string; body?: string; requireOrigin?: boolean }
 ): Promise<
-  | { ok: true; address: string; authType: "session" | "signature" }
+  | { ok: true; address: string; authType: "session" | "signature" | "token" }
   | { ok: false; response: NextResponse }
 > {
+  const bearerToken = getBearerToken(req);
+  if (bearerToken) {
+    const session = await getUserSessionFromToken(bearerToken);
+    if (!session) {
+      return {
+        ok: false,
+        response: NextResponse.json({ error: "invalid_token" }, { status: 401 }),
+      };
+    }
+    const normalized = normalizeSuiAddress(params.address || "");
+    if (!normalized || !isValidSuiAddress(normalized)) {
+      return {
+        ok: false,
+        response: NextResponse.json({ error: "invalid_address" }, { status: 400 }),
+      };
+    }
+    if (normalized !== normalizeSuiAddress(session.address)) {
+      await removeUserSessionByHash(session.tokenHash);
+      return {
+        ok: false,
+        response: NextResponse.json({ error: "address_mismatch" }, { status: 401 }),
+      };
+    }
+    return { ok: true, address: session.address, authType: "token" };
+  }
+
   const session = await getUserSessionFromCookies();
   if (session) {
     const normalized = normalizeSuiAddress(params.address || "");
     if (!normalized || !isValidSuiAddress(normalized)) {
-      return { ok: false, response: NextResponse.json({ error: "invalid_address" }, { status: 400 }) };
+      return {
+        ok: false,
+        response: NextResponse.json({ error: "invalid_address" }, { status: 400 }),
+      };
     }
     if (normalized !== normalizeSuiAddress(session.address)) {
       await removeUserSessionByHash(session.tokenHash);
@@ -195,7 +270,10 @@ export async function requireUserAuth(
       const requireOrigin =
         params.requireOrigin ?? !["GET", "HEAD", "OPTIONS"].includes(req.method.toUpperCase());
       if (requireOrigin && !ensureSameOrigin(req)) {
-        return { ok: false, response: NextResponse.json({ error: "origin_mismatch" }, { status: 403 }) };
+        return {
+          ok: false,
+          response: NextResponse.json({ error: "origin_mismatch" }, { status: 403 }),
+        };
       }
       return { ok: true, address: session.address, authType: "session" };
     }

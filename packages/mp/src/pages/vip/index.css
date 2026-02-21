@@ -1,0 +1,53 @@
+.vip .vip-hero {
+  margin-top: 4px;
+  padding: 18px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, #111827 0%, #1f2937 60%, #0f172a 100%);
+  color: #ffffff;
+  box-shadow: 0 18px 36px rgba(15, 23, 42, 0.3);
+}
+
+.vip .hero-label {
+  font-size: 12px;
+  color: #cbd5f5;
+}
+
+.vip .hero-level {
+  font-size: 26px;
+  font-weight: 700;
+  margin-top: 6px;
+}
+
+.vip .hero-desc {
+  font-size: 12px;
+  color: #cbd5f5;
+  margin-top: 6px;
+}
+
+.vip .vip-hero .helper {
+  color: #e2e8f0;
+}
+
+.vip .perk-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+.vip .perk-card {
+  padding: 12px;
+  border-radius: 14px;
+  background: #ffffff;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08);
+}
+
+.vip .perk-text {
+  font-size: 13px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.vip .button {
+  width: 100%;
+}

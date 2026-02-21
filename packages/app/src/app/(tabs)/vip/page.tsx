@@ -4,8 +4,8 @@ import Link from "next/link";
 import { ArrowLeft, Crown, Shield } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { PASSKEY_STORAGE_KEY } from "@/app/components/passkey-wallet";
-import { readCache, writeCache } from "@/app/components/client-cache";
-import { fetchWithUserAuth } from "@/app/components/user-auth-client";
+import { readCache, writeCache } from "@/lib/shared/client-cache";
+import { fetchWithUserAuth } from "@/lib/auth/user-auth-client";
 import type { AdminMember, AdminMembershipTier } from "@/lib/admin/admin-types";
 import { isVisualTestMode } from "@/lib/chain/qy-chain";
 import { StateBlock } from "@/app/components/state-block";
@@ -64,7 +64,9 @@ export default function Vip() {
           setTiers(Array.isArray(cachedTiers.value) ? cachedTiers.value : []);
         }
         const cachedMember =
-          memberCacheKey && walletAddress ? readCache<AdminMember | null>(memberCacheKey, cacheTtlMs, true) : null;
+          memberCacheKey && walletAddress
+            ? readCache<AdminMember | null>(memberCacheKey, cacheTtlMs, true)
+            : null;
         if (cachedMember) {
           setMember(cachedMember.value || null);
         }
@@ -101,7 +103,10 @@ export default function Vip() {
     }
   }, [member?.tierId, tiers]);
 
-  const selectedTier = useMemo(() => tiers.find((t) => t.id === selectedTierId) || tiers[0], [tiers, selectedTierId]);
+  const selectedTier = useMemo(
+    () => tiers.find((t) => t.id === selectedTierId) || tiers[0],
+    [tiers, selectedTierId]
+  );
   const perks = normalizePerks(selectedTier?.perks);
 
   const currentTier = member?.tierId ? tiers.find((t) => t.id === member.tierId) : null;
@@ -130,16 +135,20 @@ export default function Vip() {
     setSubmitting(true);
     setHint(null);
     try {
-      const res = await fetchWithUserAuth("/api/vip/request", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userAddress: walletAddress,
-          userName: "糕手玩玩",
-          contact: contact.trim(),
-          tierId: selectedTier.id,
-        }),
-      }, walletAddress);
+      const res = await fetchWithUserAuth(
+        "/api/vip/request",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userAddress: walletAddress,
+            userName: "糕手玩玩",
+            contact: contact.trim(),
+            tierId: selectedTier.id,
+          }),
+        },
+        walletAddress
+      );
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         setHint(data?.error || "提交失败，请稍后重试");
@@ -168,7 +177,9 @@ export default function Vip() {
         <div className="vip-name">{currentTier?.name || "暂未开通"}</div>
         <div className="vip-progress">{progressText}</div>
         {member?.expiresAt ? (
-          <div className="vip-progress">有效期至 {new Date(member.expiresAt).toLocaleDateString("zh-CN")}</div>
+          <div className="vip-progress">
+            有效期至 {new Date(member.expiresAt).toLocaleDateString("zh-CN")}
+          </div>
         ) : null}
       </div>
 
@@ -187,7 +198,10 @@ export default function Vip() {
                   textAlign: "left",
                   padding: "12px 14px",
                   borderRadius: 14,
-                  border: tier.id === selectedTier?.id ? "1px solid #fbbf24" : "1px solid rgba(255,255,255,0.08)",
+                  border:
+                    tier.id === selectedTier?.id
+                      ? "1px solid #fbbf24"
+                      : "1px solid rgba(255,255,255,0.08)",
                   background: tier.id === selectedTier?.id ? "rgba(251,191,36,0.12)" : "#0f1118",
                   color: "#e5e7eb",
                 }}
@@ -202,7 +216,9 @@ export default function Vip() {
           )}
         </div>
         <div style={{ marginTop: 12 }}>
-          <div style={{ fontSize: 12, color: "#94a3b8", marginBottom: 6 }}>联系方式（方便审核联系）</div>
+          <div style={{ fontSize: 12, color: "#94a3b8", marginBottom: 6 }}>
+            联系方式（方便审核联系）
+          </div>
           <input
             value={contact}
             onChange={(event) => setContact(event.target.value)}
@@ -235,7 +251,11 @@ export default function Vip() {
         >
           {submitting ? "提交中..." : "申请开通"}
         </button>
-        {hint ? <div className="vip-progress" style={{ marginTop: 8 }}>{hint}</div> : null}
+        {hint ? (
+          <div className="vip-progress" style={{ marginTop: 8 }}>
+            {hint}
+          </div>
+        ) : null}
       </div>
 
       <div className="vip-perks-title">贵族特权</div>

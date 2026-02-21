@@ -4,17 +4,9 @@ import { useCallback, useEffect, useState } from "react";
 import { RefreshCw, Search } from "lucide-react";
 import type { AdminSupportTicket, SupportStatus } from "@/lib/admin/admin-types";
 import { SUPPORT_STATUS_OPTIONS } from "@/lib/admin/admin-types";
-import { readCache, writeCache } from "@/app/components/client-cache";
+import { readCache, writeCache } from "@/lib/shared/client-cache";
+import { formatShortDateTime } from "@/lib/shared/date-utils";
 import { StateBlock } from "@/app/components/state-block";
-
-function formatTime(ts: number) {
-  return new Date(ts).toLocaleString("zh-CN", {
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
 
 export default function SupportPage() {
   const [tickets, setTickets] = useState<AdminSupportTicket[]>([]);
@@ -30,41 +22,44 @@ export default function SupportPage() {
   const pageSize = 20;
   const cacheTtlMs = 60_000;
 
-  const load = useCallback(async (cursorValue: string | null, nextPage: number) => {
-    setLoading(true);
-    try {
-      setCacheHint(null);
-      const params = new URLSearchParams();
-      params.set("pageSize", String(pageSize));
-      if (cursorValue) params.set("cursor", cursorValue);
-      if (statusFilter && statusFilter !== "全部") params.set("status", statusFilter);
-      if (query.trim()) params.set("q", query.trim());
-      const cacheKey = `cache:admin:support:${params.toString()}`;
-      const cached = readCache<{ items: AdminSupportTicket[]; nextCursor?: string | null }>(
-        cacheKey,
-        cacheTtlMs,
-        true
-      );
-      if (cached) {
-        setTickets(Array.isArray(cached.value?.items) ? cached.value.items : []);
-        setPage(nextPage);
-        setNextCursor(cached.value?.nextCursor || null);
-        setCacheHint(cached.fresh ? null : "显示缓存数据，正在刷新…");
-      }
-      const res = await fetch(`/api/admin/support?${params.toString()}`);
-      if (res.ok) {
-        const data = await res.json();
-        const next = Array.isArray(data?.items) ? data.items : [];
-        setTickets(next);
-        setPage(nextPage);
-        setNextCursor(data?.nextCursor || null);
+  const load = useCallback(
+    async (cursorValue: string | null, nextPage: number) => {
+      setLoading(true);
+      try {
         setCacheHint(null);
-        writeCache(cacheKey, { items: next, nextCursor: data?.nextCursor || null });
+        const params = new URLSearchParams();
+        params.set("pageSize", String(pageSize));
+        if (cursorValue) params.set("cursor", cursorValue);
+        if (statusFilter && statusFilter !== "全部") params.set("status", statusFilter);
+        if (query.trim()) params.set("q", query.trim());
+        const cacheKey = `cache:admin:support:${params.toString()}`;
+        const cached = readCache<{ items: AdminSupportTicket[]; nextCursor?: string | null }>(
+          cacheKey,
+          cacheTtlMs,
+          true
+        );
+        if (cached) {
+          setTickets(Array.isArray(cached.value?.items) ? cached.value.items : []);
+          setPage(nextPage);
+          setNextCursor(cached.value?.nextCursor || null);
+          setCacheHint(cached.fresh ? null : "显示缓存数据，正在刷新…");
+        }
+        const res = await fetch(`/api/admin/support?${params.toString()}`);
+        if (res.ok) {
+          const data = await res.json();
+          const next = Array.isArray(data?.items) ? data.items : [];
+          setTickets(next);
+          setPage(nextPage);
+          setNextCursor(data?.nextCursor || null);
+          setCacheHint(null);
+          writeCache(cacheKey, { items: next, nextCursor: data?.nextCursor || null });
+        }
+      } finally {
+        setLoading(false);
       }
-    } finally {
-      setLoading(false);
-    }
-  }, [cacheTtlMs, pageSize, query, statusFilter]);
+    },
+    [cacheTtlMs, pageSize, query, statusFilter]
+  );
 
   useEffect(() => {
     const handle = setTimeout(() => {
@@ -137,10 +132,7 @@ export default function SupportPage() {
         </div>
         <div className="admin-toolbar">
           <div className="admin-toolbar-grow" style={{ position: "relative" }}>
-            <Search
-              size={16}
-              className="admin-input-icon"
-            />
+            <Search size={16} className="admin-input-icon" />
             <input
               className="admin-input"
               style={{ paddingLeft: 36 }}
@@ -149,7 +141,11 @@ export default function SupportPage() {
               onChange={(event) => setQuery(event.target.value)}
             />
           </div>
-          <select className="admin-select" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
+          <select
+            className="admin-select"
+            value={statusFilter}
+            onChange={(event) => setStatusFilter(event.target.value)}
+          >
             <option value="全部">全部状态</option>
             {SUPPORT_STATUS_OPTIONS.map((status) => (
               <option key={status} value={status}>
@@ -180,9 +176,19 @@ export default function SupportPage() {
           </div>
         </div>
         {loading ? (
-          <StateBlock tone="loading" size="compact" title="加载工单中" description="正在同步工单列表" />
+          <StateBlock
+            tone="loading"
+            size="compact"
+            title="加载工单中"
+            description="正在同步工单列表"
+          />
         ) : tickets.length === 0 ? (
-          <StateBlock tone="empty" size="compact" title="暂无客服工单" description="目前没有待处理工单" />
+          <StateBlock
+            tone="empty"
+            size="compact"
+            title="暂无客服工单"
+            description="目前没有待处理工单"
+          />
         ) : (
           <div className="admin-table-wrap">
             <table className="admin-table">
@@ -218,7 +224,9 @@ export default function SupportPage() {
                         onChange={(event) => {
                           const nextStatus = event.target.value as SupportStatus;
                           setTickets((prev) =>
-                            prev.map((item) => (item.id === ticket.id ? { ...item, status: nextStatus } : item))
+                            prev.map((item) =>
+                              item.id === ticket.id ? { ...item, status: nextStatus } : item
+                            )
                           );
                           updateTicket(ticket.id, { status: nextStatus });
                         }}
@@ -245,7 +253,7 @@ export default function SupportPage() {
                         onBlur={(event) => updateTicket(ticket.id, { note: event.target.value })}
                       />
                     </td>
-                    <td data-label="时间">{formatTime(ticket.createdAt)}</td>
+                    <td data-label="时间">{formatShortDateTime(ticket.createdAt)}</td>
                     <td data-label="更新">
                       <span className="admin-badge neutral">
                         {saving[ticket.id] ? "保存中" : "已同步"}
@@ -258,21 +266,11 @@ export default function SupportPage() {
           </div>
         )}
         <div className="admin-pagination">
-          <button
-            className="admin-btn ghost"
-            disabled={prevCursors.length === 0}
-            onClick={goPrev}
-          >
+          <button className="admin-btn ghost" disabled={prevCursors.length === 0} onClick={goPrev}>
             上一页
           </button>
-          <div className="admin-meta">
-            第 {page} 页
-          </div>
-          <button
-            className="admin-btn ghost"
-            disabled={!nextCursor}
-            onClick={goNext}
-          >
+          <div className="admin-meta">第 {page} 页</div>
+          <button className="admin-btn ghost" disabled={!nextCursor} onClick={goNext}>
             下一页
           </button>
         </div>

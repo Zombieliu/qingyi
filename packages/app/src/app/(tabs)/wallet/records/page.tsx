@@ -4,9 +4,9 @@ import Link from "next/link";
 import { ArrowLeft, RefreshCw } from "lucide-react";
 import { useEffect, useState } from "react";
 import { getCurrentAddress } from "@/lib/chain/qy-chain";
-import { fetchWithUserAuth } from "@/app/components/user-auth-client";
+import { fetchWithUserAuth } from "@/lib/auth/user-auth-client";
 import { StateBlock } from "@/app/components/state-block";
-import { formatErrorMessage } from "@/app/components/error-utils";
+import { formatErrorMessage } from "@/lib/shared/error-utils";
 
 type LedgerRecord = {
   id: string;
@@ -121,7 +121,12 @@ export default function WalletRecords() {
       ) : error ? (
         <StateBlock tone="danger" size="compact" title="加载失败" description={error} />
       ) : records.length === 0 ? (
-        <StateBlock tone="empty" size="compact" title="暂无明细" description="完成充值后会显示在这里" />
+        <StateBlock
+          tone="empty"
+          size="compact"
+          title="暂无明细"
+          description="完成充值后会显示在这里"
+        />
       ) : (
         <div className="grid gap-3">
           {records.map((item) => {
@@ -135,7 +140,8 @@ export default function WalletRecords() {
                   <div className={`text-xs font-semibold ${status.tone}`}>{status.label}</div>
                 </div>
                 <div className="mt-1 text-xs text-gray-500">
-                  {formatChannel(item.channel)} · {item.amount ? `¥${item.amount.toFixed(2)}` : "金额待确认"}
+                  {formatChannel(item.channel)} ·{" "}
+                  {item.amount ? `¥${item.amount.toFixed(2)}` : "金额待确认"}
                 </div>
                 <div className="mt-1 text-xs text-gray-500">
                   时间：{new Date(item.createdAt).toLocaleString()}
@@ -153,11 +159,7 @@ export default function WalletRecords() {
 
       {hasMore && (
         <div className="mt-4 flex justify-center">
-          <button
-            className="dl-tab-btn"
-            onClick={() => load(page + 1, true)}
-            disabled={loading}
-          >
+          <button className="dl-tab-btn" onClick={() => load(page + 1, true)} disabled={loading}>
             {loading ? "加载中..." : "加载更多"}
           </button>
         </div>

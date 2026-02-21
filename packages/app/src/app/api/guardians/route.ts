@@ -1,64 +1,51 @@
 import { NextResponse } from "next/server";
 import crypto from "crypto";
+import { z } from "zod";
 import { addGuardianApplication } from "@/lib/admin/admin-store";
 import type { AdminGuardianApplication, GuardianStatus } from "@/lib/admin/admin-types";
-import { isValidSuiAddress, normalizeSuiAddress } from "@mysten/sui/utils";
 import { requireUserAuth } from "@/lib/auth/user-auth";
 import { rateLimit } from "@/lib/rate-limit";
+import { getClientIp } from "@/lib/shared/api-utils";
+import { parseBody } from "@/lib/shared/api-validation";
+import { suiAddress } from "@/lib/shared/zod-utils";
+import { env } from "@/lib/env";
 
-const GUARDIAN_RATE_LIMIT_WINDOW_MS = Number(process.env.GUARDIAN_RATE_LIMIT_WINDOW_MS || "60000");
-const GUARDIAN_RATE_LIMIT_MAX = Number(process.env.GUARDIAN_RATE_LIMIT_MAX || "10");
-
-function getClientIp(req: Request): string {
-  const forwarded = req.headers.get("x-forwarded-for");
-  if (forwarded) return forwarded.split(",")[0].trim();
-  return req.headers.get("x-real-ip") || "unknown";
-}
+const guardianSchema = z.object({
+  name: z.string().trim().min(1, "name required"),
+  contact: z.string().trim().min(1, "contact required"),
+  userAddress: suiAddress,
+  games: z.string().trim().optional(),
+  experience: z.string().trim().optional(),
+  availability: z.string().trim().optional(),
+  note: z.string().trim().optional(),
+});
 
 async function enforceRateLimit(req: Request) {
   const key = `guardians:apply:${getClientIp(req)}`;
-  return rateLimit(key, GUARDIAN_RATE_LIMIT_MAX, GUARDIAN_RATE_LIMIT_WINDOW_MS);
+  return rateLimit(key, env.GUARDIAN_RATE_LIMIT_MAX, env.GUARDIAN_RATE_LIMIT_WINDOW_MS);
 }
 
 export async function POST(req: Request) {
   if (!(await enforceRateLimit(req))) {
     return NextResponse.json({ error: "rate_limited" }, { status: 429 });
   }
-  let body: {
-    name?: string;
-    contact?: string;
-    games?: string;
-    experience?: string;
-    availability?: string;
-    note?: string;
-    userAddress?: string;
-  } = {};
-  try {
-    body = (await req.json()) as typeof body;
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
 
-  if (!body.name?.trim() || !body.contact?.trim()) {
-    return NextResponse.json({ error: "name and contact required" }, { status: 400 });
-  }
+  const parsed = await parseBody(req, guardianSchema);
+  if (!parsed.success) return parsed.response;
+  const body = parsed.data;
 
-  const address = normalizeSuiAddress(body.userAddress || "");
-  if (!address || !isValidSuiAddress(address)) {
-    return NextResponse.json({ error: "invalid_address" }, { status: 400 });
-  }
-  const auth = await requireUserAuth(req, { intent: "guardians:apply", address });
+  const auth = await requireUserAuth(req, { intent: "guardians:apply", address: body.userAddress });
   if (!auth.ok) return auth.response;
 
   const application: AdminGuardianApplication = {
     id: `GUA-${Date.now()}-${crypto.randomInt(1000, 9999)}`,
-    user: body.name.trim(),
-    userAddress: address,
-    contact: body.contact.trim(),
-    games: body.games?.trim(),
-    experience: body.experience?.trim(),
-    availability: body.availability?.trim(),
-    note: body.note?.trim(),
+    user: body.name,
+    userAddress: body.userAddress,
+    contact: body.contact,
+    games: body.games,
+    experience: body.experience,
+    availability: body.availability,
+    note: body.note,
     status: "待审核" as GuardianStatus,
     createdAt: Date.now(),
   };

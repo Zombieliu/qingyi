@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import {
   ADMIN_SESSION_COOKIE,
   createAdminSession,
@@ -8,6 +9,10 @@ import {
 } from "@/lib/admin/admin-auth";
 import { touchAccessTokenByHash } from "@/lib/admin/admin-store";
 import { recordAudit } from "@/lib/admin/admin-audit";
+import { parseBody } from "@/lib/shared/api-validation";
+import { env } from "@/lib/env";
+
+const loginSchema = z.object({ token: z.string().trim().min(1) });
 
 export async function POST(req: Request) {
   if (!(await enforceLoginRateLimit(req))) {
@@ -17,17 +22,9 @@ export async function POST(req: Request) {
   const ipCheck = enforceAdminIpAllowlist(req);
   if (ipCheck) return ipCheck;
 
-  let body: { token?: string } = {};
-  try {
-    body = (await req.json()) as { token?: string };
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
-
-  const token = body.token?.trim();
-  if (!token) {
-    return NextResponse.json({ error: "密钥错误" }, { status: 401 });
-  }
+  const parsed = await parseBody(req, loginSchema);
+  if (!parsed.success) return parsed.response;
+  const token = parsed.data.token;
 
   const roleEntry = await getAdminRoleForToken(token);
   if (!roleEntry) {
@@ -51,7 +48,11 @@ export async function POST(req: Request) {
   }
 
   const response = NextResponse.json({ ok: true, role: roleEntry.role });
-  await recordAudit(req, { role: roleEntry.role, sessionId: sessionResult.session.id, authType: "login" }, "auth.login");
+  await recordAudit(
+    req,
+    { role: roleEntry.role, sessionId: sessionResult.session.id, authType: "login" },
+    "auth.login"
+  );
   response.cookies.set({
     name: ADMIN_SESSION_COOKIE,
     value: sessionResult.token,
@@ -59,7 +60,7 @@ export async function POST(req: Request) {
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
     path: "/",
-    maxAge: 60 * 60 * Number(process.env.ADMIN_SESSION_TTL_HOURS || "12"),
+    maxAge: 60 * 60 * env.ADMIN_SESSION_TTL_HOURS,
   });
   return response;
 }

@@ -4,8 +4,9 @@ import Link from "next/link";
 import { ArrowLeft, Copy, Gift, Trophy } from "lucide-react";
 import { useEffect, useState } from "react";
 import { getCurrentAddress } from "@/lib/chain/qy-chain";
-import { fetchWithUserAuth } from "@/app/components/user-auth-client";
+import { fetchWithUserAuth } from "@/lib/auth/user-auth-client";
 import { StateBlock } from "@/app/components/state-block";
+import { formatFullDateTime } from "@/lib/shared/date-utils";
 
 type ReferralStatus = {
   refCode: string;
@@ -47,23 +48,21 @@ function shortAddr(addr: string) {
 }
 
 export default function ReferralPage() {
-  const [address, setAddress] = useState("");
+  const [address] = useState(() => {
+    if (typeof window === "undefined") return "";
+    return getCurrentAddress() || "";
+  });
   const [status, setStatus] = useState<ReferralStatus | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => Boolean(address));
   const [copied, setCopied] = useState(false);
   const [boardType, setBoardType] = useState<"spend" | "companion" | "referral">("spend");
   const [boardPeriod, setBoardPeriod] = useState<"all" | "week" | "month">("all");
   const [board, setBoard] = useState<LeaderboardEntry[]>([]);
-  const [boardLoading, setBoardLoading] = useState(false);
+  const [boardLoading, setBoardLoading] = useState(true);
 
   useEffect(() => {
-    const addr = getCurrentAddress();
-    setAddress(addr || "");
-    if (!addr) {
-      setLoading(false);
-      return;
-    }
-    fetchWithUserAuth(`/api/referral/status?address=${addr}`, {}, addr)
+    if (!address) return;
+    fetchWithUserAuth(`/api/referral/status?address=${address}`, {}, address)
       .then(async (res) => {
         if (res.ok) {
           setStatus(await res.json());
@@ -71,10 +70,9 @@ export default function ReferralPage() {
       })
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, []);
+  }, [address]);
 
   useEffect(() => {
-    setBoardLoading(true);
     fetch(`/api/referral/leaderboard?type=${boardType}&period=${boardPeriod}&limit=50`)
       .then(async (res) => {
         if (res.ok) {
@@ -85,6 +83,16 @@ export default function ReferralPage() {
       .catch(() => {})
       .finally(() => setBoardLoading(false));
   }, [boardType, boardPeriod]);
+
+  const handleBoardType = (next: "spend" | "companion" | "referral") => {
+    setBoardType(next);
+    setBoardLoading(true);
+  };
+
+  const handleBoardPeriod = (next: "all" | "week" | "month") => {
+    setBoardPeriod(next);
+    setBoardLoading(true);
+  };
 
   const copyRefLink = async () => {
     if (!status?.refCode) return;
@@ -121,7 +129,12 @@ export default function ReferralPage() {
         </section>
       ) : !address ? (
         <section className="dl-card" style={{ padding: 16 }}>
-          <StateBlock tone="warning" size="compact" title="请先登录" description="登录后可查看邀请码和返利信息" />
+          <StateBlock
+            tone="warning"
+            size="compact"
+            title="请先登录"
+            description="登录后可查看邀请码和返利信息"
+          />
         </section>
       ) : (
         <>
@@ -153,7 +166,9 @@ export default function ReferralPage() {
                 <div className="text-xs text-slate-500">邀请人数</div>
               </div>
               <div>
-                <div className="text-xl font-bold text-emerald-600">{status?.rewardedCount ?? 0}</div>
+                <div className="text-xl font-bold text-emerald-600">
+                  {status?.rewardedCount ?? 0}
+                </div>
                 <div className="text-xs text-slate-500">已返利</div>
               </div>
               <div>
@@ -176,16 +191,25 @@ export default function ReferralPage() {
               <div className="text-sm font-semibold text-gray-900">邀请记录</div>
               <div className="mt-3 grid gap-2">
                 {status.invites.map((inv) => (
-                  <div key={inv.inviteeAddress} className="rounded-xl border border-slate-100 p-3 text-xs">
+                  <div
+                    key={inv.inviteeAddress}
+                    className="rounded-xl border border-slate-100 p-3 text-xs"
+                  >
                     <div className="flex items-center justify-between">
                       <span className="text-slate-600">{shortAddr(inv.inviteeAddress)}</span>
-                      <span className={inv.status === "rewarded" ? "font-semibold text-emerald-600" : "text-slate-400"}>
-                        {inv.status === "rewarded" ? `+${inv.rewardInviter ?? 0} 馒头` : "待完成首单"}
+                      <span
+                        className={
+                          inv.status === "rewarded"
+                            ? "font-semibold text-emerald-600"
+                            : "text-slate-400"
+                        }
+                      >
+                        {inv.status === "rewarded"
+                          ? `+${inv.rewardInviter ?? 0} 馒头`
+                          : "待完成首单"}
                       </span>
                     </div>
-                    <div className="mt-1 text-slate-400">
-                      {new Date(inv.createdAt).toLocaleString("zh-CN")}
-                    </div>
+                    <div className="mt-1 text-slate-400">{formatFullDateTime(inv.createdAt)}</div>
                   </div>
                 ))}
               </div>
@@ -205,7 +229,7 @@ export default function ReferralPage() {
               key={t.key}
               type="button"
               className={`lc-tab-btn ${boardType === t.key ? "is-active" : ""}`}
-              onClick={() => setBoardType(t.key)}
+              onClick={() => handleBoardType(t.key)}
             >
               {t.label}
             </button>
@@ -217,7 +241,7 @@ export default function ReferralPage() {
               key={p.key}
               type="button"
               className={`lc-tab-btn ${boardPeriod === p.key ? "is-active" : ""}`}
-              onClick={() => setBoardPeriod(p.key)}
+              onClick={() => handleBoardPeriod(p.key)}
             >
               {p.label}
             </button>
@@ -235,8 +259,13 @@ export default function ReferralPage() {
         ) : (
           <div className="mt-3 grid gap-2">
             {board.map((entry) => (
-              <div key={entry.rank} className="flex items-center gap-3 rounded-xl border border-slate-100 p-3 text-xs">
-                <span className={`w-6 text-center font-bold ${entry.rank <= 3 ? "text-amber-500" : "text-slate-400"}`}>
+              <div
+                key={entry.rank}
+                className="flex items-center gap-3 rounded-xl border border-slate-100 p-3 text-xs"
+              >
+                <span
+                  className={`w-6 text-center font-bold ${entry.rank <= 3 ? "text-amber-500" : "text-slate-400"}`}
+                >
                   {entry.rank}
                 </span>
                 <span className="flex-1 text-slate-700">{shortAddr(entry.address)}</span>
