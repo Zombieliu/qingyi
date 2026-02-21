@@ -20,6 +20,7 @@ import { formatFullDateTime } from "@/lib/shared/date-utils";
 import { z } from "zod";
 import { parseBodyRaw } from "@/lib/shared/api-validation";
 import { env } from "@/lib/env";
+import { trackOrderCreated, trackWebhookFailed } from "@/lib/business-events";
 const PUBLIC_ORDER_CACHE_TTL_MS = 5000;
 const PUBLIC_ORDER_CACHE_CONTROL = "private, max-age=5, stale-while-revalidate=10";
 
@@ -326,6 +327,8 @@ export async function POST(req: Request) {
     if (payload.chainDigest || payload.chainStatus !== undefined) {
       clearChainOrderCache();
     }
+
+    trackOrderCreated(orderId, payload.chainDigest ? "chain" : "app", amount);
   } catch (error) {
     console.error("Failed to persist order:", error);
     return NextResponse.json({ error: "persist_failed" }, { status: 500 });
@@ -391,9 +394,11 @@ export async function POST(req: Request) {
         });
         if (!res.ok) {
           console.error(`WeCom webhook failed: ${res.status}`);
+          trackWebhookFailed(orderId, `HTTP ${res.status}`);
         }
       } catch (e) {
         console.error("WeCom webhook error:", (e as Error).message);
+        trackWebhookFailed(orderId, (e as Error).message);
       }
     })();
     // Vercel/Node: 不 await，让通知在后台完成

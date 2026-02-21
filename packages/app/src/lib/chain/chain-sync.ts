@@ -16,6 +16,7 @@ import {
   resolveEffectiveChainStatus,
   deriveOrderStatus,
 } from "./chain-status";
+import { trackChainSyncResult, trackChainSyncFailed } from "@/lib/business-events";
 
 // Re-export for backward compatibility
 export { mapStage, mapPaymentStatus };
@@ -145,13 +146,22 @@ export async function upsertChainOrder(chain: ChainOrder) {
 }
 
 export async function syncChainOrders() {
+  const startMs = Date.now();
   const cursorState = await getChainEventCursor();
   const cursor = cursorState?.cursor ?? null;
   const incremental = Boolean(cursor);
-  const result = await fetchChainOrdersAdminWithCursor({
-    cursor: incremental ? cursor : null,
-    order: incremental ? "ascending" : "descending",
-  });
+
+  let result;
+  try {
+    result = await fetchChainOrdersAdminWithCursor({
+      cursor: incremental ? cursor : null,
+      order: incremental ? "ascending" : "descending",
+    });
+  } catch (e) {
+    trackChainSyncFailed((e as Error).message);
+    throw e;
+  }
+
   const chainOrders = result.orders;
   let created = 0;
   let updated = 0;
@@ -179,12 +189,16 @@ export async function syncChainOrders() {
     }
   }
 
-  return {
+  const syncResult = {
     total: chainOrders.length,
     created,
     updated,
     mode: incremental ? "incremental" : "bootstrap",
+    durationMs: Date.now() - startMs,
   };
+
+  trackChainSyncResult(syncResult);
+  return syncResult;
 }
 
 /**
