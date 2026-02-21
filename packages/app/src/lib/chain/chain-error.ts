@@ -60,16 +60,6 @@ const ERROR_PATTERNS: Array<{
     },
   },
   {
-    test: (m) => m.includes("Passkey") || m.includes("passkey") || m.includes("credential"),
-    info: {
-      title: "身份验证失败",
-      message: "指纹/面容验证未通过或被取消。请重新尝试验证。",
-      recoverable: true,
-      action: "重新验证",
-      actionType: "retry",
-    },
-  },
-  {
     test: (m) => m.includes("未找到 Passkey") || m.includes("请先登录"),
     info: {
       title: "未登录",
@@ -77,6 +67,16 @@ const ERROR_PATTERNS: Array<{
       recoverable: true,
       action: "去登录",
       actionType: "refresh",
+    },
+  },
+  {
+    test: (m) => m.includes("Passkey") || m.includes("passkey") || m.includes("credential"),
+    info: {
+      title: "身份验证失败",
+      message: "指纹/面容验证未通过或被取消。请重新尝试验证。",
+      recoverable: true,
+      action: "重新验证",
+      actionType: "retry",
     },
   },
   {
