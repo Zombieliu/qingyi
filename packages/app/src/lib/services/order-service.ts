@@ -42,12 +42,14 @@ type ServerOrder = {
 export function normalizeOrder(order: ServerOrder): LocalOrder {
   const meta = (order.meta || {}) as Record<string, unknown>;
   const chainMeta = meta.chain as { status?: number } | undefined;
-  const hasChainStatus = order.chainStatus !== undefined && order.chainStatus !== null;
-  const isChain = Boolean(order.chainDigest) || hasChainStatus || chainMeta?.status !== undefined;
 
-  // Status resolution priority:
-  // Chain orders: stage (derived from chainStatus on server) > paymentStatus
-  // Non-chain orders: meta.status (legacy client-set) > stage > paymentStatus
+  // Determine effective chain status from all sources
+  const chainStatus = order.chainStatus ?? chainMeta?.status ?? undefined;
+  const isChain = Boolean(order.chainDigest) || chainStatus !== undefined;
+
+  // Status resolution:
+  // - Chain orders use server-derived stage (from chainStatus)
+  // - Non-chain orders fall back to legacy meta.status
   const metaStatus = typeof meta.status === "string" ? meta.status : undefined;
   const status = isChain
     ? order.stage || order.paymentStatus
