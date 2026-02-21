@@ -1,3 +1,4 @@
+import { isAuthorizedCron } from "@/lib/cron-auth";
 import { NextResponse } from "next/server";
 import { fetchChainOrdersAdmin } from "@/lib/chain/chain-admin";
 import { listChainOrdersForCleanup, removeOrders } from "@/lib/admin/admin-store";
@@ -5,20 +6,8 @@ import { computeMissingChainCleanup } from "@/lib/chain/chain-missing-utils";
 import { acquireCronLock } from "@/lib/cron-lock";
 import { env } from "@/lib/env";
 
-function isAuthorized(req: Request) {
-  const secret = env.CRON_SECRET;
-  const vercelCron = req.headers.get("x-vercel-cron") === "1";
-  if (vercelCron) return true;
-  if (!secret) {
-    return process.env.NODE_ENV !== "production";
-  }
-  const url = new URL(req.url);
-  const token = req.headers.get("x-cron-secret") || url.searchParams.get("token") || "";
-  return token === secret;
-}
-
 export async function GET(req: Request) {
-  if (!isAuthorized(req)) {
+  if (!isAuthorizedCron(req)) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
   if (!(await acquireCronLock("chain-cleanup-missing", env.CRON_LOCK_TTL_MS))) {

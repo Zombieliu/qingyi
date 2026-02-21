@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { acquireCronLock } from "@/lib/cron-lock";
 import { env } from "@/lib/env";
+import { isAuthorizedCron } from "@/lib/cron-auth";
 
 type PrunableModel = {
   count: () => Promise<number>;
@@ -13,18 +14,6 @@ type PrunableModel = {
   }) => Promise<Array<{ id: string }>>;
   deleteMany: (args: { where: { id: { in: string[] } } }) => Promise<unknown>;
 };
-
-function isAuthorized(req: Request) {
-  const secret = env.CRON_SECRET;
-  const vercelCron = req.headers.get("x-vercel-cron") === "1";
-  if (vercelCron) return true;
-  if (!secret) {
-    return process.env.NODE_ENV !== "production";
-  }
-  const url = new URL(req.url);
-  const token = req.headers.get("x-cron-secret") || url.searchParams.get("token") || "";
-  return token === secret;
-}
 
 async function prune(model: PrunableModel, max: number) {
   if (!Number.isFinite(max) || max <= 0) return 0;
@@ -43,7 +32,7 @@ async function prune(model: PrunableModel, max: number) {
 }
 
 export async function GET(req: Request) {
-  if (!isAuthorized(req)) {
+  if (!isAuthorizedCron(req)) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
   if (!(await acquireCronLock("maintenance", env.CRON_LOCK_TTL_MS))) {

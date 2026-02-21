@@ -13,7 +13,12 @@ import { isValidSuiAddress, normalizeSuiAddress } from "@mysten/sui/utils";
 import { requireUserAuth } from "@/lib/auth/user-auth";
 import { rateLimit } from "@/lib/rate-limit";
 import { clearChainOrderCache } from "@/lib/chain/chain-sync";
-import { getCacheAsync, setCache, computeJsonEtag } from "@/lib/server-cache";
+import {
+  getCacheAsync,
+  setCache,
+  computeJsonEtag,
+  invalidateCacheByPrefix,
+} from "@/lib/server-cache";
 import { getIfNoneMatch, jsonWithEtag, notModified } from "@/lib/http-cache";
 import { getClientIp } from "@/lib/shared/api-utils";
 import { formatFullDateTime } from "@/lib/shared/date-utils";
@@ -329,6 +334,9 @@ export async function POST(req: Request) {
     }
 
     trackOrderCreated(orderId, payload.chainDigest ? "chain" : "app", amount);
+
+    // 新订单可能影响公共订单池，清除缓存
+    invalidateCacheByPrefix("public-orders:");
   } catch (error) {
     console.error("Failed to persist order:", error);
     return NextResponse.json({ error: "persist_failed" }, { status: 500 });

@@ -1,22 +1,11 @@
+import { isAuthorizedCron } from "@/lib/cron-auth";
 import { NextResponse } from "next/server";
 import { autoFinalizeChainOrdersSummary } from "@/lib/chain/chain-auto-finalize";
 import { acquireCronLock } from "@/lib/cron-lock";
 import { env } from "@/lib/env";
 
-function isAuthorized(req: Request) {
-  const secret = env.CRON_SECRET;
-  const vercelCron = req.headers.get("x-vercel-cron") === "1";
-  if (vercelCron) return true;
-  if (!secret) {
-    return process.env.NODE_ENV !== "production";
-  }
-  const url = new URL(req.url);
-  const token = req.headers.get("x-cron-secret") || url.searchParams.get("token") || "";
-  return token === secret;
-}
-
 export async function GET(req: Request) {
-  if (!isAuthorized(req)) {
+  if (!isAuthorizedCron(req)) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
   if (!(await acquireCronLock("chain-auto-finalize", env.CRON_LOCK_TTL_MS))) {

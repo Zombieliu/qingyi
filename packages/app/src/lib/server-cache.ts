@@ -72,3 +72,17 @@ export function computeJsonEtag(value: unknown): string {
   const hash = crypto.createHash("sha1").update(json).digest("hex");
   return `"${hash}"`;
 }
+
+/**
+ * Invalidate cache entries by prefix.
+ * Clears matching keys from memory; Redis keys expire naturally via TTL.
+ */
+export function invalidateCacheByPrefix(prefix: string) {
+  for (const key of memoryStore.keys()) {
+    if (key.startsWith(prefix)) {
+      memoryStore.delete(key);
+    }
+  }
+  // Redis keys have TTL and will expire; for immediate invalidation
+  // we'd need to track keys, but the short TTL (5s for public orders) is sufficient.
+}

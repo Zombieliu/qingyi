@@ -1,3 +1,4 @@
+import { isAuthorizedCron } from "@/lib/cron-auth";
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { prisma, Prisma } from "@/lib/db";
@@ -9,18 +10,6 @@ import { formatFullDateTime } from "@/lib/shared/date-utils";
 
 const stripeSecretKey = env.STRIPE_SECRET_KEY;
 const stripe = stripeSecretKey ? new Stripe(stripeSecretKey) : null;
-
-function isAuthorized(req: Request) {
-  const secret = env.CRON_SECRET;
-  const vercelCron = req.headers.get("x-vercel-cron") === "1";
-  if (vercelCron) return true;
-  if (!secret) {
-    return process.env.NODE_ENV !== "production";
-  }
-  const url = new URL(req.url);
-  const token = req.headers.get("x-cron-secret") || url.searchParams.get("token") || "";
-  return token === secret;
-}
 
 function parseNumber(
   value: string | null | undefined,
@@ -154,7 +143,7 @@ function buildAlertMarkdown(params: {
 }
 
 export async function GET(req: Request) {
-  if (!isAuthorized(req)) {
+  if (!isAuthorizedCron(req)) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
   if (!(await acquireCronLock("pay-reconcile", env.CRON_LOCK_TTL_MS))) {
