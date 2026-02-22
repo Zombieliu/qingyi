@@ -34,6 +34,9 @@ export const metadata: Metadata = {
   manifest: "/manifest.json",
   metadataBase: new URL(siteUrl),
   alternates: { canonical: "/" },
+  icons: {
+    apple: "/icon-192.png",
+  },
   openGraph: {
     title: "情谊电竞 | 三角洲行动陪玩",
     description: "跨平台陪玩调度，匹配高素质队友与教练。",
