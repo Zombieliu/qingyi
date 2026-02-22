@@ -8,6 +8,7 @@ import { MantouProvider } from "./components/mantou-provider";
 import AnalyticsProvider from "./components/analytics-provider";
 import SeniorModeProvider from "./components/senior-mode";
 import { RefBinder } from "./components/ref-binder";
+import WebVitalsReporter from "./components/web-vitals-reporter";
 import { Suspense } from "react";
 import { getServerLocale } from "@/lib/i18n/i18n";
 import { cookies } from "next/headers";
@@ -85,6 +86,7 @@ export default async function RootLayout({
         <RegisterPWA />
         <PwaUpdateToast />
         <RefBinder />
+        <WebVitalsReporter />
         <BalanceProvider>
           <MantouProvider>{children}</MantouProvider>
         </BalanceProvider>

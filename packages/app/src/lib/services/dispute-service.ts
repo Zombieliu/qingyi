@@ -1,5 +1,6 @@
 import "server-only";
 import { prisma } from "@/lib/db";
+import { isFeatureEnabled } from "@/lib/feature-flags";
 
 function logDispute(event: string, data: Record<string, unknown>) {
   console.log(
@@ -44,6 +45,7 @@ export async function createDispute(params: {
   description: string;
   evidence?: string[];
 }): Promise<DisputeRecord> {
+  if (!isFeatureEnabled("dispute_flow")) throw new Error("争议功能暂未开放");
   const order = await prisma.adminOrder.findUnique({ where: { id: params.orderId } });
   if (!order) throw new Error("订单不存在");
   if (order.userAddress !== params.userAddress) throw new Error("无权操作此订单");
