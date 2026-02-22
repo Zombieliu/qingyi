@@ -2,7 +2,7 @@
 import { t } from "@/lib/i18n/i18n-client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Clock3, QrCode, Loader2, CheckCircle2 } from "lucide-react";
+import { Clock3, QrCode } from "lucide-react";
 import { type LocalOrder } from "@/lib/services/order-store";
 import {
   createOrder,
@@ -26,7 +26,6 @@ import {
   fetchChainOrders,
   finalizeNoDisputeOnChain,
   getCurrentAddress,
-  getChainDebugInfo,
   isChainOrdersEnabled,
   isVisualTestMode,
   markCompletedOnChain,
@@ -34,7 +33,6 @@ import {
   raiseDisputeOnChain,
 } from "@/lib/chain/qy-chain";
 import { resolveDisputePolicy } from "@/lib/risk-policy";
-import { StateBlock } from "@/app/components/state-block";
 import { ConfirmDialog, PromptDialog } from "@/app/components/confirm-dialog";
 import { extractErrorMessage, formatErrorMessage } from "@/lib/shared/error-utils";
 import { classifyChainError } from "@/lib/chain/chain-error";
@@ -50,12 +48,13 @@ import {
   loadGameProfile,
   deriveMode,
   statusLabel,
-  formatAmount,
-  formatTime,
-  shortDigest,
 } from "./schedule-data";
 import { NotifyingView } from "./notifying-view";
 import { AwaitUserPayView, EnrouteView, PendingSettlementView } from "./order-views";
+import { ChainStatusPanel } from "./chain-status-panel";
+import { FeeModal } from "./fee-modal";
+import { DebugModal } from "./debug-modal";
+import { PlayerList } from "./player-list";
 
 export default function Schedule() {
   const [checked, setChecked] = useState<Record<string, boolean>>(() => ({}));
@@ -80,14 +79,7 @@ export default function Schedule() {
     service: number;
     player: number;
     items: string[];
-  }>({
-    total: 0,
-    originalTotal: 0,
-    discount: 0,
-    service: 0,
-    player: 0,
-    items: [],
-  });
+  }>({ total: 0, originalTotal: 0, discount: 0, service: 0, player: 0, items: [] });
   const [calling, setCalling] = useState(false);
   const [chainOrders, setChainOrders] = useState<ChainOrder[]>([]);
   const [chainLoading, setChainLoading] = useState(false);
@@ -129,6 +121,8 @@ export default function Schedule() {
   const [prefillApplied, setPrefillApplied] = useState(false);
   const [prefillHint, setPrefillHint] = useState<string | null>(null);
 
+  // ─── Data fetching hooks ───
+
   const refreshOrders = useCallback(
     async (addrOverride?: string, force = true) => {
       const result = await fetchOrdersWithMeta({ force });
@@ -168,12 +162,10 @@ export default function Schedule() {
     onPoll: async () => refreshOrders(userAddress || getCurrentAddress(), true),
   });
 
-  // SSE: real-time order status push (supplements polling)
   useOrderEvents({
     address: userAddress || "",
     enabled: Boolean(userAddress),
     onEvent: () => {
-      // On any order event, refresh immediately
       refreshOrders(userAddress || getCurrentAddress(), true);
     },
   });
@@ -212,7 +204,7 @@ export default function Schedule() {
         writeCache(vipCacheKey, { tier: null });
       }
     } catch {
-      // ignore vip errors
+      /* ignore */
     } finally {
       setVipLoading(false);
     }
@@ -225,6 +217,8 @@ export default function Schedule() {
     return () => window.removeEventListener("passkey-updated", handle);
   }, []);
 
+  // ─── Chain order logic ───
+
   const fetchOrSyncChainOrder = async (orderId: string) => {
     const digest = (() => {
       const order = currentOrder;
@@ -232,24 +226,18 @@ export default function Schedule() {
       const meta = (order.meta || {}) as { chainDigest?: string; lastChainDigest?: string };
       return order.chainDigest || meta.lastChainDigest || meta.chainDigest || undefined;
     })();
-    // 第一步：尝试从本地链上订单列表查找
     let list = await fetchChainOrders();
     let found = list.find((order) => order.orderId === orderId) || null;
     if (found) {
       setChainOrders(list);
       return found;
     }
-
-    // 第二步：同步到服务端查询（服务端会自动重试3次，共等待3秒）
     try {
       const synced = await syncChainOrder(orderId, chainAddress || undefined, digest);
-
-      // 第三步：重新获取链上订单列表
       list = await fetchChainOrders();
       setChainOrders(list);
       found = list.find((order) => order.orderId === orderId) || null;
       if (found) return found;
-
       if (synced?.order && typeof synced.chainStatus === "number") {
         const serviceFeeCny =
           typeof synced.order.serviceFee === "number" ? synced.order.serviceFee : 0;
@@ -280,8 +268,6 @@ export default function Schedule() {
           resolvedAt: "0",
         } as ChainOrder;
       }
-
-      // 第四步：如果还是找不到，等待1秒后再试一次（应对极端延迟）
       await new Promise((resolve) => setTimeout(resolve, 1000));
       list = await fetchChainOrders();
       setChainOrders(list);
@@ -289,7 +275,6 @@ export default function Schedule() {
       if (found) return found;
     } catch (error) {
       const errorMsg = formatErrorMessage(error, t("schedule.002"));
-      // 如果是 chain order not found 错误，提供更友好的提示
       if (errorMsg.includes("not found") || errorMsg.includes("未找到")) {
         throw new Error("链上订单暂未索引完成，请稍后再试（通常需要等待3-10秒）");
       }
@@ -302,9 +287,7 @@ export default function Schedule() {
     if (!isChainOrdersEnabled()) return;
     const visualTest = isVisualTestMode();
     try {
-      if (!visualTest) {
-        setChainLoading(true);
-      }
+      if (!visualTest) setChainLoading(true);
       setChainError(null);
       setChainAddress(getCurrentAddress());
       const list = await fetchChainOrders();
@@ -313,15 +296,12 @@ export default function Schedule() {
     } catch (e) {
       setChainError(classifyChainError(e).message);
     } finally {
-      if (!visualTest) {
-        setChainLoading(false);
-      }
+      if (!visualTest) setChainLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    if (!isChainOrdersEnabled()) return;
-    loadChain();
+    if (isChainOrdersEnabled()) loadChain();
   }, [loadChain]);
 
   const loadPlayers = async () => {
@@ -329,14 +309,10 @@ export default function Schedule() {
     setPlayersError(null);
     const cacheKey = "cache:players:public";
     const cached = readCache<PublicPlayer[]>(cacheKey, cacheTtlMs, true);
-    if (cached) {
-      setPlayers(Array.isArray(cached.value) ? cached.value : []);
-    }
+    if (cached) setPlayers(Array.isArray(cached.value) ? cached.value : []);
     try {
       const res = await fetch("/api/players");
-      if (!res.ok) {
-        throw new Error("加载失败");
-      }
+      if (!res.ok) throw new Error("加载失败");
       const data = await res.json();
       const next = Array.isArray(data) ? data : [];
       setPlayers(next);
@@ -377,6 +353,8 @@ export default function Schedule() {
     setPrefillApplied(true);
   }, [players, playersLoading, prefillApplied, requestedPlayerId, requestedPlayerName]);
 
+  // ─── Derived state ───
+
   const toggle = (name: string) => setChecked((p) => ({ ...p, [name]: !p[name] }));
   const pickedNames = Object.entries(checked)
     .filter(([, v]) => v)
@@ -398,22 +376,23 @@ export default function Schedule() {
   const pickedDiamonds = Math.ceil(pickedPrice * DIAMOND_RATE);
 
   const currentOrder = useMemo(() => {
-    const list = orders;
-    return list.find((o) => !o.status.includes("取消") && !o.status.includes("完成")) || null;
+    return orders.find((o) => !o.status.includes("取消") && !o.status.includes("完成")) || null;
   }, [orders]);
+
   const chainCurrentOrder = useMemo(() => {
     const addr = chainAddress;
     const list = addr ? chainOrders.filter((o) => o.user === addr) : chainOrders;
     const active = list.filter((o) => o.status !== 6);
     return active.length > 0 ? active[0] : null;
   }, [chainOrders, chainAddress]);
+
   const localChainStatus = useMemo(() => getLocalChainStatus(currentOrder), [currentOrder]);
   const chainCurrentStatus = useMemo(() => {
-    if (currentOrder && chainCurrentOrder && chainCurrentOrder.orderId !== currentOrder.id) {
+    if (currentOrder && chainCurrentOrder && chainCurrentOrder.orderId !== currentOrder.id)
       return localChainStatus;
-    }
     return mergeChainStatus(localChainStatus, chainCurrentOrder?.status);
   }, [localChainStatus, chainCurrentOrder, currentOrder]);
+
   const chainCurrentDisplay = useMemo(() => {
     if (!chainCurrentOrder) return null;
     if (currentOrder && chainCurrentOrder.orderId === currentOrder.id) {
@@ -448,6 +427,7 @@ export default function Schedule() {
     const fee = currentOrder.serviceFee ?? Number((currentOrder.amount * MATCH_RATE).toFixed(2));
     return Math.max(Number((currentOrder.amount - fee).toFixed(2)), 0);
   }, [currentOrder]);
+
   const escrowFeeDisplay = currentOrder ? currentOrder.amount : locked.total;
   const isChainLocalOrder = (order?: LocalOrder | null) => {
     if (!order) return false;
@@ -458,6 +438,20 @@ export default function Schedule() {
       meta.chain?.status !== undefined
     );
   };
+
+  const chainStatusHint = useMemo(() => {
+    if (!isChainOrdersEnabled()) return null;
+    if (!currentOrder) return null;
+    if (!currentOrder.chainDigest && currentOrder.chainStatus === undefined) return null;
+    return `链上状态：${currentOrder.status}`;
+  }, [currentOrder]);
+
+  const diamondRate = DIAMOND_RATE;
+  const requiredDiamonds = Math.ceil(locked.total * diamondRate);
+  const hasEnoughDiamonds = Number(diamondBalance) >= requiredDiamonds;
+  const disputePolicy = useMemo(() => resolveDisputePolicy(vipTier?.level), [vipTier]);
+
+  // ─── Actions ───
 
   const cancelOrder = async () => {
     if (!currentOrder) return;
@@ -487,32 +481,12 @@ export default function Schedule() {
     setMode("select");
   };
 
-  const chainStatusHint = useMemo(() => {
-    if (!isChainOrdersEnabled()) return null;
-    if (!currentOrder) return null;
-    if (!currentOrder.chainDigest && currentOrder.chainStatus === undefined) return null;
-    return `链上状态：${currentOrder.status}`;
-  }, [currentOrder]);
-
   const renderActionLabel = (key: string, label: string) => {
     if (chainAction !== key) return label;
     return (
       <span className="inline-flex items-center gap-1">
-        <Loader2 className="h-3.5 w-3.5 spin" />
+        <span className="h-3.5 w-3.5 spin" />
         处理中
-      </span>
-    );
-  };
-  const renderLoadingLabel = (
-    loading: boolean,
-    label: string,
-    loadingLabel = t("schedule.004")
-  ) => {
-    if (!loading) return label;
-    return (
-      <span className="inline-flex items-center gap-1">
-        <Loader2 className="h-3.5 w-3.5 spin" />
-        {loadingLabel}
       </span>
     );
   };
@@ -575,7 +549,9 @@ export default function Schedule() {
       setChainAction(key);
       const result = await action();
       const digest = result?.digest;
-      const successMsg = digest ? `${success}（tx: ${shortDigest(digest)}）` : success;
+      const successMsg = digest
+        ? `${success}（tx: ${digest.slice(0, 8)}…${digest.slice(-6)}）`
+        : success;
       setChainToast(successMsg);
       await loadChain();
       if (syncOrderId) {
@@ -610,43 +586,12 @@ export default function Schedule() {
     }
   }, [chainCurrentOrder, chainCurrentStatus, currentOrder, refreshOrders]);
 
-  const submit = () => {
-    if (pickedNames.length === 0) {
-      setToast("form.select_service");
-      return;
-    }
-    const originalTotal = pickedPrice || Math.max(pickedNames.length * 10, 10);
-    const canDiscount = firstOrderEligible && originalTotal >= FIRST_ORDER_DISCOUNT.minSpend;
-    const discount = canDiscount ? FIRST_ORDER_DISCOUNT.amount : 0;
-    const total = Math.max(originalTotal - discount, 0);
-    const service = Number((total * MATCH_RATE).toFixed(2));
-    const player = Math.max(Number((total - service).toFixed(2)), 0);
-    setLocked({ total, originalTotal, discount, service, player, items: pickedNames });
-    trackEvent("order_intent", {
-      source: "schedule",
-      itemsCount: pickedNames.length,
-      originalTotal,
-      total,
-      discount,
-      eligible: firstOrderEligible,
-    });
-    setFeeOpen(true);
-    setFeeChecked(false);
-  };
-
-  const diamondRate = DIAMOND_RATE;
-  const requiredDiamonds = Math.ceil(locked.total * diamondRate);
-  const hasEnoughDiamonds = Number(diamondBalance) >= requiredDiamonds;
-  const disputePolicy = useMemo(() => resolveDisputePolicy(vipTier?.level), [vipTier]);
-
   const refreshBalance = async () => {
     const addr = getCurrentAddress();
     if (!addr) return;
     const cacheKey = `cache:diamond-balance:${addr}`;
     const cached = readCache<string>(cacheKey, cacheTtlMs, true);
-    if (cached) {
-      setDiamondBalance(cached.value);
-    }
+    if (cached) setDiamondBalance(cached.value);
     setBalanceLoading(true);
     setBalanceReady(false);
     try {
@@ -659,7 +604,7 @@ export default function Schedule() {
         setBalanceReady(true);
       }
     } catch {
-      // ignore balance errors
+      /* ignore */
     } finally {
       setBalanceLoading(false);
     }
@@ -691,6 +636,178 @@ export default function Schedule() {
       }, 1200);
     }
   }, [feeOpen, balanceLoading, balanceReady, hasEnoughDiamonds]);
+
+  const submit = () => {
+    if (pickedNames.length === 0) {
+      setToast("form.select_service");
+      return;
+    }
+    const originalTotal = pickedPrice || Math.max(pickedNames.length * 10, 10);
+    const canDiscount = firstOrderEligible && originalTotal >= FIRST_ORDER_DISCOUNT.minSpend;
+    const discount = canDiscount ? FIRST_ORDER_DISCOUNT.amount : 0;
+    const total = Math.max(originalTotal - discount, 0);
+    const service = Number((total * MATCH_RATE).toFixed(2));
+    const player = Math.max(Number((total - service).toFixed(2)), 0);
+    setLocked({ total, originalTotal, discount, service, player, items: pickedNames });
+    trackEvent("order_intent", {
+      source: "schedule",
+      itemsCount: pickedNames.length,
+      originalTotal,
+      total,
+      discount,
+      eligible: firstOrderEligible,
+    });
+    setFeeOpen(true);
+    setFeeChecked(false);
+  };
+
+  const callOrder = async () => {
+    if (!feeChecked) {
+      setToast("form.confirm_escrow_fee");
+      setTimeout(() => setToast(null), 2000);
+      return;
+    }
+    if (!locked.items.length) {
+      setToast("form.service_required");
+      return;
+    }
+    setCalling(true);
+    try {
+      const requestedNote = selectedPlayer ? `指定陪练：${selectedPlayer.name}` : "";
+      let chainOrderId: string | null = null;
+      let chainDigest: string | null = null;
+      if (isChainOrdersEnabled()) {
+        const addr = getCurrentAddress();
+        if (!addr) throw new Error("请先登录账号以便扣减钻石");
+        if (!hasEnoughDiamonds) throw new Error("钻石余额不足");
+        chainOrderId = createChainOrderId();
+        const chainResult = await createOrderOnChain({
+          orderId: chainOrderId,
+          serviceFee: requiredDiamonds,
+          deposit: 0,
+          ruleSetId: disputePolicy.ruleSetId,
+          autoPay: true,
+          rawAmount: true,
+        });
+        chainDigest = chainResult.digest;
+      }
+      const gameProfile = loadGameProfile(getCurrentAddress());
+      const result = await createOrder({
+        id: chainOrderId || `${Date.now()}`,
+        user: "安排页面",
+        userAddress: getCurrentAddress(),
+        item: locked.items.join("、"),
+        amount: locked.total,
+        status: "待派单",
+        time: new Date().toISOString(),
+        chainDigest: chainDigest || undefined,
+        serviceFee: locked.service,
+        serviceFeePaid: true,
+        playerDue: locked.player,
+        depositPaid: false,
+        playerPaid: true,
+        note: [
+          `来源：安排页呼叫服务。托管费用使用钻石支付(${requiredDiamonds}钻石)`,
+          locked.discount > 0 ? `首单优惠减免 ¥${locked.discount}` : "",
+          requestedNote,
+        ]
+          .filter(Boolean)
+          .join("；"),
+        meta: {
+          disputeWindowHours: disputePolicy.hours,
+          ruleSetId: disputePolicy.ruleSetId,
+          vipTier: vipTier?.name || null,
+          vipLevel: vipTier?.level ?? null,
+          paymentMode: "diamond_escrow",
+          diamondCharge: requiredDiamonds,
+          diamondChargeCny: locked.total,
+          firstOrderDiscount:
+            locked.discount > 0
+              ? {
+                  amount: locked.discount,
+                  minSpend: FIRST_ORDER_DISCOUNT.minSpend,
+                  originalTotal: locked.originalTotal,
+                }
+              : null,
+          requestedPlayerId: selectedPlayer?.id || null,
+          requestedPlayerName: selectedPlayer?.name || null,
+          requestedPlayerRole: selectedPlayer?.role || null,
+          publicPool: true,
+          gameProfile: gameProfile
+            ? {
+                gameName: gameProfile.gameName,
+                gameId: gameProfile.gameId,
+                updatedAt: gameProfile.updatedAt,
+              }
+            : null,
+        },
+      });
+      if (chainOrderId) {
+        const address = getCurrentAddress();
+        const retrySync = async () => {
+          const delays = [1000, 2000, 4000, 8000];
+          setChainSyncing(true);
+          for (let i = 0; i < delays.length; i += 1) {
+            setChainSyncRetries(delays.length - i);
+            setChainSyncLastAttemptAt(Date.now());
+            try {
+              await fetch(`/api/orders/${chainOrderId}/chain-sync?force=1&maxWaitMs=15000`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ userAddress: address, digest: chainDigest }),
+              });
+              setChainSyncing(false);
+              setChainSyncRetries(0);
+              return;
+            } catch {
+              /* retry */
+            }
+            await new Promise((resolve) => setTimeout(resolve, delays[i]));
+          }
+          setChainSyncing(false);
+          setChainSyncRetries(0);
+          setChainToast("chain.sync_timeout");
+        };
+        void retrySync();
+      }
+      await refreshOrders();
+      if (locked.discount > 0) {
+        markDiscountUsage(getCurrentAddress());
+        trackEvent("first_order_discount_applied", {
+          orderId: result.orderId,
+          discount: locked.discount,
+          originalTotal: locked.originalTotal,
+        });
+      }
+      trackEvent("order_create_success", {
+        orderId: result.orderId,
+        total: locked.total,
+        discount: locked.discount,
+        paymentMode: "diamond_escrow",
+        chain: Boolean(chainDigest),
+      });
+      setMode("notifying");
+      setFeeOpen(false);
+      if (result.sent === false) {
+        setToast(result.error || "订单已创建，通知失败");
+      } else {
+        setToast(chainDigest ? "已提交并派单" : t("schedule.015"));
+      }
+    } catch (e) {
+      const message = formatErrorMessage(e, t("schedule.016"));
+      trackEvent("order_create_failed", {
+        error: message,
+        total: locked.total,
+        discount: locked.discount,
+      });
+      setToast(message);
+    } finally {
+      setTimeout(() => setToast(null), 3000);
+      setCalling(false);
+    }
+  };
+
+  // ─── Render ───
 
   if (mode === "await-user-pay" && currentOrder?.driver) {
     return (
@@ -760,469 +877,56 @@ export default function Schedule() {
     return <NotifyingView currentOrder={currentOrder} escrowFeeDisplay={escrowFeeDisplay} />;
   }
 
-  const callOrder = async () => {
-    if (!feeChecked) {
-      setToast("form.confirm_escrow_fee");
-      setTimeout(() => setToast(null), 2000);
-      return;
-    }
-    if (!locked.items.length) {
-      setToast("form.service_required");
-      return;
-    }
-    setCalling(true);
-    try {
-      const requestedNote = selectedPlayer ? `指定陪练：${selectedPlayer.name}` : "";
-      let chainOrderId: string | null = null;
-      let chainDigest: string | null = null;
-      if (isChainOrdersEnabled()) {
-        const addr = getCurrentAddress();
-        if (!addr) {
-          throw new Error("请先登录账号以便扣减钻石");
-        }
-        if (!hasEnoughDiamonds) {
-          throw new Error("钻石余额不足");
-        }
-        chainOrderId = createChainOrderId();
-        const chainResult = await createOrderOnChain({
-          orderId: chainOrderId,
-          serviceFee: requiredDiamonds,
-          deposit: 0,
-          ruleSetId: disputePolicy.ruleSetId,
-          autoPay: true,
-          rawAmount: true,
-        });
-        chainDigest = chainResult.digest;
-      }
-      const gameProfile = loadGameProfile(getCurrentAddress());
-      const result = await createOrder({
-        id: chainOrderId || `${Date.now()}`,
-        user: "安排页面",
-        userAddress: getCurrentAddress(),
-        item: locked.items.join("、"),
-        amount: locked.total,
-        status: "待派单",
-        time: new Date().toISOString(),
-        chainDigest: chainDigest || undefined,
-        serviceFee: locked.service,
-        serviceFeePaid: true,
-        playerDue: locked.player,
-        depositPaid: false,
-        playerPaid: true,
-        note: [
-          `来源：安排页呼叫服务。托管费用使用钻石支付(${requiredDiamonds}钻石)`,
-          locked.discount > 0 ? `首单优惠减免 ¥${locked.discount}` : "",
-          requestedNote,
-        ]
-          .filter(Boolean)
-          .join("；"),
-        meta: {
-          disputeWindowHours: disputePolicy.hours,
-          ruleSetId: disputePolicy.ruleSetId,
-          vipTier: vipTier?.name || null,
-          vipLevel: vipTier?.level ?? null,
-          paymentMode: "diamond_escrow",
-          diamondCharge: requiredDiamonds,
-          diamondChargeCny: locked.total,
-          firstOrderDiscount:
-            locked.discount > 0
-              ? {
-                  amount: locked.discount,
-                  minSpend: FIRST_ORDER_DISCOUNT.minSpend,
-                  originalTotal: locked.originalTotal,
-                }
-              : null,
-          requestedPlayerId: selectedPlayer?.id || null,
-          requestedPlayerName: selectedPlayer?.name || null,
-          requestedPlayerRole: selectedPlayer?.role || null,
-          publicPool: true,
-          gameProfile: gameProfile
-            ? {
-                gameName: gameProfile.gameName,
-                gameId: gameProfile.gameId,
-                updatedAt: gameProfile.updatedAt,
-              }
-            : null,
-        },
-      });
-      if (chainOrderId) {
-        const address = getCurrentAddress();
-        const retrySync = async () => {
-          const delays = [1000, 2000, 4000, 8000];
-          setChainSyncing(true);
-          for (let i = 0; i < delays.length; i += 1) {
-            const delay = delays[i];
-            setChainSyncRetries(delays.length - i);
-            setChainSyncLastAttemptAt(Date.now());
-            try {
-              await fetch(`/api/orders/${chainOrderId}/chain-sync?force=1&maxWaitMs=15000`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ userAddress: address, digest: chainDigest }),
-              });
-              setChainSyncing(false);
-              setChainSyncRetries(0);
-              return;
-            } catch {
-              // ignore and retry
-            }
-            await new Promise((resolve) => setTimeout(resolve, delay));
-          }
-          setChainSyncing(false);
-          setChainSyncRetries(0);
-          setChainToast("chain.sync_timeout");
-        };
-        void retrySync();
-      }
-      await refreshOrders();
-      if (locked.discount > 0) {
-        markDiscountUsage(getCurrentAddress());
-        trackEvent("first_order_discount_applied", {
-          orderId: result.orderId,
-          discount: locked.discount,
-          originalTotal: locked.originalTotal,
-        });
-      }
-      trackEvent("order_create_success", {
-        orderId: result.orderId,
-        total: locked.total,
-        discount: locked.discount,
-        paymentMode: "diamond_escrow",
-        chain: Boolean(chainDigest),
-      });
-      setMode("notifying");
-      setFeeOpen(false);
-      if (result.sent === false) {
-        setToast(result.error || "订单已创建，通知失败");
-      } else {
-        setToast(chainDigest ? "已提交并派单" : t("schedule.015"));
-      }
-    } catch (e) {
-      const message = formatErrorMessage(e, t("schedule.016"));
-      trackEvent("order_create_failed", {
-        error: message,
-        total: locked.total,
-        discount: locked.discount,
-      });
-      setToast(message);
-    } finally {
-      setTimeout(() => setToast(null), 3000);
-      setCalling(false);
-    }
-  };
-
   return (
     <div className="ride-shell">
       {isChainOrdersEnabled() && (
-        <div className="dl-card" style={{ marginBottom: 12 }}>
-          <div className="flex items-center justify-between">
-            <div className="text-sm font-semibold text-gray-900">订单状态</div>
-            <button
-              className="dl-tab-btn"
-              style={{ padding: "6px 10px" }}
-              onClick={loadChain}
-              disabled={chainLoading}
-            >
-              {renderLoadingLabel(chainLoading, t("schedule.018"), t("schedule.017"))}
-            </button>
-          </div>
-          <div className="text-xs text-gray-500 mt-2">
-            当前账号：{chainAddress ? "已登录" : t("schedule.019")}
-          </div>
-          <div className="text-xs text-gray-500 mt-1">
-            上次刷新：{chainUpdatedAt ? new Date(chainUpdatedAt).toLocaleTimeString() : "-"}
-          </div>
-          {chainSyncLastAttemptAt ? (
-            <div className={`text-xs mt-1 ${chainSyncing ? "text-amber-600" : "text-gray-500"}`}>
-              {chainSyncing
-                ? `链上同步中：剩余重试 ${chainSyncRetries ?? 0} 次，最后尝试 ${new Date(chainSyncLastAttemptAt).toLocaleTimeString()}`
-                : `链上同步最后尝试：${new Date(chainSyncLastAttemptAt).toLocaleTimeString()}`}
-            </div>
-          ) : null}
-          <div className="mt-2 flex justify-end">
-            <button
-              className="dl-tab-btn"
-              style={{ padding: "6px 10px" }}
-              onClick={() => setDebugOpen(true)}
-            >
-              链上调试信息
-            </button>
-          </div>
-          {chainError && <div className="mt-2 text-xs text-rose-500">{chainError}</div>}
-          {chainToast && <div className="mt-2 text-xs text-emerald-600">{chainToast}</div>}
-          {!chainCurrentDisplay ? (
-            <StateBlock
-              tone={chainLoading ? "loading" : chainError ? "danger" : "empty"}
-              size="compact"
-              title={chainLoading ? "同步中" : chainError ? "加载失败" : t("schedule.020")}
-              description={chainLoading ? "正在刷新链上订单" : chainError || "点击刷新获取最新状态"}
-              actions={
-                chainLoading ? null : (
-                  <button className="dl-tab-btn" onClick={loadChain} disabled={chainLoading}>
-                    {renderLoadingLabel(chainLoading, t("schedule.022"), t("schedule.021"))}
-                  </button>
-                )
-              }
-            />
-          ) : (
-            <div className="mt-3 text-xs text-gray-600">
-              <div>订单号：{chainCurrentDisplay.orderId}</div>
-              <div>状态：{statusLabel(chainCurrentDisplay.status)}</div>
-              <div>托管费：¥{formatAmount(chainCurrentDisplay.serviceFee)}</div>
-              <div>押金：¥{formatAmount(chainCurrentDisplay.deposit)}</div>
-              <div>争议截止：{formatTime(chainCurrentDisplay.disputeDeadline)}</div>
-              <div className="mt-2 flex gap-2 flex-wrap">
-                {chainCurrentDisplay.status === 0 && (
-                  <button
-                    className="dl-tab-btn"
-                    style={{ padding: "6px 10px" }}
-                    disabled={chainAction === `pay-${chainCurrentDisplay.orderId}`}
-                    onClick={() =>
-                      runChainAction(
-                        `pay-${chainCurrentDisplay.orderId}`,
-                        () => payServiceFeeOnChain(chainCurrentDisplay.orderId),
-                        "托管费已提交",
-                        chainCurrentDisplay.orderId
-                      )
-                    }
-                  >
-                    {renderActionLabel(`pay-${chainCurrentDisplay.orderId}`, t("schedule.023"))}
-                  </button>
-                )}
-                {(chainCurrentDisplay.status === 0 || chainCurrentDisplay.status === 1) && (
-                  <button
-                    className="dl-tab-btn"
-                    style={{ padding: "6px 10px" }}
-                    disabled={chainAction === `cancel-${chainCurrentDisplay.orderId}`}
-                    onClick={() =>
-                      runChainAction(
-                        `cancel-${chainCurrentDisplay.orderId}`,
-                        () => cancelOrderOnChain(chainCurrentDisplay.orderId),
-                        "订单已取消",
-                        chainCurrentDisplay.orderId
-                      )
-                    }
-                  >
-                    {renderActionLabel(`cancel-${chainCurrentDisplay.orderId}`, t("schedule.024"))}
-                  </button>
-                )}
-                {chainCurrentDisplay.status === 2 && (
-                  <button
-                    className="dl-tab-btn"
-                    style={{ padding: "6px 10px" }}
-                    disabled={chainAction === `complete-${chainCurrentDisplay.orderId}`}
-                    onClick={() =>
-                      runChainAction(
-                        `complete-${chainCurrentDisplay.orderId}`,
-                        () => markCompletedOnChain(chainCurrentDisplay.orderId),
-                        "已确认完成",
-                        chainCurrentDisplay.orderId
-                      )
-                    }
-                  >
-                    {renderActionLabel(
-                      `complete-${chainCurrentDisplay.orderId}`,
-                      t("schedule.025")
-                    )}
-                  </button>
-                )}
-                {chainCurrentDisplay.status === 3 && (
-                  <>
-                    <button
-                      className="dl-tab-btn"
-                      style={{ padding: "6px 10px" }}
-                      disabled={chainAction === `dispute-${chainCurrentDisplay.orderId}`}
-                      onClick={() => {
-                        openPrompt({
-                          title: "发起争议",
-                          description: "请填写争议说明或证据哈希（可留空）",
-                          confirmLabel: "提交争议",
-                          action: async (value) => {
-                            await runChainAction(
-                              `dispute-${chainCurrentDisplay.orderId}`,
-                              () => raiseDisputeOnChain(chainCurrentDisplay.orderId, value),
-                              "已提交争议",
-                              chainCurrentDisplay.orderId
-                            );
-                          },
-                        });
-                      }}
-                    >
-                      {renderActionLabel(
-                        `dispute-${chainCurrentDisplay.orderId}`,
-                        t("schedule.026")
-                      )}
-                    </button>
-                    <button
-                      className="dl-tab-btn"
-                      style={{ padding: "6px 10px" }}
-                      disabled={chainAction === `finalize-${chainCurrentDisplay.orderId}`}
-                      onClick={() => {
-                        const deadline = Number(chainCurrentDisplay.disputeDeadline);
-                        if (Number.isFinite(deadline) && deadline > Date.now()) {
-                          openConfirm({
-                            title: "确认放弃争议期并立即结算？",
-                            description: `争议截止：${new Date(deadline).toLocaleString()}`,
-                            confirmLabel: "确认结算",
-                            action: async () => {
-                              await runChainAction(
-                                `finalize-${chainCurrentDisplay.orderId}`,
-                                () => finalizeNoDisputeOnChain(chainCurrentDisplay.orderId),
-                                "订单已结算",
-                                chainCurrentDisplay.orderId
-                              );
-                            },
-                          });
-                          return;
-                        }
-                        runChainAction(
-                          `finalize-${chainCurrentDisplay.orderId}`,
-                          () => finalizeNoDisputeOnChain(chainCurrentDisplay.orderId),
-                          "订单已结算",
-                          chainCurrentDisplay.orderId
-                        );
-                      }}
-                    >
-                      {renderActionLabel(
-                        `finalize-${chainCurrentDisplay.orderId}`,
-                        t("schedule.027")
-                      )}
-                    </button>
-                  </>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
+        <ChainStatusPanel
+          chainAddress={chainAddress}
+          chainLoading={chainLoading}
+          chainError={chainError}
+          chainToast={chainToast}
+          chainUpdatedAt={chainUpdatedAt}
+          chainSyncing={chainSyncing}
+          chainSyncRetries={chainSyncRetries}
+          chainSyncLastAttemptAt={chainSyncLastAttemptAt}
+          chainCurrentDisplay={chainCurrentDisplay}
+          chainAction={chainAction}
+          loadChain={loadChain}
+          setDebugOpen={setDebugOpen}
+          runChainAction={runChainAction}
+          openPrompt={openPrompt}
+          openConfirm={openConfirm}
+          payServiceFeeOnChain={payServiceFeeOnChain}
+          cancelOrderOnChain={cancelOrderOnChain}
+          markCompletedOnChain={markCompletedOnChain}
+          raiseDisputeOnChain={raiseDisputeOnChain}
+          finalizeNoDisputeOnChain={finalizeNoDisputeOnChain}
+        />
       )}
 
       {feeOpen && (
-        <div className="ride-modal-mask" role="dialog" aria-modal="true">
-          <div className="ride-modal">
-            <div className="ride-modal-head">
-              <div>
-                <div className="ride-modal-title">使用钻石托管费用</div>
-                <div className="ride-modal-sub">按订单金额计算，1元=10钻石</div>
-              </div>
-              <div className="ride-modal-amount">{requiredDiamonds} 钻石</div>
-            </div>
-            <div className="ride-qr-inline">
-              <div className="ride-qr-text">
-                <div className="text-sm font-semibold text-gray-900">托管费用（钻石）</div>
-                <div className="text-xs text-gray-500">
-                  订单 ¥{locked.total.toFixed(2)} × {diamondRate} = {requiredDiamonds} 钻石
-                </div>
-                {locked.discount > 0 && (
-                  <div className="ride-price-stack">
-                    <div className="ride-price-line">
-                      <span>原价</span>
-                      <span>¥{locked.originalTotal.toFixed(2)}</span>
-                    </div>
-                    <div className="ride-price-line discount">
-                      <span>{FIRST_ORDER_DISCOUNT.label}</span>
-                      <span>-¥{locked.discount.toFixed(2)}</span>
-                    </div>
-                    <div className="ride-price-line total">
-                      <span>应付</span>
-                      <span>¥{locked.total.toFixed(2)}</span>
-                    </div>
-                  </div>
-                )}
-                <div className="text-xs text-gray-500" style={{ marginTop: 4 }}>
-                  撮合费 ¥{locked.service.toFixed(2)} / 陪练费用 ¥{locked.player.toFixed(2)}
-                </div>
-                <div className="ride-chip">陪练费用由平台托管，服务完成后结算</div>
-                <div className="text-xs text-gray-500" style={{ marginTop: 4 }}>
-                  仲裁时效：{vipLoading ? "查询中..." : `${disputePolicy.hours}小时`}
-                  {vipTier?.name ? `（会员：${vipTier.name}）` : ""}
-                </div>
-                <div className="text-xs text-gray-500" style={{ marginTop: 4 }}>
-                  已选陪练：
-                  {selectedPlayer
-                    ? `${selectedPlayer.name}${selectedPlayer.role ? `（${selectedPlayer.role}）` : ""}`
-                    : "系统匹配"}
-                </div>
-                <div className="text-xs text-gray-500" style={{ marginTop: 6 }}>
-                  当前余额：
-                  {balanceLoading
-                    ? t("schedule.028")
-                    : balanceReady
-                      ? `${diamondBalance} 钻石`
-                      : "查询失败，请刷新"}
-                </div>
-                {balanceReady && !hasEnoughDiamonds && (
-                  <div className="text-xs text-rose-500" style={{ marginTop: 4 }}>
-                    钻石余额不足，请先充值
-                  </div>
-                )}
-                <button
-                  className="dl-tab-btn"
-                  style={{ marginTop: 8 }}
-                  onClick={refreshBalance}
-                  disabled={balanceLoading}
-                >
-                  {renderLoadingLabel(balanceLoading, t("schedule.030"), t("schedule.029"))}
-                </button>
-                <label className="ride-status-toggle" style={{ marginTop: 10 }}>
-                  <input
-                    type="checkbox"
-                    checked={feeChecked}
-                    onChange={(e) => setFeeChecked(e.target.checked)}
-                    aria-label={t("schedule.031")}
-                  />
-                  <span>使用钻石托管费用</span>
-                  {feeChecked && <CheckCircle2 size={16} color="#22c55e" />}
-                </label>
-              </div>
-            </div>
-            <div className="ride-modal-actions">
-              <button className="dl-tab-btn" onClick={() => setFeeOpen(false)}>
-                取消
-              </button>
-              <button
-                className="dl-tab-btn primary"
-                onClick={callOrder}
-                disabled={calling || !hasEnoughDiamonds}
-              >
-                {calling ? <Loader2 size={16} className="spin" /> : null}
-                <span style={{ marginLeft: calling ? 6 : 0 }}>扣减钻石并派单</span>
-              </button>
-            </div>
-          </div>
-        </div>
+        <FeeModal
+          locked={locked}
+          requiredDiamonds={requiredDiamonds}
+          diamondRate={diamondRate}
+          diamondBalance={diamondBalance}
+          balanceLoading={balanceLoading}
+          balanceReady={balanceReady}
+          hasEnoughDiamonds={hasEnoughDiamonds}
+          feeChecked={feeChecked}
+          setFeeChecked={setFeeChecked}
+          calling={calling}
+          vipLoading={vipLoading}
+          vipTier={vipTier}
+          disputePolicy={disputePolicy}
+          selectedPlayer={selectedPlayer}
+          refreshBalance={refreshBalance}
+          callOrder={callOrder}
+          onClose={() => setFeeOpen(false)}
+        />
       )}
 
-      {debugOpen && (
-        <div
-          className="ride-modal-mask"
-          role="dialog"
-          aria-modal="true"
-          aria-label={t("schedule.032")}
-        >
-          <div className="ride-modal">
-            <div className="ride-modal-head">
-              <div>
-                <div className="ride-modal-title">链上调试信息</div>
-                <div className="ride-modal-sub">用于排查未同步、链上配置不一致等问题</div>
-              </div>
-              <div className="ride-modal-amount">Debug</div>
-            </div>
-            <div className="ride-qr-inline">
-              <pre
-                className="admin-input"
-                style={{ width: "100%", minHeight: 140, whiteSpace: "pre-wrap", fontSize: 12 }}
-              >
-                {JSON.stringify(getChainDebugInfo(), null, 2)}
-              </pre>
-            </div>
-            <div className="ride-modal-actions">
-              <button className="dl-tab-btn" onClick={() => setDebugOpen(false)}>
-                关闭
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {debugOpen && <DebugModal onClose={() => setDebugOpen(false)} />}
 
       <ConfirmDialog
         open={!!confirmAction}
@@ -1290,105 +994,18 @@ export default function Schedule() {
               }}
               className="ride-block"
             >
-              <div className="ride-block-title">
-                <div
-                  style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}
-                >
-                  <span>可接陪练</span>
-                  <button
-                    className="dl-tab-btn"
-                    style={{ padding: "4px 8px" }}
-                    onClick={loadPlayers}
-                    type="button"
-                    disabled={playersLoading}
-                  >
-                    {renderLoadingLabel(playersLoading, t("schedule.034"), t("schedule.033"))}
-                  </button>
-                </div>
-              </div>
-              <div className="ride-items">
-                {playersLoading && players.length === 0 ? (
-                  <StateBlock
-                    tone="loading"
-                    size="compact"
-                    title={t("schedule.035")}
-                    description={t("schedule.036")}
-                  />
-                ) : playersError && players.length === 0 ? (
-                  <StateBlock
-                    tone="danger"
-                    size="compact"
-                    title={t("schedule.037")}
-                    description={playersError}
-                    actions={
-                      <button
-                        className="dl-tab-btn"
-                        onClick={loadPlayers}
-                        type="button"
-                        disabled={playersLoading}
-                      >
-                        {renderLoadingLabel(playersLoading, t("schedule.039"), t("schedule.038"))}
-                      </button>
-                    }
-                  />
-                ) : players.length === 0 ? (
-                  <StateBlock
-                    tone="empty"
-                    size="compact"
-                    title={t("schedule.040")}
-                    description={t("schedule.041")}
-                  />
-                ) : (
-                  players.map((player) => (
-                    <div
-                      key={player.id}
-                      className="ride-row"
-                      onClick={() => {
-                        setSelectedPlayerId(player.id);
-                        setPrefillHint(null);
-                      }}
-                      role="button"
-                      tabIndex={0}
-                      onKeyDown={(event) => {
-                        if (event.key === "Enter" || event.key === " ") {
-                          setSelectedPlayerId(player.id);
-                          setPrefillHint(null);
-                        }
-                      }}
-                    >
-                      <div className="ride-row-main">
-                        <div className="ride-row-title">{player.name}</div>
-                        <div className="ride-row-desc">{player.role || "擅长位置待完善"}</div>
-                      </div>
-                      <div className="ride-row-side">
-                        <label
-                          className="ride-checkbox"
-                          onClick={(event) => event.stopPropagation()}
-                        >
-                          <input
-                            type="radio"
-                            name="selected-player"
-                            checked={selectedPlayerId === player.id}
-                            onChange={() => {
-                              setSelectedPlayerId(player.id);
-                              setPrefillHint(null);
-                            }}
-                          />
-                          <span className="ride-checkbox-box" />
-                        </label>
-                      </div>
-                    </div>
-                  ))
-                )}
-                {playersError && players.length > 0 && (
-                  <div className="px-4 pb-2 text-xs text-rose-500">
-                    陪练列表更新失败：{playersError}
-                  </div>
-                )}
-              </div>
-              <div className="px-4 pb-2 text-[11px] text-slate-400">
-                {prefillHint || "未选择将由系统匹配陪练"}
-              </div>
+              <PlayerList
+                players={players}
+                playersLoading={playersLoading}
+                playersError={playersError}
+                selectedPlayerId={selectedPlayerId}
+                prefillHint={prefillHint}
+                onSelectPlayer={(id) => {
+                  setSelectedPlayerId(id);
+                  setPrefillHint(null);
+                }}
+                onRefresh={loadPlayers}
+              />
             </div>
             {sections.map((section) => (
               <div
