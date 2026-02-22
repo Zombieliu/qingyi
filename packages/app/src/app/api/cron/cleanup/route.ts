@@ -43,6 +43,13 @@ export async function GET(req: Request) {
     });
     results.adminSessions = adminSessionResult.count;
 
+    // 4. Clean old notifications (keep 30 days)
+    const notifCutoff = new Date(Date.now() - 30 * 86400_000);
+    const notifResult = await prisma.notification.deleteMany({
+      where: { createdAt: { lt: notifCutoff } },
+    });
+    results.notifications = notifResult.count;
+
     const durationMs = Date.now() - start;
     trackCronCompleted("cleanup", results, durationMs);
 

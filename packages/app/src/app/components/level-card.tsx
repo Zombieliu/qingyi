@@ -86,7 +86,7 @@ export function LevelCard() {
           writeCache(`cache:user:level:${addr}`, refreshData);
         }
       } else {
-        setCheckinResult("签到失败");
+        setCheckinResult(json.error === "already_checked_in" ? "今日已签到 ✓" : "签到失败");
       }
     } catch {
       setCheckinResult("签到失败");

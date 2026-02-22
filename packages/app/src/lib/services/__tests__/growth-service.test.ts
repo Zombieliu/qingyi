@@ -6,6 +6,8 @@ const mockCreate = vi.fn();
 const mockUpdate = vi.fn();
 const mockFindMany = vi.fn();
 const mockFindUnique = vi.fn();
+const mockGrowthFindFirst = vi.fn();
+const mockGrowthCreate = vi.fn();
 
 vi.mock("@/lib/db", () => ({
   prisma: {
@@ -17,6 +19,10 @@ vi.mock("@/lib/db", () => ({
     },
     adminMembershipTier: {
       findMany: (...args: unknown[]) => mockFindMany(...args),
+    },
+    growthEvent: {
+      findFirst: (...args: unknown[]) => mockGrowthFindFirst(...args),
+      create: (...args: unknown[]) => mockGrowthCreate(...args),
     },
   },
 }));
@@ -215,6 +221,8 @@ describe("onReviewSubmitted", () => {
 
 describe("onDailyCheckin", () => {
   it("awards checkin points", async () => {
+    mockGrowthFindFirst.mockResolvedValue(null); // not checked in today
+    mockGrowthCreate.mockResolvedValue({ id: "GE-1" });
     mockFindFirst.mockResolvedValue({ ...baseMember, points: 50 });
     mockUpdate.mockResolvedValue({ ...baseMember, points: 60 });
     mockFindMany.mockResolvedValue([]);
@@ -222,6 +230,15 @@ describe("onDailyCheckin", () => {
     const result = await onDailyCheckin("0xabc");
 
     expect(result!.earned).toBe(POINTS_RULES.DAILY_CHECKIN);
+  });
+
+  it("rejects duplicate checkin", async () => {
+    mockGrowthFindFirst.mockResolvedValue({ id: "GE-existing" }); // already checked in
+
+    const result = await onDailyCheckin("0xabc");
+
+    expect(result).toHaveProperty("alreadyCheckedIn", true);
+    expect(result!.earned).toBe(0);
   });
 });
 

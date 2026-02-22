@@ -52,8 +52,11 @@ model AdminPlayer {
   depositBase Int?
   depositLocked Int?
   creditMultiplier Int?
+  creditLimit Int?
+  usedCredit  Int?
   status    String
   notes     String?
+  schedule  Json?    // 排班: { slots: [{ day: 0-6, start: "09:00", end: "22:00" }] }
   createdAt DateTime
   updatedAt DateTime?
 
@@ -506,4 +509,22 @@ model Notification {
 
   @@index([userAddress, read])
   @@index([userAddress, createdAt])
+}
+
+model UserCoupon {
+  id          String    @id
+  userAddress String
+  couponId    String
+  couponTitle String
+  discount    Float?
+  minSpend    Float?
+  status      String    @default("unused") // unused, used, expired
+  usedOrderId String?
+  usedAt      DateTime?
+  expiresAt   DateTime?
+  createdAt   DateTime
+
+  @@unique([userAddress, couponId])
+  @@index([userAddress, status])
+  @@index([couponId])
 }

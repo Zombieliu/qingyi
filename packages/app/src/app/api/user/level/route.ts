@@ -50,6 +50,13 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "checkin_failed" }, { status: 500 });
   }
 
+  if ("alreadyCheckedIn" in result && result.alreadyCheckedIn) {
+    return NextResponse.json(
+      { ok: false, error: "already_checked_in", message: "今日已签到" },
+      { status: 409 }
+    );
+  }
+
   return NextResponse.json({
     ok: true,
     points: result.points,

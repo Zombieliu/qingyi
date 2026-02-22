@@ -351,6 +351,13 @@ export default function HomeContent({
                     </div>
                     <div className={styles["lc-player-actions"]}>
                       <span className={styles["lc-player-status"]}>{t("ui.home-content.007")}</span>
+                      <Link
+                        href={`/players/${player.id}`}
+                        className={styles["lc-player-btn"]}
+                        style={{ marginRight: 4, backgroundColor: "#f0f9ff", color: "#0284c7" }}
+                      >
+                        评价
+                      </Link>
                       <Link href={target} className={styles["lc-player-btn"]}>
                         去指定
                       </Link>

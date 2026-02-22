@@ -4,11 +4,10 @@ import Link from "next/link";
 import {
   ArrowLeft,
   Briefcase,
+  Calendar,
   DollarSign,
   Star,
   Clock,
-  CheckCircle,
-  XCircle,
   ToggleLeft,
   ToggleRight,
 } from "lucide-react";
@@ -66,12 +65,23 @@ export default function CompanionPage() {
   const [ordersLoading, setOrdersLoading] = useState(true);
   const [statusToggling, setStatusToggling] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const [scheduleSlots, setScheduleSlots] = useState<{ day: number; start: string; end: string }[]>(
+    []
+  );
+  const [showSchedule, setShowSchedule] = useState(false);
 
   const fetchStats = useCallback(async () => {
     if (!address) return;
     try {
-      const res = await fetchWithUserAuth(`/api/companion/stats?address=${address}`, {}, address);
-      if (res.ok) setStats(await res.json());
+      const [statsRes, scheduleRes] = await Promise.all([
+        fetchWithUserAuth(`/api/companion/stats?address=${address}`, {}, address),
+        fetchWithUserAuth(`/api/companion/schedule?address=${address}`, {}, address),
+      ]);
+      if (statsRes.ok) setStats(await statsRes.json());
+      if (scheduleRes.ok) {
+        const data = await scheduleRes.json();
+        setScheduleSlots(data.slots || []);
+      }
     } catch {
       // ignore
     } finally {
@@ -292,8 +302,139 @@ export default function CompanionPage() {
               </div>
             )}
           </section>
+
+          {/* Schedule */}
+          <ScheduleSection
+            address={address}
+            slots={scheduleSlots}
+            setSlots={setScheduleSlots}
+            show={showSchedule}
+            setShow={setShowSchedule}
+            setToast={setToast}
+          />
         </>
       )}
     </div>
+  );
+}
+
+// ─── Schedule sub-component ───
+
+const DAY_LABELS = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
+
+function ScheduleSection({
+  address,
+  slots,
+  setSlots,
+  show,
+  setShow,
+  setToast,
+}: {
+  address: string;
+  slots: { day: number; start: string; end: string }[];
+  setSlots: (s: { day: number; start: string; end: string }[]) => void;
+  show: boolean;
+  setShow: (v: boolean) => void;
+  setToast: (v: string | null) => void;
+}) {
+  const [saving, setSaving] = useState(false);
+
+  const addSlot = (day: number) => {
+    setSlots([...slots, { day, start: "09:00", end: "22:00" }]);
+  };
+
+  const removeSlot = (idx: number) => {
+    setSlots(slots.filter((_, i) => i !== idx));
+  };
+
+  const updateSlot = (idx: number, field: "start" | "end", value: string) => {
+    setSlots(slots.map((s, i) => (i === idx ? { ...s, [field]: value } : s)));
+  };
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      const res = await fetchWithUserAuth(
+        "/api/companion/schedule",
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ address, slots }),
+        },
+        address
+      );
+      if (res.ok) {
+        setToast("排班已保存");
+      } else {
+        setToast("保存失败");
+      }
+    } catch {
+      setToast("保存失败");
+    } finally {
+      setSaving(false);
+      setTimeout(() => setToast(null), 2000);
+    }
+  };
+
+  return (
+    <section className="dl-card" style={{ padding: 16, marginTop: 12, marginBottom: 24 }}>
+      <button
+        className="flex items-center gap-2 text-sm font-semibold text-gray-900 w-full text-left"
+        onClick={() => setShow(!show)}
+      >
+        <Calendar size={16} className="text-blue-500" />
+        排班设置
+        <span className="text-xs text-gray-400 ml-auto">
+          {slots.length > 0 ? `${slots.length} 个时段` : "未设置"}
+        </span>
+      </button>
+
+      {show && (
+        <div className="mt-3">
+          {DAY_LABELS.map((label, day) => {
+            const daySlots = slots.map((s, i) => ({ ...s, idx: i })).filter((s) => s.day === day);
+            return (
+              <div key={day} className="mb-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-medium text-gray-700">{label}</span>
+                  <button className="text-[10px] text-blue-500" onClick={() => addSlot(day)}>
+                    + 添加
+                  </button>
+                </div>
+                {daySlots.map((slot) => (
+                  <div key={slot.idx} className="flex items-center gap-2 mt-1">
+                    <input
+                      type="time"
+                      value={slot.start}
+                      onChange={(e) => updateSlot(slot.idx, "start", e.target.value)}
+                      className="rounded border border-gray-200 px-2 py-1 text-xs"
+                    />
+                    <span className="text-xs text-gray-400">—</span>
+                    <input
+                      type="time"
+                      value={slot.end}
+                      onChange={(e) => updateSlot(slot.idx, "end", e.target.value)}
+                      className="rounded border border-gray-200 px-2 py-1 text-xs"
+                    />
+                    <button
+                      className="text-[10px] text-red-400"
+                      onClick={() => removeSlot(slot.idx)}
+                    >
+                      删除
+                    </button>
+                  </div>
+                ))}
+                {daySlots.length === 0 && (
+                  <div className="text-[10px] text-gray-300 mt-1">休息</div>
+                )}
+              </div>
+            );
+          })}
+          <button className="lc-tab-btn is-active mt-3 w-full" onClick={save} disabled={saving}>
+            {saving ? "保存中..." : "保存排班"}
+          </button>
+        </div>
+      )}
+    </section>
   );
 }

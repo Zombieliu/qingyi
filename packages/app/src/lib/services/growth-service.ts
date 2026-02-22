@@ -216,6 +216,30 @@ export async function onReferralFirstOrder(params: {
  * 每日签到
  */
 export async function onDailyCheckin(userAddress: string) {
+  // Dedup: check if already checked in today
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+  const existing = await prisma.growthEvent.findFirst({
+    where: {
+      userAddress,
+      event: "daily_checkin",
+      createdAt: { gte: todayStart },
+    },
+  });
+  if (existing) {
+    return { points: 0, earned: 0, multiplier: 1, upgraded: null, alreadyCheckedIn: true };
+  }
+
+  // Record checkin event
+  await prisma.growthEvent.create({
+    data: {
+      id: `GE-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
+      event: "daily_checkin",
+      userAddress,
+      createdAt: new Date(),
+    },
+  });
+
   return addPointsAndUpgrade({
     userAddress,
     points: POINTS_RULES.DAILY_CHECKIN,
