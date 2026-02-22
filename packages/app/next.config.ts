@@ -2,6 +2,9 @@ import type { NextConfig } from "next";
 import path from "path";
 import withSerwistInit from "@serwist/next";
 import { withSentryConfig } from "@sentry/nextjs";
+import withBundleAnalyzer from "@next/bundle-analyzer";
+
+const analyzeBuild = withBundleAnalyzer({ enabled: process.env.ANALYZE === "1" });
 
 const withSerwist = withSerwistInit({
   swSrc: "src/app/sw.ts",
@@ -40,9 +43,10 @@ const nextConfig: NextConfig = {
 };
 
 const pwaConfig = process.env.PWA_BUILD === "1" ? withSerwist(nextConfig) : nextConfig;
+const analyzed = analyzeBuild(pwaConfig);
 
 export default withSentryConfig(
-  pwaConfig,
+  analyzed,
   {
     silent: true,
     org: process.env.SENTRY_ORG,

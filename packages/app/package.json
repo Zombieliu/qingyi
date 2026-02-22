@@ -11,6 +11,7 @@
     "lint": "eslint",
     "test": "vitest --run",
     "test:watch": "vitest",
+    "analyze": "ANALYZE=1 next build --webpack",
     "format": "prettier --write \"src/**/*.{ts,tsx,json,css}\"",
     "format:check": "prettier --check \"src/**/*.{ts,tsx,json,css}\"",
     "prisma": "prisma",
@@ -53,6 +54,7 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@next/bundle-analyzer": "^16.1.6",
     "@tailwindcss/postcss": "^4",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
