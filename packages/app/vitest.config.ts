@@ -8,6 +8,7 @@ export default defineConfig({
     environment: "jsdom",
     globals: true,
     setupFiles: ["./src/test/setup.ts"],
+    exclude: ["**/*.integration.test.ts", "**/node_modules/**"],
     coverage: {
       provider: "v8",
       include: ["src/lib/**/*.ts"],
