@@ -2,7 +2,7 @@
 import { t } from "@/lib/i18n/i18n-client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Search,
   MoreHorizontal,
@@ -137,6 +137,19 @@ export default function HomeContent({
   news: HomeNews[];
 }) {
   const [query, setQuery] = useState("");
+
+  // Capture ?ref= param for referral auto-bind
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const ref = params.get("ref");
+      if (ref && ref.length >= 6) {
+        localStorage.setItem("qy:refCode", ref);
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
   const [category, setCategory] = useState<(typeof CATEGORIES)[number]>("全部");
   const [sortPrice, setSortPrice] = useState<"default" | "asc" | "desc">("default");
   const keyword = query.trim();

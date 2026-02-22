@@ -179,6 +179,19 @@ export async function processReferralReward(
       note: `邀请奖励：首单完成奖励 (${orderId})`,
     });
   }
+
+  // Award growth points to inviter (non-blocking)
+  try {
+    const { onReferralFirstOrder } = await import("@/lib/services/growth-service");
+    await onReferralFirstOrder({
+      referrerAddress: referral.inviterAddress,
+      refereeAddress: referral.inviteeAddress,
+      orderId,
+    });
+  } catch {
+    // non-critical
+  }
+
   return { inviterReward, inviteeReward, ...results };
 }
 

@@ -1,6 +1,15 @@
 "use client";
 import { t } from "@/lib/i18n/i18n-client";
-import { Diamond, Gamepad2, Gift, Phone, ShieldCheck, User, Settings } from "lucide-react";
+import {
+  Diamond,
+  Gamepad2,
+  Gift,
+  Phone,
+  ShieldCheck,
+  User,
+  Settings,
+  Briefcase,
+} from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { PASSKEY_STORAGE_KEY } from "@/app/components/passkey-wallet";
@@ -30,6 +39,7 @@ const grid = [
   },
   { label: t("ui.me.592"), icon: Phone, color: "#22c55e", href: "/me/invoice" },
   { label: "成为陪练", icon: User, color: "#d946ef", href: "/me/guardian" },
+  { label: "陪练工作台", icon: Briefcase, color: "#0891b2", href: "/companion" },
   { label: "邀请返利", icon: Gift, color: "#ec4899", href: "/me/referral" },
   // 其他功能暂时隐藏
 ];

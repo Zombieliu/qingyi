@@ -111,6 +111,20 @@ export default function PasskeyLoginButton() {
     } catch {
       // ignore
     }
+    // Auto-bind referral if ?ref= was captured
+    try {
+      const refCode = localStorage.getItem("qy:refCode");
+      if (refCode && refCode.length >= 6) {
+        localStorage.removeItem("qy:refCode");
+        fetch("/api/referral/bind", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ inviteeAddress: next.address, refCode }),
+        }).catch(() => {});
+      }
+    } catch {
+      // ignore
+    }
     setToast(msg);
     setTimeout(() => setToast(null), 3000);
     router.push("/home");
