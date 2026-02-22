@@ -264,8 +264,8 @@ export default function GuardiansPage() {
       <div className="admin-card">
         <div className="admin-card-header">
           <div>
-            <h3>陪练筛选</h3>
-            <p>按申请人、状态与联系方式快速定位。</p>
+            <h3>{t("ui.guardians.353")}</h3>
+            <p>{t("ui.guardians.354")}</p>
           </div>
         </div>
         <div className="admin-toolbar">
@@ -284,7 +284,7 @@ export default function GuardiansPage() {
             value={statusFilter}
             onChange={(event) => setStatusFilter(event.target.value)}
           >
-            <option value={t("admin.guardians.005")}>全部状态</option>
+            <option value={t("admin.guardians.005")}>{t("ui.guardians.355")}</option>
             {GUARDIAN_STATUS_OPTIONS.map((status) => (
               <option key={status} value={status}>
                 {status}
@@ -297,8 +297,8 @@ export default function GuardiansPage() {
             onChange={(event) => setExportScope(event.target.value as "current" | "filtered")}
             title={t("admin.guardians.006")}
           >
-            <option value="current">导出当前页</option>
-            <option value="filtered">导出全部筛选</option>
+            <option value="current">{t("ui.guardians.356")}</option>
+            <option value="filtered">{t("ui.guardians.357")}</option>
           </select>
           <button className="admin-btn ghost" onClick={exportFiltered} disabled={exporting}>
             {exporting ? "导出中..." : t("admin.guardians.007")}
@@ -324,7 +324,7 @@ export default function GuardiansPage() {
 
       <div className="admin-card">
         <div className="admin-card-header">
-          <h3>陪练申请列表</h3>
+          <h3>{t("ui.guardians.358")}</h3>
           <div className="admin-card-actions">
             <span className="admin-pill">共 {applications.length} 条</span>
             {cacheHint ? <span className="admin-pill">{cacheHint}</span> : null}
@@ -349,15 +349,15 @@ export default function GuardiansPage() {
             <table className="admin-table">
               <thead>
                 <tr>
-                  <th>申请人</th>
-                  <th>擅长游戏</th>
-                  <th>经验</th>
-                  <th>可接单时段</th>
-                  <th>钱包地址</th>
-                  <th>状态</th>
-                  <th>备注</th>
-                  <th>时间</th>
-                  <th>更新</th>
+                  <th>{t("ui.guardians.359")}</th>
+                  <th>{t("ui.guardians.360")}</th>
+                  <th>{t("ui.guardians.361")}</th>
+                  <th>{t("ui.guardians.362")}</th>
+                  <th>{t("ui.guardians.363")}</th>
+                  <th>{t("ui.guardians.364")}</th>
+                  <th>{t("ui.guardians.365")}</th>
+                  <th>{t("ui.guardians.366")}</th>
+                  <th>{t("ui.guardians.367")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -443,7 +443,7 @@ export default function GuardiansPage() {
                     </td>
                     <td data-label={t("admin.guardians.024")}>
                       <span className="admin-badge neutral">
-                        {saving[item.id] ? "保存中" : t("admin.guardians.025")}
+                        {saving[item.id] ? t("ui.guardians.526") : t("admin.guardians.025")}
                       </span>
                     </td>
                   </tr>

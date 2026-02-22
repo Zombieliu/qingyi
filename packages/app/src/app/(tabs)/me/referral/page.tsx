@@ -114,8 +114,8 @@ export default function ReferralPage() {
           <Link href="/me" className="dl-icon-circle" aria-label={t("me.referral.001")}>
             <ArrowLeft size={16} />
           </Link>
-          <span className="dl-time-text">邀请返利</span>
-          <span className="dl-chip">赚馒头</span>
+          <span className="dl-time-text">{t("ui.referral.055")}</span>
+          <span className="dl-chip">{t("ui.referral.056")}</span>
         </div>
         <div className="dl-actions">
           <span className="dl-icon-circle">
@@ -140,7 +140,7 @@ export default function ReferralPage() {
       ) : (
         <>
           <section className="dl-card" style={{ padding: 16 }}>
-            <div className="text-sm font-semibold text-gray-900">我的邀请码</div>
+            <div className="text-sm font-semibold text-gray-900">{t("ui.referral.057")}</div>
             <div className="mt-2 flex items-center gap-2">
               <code className="rounded-lg bg-slate-100 px-3 py-1.5 text-lg font-bold tracking-wider text-pink-600">
                 {status?.refCode || "—"}
@@ -160,21 +160,21 @@ export default function ReferralPage() {
           </section>
 
           <section className="dl-card" style={{ padding: 16, marginTop: 12 }}>
-            <div className="text-sm font-semibold text-gray-900">返利统计</div>
+            <div className="text-sm font-semibold text-gray-900">{t("ui.referral.058")}</div>
             <div className="mt-3 grid grid-cols-3 gap-3 text-center">
               <div>
                 <div className="text-xl font-bold text-pink-600">{status?.inviteCount ?? 0}</div>
-                <div className="text-xs text-slate-500">邀请人数</div>
+                <div className="text-xs text-slate-500">{t("ui.referral.059")}</div>
               </div>
               <div>
                 <div className="text-xl font-bold text-emerald-600">
                   {status?.rewardedCount ?? 0}
                 </div>
-                <div className="text-xs text-slate-500">已返利</div>
+                <div className="text-xs text-slate-500">{t("ui.referral.060")}</div>
               </div>
               <div>
                 <div className="text-xl font-bold text-amber-600">{status?.totalReward ?? 0}</div>
-                <div className="text-xs text-slate-500">总馒头</div>
+                <div className="text-xs text-slate-500">{t("ui.referral.061")}</div>
               </div>
             </div>
             {status?.invitedBy && (
@@ -189,7 +189,7 @@ export default function ReferralPage() {
 
           {status?.invites && status.invites.length > 0 && (
             <section className="dl-card" style={{ padding: 16, marginTop: 12 }}>
-              <div className="text-sm font-semibold text-gray-900">邀请记录</div>
+              <div className="text-sm font-semibold text-gray-900">{t("ui.referral.062")}</div>
               <div className="mt-3 grid gap-2">
                 {status.invites.map((inv) => (
                   <div

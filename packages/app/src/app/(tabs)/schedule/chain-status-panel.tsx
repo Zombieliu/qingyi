@@ -89,7 +89,7 @@ export function ChainStatusPanel({
   return (
     <div className="dl-card" style={{ marginBottom: 12 }}>
       <div className="flex items-center justify-between">
-        <div className="text-sm font-semibold text-gray-900">订单状态</div>
+        <div className="text-sm font-semibold text-gray-900">{t("ui.chain-status-panel.019")}</div>
         <button
           className="dl-tab-btn"
           style={{ padding: "6px 10px" }}
@@ -100,7 +100,7 @@ export function ChainStatusPanel({
         </button>
       </div>
       <div className="text-xs text-gray-500 mt-2">
-        当前账号：{chainAddress ? "已登录" : t("schedule.019")}
+        当前账号：{chainAddress ? t("ui.chain-status-panel.585") : t("schedule.019")}
       </div>
       <div className="text-xs text-gray-500 mt-1">
         上次刷新：{chainUpdatedAt ? new Date(chainUpdatedAt).toLocaleTimeString() : "-"}
@@ -195,7 +195,7 @@ function ChainOrderActions({
               runChainAction(
                 `pay-${display.orderId}`,
                 () => payServiceFeeOnChain(display.orderId),
-                "托管费已提交",
+                t("ui.chain-status-panel.601"),
                 display.orderId
               )
             }
@@ -212,7 +212,7 @@ function ChainOrderActions({
               runChainAction(
                 `cancel-${display.orderId}`,
                 () => cancelOrderOnChain(display.orderId),
-                "订单已取消",
+                t("ui.chain-status-panel.654"),
                 display.orderId
               )
             }
@@ -229,7 +229,7 @@ function ChainOrderActions({
               runChainAction(
                 `complete-${display.orderId}`,
                 () => markCompletedOnChain(display.orderId),
-                "已确认完成",
+                t("ui.chain-status-panel.588"),
                 display.orderId
               )
             }
@@ -252,7 +252,7 @@ function ChainOrderActions({
                     await runChainAction(
                       `dispute-${display.orderId}`,
                       () => raiseDisputeOnChain(display.orderId, value),
-                      "已提交争议",
+                      t("ui.chain-status-panel.579"),
                       display.orderId
                     );
                   },
@@ -276,7 +276,7 @@ function ChainOrderActions({
                       await runChainAction(
                         `finalize-${display.orderId}`,
                         () => finalizeNoDisputeOnChain(display.orderId),
-                        "订单已结算",
+                        t("ui.chain-status-panel.660"),
                         display.orderId
                       );
                     },
@@ -286,7 +286,7 @@ function ChainOrderActions({
                 runChainAction(
                   `finalize-${display.orderId}`,
                   () => finalizeNoDisputeOnChain(display.orderId),
-                  "订单已结算",
+                  t("ui.chain-status-panel.661"),
                   display.orderId
                 );
               }}

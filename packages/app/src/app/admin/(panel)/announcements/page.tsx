@@ -174,8 +174,8 @@ export default function AnnouncementsPage() {
       <div className="admin-card">
         <div className="admin-card-header">
           <div>
-            <h3>{editingId ? "编辑公告" : t("admin.announcements.002")}</h3>
-            <p>管理公告与资讯内容。</p>
+            <h3>{editingId ? t("ui.announcements.647") : t("admin.announcements.002")}</h3>
+            <p>{t("ui.announcements.316")}</p>
           </div>
         </div>
         {canEdit ? (
@@ -233,7 +233,7 @@ export default function AnnouncementsPage() {
             <div className="admin-card-actions" style={{ marginTop: 14 }}>
               <button className="admin-btn primary" onClick={submitForm}>
                 <PlusCircle size={16} style={{ marginRight: 6 }} />
-                {editingId ? "保存修改" : t("admin.announcements.006")}
+                {editingId ? t("ui.announcements.532") : t("admin.announcements.006")}
               </button>
               {editingId ? (
                 <button className="admin-btn ghost" onClick={resetForm}>
@@ -256,7 +256,7 @@ export default function AnnouncementsPage() {
 
       <div className="admin-card">
         <div className="admin-card-header">
-          <h3>公告列表</h3>
+          <h3>{t("ui.announcements.317")}</h3>
           <div className="admin-card-actions">
             {canEdit ? (
               <>
@@ -281,7 +281,7 @@ export default function AnnouncementsPage() {
                 </button>
               </>
             ) : (
-              <span className="admin-badge neutral">只读权限</span>
+              <span className="admin-badge neutral">{t("ui.announcements.318")}</span>
             )}
           </div>
         </div>
@@ -328,7 +328,7 @@ export default function AnnouncementsPage() {
                       {item.tag}
                     </div>
                     <div className="admin-text-body" style={{ marginTop: 10 }}>
-                      {item.content || "（无正文）"}
+                      {item.content || t("ui.announcements.710")}
                     </div>
                   </div>
                   {canEdit ? (

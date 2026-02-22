@@ -55,8 +55,8 @@ export default function PwaUpdateToast() {
       <div className="flex items-center gap-3">
         <ArrowUpCircle className="h-5 w-5 text-emerald-500" aria-hidden />
         <div className="flex-1 text-sm">
-          <div className="font-semibold">有新版本可用</div>
-          <div className="text-slate-500">点击更新立即刷新体验。</div>
+          <div className="font-semibold">{t("ui.pwa-update-toast.501")}</div>
+          <div className="text-slate-500">{t("ui.pwa-update-toast.502")}</div>
         </div>
         <button
           onClick={activate}

@@ -1,3 +1,4 @@
+import { t } from "@/lib/i18n/i18n-client";
 import { LobbyCard } from "./lobby-card";
 
 const lobbies = [
@@ -32,7 +33,7 @@ export function MatchList() {
       <div className="flex items-center justify-between text-white/80">
         <div>
           <div className="text-sm uppercase tracking-[0.18em] text-cyan-100/60">Live Lobbies</div>
-          <h2 className="text-xl font-semibold text-white">正在开黑的房间</h2>
+          <h2 className="text-xl font-semibold text-white">{t("ui.match-list.495")}</h2>
         </div>
         <button className="rounded-full border border-white/25 px-3 py-1 text-xs font-semibold text-white transition hover:border-white/50">
           发布房间

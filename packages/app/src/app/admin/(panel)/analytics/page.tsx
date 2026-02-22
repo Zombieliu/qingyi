@@ -131,8 +131,8 @@ export default function AnalyticsPage() {
       <div className="admin-card">
         <div className="admin-card-header">
           <div>
-            <h3>增长概览</h3>
-            <p>查看最近周期内的访问与转化表现。</p>
+            <h3>{t("ui.analytics.455")}</h3>
+            <p>{t("ui.analytics.456")}</p>
           </div>
           <div className="admin-card-actions">
             {RANGE_OPTIONS.map((range) => (
@@ -168,7 +168,7 @@ export default function AnalyticsPage() {
                 }}
               >
                 <div>
-                  <h3>事件总量</h3>
+                  <h3>{t("ui.analytics.457")}</h3>
                   <div className="admin-stat">{data.totalEvents}</div>
                   <p>最近 {data.rangeDays} 天事件记录</p>
                 </div>
@@ -183,11 +183,11 @@ export default function AnalyticsPage() {
                 }}
               >
                 <div>
-                  <h3>访问用户</h3>
+                  <h3>{t("ui.analytics.458")}</h3>
                   <div className="admin-stat">
                     {data.events.find((item) => item.event === "page_view")?.unique || 0}
                   </div>
-                  <p>独立访问用户数</p>
+                  <p>{t("ui.analytics.459")}</p>
                 </div>
                 {trend && <Sparkline data={trend.trend.map((d) => d.views)} color="#6366f1" />}
               </div>
@@ -201,11 +201,11 @@ export default function AnalyticsPage() {
                 }}
               >
                 <div>
-                  <h3>下单意向</h3>
+                  <h3>{t("ui.analytics.460")}</h3>
                   <div className="admin-stat">
                     {data.events.find((item) => item.event === "order_intent")?.unique || 0}
                   </div>
-                  <p>触发下单意向的用户</p>
+                  <p>{t("ui.analytics.461")}</p>
                 </div>
                 {trend && <Sparkline data={trend.trend.map((d) => d.intents)} color="#8b5cf6" />}
               </div>
@@ -219,11 +219,11 @@ export default function AnalyticsPage() {
                 }}
               >
                 <div>
-                  <h3>下单成功</h3>
+                  <h3>{t("ui.analytics.462")}</h3>
                   <div className="admin-stat">
                     {data.events.find((item) => item.event === "order_create_success")?.unique || 0}
                   </div>
-                  <p>完成下单的用户</p>
+                  <p>{t("ui.analytics.463")}</p>
                 </div>
                 {trend && <Sparkline data={trend.trend.map((d) => d.orders)} color="#a855f7" />}
               </div>
@@ -243,23 +243,23 @@ export default function AnalyticsPage() {
       {!loading && trend && (
         <div className="admin-card">
           <div className="admin-card-header">
-            <h3>用户留存</h3>
+            <h3>{t("ui.analytics.464")}</h3>
           </div>
           <div className="admin-grid-cards" style={{ marginTop: 6 }}>
             <div className="admin-card admin-card--subtle">
-              <h3>下单用户</h3>
+              <h3>{t("ui.analytics.465")}</h3>
               <div className="admin-stat">{trend.retention.orderUsers}</div>
-              <p>期间内完成下单的用户</p>
+              <p>{t("ui.analytics.466")}</p>
             </div>
             <div className="admin-card admin-card--subtle">
-              <h3>回访用户</h3>
+              <h3>{t("ui.analytics.467")}</h3>
               <div className="admin-stat">{trend.retention.returnUsers}</div>
-              <p>下单后再次访问的用户</p>
+              <p>{t("ui.analytics.468")}</p>
             </div>
             <div className="admin-card admin-card--subtle">
-              <h3>回访率</h3>
+              <h3>{t("ui.analytics.469")}</h3>
               <div className="admin-stat">{trend.retention.rate}%</div>
-              <p>下单用户的回访比例</p>
+              <p>{t("ui.analytics.470")}</p>
             </div>
           </div>
         </div>
@@ -267,7 +267,7 @@ export default function AnalyticsPage() {
 
       <div className="admin-card">
         <div className="admin-card-header">
-          <h3>转化漏斗</h3>
+          <h3>{t("ui.analytics.471")}</h3>
         </div>
         {loading ? (
           <StateBlock
@@ -290,7 +290,7 @@ export default function AnalyticsPage() {
 
       <div className="admin-card">
         <div className="admin-card-header">
-          <h3>事件分布</h3>
+          <h3>{t("ui.analytics.472")}</h3>
         </div>
         {loading ? (
           <StateBlock
@@ -304,9 +304,9 @@ export default function AnalyticsPage() {
             <table className="admin-table">
               <thead>
                 <tr>
-                  <th>事件</th>
-                  <th>总量</th>
-                  <th>独立人数</th>
+                  <th>{t("ui.analytics.473")}</th>
+                  <th>{t("ui.analytics.474")}</th>
+                  <th>{t("ui.analytics.475")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -334,7 +334,7 @@ export default function AnalyticsPage() {
 
       <div className="admin-card">
         <div className="admin-card-header">
-          <h3>热门页面</h3>
+          <h3>{t("ui.analytics.476")}</h3>
         </div>
         {loading ? (
           <StateBlock
@@ -348,8 +348,8 @@ export default function AnalyticsPage() {
             <table className="admin-table">
               <thead>
                 <tr>
-                  <th>页面</th>
-                  <th>访问次数</th>
+                  <th>{t("ui.analytics.477")}</th>
+                  <th>{t("ui.analytics.478")}</th>
                 </tr>
               </thead>
               <tbody>

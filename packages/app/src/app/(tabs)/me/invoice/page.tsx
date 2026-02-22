@@ -122,8 +122,8 @@ export default function InvoicePage() {
           <Link href="/me" className="dl-icon-circle" aria-label={t("me.invoice.001")}>
             <ArrowLeft size={16} />
           </Link>
-          <span className="dl-time-text">发票申请</span>
-          <span className="dl-chip">电子发票</span>
+          <span className="dl-time-text">{t("ui.invoice.128")}</span>
+          <span className="dl-chip">{t("ui.invoice.129")}</span>
         </div>
         <div className="dl-actions">
           <span className="dl-icon-circle">
@@ -133,17 +133,17 @@ export default function InvoicePage() {
       </header>
 
       <section className="dl-card" style={{ padding: 16 }}>
-        <div className="text-sm font-semibold text-gray-900">开票说明</div>
+        <div className="text-sm font-semibold text-gray-900">{t("ui.invoice.130")}</div>
         <div className="mt-2 text-xs text-slate-500">
           填写真实的抬头与税号，电子发票将发送至邮箱。若有多笔订单，可在备注中说明。
         </div>
       </section>
 
       <section className="dl-card" style={{ padding: 16 }}>
-        <div className="text-sm font-semibold text-gray-900">提交开票申请</div>
+        <div className="text-sm font-semibold text-gray-900">{t("ui.invoice.131")}</div>
         <div className="mt-3 grid gap-3">
           <div className="grid gap-2">
-            <label className="text-xs text-slate-500">发票抬头</label>
+            <label className="text-xs text-slate-500">{t("ui.invoice.132")}</label>
             <input
               className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm"
               placeholder={t("me.invoice.002")}
@@ -152,7 +152,7 @@ export default function InvoicePage() {
             />
           </div>
           <div className="grid gap-2">
-            <label className="text-xs text-slate-500">税号（选填）</label>
+            <label className="text-xs text-slate-500">{t("ui.invoice.133")}</label>
             <input
               className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm"
               placeholder={t("me.invoice.003")}
@@ -161,7 +161,7 @@ export default function InvoicePage() {
             />
           </div>
           <div className="grid gap-2">
-            <label className="text-xs text-slate-500">收票邮箱</label>
+            <label className="text-xs text-slate-500">{t("ui.invoice.134")}</label>
             <input
               className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm"
               placeholder="example@mail.com"
@@ -170,7 +170,7 @@ export default function InvoicePage() {
             />
           </div>
           <div className="grid gap-2">
-            <label className="text-xs text-slate-500">联系方式</label>
+            <label className="text-xs text-slate-500">{t("ui.invoice.135")}</label>
             <input
               className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm"
               placeholder={t("me.invoice.004")}
@@ -179,7 +179,7 @@ export default function InvoicePage() {
             />
           </div>
           <div className="grid gap-2">
-            <label className="text-xs text-slate-500">订单号（选填）</label>
+            <label className="text-xs text-slate-500">{t("ui.invoice.136")}</label>
             <input
               className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm"
               placeholder={t("me.invoice.005")}
@@ -188,7 +188,7 @@ export default function InvoicePage() {
             />
           </div>
           <div className="grid gap-2">
-            <label className="text-xs text-slate-500">开票金额（选填）</label>
+            <label className="text-xs text-slate-500">{t("ui.invoice.137")}</label>
             <input
               className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm"
               placeholder="¥"
@@ -197,7 +197,7 @@ export default function InvoicePage() {
             />
           </div>
           <div className="grid gap-2">
-            <label className="text-xs text-slate-500">开户地址（选填）</label>
+            <label className="text-xs text-slate-500">{t("ui.invoice.138")}</label>
             <input
               className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm"
               placeholder={t("me.invoice.006")}
@@ -206,7 +206,7 @@ export default function InvoicePage() {
             />
           </div>
           <div className="grid gap-2">
-            <label className="text-xs text-slate-500">备注</label>
+            <label className="text-xs text-slate-500">{t("ui.invoice.139")}</label>
             <textarea
               className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm min-h-[90px]"
               placeholder={t("me.invoice.007")}
@@ -222,13 +222,13 @@ export default function InvoicePage() {
           className="mt-4 w-full rounded-2xl bg-slate-900 text-white py-2 text-sm font-semibold flex items-center justify-center gap-2"
         >
           <Send size={16} />
-          {submitting ? "提交中..." : t("me.invoice.008")}
+          {submitting ? t("ui.invoice.610") : t("me.invoice.008")}
         </button>
         {hint && <div className="mt-3 text-xs text-amber-600">{hint}</div>}
       </section>
 
       <section className="dl-card" style={{ padding: 16 }}>
-        <div className="text-sm font-semibold text-gray-900">最近申请</div>
+        <div className="text-sm font-semibold text-gray-900">{t("ui.invoice.140")}</div>
         {requests.length === 0 ? (
           <div className="mt-3">
             <StateBlock

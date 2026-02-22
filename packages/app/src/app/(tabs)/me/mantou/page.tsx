@@ -188,11 +188,11 @@ export default function MantouPage() {
       return;
     }
     if (!Number.isFinite(amount) || amount <= 0) {
-      setStatus({ tone: "warning", title: "请输入正确的提现数量" });
+      setStatus({ tone: "warning", title: t("ui.mantou.681") });
       return;
     }
     if (!account.trim()) {
-      setStatus({ tone: "warning", title: "请填写收款账号" });
+      setStatus({ tone: "warning", title: t("ui.mantou.677") });
       return;
     }
     setSubmitting(true);
@@ -229,7 +229,7 @@ export default function MantouPage() {
       }
       setAmount(0);
       setNote("");
-      setStatus({ tone: "success", title: "已提交提现申请，等待后台审核" });
+      setStatus({ tone: "success", title: t("ui.mantou.583") });
     } catch (error) {
       setStatus({ tone: "danger", title: formatErrorMessage(error, t("me.mantou.002")) });
     } finally {
@@ -244,8 +244,8 @@ export default function MantouPage() {
           <Link href="/me" className="dl-icon-circle" aria-label={t("me.mantou.003")}>
             <ArrowLeft size={16} />
           </Link>
-          <span className="dl-time-text">馒头提现</span>
-          <span className="dl-chip">陪练专属</span>
+          <span className="dl-time-text">{t("ui.mantou.088")}</span>
+          <span className="dl-chip">{t("ui.mantou.089")}</span>
         </div>
         <div className="dl-actions">
           <span className="dl-icon-circle">
@@ -255,14 +255,14 @@ export default function MantouPage() {
       </header>
 
       <section className="dl-card" style={{ padding: 16 }}>
-        <div className="text-sm font-semibold text-gray-900">我的馒头</div>
+        <div className="text-sm font-semibold text-gray-900">{t("ui.mantou.090")}</div>
         <div className="mt-2 text-2xl font-bold text-emerald-600">{balance}</div>
         <div className="mt-1 text-xs text-slate-500">冻结中：{frozen}</div>
       </section>
 
       <section className="dl-card" style={{ padding: 16, marginTop: 12 }}>
-        <div className="text-sm font-semibold text-gray-900">接单状态</div>
-        <div className="mt-2 text-xs text-slate-500">仅陪练账号可设置接单状态</div>
+        <div className="text-sm font-semibold text-gray-900">{t("ui.mantou.091")}</div>
+        <div className="mt-2 text-xs text-slate-500">{t("ui.mantou.092")}</div>
         {guardianState === "checking" || statusLoading ? (
           <div className="mt-3">
             <StateBlock tone="loading" size="compact" title={t("me.mantou.004")} />
@@ -320,11 +320,11 @@ export default function MantouPage() {
       </section>
 
       <section className="dl-card" style={{ padding: 16, marginTop: 12 }}>
-        <div className="text-sm font-semibold text-gray-900">提现申请</div>
-        <div className="mt-2 text-xs text-slate-500">只限陪练使用，1:1 转换自用户支付钻石。</div>
+        <div className="text-sm font-semibold text-gray-900">{t("ui.mantou.093")}</div>
+        <div className="mt-2 text-xs text-slate-500">{t("ui.mantou.094")}</div>
         <div className="mt-4 grid gap-3">
           <div className="grid gap-2">
-            <label className="text-xs text-slate-500">提现数量</label>
+            <label className="text-xs text-slate-500">{t("ui.mantou.095")}</label>
             <input
               className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm"
               type="number"
@@ -336,7 +336,7 @@ export default function MantouPage() {
             />
           </div>
           <div className="grid gap-2">
-            <label className="text-xs text-slate-500">收款账号</label>
+            <label className="text-xs text-slate-500">{t("ui.mantou.096")}</label>
             <input
               className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm"
               placeholder={t("me.mantou.010")}
@@ -345,7 +345,7 @@ export default function MantouPage() {
             />
           </div>
           <div className="grid gap-2">
-            <label className="text-xs text-slate-500">备注（可选）</label>
+            <label className="text-xs text-slate-500">{t("ui.mantou.097")}</label>
             <input
               className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm"
               placeholder={t("me.mantou.011")}
@@ -360,7 +360,7 @@ export default function MantouPage() {
           disabled={submitting}
           className="mt-4 w-full rounded-2xl bg-emerald-600 text-white py-2 text-sm font-semibold"
         >
-          {submitting ? "提交中..." : t("me.mantou.012")}
+          {submitting ? t("ui.mantou.607") : t("me.mantou.012")}
         </button>
         {status && (
           <div className="mt-3">
@@ -370,7 +370,7 @@ export default function MantouPage() {
       </section>
 
       <section className="dl-card" style={{ padding: 16, marginTop: 12 }}>
-        <div className="text-sm font-semibold text-gray-900">提现记录</div>
+        <div className="text-sm font-semibold text-gray-900">{t("ui.mantou.098")}</div>
         {withdraws.length === 0 ? (
           <div className="mt-3">
             <StateBlock
@@ -385,7 +385,7 @@ export default function MantouPage() {
             {withdraws.map((item) => (
               <div key={item.id} className="rounded-2xl border border-slate-100 p-3 text-xs">
                 <div className="flex items-center justify-between">
-                  <span className="text-slate-600">数量</span>
+                  <span className="text-slate-600">{t("ui.mantou.099")}</span>
                   <span className="font-semibold text-emerald-600">{item.amount}</span>
                 </div>
                 <div className="mt-1 text-slate-500">状态：{item.status}</div>
@@ -399,7 +399,7 @@ export default function MantouPage() {
       </section>
 
       <section className="dl-card" style={{ padding: 16, marginTop: 12, marginBottom: 24 }}>
-        <div className="text-sm font-semibold text-gray-900">馒头流水</div>
+        <div className="text-sm font-semibold text-gray-900">{t("ui.mantou.100")}</div>
         {transactions.length === 0 ? (
           <div className="mt-3">
             <StateBlock

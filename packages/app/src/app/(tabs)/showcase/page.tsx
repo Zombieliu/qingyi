@@ -455,10 +455,10 @@ export default function Showcase() {
       status: needsChain ? undefined : t("showcase.005"),
       depositPaid: true,
       driver: {
-        name: "陪练·刘师傅",
-        car: "白色新能源汽车",
-        eta: "2.7公里 · 5分钟",
-        plate: "苏RF M9358",
+        name: t("ui.showcase.695"),
+        car: t("ui.showcase.638"),
+        eta: t("ui.showcase.507"),
+        plate: t("ui.showcase.649"),
         phone: "138****0000",
         price: 63,
       },
@@ -496,7 +496,7 @@ export default function Showcase() {
         await runChainAction(
           `complete-${orderId}`,
           () => markCompletedOnChain(orderId),
-          "已确认完成",
+          t("ui.showcase.589"),
           orderId
         );
       },
@@ -528,14 +528,14 @@ export default function Showcase() {
       const ok = await runChainAction(
         `cancel-${id}`,
         () => cancelOrderOnChain(id),
-        "订单已取消，托管费已退回",
+        t("ui.showcase.657"),
         id
       );
       if (!ok) return;
       return;
     }
     await patchOrder(id, {
-      status: "取消",
+      status: t("ui.showcase.561"),
       driver: undefined,
       time: new Date().toISOString(),
       userAddress: getCurrentAddress(),
@@ -546,7 +546,7 @@ export default function Showcase() {
 
   const complete = async (id: string) => {
     await patchOrder(id, {
-      status: "已完成",
+      status: t("ui.showcase.577"),
       driver: undefined,
       time: new Date().toISOString(),
       userAddress: getCurrentAddress(),
@@ -600,7 +600,7 @@ export default function Showcase() {
     const num = Number(value);
     if (!Number.isFinite(num) || num <= 0) return "-";
     const diff = num - Date.now();
-    if (diff <= 0) return "已到期";
+    if (diff <= 0) return t("ui.showcase.576");
     const mins = Math.ceil(diff / 60000);
     if (mins < 60) return `${mins} 分钟`;
     const hours = Math.floor(mins / 60);
@@ -828,11 +828,11 @@ export default function Showcase() {
     <div className="dl-shell">
       <header className="dl-topbar">
         <div className="dl-time">
-          <span className="dl-time-text">接单大厅</span>
+          <span className="dl-time-text">{t("ui.showcase.158")}</span>
           {isChainOrdersEnabled() ? (
-            <span className="dl-chip">系统 + 客户端</span>
+            <span className="dl-chip">{t("ui.showcase.159")}</span>
           ) : (
-            <span className="dl-chip">客户端缓存</span>
+            <span className="dl-chip">{t("ui.showcase.160")}</span>
           )}
         </div>
         <div className="dl-actions">
@@ -845,7 +845,7 @@ export default function Showcase() {
               onClick={refreshAll}
               aria-label={t("showcase.022")}
               disabled={chainLoading}
-              title={chainLoading ? "刷新中..." : t("showcase.023")}
+              title={chainLoading ? t("ui.showcase.548") : t("showcase.023")}
             >
               {chainLoading ? (
                 <Loader2 className="h-4 w-4 spin" />
@@ -859,7 +859,7 @@ export default function Showcase() {
             onClick={() => refreshOrders(true)}
             aria-label={t("showcase.024")}
             disabled={publicLoading}
-            title={publicLoading ? "刷新中..." : t("showcase.025")}
+            title={publicLoading ? t("ui.showcase.549") : t("showcase.025")}
           >
             {publicLoading ? (
               <Loader2 className="h-4 w-4 spin" />
@@ -876,11 +876,11 @@ export default function Showcase() {
       {isChainOrdersEnabled() && (
         <div className="space-y-3 mb-6">
           <div className="dl-card text-xs text-gray-500">
-            <div>未接单的公开链单（{chainAddress ? "已登录" : t("showcase.027")}）</div>
+            <div>未接单的公开链单（{chainAddress ? t("ui.showcase.586") : t("showcase.027")}）</div>
             <div className="mt-1">
               上次刷新：{chainUpdatedAt ? new Date(chainUpdatedAt).toLocaleTimeString() : "-"}
             </div>
-            {chainLoading && <div className="mt-1 text-amber-600">加载中…</div>}
+            {chainLoading && <div className="mt-1 text-amber-600">{t("ui.showcase.161")}</div>}
             {chainError && <div className="mt-1 text-rose-500">{chainError}</div>}
             {chainToast && <div className="mt-1 text-emerald-600">{chainToast}</div>}
             {showOrderSourceWarning && (
@@ -952,7 +952,7 @@ export default function Showcase() {
                         <span>
                           {gameProfile?.gameName && gameProfile?.gameId
                             ? `游戏名 ${gameProfile.gameName} · ID ${gameProfile.gameId}`
-                            : "用户未填写游戏名/ID"}
+                            : t("ui.showcase.635")}
                         </span>
                         <div className="flex items-center gap-2">
                           {gameProfile?.gameName && gameProfile?.gameId ? (
@@ -989,7 +989,7 @@ export default function Showcase() {
                               onClick={() => hydrateOrderMeta(o.orderId, { toastOnError: true })}
                               disabled={metaLoading}
                             >
-                              {metaLoading ? "加载中..." : t("showcase.030")}
+                              {metaLoading ? t("ui.showcase.551") : t("showcase.030")}
                             </button>
                           )}
                         </div>
@@ -1017,7 +1017,7 @@ export default function Showcase() {
                             runChainAction(
                               `pay-${o.orderId}`,
                               () => payServiceFeeOnChain(o.orderId),
-                              "撮合费已提交",
+                              t("ui.showcase.614"),
                               o.orderId
                             )
                           }
@@ -1034,7 +1034,7 @@ export default function Showcase() {
                             runChainAction(
                               `cancel-${o.orderId}`,
                               () => cancelOrderOnChain(o.orderId),
-                              "订单已取消",
+                              t("ui.showcase.655"),
                               o.orderId
                             )
                           }
@@ -1183,7 +1183,7 @@ export default function Showcase() {
                                   await runChainAction(
                                     `finalize-${o.orderId}`,
                                     () => finalizeNoDisputeOnChain(o.orderId),
-                                    "订单已结算",
+                                    t("ui.showcase.662"),
                                     o.orderId
                                   );
                                 },
@@ -1193,7 +1193,7 @@ export default function Showcase() {
                             runChainAction(
                               `finalize-${o.orderId}`,
                               () => finalizeNoDisputeOnChain(o.orderId),
-                              "订单已结算",
+                              t("ui.showcase.663"),
                               o.orderId
                             );
                           }}
@@ -1213,8 +1213,8 @@ export default function Showcase() {
       {myAcceptedOrders.length > 0 || myOrdersLoading ? (
         <div ref={acceptedRef} className="space-y-3 mb-6 motion-stack">
           <div className="dl-card text-xs text-gray-500">
-            <div>我已接的订单</div>
-            {myOrdersLoading && <div className="mt-1 text-amber-600">加载中…</div>}
+            <div>{t("ui.showcase.162")}</div>
+            {myOrdersLoading && <div className="mt-1 text-amber-600">{t("ui.showcase.163")}</div>}
           </div>
           {myAcceptedOrders.map((order) => {
             const gameProfile = (order.meta?.gameProfile || null) as {
@@ -1297,7 +1297,7 @@ export default function Showcase() {
                       </div>
                       {hasProfile ? (
                         <div className="mt-2 text-sm text-gray-900">
-                          <div className="font-bold">下单人游戏设置</div>
+                          <div className="font-bold">{t("ui.showcase.164")}</div>
                           <div className="text-xs text-gray-500">
                             游戏名 {profile?.gameName || "-"} · ID {profile?.gameId || "-"}
                           </div>
@@ -1323,11 +1323,15 @@ export default function Showcase() {
                         服务信息
                       </div>
                       <div className="mt-2 text-xs">
-                        <span className="text-emerald-600 font-semibold mr-2">押金已付</span>
+                        <span className="text-emerald-600 font-semibold mr-2">
+                          {t("ui.showcase.165")}
+                        </span>
                         {o.playerPaid ? (
-                          <span className="text-emerald-700 font-semibold">陪练费已付，进行中</span>
+                          <span className="text-emerald-700 font-semibold">
+                            {t("ui.showcase.166")}
+                          </span>
                         ) : (
-                          <span className="text-red-500 font-semibold">等待用户支付陪练费</span>
+                          <span className="text-red-500 font-semibold">{t("ui.showcase.167")}</span>
                         )}
                       </div>
                       <div className="mt-3 flex items-center gap-10 text-sm">
@@ -1371,7 +1375,7 @@ export default function Showcase() {
                 <div className="mt-2 text-xs text-gray-500 flex items-center gap-2">
                   <Clock3 size={14} />
                   <span>{new Date(o.time).toLocaleString()}</span>
-                  <span className="text-amber-600 font-semibold">等待支付押金后接单</span>
+                  <span className="text-amber-600 font-semibold">{t("ui.showcase.168")}</span>
                 </div>
                 <div className="mt-2 text-xs text-gray-500">
                   状态：{o.status} · 撮合费
@@ -1380,9 +1384,9 @@ export default function Showcase() {
                     : t("showcase.043")}
                 </div>
                 {o.userAddress && o.userAddress === chainAddress ? (
-                  <div className="mt-2 text-xs text-rose-500">不能接自己发的单</div>
+                  <div className="mt-2 text-xs text-rose-500">{t("ui.showcase.169")}</div>
                 ) : (
-                  <div className="mt-2 text-xs text-orange-600">需先付押金再接单</div>
+                  <div className="mt-2 text-xs text-orange-600">{t("ui.showcase.170")}</div>
                 )}
                 <div className="mt-3 flex gap-2">
                   <button
@@ -1426,10 +1430,10 @@ export default function Showcase() {
             onClick={loadMoreOrders}
             disabled={publicLoading}
           >
-            {publicLoading ? "加载中..." : t("showcase.045")}
+            {publicLoading ? t("ui.showcase.552") : t("showcase.045")}
           </button>
         ) : (
-          <div className="text-xs text-gray-400">没有更多了</div>
+          <div className="text-xs text-gray-400">{t("ui.showcase.171")}</div>
         )}
       </div>
       <div className="mt-3 flex justify-center">
@@ -1451,8 +1455,8 @@ export default function Showcase() {
           <div className="ride-modal">
             <div className="ride-modal-head">
               <div>
-                <div className="ride-modal-title">发起争议</div>
-                <div className="ride-modal-sub">请填写争议说明或证据哈希（可留空）</div>
+                <div className="ride-modal-title">{t("ui.showcase.172")}</div>
+                <div className="ride-modal-sub">{t("ui.showcase.173")}</div>
               </div>
               <div className="ride-modal-amount">#{disputeOpen.orderId}</div>
             </div>
@@ -1485,7 +1489,7 @@ export default function Showcase() {
                   runChainAction(
                     `dispute-${orderId}`,
                     () => raiseDisputeOnChain(orderId, evidence),
-                    "已提交争议",
+                    t("ui.showcase.580"),
                     orderId
                   );
                 }}
@@ -1506,8 +1510,8 @@ export default function Showcase() {
           <div className="ride-modal">
             <div className="ride-modal-head">
               <div>
-                <div className="ride-modal-title">链上调试信息</div>
-                <div className="ride-modal-sub">用于排查未同步、链上配置不一致等问题</div>
+                <div className="ride-modal-title">{t("ui.showcase.174")}</div>
+                <div className="ride-modal-sub">{t("ui.showcase.175")}</div>
               </div>
               <div className="ride-modal-amount">Debug</div>
             </div>
@@ -1536,7 +1540,7 @@ export default function Showcase() {
         onConfirm={runConfirmAction}
         onClose={() => setConfirmAction(null)}
       />
-      <div className="text-xs text-gray-500 mt-6">订单来自服务端；可执行押金/结算流程。</div>
+      <div className="text-xs text-gray-500 mt-6">{t("ui.showcase.176")}</div>
     </div>
   );
 }

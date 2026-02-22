@@ -63,8 +63,8 @@ export default function GameSettingsPage() {
           <Link href="/me" className="dl-icon-circle" aria-label={t("me.game_settings.001")}>
             <ArrowLeft size={16} />
           </Link>
-          <span className="dl-time-text">游戏设置</span>
-          <span className="dl-chip">账号资料</span>
+          <span className="dl-time-text">{t("ui.game-settings.063")}</span>
+          <span className="dl-chip">{t("ui.game-settings.064")}</span>
         </div>
         <div className="dl-actions">
           <span className="dl-icon-circle">
@@ -115,11 +115,11 @@ function GameSettingsForm({
 
   return (
     <section className="dl-card" style={{ padding: 16 }}>
-      <div className="text-sm font-semibold text-gray-900">编辑游戏账号</div>
-      <div className="mt-2 text-xs text-slate-500">用于派单与身份核验，信息仅对你可见。</div>
+      <div className="text-sm font-semibold text-gray-900">{t("ui.game-settings.065")}</div>
+      <div className="mt-2 text-xs text-slate-500">{t("ui.game-settings.066")}</div>
       <div className="mt-4 grid gap-3">
         <div className="grid gap-2">
-          <label className="text-xs text-slate-500">游戏用户名</label>
+          <label className="text-xs text-slate-500">{t("ui.game-settings.067")}</label>
           <input
             className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm"
             placeholder={t("me.game_settings.002")}
@@ -128,7 +128,7 @@ function GameSettingsForm({
           />
         </div>
         <div className="grid gap-2">
-          <label className="text-xs text-slate-500">游戏ID</label>
+          <label className="text-xs text-slate-500">{t("ui.game-settings.068")}</label>
           <input
             className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm"
             placeholder={t("me.game_settings.003")}
@@ -144,7 +144,7 @@ function GameSettingsForm({
         className="mt-4 w-full rounded-2xl bg-slate-900 text-white py-2 text-sm font-semibold flex items-center justify-center gap-2"
       >
         <Save size={16} />
-        {saving ? "保存中..." : t("me.game_settings.004")}
+        {saving ? t("ui.game-settings.530") : t("me.game_settings.004")}
       </button>
       {hint && <div className="mt-3 text-xs text-emerald-600">{hint}</div>}
       {savedAt && (

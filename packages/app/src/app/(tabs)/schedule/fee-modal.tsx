@@ -65,21 +65,21 @@ export function FeeModal({
       <div className="ride-modal">
         <div className="ride-modal-head">
           <div>
-            <div className="ride-modal-title">使用钻石托管费用</div>
-            <div className="ride-modal-sub">按订单金额计算，1元=10钻石</div>
+            <div className="ride-modal-title">{t("ui.fee-modal.022")}</div>
+            <div className="ride-modal-sub">{t("ui.fee-modal.023")}</div>
           </div>
           <div className="ride-modal-amount">{requiredDiamonds} 钻石</div>
         </div>
         <div className="ride-qr-inline">
           <div className="ride-qr-text">
-            <div className="text-sm font-semibold text-gray-900">托管费用（钻石）</div>
+            <div className="text-sm font-semibold text-gray-900">{t("ui.fee-modal.024")}</div>
             <div className="text-xs text-gray-500">
               订单 ¥{locked.total.toFixed(2)} × {diamondRate} = {requiredDiamonds} 钻石
             </div>
             {locked.discount > 0 && (
               <div className="ride-price-stack">
                 <div className="ride-price-line">
-                  <span>原价</span>
+                  <span>{t("ui.fee-modal.025")}</span>
                   <span>¥{locked.originalTotal.toFixed(2)}</span>
                 </div>
                 <div className="ride-price-line discount">
@@ -87,7 +87,7 @@ export function FeeModal({
                   <span>-¥{locked.discount.toFixed(2)}</span>
                 </div>
                 <div className="ride-price-line total">
-                  <span>应付</span>
+                  <span>{t("ui.fee-modal.026")}</span>
                   <span>¥{locked.total.toFixed(2)}</span>
                 </div>
               </div>
@@ -95,7 +95,7 @@ export function FeeModal({
             <div className="text-xs text-gray-500" style={{ marginTop: 4 }}>
               撮合费 ¥{locked.service.toFixed(2)} / 陪练费用 ¥{locked.player.toFixed(2)}
             </div>
-            <div className="ride-chip">陪练费用由平台托管，服务完成后结算</div>
+            <div className="ride-chip">{t("ui.fee-modal.027")}</div>
             <div className="text-xs text-gray-500" style={{ marginTop: 4 }}>
               仲裁时效：{vipLoading ? "查询中..." : `${disputePolicy.hours}小时`}
               {vipTier?.name ? `（会员：${vipTier.name}）` : ""}
@@ -104,7 +104,7 @@ export function FeeModal({
               已选陪练：
               {selectedPlayer
                 ? `${selectedPlayer.name}${selectedPlayer.role ? `（${selectedPlayer.role}）` : ""}`
-                : "系统匹配"}
+                : t("ui.fee-modal.643")}
             </div>
             <div className="text-xs text-gray-500" style={{ marginTop: 6 }}>
               当前余额：
@@ -112,7 +112,7 @@ export function FeeModal({
                 ? t("schedule.028")
                 : balanceReady
                   ? `${diamondBalance} 钻石`
-                  : "查询失败，请刷新"}
+                  : t("ui.fee-modal.632")}
             </div>
             {balanceReady && !hasEnoughDiamonds && (
               <div className="text-xs text-rose-500" style={{ marginTop: 4 }}>
@@ -134,7 +134,7 @@ export function FeeModal({
                 onChange={(e) => setFeeChecked(e.target.checked)}
                 aria-label={t("schedule.031")}
               />
-              <span>使用钻石托管费用</span>
+              <span>{t("ui.fee-modal.028")}</span>
               {feeChecked && <CheckCircle2 size={16} color="#22c55e" />}
             </label>
           </div>
@@ -149,7 +149,7 @@ export function FeeModal({
             disabled={calling || !hasEnoughDiamonds}
           >
             {calling ? <Loader2 size={16} className="spin" /> : null}
-            <span style={{ marginLeft: calling ? 6 : 0 }}>扣减钻石并派单</span>
+            <span style={{ marginLeft: calling ? 6 : 0 }}>{t("ui.fee-modal.029")}</span>
           </button>
         </div>
       </div>

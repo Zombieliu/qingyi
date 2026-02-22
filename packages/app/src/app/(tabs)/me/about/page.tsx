@@ -12,7 +12,7 @@ const serviceHighlights = [
 
 const contactList = [
   { label: "客服热线", value: "400-882-1001", icon: Phone },
-  { label: "反馈邮箱", value: "support@qingyi.gg", icon: Mail },
+  { label: t("ui.about.558"), value: "support@qingyi.gg", icon: Mail },
   { label: "在线工单", value: "进入工单中心提交", icon: Globe2, href: "/me/support" },
 ];
 
@@ -24,8 +24,8 @@ export default function AboutPage() {
           <Link href="/me?settings=1" className="dl-icon-circle" aria-label={t("me.about.001")}>
             <ArrowLeft size={16} />
           </Link>
-          <span className="dl-time-text">关于平台</span>
-          <span className="dl-chip">平台信息</span>
+          <span className="dl-time-text">{t("ui.about.069")}</span>
+          <span className="dl-chip">{t("ui.about.070")}</span>
         </div>
         <div className="dl-actions">
           <span className="dl-icon-circle">
@@ -87,7 +87,9 @@ export default function AboutPage() {
                   </div>
                   <div className="text-xs text-gray-500 mt-1">{item.value}</div>
                 </div>
-                {item.href ? <span className="text-xs text-emerald-600">进入</span> : null}
+                {item.href ? (
+                  <span className="text-xs text-emerald-600">{t("ui.about.071")}</span>
+                ) : null}
               </div>
             );
 

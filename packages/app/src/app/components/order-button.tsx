@@ -134,7 +134,7 @@ export default function OrderButton({ user, item, amount, note }: Props) {
         trackEvent("order_create_success", { source: "home_card", user, item, amount });
         setStatus({
           tone: "success",
-          title: chainDigest ? "已提交并同步到微信群" : t("comp.order_button.001"),
+          title: chainDigest ? t("ui.order-button.581") : t("comp.order_button.001"),
         });
       }
     } catch (e) {
@@ -163,7 +163,7 @@ export default function OrderButton({ user, item, amount, note }: Props) {
         className="lc-order"
         aria-label={`为 ${user} 下单 ${item}`}
       >
-        {loading ? "发送中..." : t("comp.order_button.002")}
+        {loading ? t("ui.order-button.560") : t("comp.order_button.002")}
       </Button>
       {status && (
         <div className="lc-order-state">

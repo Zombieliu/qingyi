@@ -54,8 +54,8 @@ export default function LedgerPage() {
       <div className="admin-card">
         <div className="admin-card-header">
           <div>
-            <h3>记账登记</h3>
-            <p>用于人工补记余额或对账后的记录写入。</p>
+            <h3>{t("ui.ledger.232")}</h3>
+            <p>{t("ui.ledger.233")}</p>
           </div>
         </div>
         <div className="admin-form" style={{ marginTop: 12 }}>
@@ -103,7 +103,7 @@ export default function LedgerPage() {
           disabled={loading}
         >
           <Send size={16} style={{ marginRight: 6 }} />
-          {loading ? "提交中..." : t("admin.ledger.004")}
+          {loading ? t("ui.ledger.611") : t("admin.ledger.004")}
         </button>
         {result ? (
           <div style={{ marginTop: 14 }}>

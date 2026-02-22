@@ -300,14 +300,14 @@ export default function PasskeyWallet() {
       <div className="flex items-center gap-3">
         <KeyRound className="text-amber-500" />
         <div>
-          <div className="text-sm font-semibold text-gray-900">账号验证</div>
-          <div className="text-xs text-gray-500">用于安全登录与身份识别</div>
+          <div className="text-sm font-semibold text-gray-900">{t("ui.passkey-wallet.497")}</div>
+          <div className="text-xs text-gray-500">{t("ui.passkey-wallet.498")}</div>
         </div>
       </div>
 
       {wallets.length > 0 && (
         <div className="mt-3 space-y-2">
-          <div className="text-xs text-gray-500">最近账号</div>
+          <div className="text-xs text-gray-500">{t("ui.passkey-wallet.499")}</div>
           {wallets.map((item) => (
             <div
               key={item.address}
@@ -351,7 +351,7 @@ export default function PasskeyWallet() {
           className="lc-tab-btn"
           style={{ padding: "10px 12px" }}
         >
-          {busy ? "登录中..." : t("comp.passkey_wallet.006")}
+          {busy ? t("ui.passkey-wallet.637") : t("comp.passkey_wallet.006")}
         </button>
         <button
           onClick={create}
@@ -359,7 +359,7 @@ export default function PasskeyWallet() {
           className="lc-tab-btn"
           style={{ padding: "10px 12px" }}
         >
-          {busy ? "创建中..." : t("comp.passkey_wallet.007")}
+          {busy ? t("ui.passkey-wallet.546") : t("comp.passkey_wallet.007")}
         </button>
         <button
           onClick={recover}
@@ -407,7 +407,7 @@ export default function PasskeyWallet() {
       )}
       {busy && (
         <div className="auth-overlay">
-          <div className="auth-overlay-box">账号验证进行中，请完成系统弹窗…</div>
+          <div className="auth-overlay-box">{t("ui.passkey-wallet.500")}</div>
         </div>
       )}
     </div>

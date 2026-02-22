@@ -12,13 +12,13 @@ import { isVisualTestMode } from "@/lib/chain/qy-chain-lite";
 import { StateBlock } from "@/app/components/state-block";
 
 const fallbackPerks = [
-  { label: "贵族铭牌", desc: "坚韧白银专属" },
-  { label: "隐蔽访问足迹", desc: "隐藏钻石浏览" },
-  { label: "特邀隐身", desc: "冰紫遮蔽群聊" },
-  { label: "隐身潮玩状态", desc: "乔治态度切换" },
-  { label: "隐身进厅", desc: "荷姆红毯静默" },
-  { label: "厅内防骚扰", desc: "屏蔽关键信号" },
-  { label: "厅内防锁踢", desc: "幻灭系楼层盾" },
+  { label: t("ui.vip.686"), desc: t("ui.vip.566") },
+  { label: t("ui.vip.703"), desc: t("ui.vip.704") },
+  { label: t("ui.vip.634"), desc: t("ui.vip.544") },
+  { label: t("ui.vip.705"), desc: t("ui.vip.513") },
+  { label: t("ui.vip.706"), desc: t("ui.vip.650") },
+  { label: t("ui.vip.554"), desc: t("ui.vip.575") },
+  { label: t("ui.vip.553"), desc: t("ui.vip.591") },
 ];
 
 function normalizePerks(perks?: AdminMembershipTier["perks"]) {
@@ -143,7 +143,7 @@ export default function Vip() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             userAddress: walletAddress,
-            userName: "糕手玩玩",
+            userName: t("ui.vip.641"),
             contact: contact.trim(),
             tierId: selectedTier.id,
           }),
@@ -169,13 +169,13 @@ export default function Vip() {
         <Link href="/me" aria-label={t("vip.001")}>
           <ArrowLeft size={20} />
         </Link>
-        <span className="vip-title">财富等级</span>
+        <span className="vip-title">{t("ui.vip.016")}</span>
         <Crown className="text-amber-300" size={18} />
       </header>
 
       <div className="vip-card">
         <div className="vip-rank">{member ? member.status : t("vip.002")}</div>
-        <div className="vip-name">{currentTier?.name || "暂未开通"}</div>
+        <div className="vip-name">{currentTier?.name || t("ui.vip.623")}</div>
         <div className="vip-progress">{progressText}</div>
         {member?.expiresAt ? (
           <div className="vip-progress">
@@ -185,7 +185,7 @@ export default function Vip() {
       </div>
 
       <div className="vip-card" style={{ marginTop: 16 }}>
-        <div className="vip-rank">可选等级</div>
+        <div className="vip-rank">{t("ui.vip.017")}</div>
         <div style={{ display: "grid", gap: 10, marginTop: 10 }}>
           {tiers.length === 0 ? (
             <StateBlock
@@ -255,7 +255,7 @@ export default function Vip() {
             fontWeight: 700,
           }}
         >
-          {submitting ? "提交中..." : t("vip.008")}
+          {submitting ? t("ui.vip.605") : t("vip.008")}
         </button>
         {hint ? (
           <div className="vip-progress" style={{ marginTop: 8 }}>
@@ -264,7 +264,7 @@ export default function Vip() {
         ) : null}
       </div>
 
-      <div className="vip-perks-title">贵族特权</div>
+      <div className="vip-perks-title">{t("ui.vip.018")}</div>
       <div className="vip-perks-grid">
         {perks.map((perk) => (
           <div key={perk.label} className="vip-perk">
@@ -273,7 +273,7 @@ export default function Vip() {
             </div>
             <div className="vip-perk-text">
               <div className="vip-perk-label">{perk.label}</div>
-              <div className="vip-perk-desc">{perk.desc || "会员专属权益"}</div>
+              <div className="vip-perk-desc">{perk.desc || t("ui.vip.517")}</div>
             </div>
           </div>
         ))}

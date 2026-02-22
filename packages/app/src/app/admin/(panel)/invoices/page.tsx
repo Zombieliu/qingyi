@@ -124,8 +124,8 @@ export default function InvoicesPage() {
       <div className="admin-card">
         <div className="admin-card-header">
           <div>
-            <h3>发票筛选</h3>
-            <p>按抬头、税号、订单号与状态快速定位。</p>
+            <h3>{t("ui.invoices.253")}</h3>
+            <p>{t("ui.invoices.254")}</p>
           </div>
         </div>
         <div className="admin-toolbar">
@@ -144,7 +144,7 @@ export default function InvoicesPage() {
             value={statusFilter}
             onChange={(event) => setStatusFilter(event.target.value)}
           >
-            <option value={t("admin.invoices.004")}>全部状态</option>
+            <option value={t("admin.invoices.004")}>{t("ui.invoices.255")}</option>
             {INVOICE_STATUS_OPTIONS.map((status) => (
               <option key={status} value={status}>
                 {status}
@@ -167,7 +167,7 @@ export default function InvoicesPage() {
 
       <div className="admin-card">
         <div className="admin-card-header">
-          <h3>发票申请列表</h3>
+          <h3>{t("ui.invoices.256")}</h3>
           <div className="admin-card-actions">
             <span className="admin-pill">共 {requests.length} 条</span>
             {cacheHint ? <span className="admin-pill">{cacheHint}</span> : null}
@@ -192,14 +192,14 @@ export default function InvoicesPage() {
             <table className="admin-table">
               <thead>
                 <tr>
-                  <th>抬头 / 税号</th>
-                  <th>金额</th>
-                  <th>订单号</th>
-                  <th>联系方式</th>
-                  <th>状态</th>
-                  <th>备注</th>
-                  <th>时间</th>
-                  <th>更新</th>
+                  <th>{t("ui.invoices.257")}</th>
+                  <th>{t("ui.invoices.258")}</th>
+                  <th>{t("ui.invoices.259")}</th>
+                  <th>{t("ui.invoices.260")}</th>
+                  <th>{t("ui.invoices.261")}</th>
+                  <th>{t("ui.invoices.262")}</th>
+                  <th>{t("ui.invoices.263")}</th>
+                  <th>{t("ui.invoices.264")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -258,7 +258,7 @@ export default function InvoicesPage() {
                     </td>
                     <td data-label={t("admin.invoices.017")}>
                       <span className="admin-badge neutral">
-                        {saving[item.id] ? "保存中" : t("admin.invoices.018")}
+                        {saving[item.id] ? t("ui.invoices.523") : t("admin.invoices.018")}
                       </span>
                     </td>
                   </tr>

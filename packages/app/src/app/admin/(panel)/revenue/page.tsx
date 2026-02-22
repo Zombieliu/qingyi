@@ -1,4 +1,5 @@
 "use client";
+import { t } from "@/lib/i18n/i18n-client";
 
 import { useEffect, useState } from "react";
 import { TrendingUp, Users, DollarSign, BarChart3, ArrowUpDown } from "lucide-react";
@@ -77,7 +78,7 @@ export default function RevenuePerformancePage() {
   if (loading) {
     return (
       <div className="admin-page">
-        <StateBlock tone="loading" title="加载中" description="正在获取营收与绩效数据..." />
+        <StateBlock tone="loading" title={t("ui.revenue.424")} description={t("ui.revenue.425")} />
       </div>
     );
   }
@@ -94,18 +95,18 @@ export default function RevenuePerformancePage() {
           marginBottom: 16,
         }}
       >
-        <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>营收与绩效</h2>
+        <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>{t("ui.revenue.426")}</h2>
         <select
           value={days}
           onChange={(e) => setDays(Number(e.target.value))}
           className="admin-input"
           style={{ width: "auto", padding: "4px 8px", fontSize: 13 }}
         >
-          <option value={7}>近 7 天</option>
-          <option value={14}>近 14 天</option>
-          <option value={30}>近 30 天</option>
-          <option value={60}>近 60 天</option>
-          <option value={90}>近 90 天</option>
+          <option value={7}>{t("ui.revenue.427")}</option>
+          <option value={14}>{t("ui.revenue.428")}</option>
+          <option value={30}>{t("ui.revenue.429")}</option>
+          <option value={60}>{t("ui.revenue.430")}</option>
+          <option value={90}>{t("ui.revenue.431")}</option>
         </select>
       </div>
 
@@ -121,22 +122,22 @@ export default function RevenuePerformancePage() {
         >
           <SummaryCard
             icon={<DollarSign size={18} />}
-            label="总营收"
+            label={t("ui.revenue.432")}
             value={`¥${summary.totalRevenue.toFixed(2)}`}
           />
           <SummaryCard
             icon={<BarChart3 size={18} />}
-            label="完成订单"
+            label={t("ui.revenue.433")}
             value={String(summary.completedOrders)}
           />
           <SummaryCard
             icon={<TrendingUp size={18} />}
-            label="平均客单价"
+            label={t("ui.revenue.434")}
             value={`¥${summary.avgOrderValue.toFixed(2)}`}
           />
           <SummaryCard
             icon={<DollarSign size={18} />}
-            label="服务费"
+            label={t("ui.revenue.435")}
             value={`¥${summary.totalServiceFee.toFixed(2)}`}
           />
         </div>
@@ -145,7 +146,7 @@ export default function RevenuePerformancePage() {
       {/* Daily Revenue Chart (simple bar chart) */}
       {daily.length > 0 && (
         <div style={{ marginBottom: 24 }}>
-          <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>日营收趋势</h3>
+          <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>{t("ui.revenue.436")}</h3>
           <div
             style={{
               display: "flex",
@@ -189,7 +190,7 @@ export default function RevenuePerformancePage() {
       {/* By Item */}
       {byItem.length > 0 && (
         <div style={{ marginBottom: 24 }}>
-          <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>按商品分类</h3>
+          <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>{t("ui.revenue.437")}</h3>
           <div style={{ display: "grid", gap: 6 }}>
             {byItem.slice(0, 10).map((item) => (
               <div
@@ -227,36 +228,36 @@ export default function RevenuePerformancePage() {
           <Users size={16} /> 陪练绩效
         </h3>
         {sorted.length === 0 ? (
-          <div style={{ color: "#94a3b8", fontSize: 13 }}>暂无数据</div>
+          <div style={{ color: "#94a3b8", fontSize: 13 }}>{t("ui.revenue.438")}</div>
         ) : (
           <div style={{ overflowX: "auto" }}>
             <table style={{ width: "100%", fontSize: 13, borderCollapse: "collapse" }}>
               <thead>
                 <tr style={{ borderBottom: "2px solid #e2e8f0", textAlign: "left" }}>
-                  <th style={{ padding: "8px 6px" }}>陪练</th>
+                  <th style={{ padding: "8px 6px" }}>{t("ui.revenue.439")}</th>
                   <SortTh
-                    label="接单"
+                    label={t("ui.revenue.440")}
                     sortKey="total"
                     current={sortKey}
                     asc={sortAsc}
                     onClick={toggleSort}
                   />
                   <SortTh
-                    label="完成率"
+                    label={t("ui.revenue.441")}
                     sortKey="completionRate"
                     current={sortKey}
                     asc={sortAsc}
                     onClick={toggleSort}
                   />
                   <SortTh
-                    label="营收"
+                    label={t("ui.revenue.442")}
                     sortKey="revenue"
                     current={sortKey}
                     asc={sortAsc}
                     onClick={toggleSort}
                   />
                   <SortTh
-                    label="评分"
+                    label={t("ui.revenue.443")}
                     sortKey="avgRating"
                     current={sortKey}
                     asc={sortAsc}

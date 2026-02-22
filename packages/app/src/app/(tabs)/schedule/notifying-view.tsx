@@ -25,7 +25,7 @@ export function NotifyingView({ currentOrder, escrowFeeDisplay }: NotifyingViewP
       </div>
       <div className="ride-notify-illu" />
       <div className="dl-card" style={{ padding: 16 }}>
-        <div className="text-sm font-semibold text-gray-900 mb-2">已选服务</div>
+        <div className="text-sm font-semibold text-gray-900 mb-2">{t("ui.notifying-view.030")}</div>
         <div className="flex justify-between text-sm">
           <span>{currentOrder.item}</span>
           <span className="text-amber-600 font-bold">¥{currentOrder.amount}</span>

@@ -109,17 +109,17 @@ export default function EarningsPage() {
       <div className="admin-card">
         <div className="admin-card-header">
           <div>
-            <h3>完单收益看板</h3>
-            <p>统计已完成订单的陪练完单情况与平台撮合费。</p>
+            <h3>{t("ui.earnings.379")}</h3>
+            <p>{t("ui.earnings.380")}</p>
           </div>
           <div className="admin-card-actions">
-            <span className="admin-pill">已完成订单</span>
+            <span className="admin-pill">{t("ui.earnings.381")}</span>
             {from || to ? (
               <span className="admin-pill">
                 {from || "不限"} ~ {to || "不限"}
               </span>
             ) : (
-              <span className="admin-pill">全部时间</span>
+              <span className="admin-pill">{t("ui.earnings.382")}</span>
             )}
           </div>
         </div>
@@ -167,30 +167,30 @@ export default function EarningsPage() {
       <div className="admin-grid-cards motion-stack" style={{ marginTop: 16 }}>
         <div className="admin-card">
           <div className="admin-card-header">
-            <h3>完单数</h3>
+            <h3>{t("ui.earnings.383")}</h3>
           </div>
           <div className="admin-stat">{totals.orderCount}</div>
-          <p>统计范围内已完成订单数量</p>
+          <p>{t("ui.earnings.384")}</p>
         </div>
         <div className="admin-card">
           <div className="admin-card-header">
-            <h3>订单金额</h3>
+            <h3>{t("ui.earnings.385")}</h3>
           </div>
           <div className="admin-stat">¥{formatMoney(totals.totalAmount)}</div>
-          <p>陪练完成订单金额合计</p>
+          <p>{t("ui.earnings.386")}</p>
         </div>
         <div className="admin-card">
           <div className="admin-card-header">
-            <h3>平台撮合费</h3>
+            <h3>{t("ui.earnings.387")}</h3>
           </div>
           <div className="admin-stat">¥{formatMoney(totals.totalServiceFee)}</div>
-          <p>平台收入（撮合费）合计</p>
+          <p>{t("ui.earnings.388")}</p>
         </div>
       </div>
 
       <div className="admin-card" style={{ marginTop: 16 }}>
         <div className="admin-card-header">
-          <h3>陪练完单明细</h3>
+          <h3>{t("ui.earnings.389")}</h3>
           <div className="admin-card-actions">
             <span className="admin-pill">共 {rows.length} 人</span>
           </div>
@@ -221,11 +221,11 @@ export default function EarningsPage() {
             <table className="admin-table">
               <thead>
                 <tr>
-                  <th>陪练</th>
-                  <th>完单数</th>
-                  <th>订单金额</th>
-                  <th>平台撮合费</th>
-                  <th>最近完单</th>
+                  <th>{t("ui.earnings.390")}</th>
+                  <th>{t("ui.earnings.391")}</th>
+                  <th>{t("ui.earnings.392")}</th>
+                  <th>{t("ui.earnings.393")}</th>
+                  <th>{t("ui.earnings.394")}</th>
                 </tr>
               </thead>
               <tbody>

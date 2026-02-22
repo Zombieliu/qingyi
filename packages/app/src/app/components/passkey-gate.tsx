@@ -1,4 +1,5 @@
 "use client";
+import { t } from "@/lib/i18n/i18n-client";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import PasskeyWallet, { PASSKEY_STORAGE_KEY } from "./passkey-wallet";
 
@@ -61,7 +62,7 @@ export default function PasskeyGate({ children }: { children: React.ReactNode })
   return (
     <div className="dl-main" style={{ padding: 16 }}>
       <div className="dl-card" style={{ padding: 18, marginBottom: 16 }}>
-        <div className="text-base font-semibold text-gray-900">需要登录</div>
+        <div className="text-base font-semibold text-gray-900">{t("ui.passkey-gate.496")}</div>
         <div className="text-sm text-gray-600 mt-2 leading-relaxed">
           {sessionOk && !hasPasskey ? (
             <>

@@ -12,8 +12,8 @@ export function DebugModal({ onClose }: DebugModalProps) {
       <div className="ride-modal">
         <div className="ride-modal-head">
           <div>
-            <div className="ride-modal-title">链上调试信息</div>
-            <div className="ride-modal-sub">用于排查未同步、链上配置不一致等问题</div>
+            <div className="ride-modal-title">{t("ui.debug-modal.020")}</div>
+            <div className="ride-modal-sub">{t("ui.debug-modal.021")}</div>
           </div>
           <div className="ride-modal-amount">Debug</div>
         </div>

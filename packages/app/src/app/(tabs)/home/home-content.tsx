@@ -84,8 +84,8 @@ const packages = [
     category: "推荐",
   },
   {
-    name: "机密单护",
-    desc: "稳定陪练",
+    name: t("ui.home-content.628"),
+    desc: t("ui.home-content.639"),
     price: "¥30/小时",
     numPrice: 30,
     tag: "日常上分",
@@ -93,8 +93,8 @@ const packages = [
     category: "小时单",
   },
   {
-    name: "机密双护",
-    desc: "双人协同",
+    name: t("ui.home-content.630"),
+    desc: t("ui.home-content.555"),
     price: "¥60/小时",
     numPrice: 60,
     tag: "效率提升",
@@ -177,7 +177,7 @@ export default function HomeContent({
     <div className={styles["lc-screen"]}>
       <header className={styles["lc-topbar"]}>
         <span className={styles["lc-time"]}>08:18</span>
-        <span className={styles["lc-title"]}>情谊俱乐部</span>
+        <span className={styles["lc-title"]}>{t("ui.home-content.002")}</span>
         <MoreHorizontal className="text-slate-500" size={18} />
       </header>
 
@@ -195,8 +195,8 @@ export default function HomeContent({
       <div className={styles["lc-banner"]}>
         <div className={styles["lc-banner-img"]} />
         <div className={styles["lc-banner-content"]}>
-          <div className={styles["lc-banner-title"]}>新客首单立减</div>
-          <div className={styles["lc-banner-desc"]}>满 99 减 10 · 30 秒极速开局</div>
+          <div className={styles["lc-banner-title"]}>{t("ui.home-content.003")}</div>
+          <div className={styles["lc-banner-desc"]}>{t("ui.home-content.004")}</div>
           <Link href="/schedule" className={styles["lc-banner-btn"]}>
             立即下单
           </Link>
@@ -232,7 +232,7 @@ export default function HomeContent({
             <div className={styles["lc-section-title"]}>
               {hasQuery ? "搜索套餐" : t("home.home_content.003")}
             </div>
-            <div className={styles["lc-section-sub"]}>更快匹配，更高胜率</div>
+            <div className={styles["lc-section-sub"]}>{t("ui.home-content.005")}</div>
           </div>
           <Link href="/schedule" className={styles["lc-section-link"]}>
             全部套餐
@@ -307,7 +307,7 @@ export default function HomeContent({
             <div className={styles["lc-section-title"]}>
               {hasQuery ? "搜索陪练" : t("home.home_content.007")}
             </div>
-            <div className={styles["lc-section-sub"]}>在线陪护，极速响应</div>
+            <div className={styles["lc-section-sub"]}>{t("ui.home-content.006")}</div>
           </div>
           <Link href="/schedule" className={styles["lc-section-link"]}>
             去指定
@@ -337,7 +337,7 @@ export default function HomeContent({
                       <div className={styles["lc-player-role"]}>{player.role || "认证陪练"}</div>
                     </div>
                     <div className={styles["lc-player-actions"]}>
-                      <span className={styles["lc-player-status"]}>可接单</span>
+                      <span className={styles["lc-player-status"]}>{t("ui.home-content.007")}</span>
                       <Link href={target} className={styles["lc-player-btn"]}>
                         去指定
                       </Link>
@@ -353,8 +353,8 @@ export default function HomeContent({
       <section className={styles["lc-section"]}>
         <div className={styles["lc-section-head"]}>
           <div>
-            <div className={styles["lc-section-title"]}>服务保障</div>
-            <div className={styles["lc-section-sub"]}>清晰规则，放心下单</div>
+            <div className={styles["lc-section-title"]}>{t("ui.home-content.008")}</div>
+            <div className={styles["lc-section-sub"]}>{t("ui.home-content.009")}</div>
           </div>
         </div>
         <div className={styles["lc-assurance-grid"]}>
@@ -378,8 +378,8 @@ export default function HomeContent({
       <section className={styles["lc-section"]}>
         <div className={styles["lc-section-head"]}>
           <div>
-            <div className={styles["lc-section-title"]}>最新动态</div>
-            <div className={styles["lc-section-sub"]}>公告更新与新手指南</div>
+            <div className={styles["lc-section-title"]}>{t("ui.home-content.010")}</div>
+            <div className={styles["lc-section-sub"]}>{t("ui.home-content.011")}</div>
           </div>
           <Link href="/news" className={styles["lc-section-link"]}>
             查看全部
@@ -403,8 +403,8 @@ export default function HomeContent({
             <BookOpen size={18} />
           </span>
           <div>
-            <div className={styles["lc-footer-title"]}>新手指南</div>
-            <div className={styles["lc-footer-desc"]}>3 分钟掌握下单流程</div>
+            <div className={styles["lc-footer-title"]}>{t("ui.home-content.012")}</div>
+            <div className={styles["lc-footer-desc"]}>{t("ui.home-content.013")}</div>
           </div>
         </Link>
         <Link href="/schedule" className={styles["lc-footer-card"]}>
@@ -412,8 +412,8 @@ export default function HomeContent({
             <Users size={18} />
           </span>
           <div>
-            <div className={styles["lc-footer-title"]}>陪练匹配</div>
-            <div className={styles["lc-footer-desc"]}>选择指定陪练更安心</div>
+            <div className={styles["lc-footer-title"]}>{t("ui.home-content.014")}</div>
+            <div className={styles["lc-footer-desc"]}>{t("ui.home-content.015")}</div>
           </div>
         </Link>
       </section>

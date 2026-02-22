@@ -18,9 +18,9 @@ const safetyTips = [
 ];
 
 const faqList = [
-  { q: "接单失败或超时怎么办？", a: "检查网络与账户状态，必要时提交工单。" },
-  { q: "订单状态有哪些？", a: "常见状态：待处理、已确认、进行中、已完成、已取消。" },
-  { q: "押金的作用是什么？", a: "用于保障履约与服务质量，完成后按规则结算或退回。" },
+  { q: t("ui.guide.604"), a: "检查网络与账户状态，必要时提交工单。" },
+  { q: t("ui.guide.664"), a: "常见状态：待处理、已确认、进行中、已完成、已取消。" },
+  { q: t("ui.guide.603"), a: "用于保障履约与服务质量，完成后按规则结算或退回。" },
 ];
 
 export default function GuidePage() {
@@ -31,8 +31,8 @@ export default function GuidePage() {
           <Link href="/me?settings=1" className="dl-icon-circle" aria-label={t("me.guide.001")}>
             <ArrowLeft size={16} />
           </Link>
-          <span className="dl-time-text">用户指南</span>
-          <span className="dl-chip">新手必看</span>
+          <span className="dl-time-text">{t("ui.guide.053")}</span>
+          <span className="dl-chip">{t("ui.guide.054")}</span>
         </div>
         <div className="dl-actions">
           <span className="dl-icon-circle">

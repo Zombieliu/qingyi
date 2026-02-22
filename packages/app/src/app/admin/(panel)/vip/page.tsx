@@ -302,8 +302,8 @@ export default function VipAdminPage() {
       <div className="admin-card">
         <div className="admin-card-header">
           <div>
-            <h3>新增会员等级</h3>
-            <p>定义等级、权益与价格。</p>
+            <h3>{t("ui.vip.203")}</h3>
+            <p>{t("ui.vip.204")}</p>
           </div>
         </div>
         <div
@@ -392,8 +392,8 @@ export default function VipAdminPage() {
       <div className="admin-card">
         <div className="admin-card-header">
           <div>
-            <h3>会员申请筛选</h3>
-            <p>按申请人、联系方式与状态过滤。</p>
+            <h3>{t("ui.vip.205")}</h3>
+            <p>{t("ui.vip.206")}</p>
           </div>
           <div className="admin-card-actions">
             <span className="admin-pill">上架 {totalActive} 个</span>
@@ -415,7 +415,7 @@ export default function VipAdminPage() {
             value={statusFilter}
             onChange={(event) => setStatusFilter(event.target.value)}
           >
-            <option value={t("admin.vip.006")}>全部申请状态</option>
+            <option value={t("admin.vip.006")}>{t("ui.vip.207")}</option>
             {MEMBERSHIP_REQUEST_STATUS_OPTIONS.map((status) => (
               <option key={status} value={status}>
                 {status}
@@ -438,7 +438,7 @@ export default function VipAdminPage() {
 
       <div className="admin-card">
         <div className="admin-card-header">
-          <h3>会员等级列表</h3>
+          <h3>{t("ui.vip.208")}</h3>
           <div className="admin-card-actions">
             <span className="admin-pill">共 {tiers.length} 条</span>
           </div>
@@ -455,13 +455,13 @@ export default function VipAdminPage() {
             <table className="admin-table">
               <thead>
                 <tr>
-                  <th>等级</th>
-                  <th>价格</th>
-                  <th>有效期</th>
-                  <th>成长值</th>
-                  <th>状态</th>
-                  <th>特权</th>
-                  <th>更新</th>
+                  <th>{t("ui.vip.209")}</th>
+                  <th>{t("ui.vip.210")}</th>
+                  <th>{t("ui.vip.211")}</th>
+                  <th>{t("ui.vip.212")}</th>
+                  <th>{t("ui.vip.213")}</th>
+                  <th>{t("ui.vip.214")}</th>
+                  <th>{t("ui.vip.215")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -581,7 +581,7 @@ export default function VipAdminPage() {
                     </td>
                     <td data-label={t("admin.vip.015")}>
                       <span className="admin-badge neutral">
-                        {saving[tier.id] ? "保存中" : t("admin.vip.016")}
+                        {saving[tier.id] ? t("ui.vip.520") : t("admin.vip.016")}
                       </span>
                     </td>
                   </tr>
@@ -603,7 +603,7 @@ export default function VipAdminPage() {
 
       <div className="admin-card">
         <div className="admin-card-header">
-          <h3>会员申请</h3>
+          <h3>{t("ui.vip.216")}</h3>
           <div className="admin-card-actions">
             <span className="admin-pill">本页 {requests.length} 条</span>
             {cacheHint ? <span className="admin-pill">{cacheHint}</span> : null}
@@ -628,20 +628,20 @@ export default function VipAdminPage() {
             <table className="admin-table">
               <thead>
                 <tr>
-                  <th>用户</th>
-                  <th>等级</th>
-                  <th>联系方式</th>
-                  <th>状态</th>
-                  <th>备注</th>
-                  <th>时间</th>
-                  <th>更新</th>
+                  <th>{t("ui.vip.217")}</th>
+                  <th>{t("ui.vip.218")}</th>
+                  <th>{t("ui.vip.219")}</th>
+                  <th>{t("ui.vip.220")}</th>
+                  <th>{t("ui.vip.221")}</th>
+                  <th>{t("ui.vip.222")}</th>
+                  <th>{t("ui.vip.223")}</th>
                 </tr>
               </thead>
               <tbody>
                 {requests.map((req) => (
                   <tr key={req.id}>
                     <td data-label={t("admin.vip.021")}>
-                      <div className="admin-text-strong">{req.userName || "访客"}</div>
+                      <div className="admin-text-strong">{req.userName || t("ui.vip.671")}</div>
                       <div className="admin-meta">{req.userAddress || "-"}</div>
                       <div className="admin-meta-faint">{req.id}</div>
                     </td>
@@ -688,7 +688,7 @@ export default function VipAdminPage() {
                     <td data-label={t("admin.vip.027")}>{formatShortDateTime(req.createdAt)}</td>
                     <td data-label={t("admin.vip.028")}>
                       <span className="admin-badge neutral">
-                        {saving[req.id] ? "保存中" : t("admin.vip.029")}
+                        {saving[req.id] ? t("ui.vip.521") : t("admin.vip.029")}
                       </span>
                     </td>
                   </tr>
@@ -701,7 +701,7 @@ export default function VipAdminPage() {
 
       <div className="admin-card">
         <div className="admin-card-header">
-          <h3>会员列表</h3>
+          <h3>{t("ui.vip.224")}</h3>
           <div className="admin-card-actions">
             <span className="admin-pill">共 {members.length} 条</span>
           </div>
@@ -718,13 +718,13 @@ export default function VipAdminPage() {
             <table className="admin-table">
               <thead>
                 <tr>
-                  <th>用户</th>
-                  <th>等级</th>
-                  <th>成长值</th>
-                  <th>有效期</th>
-                  <th>状态</th>
-                  <th>备注</th>
-                  <th>更新</th>
+                  <th>{t("ui.vip.225")}</th>
+                  <th>{t("ui.vip.226")}</th>
+                  <th>{t("ui.vip.227")}</th>
+                  <th>{t("ui.vip.228")}</th>
+                  <th>{t("ui.vip.229")}</th>
+                  <th>{t("ui.vip.230")}</th>
+                  <th>{t("ui.vip.231")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -826,7 +826,7 @@ export default function VipAdminPage() {
                     </td>
                     <td data-label={t("admin.vip.039")}>
                       <span className="admin-badge neutral">
-                        {saving[member.id] ? "保存中" : t("admin.vip.040")}
+                        {saving[member.id] ? t("ui.vip.522") : t("admin.vip.040")}
                       </span>
                     </td>
                   </tr>

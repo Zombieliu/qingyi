@@ -16,10 +16,10 @@ type CreatedToken = {
 };
 
 const roleLabels: Record<AdminRole, string> = {
-  admin: "超级管理员",
-  finance: "财务",
-  ops: "运营",
-  viewer: "只读",
+  admin: t("ui.tokens.687"),
+  finance: t("ui.tokens.682"),
+  ops: t("ui.tokens.690"),
+  viewer: t("ui.tokens.562"),
 };
 
 const statusLabels: Record<AdminTokenStatus, string> = {
@@ -191,8 +191,8 @@ export default function AdminTokensPage() {
       <div className="admin-card">
         <div className="admin-card-header">
           <div>
-            <h3>创建后台密钥</h3>
-            <p>生成新的后台访问密钥并配置角色权限。</p>
+            <h3>{t("ui.tokens.444")}</h3>
+            <p>{t("ui.tokens.445")}</p>
           </div>
           <div className="admin-card-actions">
             <button className="admin-btn ghost" onClick={loadTokens} disabled={loading}>
@@ -232,7 +232,7 @@ export default function AdminTokensPage() {
           </label>
         </div>
         <button className="admin-btn primary" onClick={createToken} disabled={creating}>
-          {creating ? "创建中..." : t("admin.tokens.010")}
+          {creating ? t("ui.tokens.545") : t("admin.tokens.010")}
         </button>
         {error ? (
           <div style={{ marginTop: 12 }}>
@@ -243,7 +243,7 @@ export default function AdminTokensPage() {
           <div className="admin-card admin-card--subtle" style={{ marginTop: 14 }}>
             <div className="admin-card-header" style={{ alignItems: "center" }}>
               <div>
-                <h4>密钥已生成</h4>
+                <h4>{t("ui.tokens.446")}</h4>
                 <p>{createHint}</p>
               </div>
               <div className="admin-card-actions">
@@ -274,7 +274,7 @@ export default function AdminTokensPage() {
 
       <div className="admin-card">
         <div className="admin-card-header">
-          <h3>密钥列表</h3>
+          <h3>{t("ui.tokens.447")}</h3>
           <div className="admin-card-actions">
             <span className="admin-pill">共 {tokens.length} 个</span>
           </div>
@@ -298,13 +298,13 @@ export default function AdminTokensPage() {
             <table className="admin-table">
               <thead>
                 <tr>
-                  <th>备注</th>
-                  <th>角色</th>
-                  <th>密钥前缀</th>
-                  <th>状态</th>
-                  <th>最后使用</th>
-                  <th>创建时间</th>
-                  <th>操作</th>
+                  <th>{t("ui.tokens.448")}</th>
+                  <th>{t("ui.tokens.449")}</th>
+                  <th>{t("ui.tokens.450")}</th>
+                  <th>{t("ui.tokens.451")}</th>
+                  <th>{t("ui.tokens.452")}</th>
+                  <th>{t("ui.tokens.453")}</th>
+                  <th>{t("ui.tokens.454")}</th>
                 </tr>
               </thead>
               <tbody>

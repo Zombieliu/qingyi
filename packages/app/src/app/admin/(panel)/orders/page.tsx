@@ -234,8 +234,8 @@ export default function OrdersPage() {
       <div className="admin-card">
         <div className="admin-card-header">
           <div>
-            <h3>订单筛选</h3>
-            <p>按用户、订单号、商品与阶段检索。</p>
+            <h3>{t("ui.orders.406")}</h3>
+            <p>{t("ui.orders.407")}</p>
           </div>
         </div>
         <div className="admin-toolbar">
@@ -254,7 +254,7 @@ export default function OrdersPage() {
             value={stageFilter}
             onChange={(event) => setStageFilter(event.target.value)}
           >
-            <option value={t("admin.orders.005")}>全部状态</option>
+            <option value={t("admin.orders.005")}>{t("ui.orders.408")}</option>
             {ORDER_STAGE_OPTIONS.map((stage) => (
               <option key={stage} value={stage}>
                 {stage}
@@ -296,7 +296,7 @@ export default function OrdersPage() {
               导出 CSV
             </a>
           ) : (
-            <span className="admin-badge neutral">只读权限</span>
+            <span className="admin-badge neutral">{t("ui.orders.409")}</span>
           )}
         </div>
         {cleanResult ? (
@@ -308,7 +308,7 @@ export default function OrdersPage() {
 
       <div className="admin-card">
         <div className="admin-card-header">
-          <h3>订单列表</h3>
+          <h3>{t("ui.orders.410")}</h3>
           <div className="admin-card-actions">
             <span className="admin-pill">本页 {orders.length} 条</span>
             {selectedIds.length > 0 ? (
@@ -347,14 +347,14 @@ export default function OrdersPage() {
                       选择
                     </label>
                   </th>
-                  <th>订单信息</th>
-                  <th>金额</th>
-                  <th>付款状态</th>
-                  <th>流程状态</th>
-                  <th>派单</th>
-                  <th>备注</th>
-                  <th>更新</th>
-                  <th>详情</th>
+                  <th>{t("ui.orders.411")}</th>
+                  <th>{t("ui.orders.412")}</th>
+                  <th>{t("ui.orders.413")}</th>
+                  <th>{t("ui.orders.414")}</th>
+                  <th>{t("ui.orders.415")}</th>
+                  <th>{t("ui.orders.416")}</th>
+                  <th>{t("ui.orders.417")}</th>
+                  <th>{t("ui.orders.418")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -386,7 +386,7 @@ export default function OrdersPage() {
                         <div className="admin-meta-faint">{order.id}</div>
                         {isChainOrder ? (
                           <div style={{ marginTop: 6 }}>
-                            <span className="admin-badge warm">系统订单</span>
+                            <span className="admin-badge warm">{t("ui.orders.419")}</span>
                           </div>
                         ) : null}
                         <div className="admin-meta-faint">
@@ -404,7 +404,7 @@ export default function OrdersPage() {
                             className="admin-input"
                             readOnly
                             value={order.paymentStatus || ""}
-                            title={isChainOrder ? "订单状态由系统同步" : t("admin.orders.015")}
+                            title={isChainOrder ? t("ui.orders.665") : t("admin.orders.015")}
                           />
                         ) : (
                           <input
@@ -431,7 +431,7 @@ export default function OrdersPage() {
                           value={order.stage}
                           aria-label={t("admin.orders.017")}
                           disabled={isChainOrder || !canEdit}
-                          title={isChainOrder ? "订单阶段由系统同步" : !canEdit ? "只读权限" : ""}
+                          title={isChainOrder ? t("ui.orders.669") : !canEdit ? "只读权限" : ""}
                           onChange={(event) => {
                             if (isChainOrder || !canEdit) return;
                             const nextStage = event.target.value as OrderStage;
@@ -472,7 +472,7 @@ export default function OrdersPage() {
                               updateOrder(order.id, { assignedTo });
                             }}
                           >
-                            <option value="">未派单</option>
+                            <option value="">{t("ui.orders.420")}</option>
                             {assignedKey && !matchedPlayer ? (
                               <option value={assignedKey}>当前：{assignedKey}</option>
                             ) : null}
@@ -490,8 +490,8 @@ export default function OrdersPage() {
                               ? t("admin.orders.020")
                               : matchedPlayer
                                 ? `可用 ${available} 元 / 占用 ${used} 元 / 总额度 ${limit} 元`
-                                : "未选择陪练"}
-                            {insufficient ? "（余额不足）" : ""}
+                                : t("ui.orders.627")}
+                            {insufficient ? t("ui.orders.709") : ""}
                           </div>
                         </div>
                       </td>
@@ -517,7 +517,7 @@ export default function OrdersPage() {
                       </td>
                       <td data-label={t("admin.orders.023")}>
                         <span className="admin-badge neutral">
-                          {saving[order.id] ? "保存中" : t("admin.orders.024")}
+                          {saving[order.id] ? t("ui.orders.529") : t("admin.orders.024")}
                         </span>
                       </td>
                       <td data-label={t("admin.orders.025")}>

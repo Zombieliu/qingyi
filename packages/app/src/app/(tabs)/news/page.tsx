@@ -1,3 +1,4 @@
+import { t } from "@/lib/i18n/i18n-client";
 import type { Metadata } from "next";
 import { MessageCircle, Flame } from "lucide-react";
 import { listPublicAnnouncements } from "@/lib/admin/admin-store";
@@ -29,8 +30,8 @@ export default async function News() {
     <>
       <header className="dl-topbar">
         <div className="dl-time">
-          <span className="dl-time-text">资讯</span>
-          <span className="dl-chip">动态</span>
+          <span className="dl-time-text">{t("ui.news.045")}</span>
+          <span className="dl-chip">{t("ui.news.046")}</span>
         </div>
         <div className="dl-actions">
           <span className="dl-icon-circle">

@@ -140,11 +140,11 @@ function ReviewForm({
   return (
     <div className="space-y-3">
       <div>
-        <div className="text-xs text-slate-500 mb-1">评分</div>
+        <div className="text-xs text-slate-500 mb-1">{t("ui.orderId.118")}</div>
         <StarRating value={rating} onChange={setRating} />
       </div>
       <div>
-        <div className="text-xs text-slate-500 mb-1.5">标签</div>
+        <div className="text-xs text-slate-500 mb-1.5">{t("ui.orderId.119")}</div>
         <div className="flex flex-wrap gap-1.5">
           {REVIEW_TAG_OPTIONS.map((tag) => (
             <button
@@ -163,7 +163,7 @@ function ReviewForm({
         </div>
       </div>
       <div>
-        <div className="text-xs text-slate-500 mb-1">评价内容（选填）</div>
+        <div className="text-xs text-slate-500 mb-1">{t("ui.orderId.120")}</div>
         <textarea
           value={content}
           onChange={(e) => setContent(e.target.value)}
@@ -179,7 +179,7 @@ function ReviewForm({
         disabled={submitting}
         className="w-full py-2 rounded-xl bg-slate-900 text-white text-sm font-semibold disabled:opacity-50"
       >
-        {submitting ? "提交中..." : t("me.orders.003")}
+        {submitting ? t("ui.orderId.609") : t("me.orders.003")}
       </button>
     </div>
   );
@@ -232,7 +232,7 @@ export default function OrderDetailPage() {
           <Link href="/me/orders" className="dl-icon-circle" aria-label={t("me.orders.004")}>
             <ArrowLeft size={16} />
           </Link>
-          <span className="dl-time-text">订单详情</span>
+          <span className="dl-time-text">{t("ui.orderId.121")}</span>
         </div>
       </header>
 
@@ -256,27 +256,27 @@ export default function OrderDetailPage() {
             </div>
             <div className="mt-3 space-y-2 text-sm text-slate-600">
               <div className="flex justify-between">
-                <span className="text-slate-400">订单号</span>
+                <span className="text-slate-400">{t("ui.orderId.122")}</span>
                 <span className="font-mono text-xs">{order.id}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-400">下单时间</span>
+                <span className="text-slate-400">{t("ui.orderId.123")}</span>
                 <span>{formatTime(order.time)}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-400">金额</span>
+                <span className="text-slate-400">{t("ui.orderId.124")}</span>
                 <span className="font-semibold text-slate-900">¥{order.amount}</span>
               </div>
               {order.serviceFee != null && (
                 <div className="flex justify-between">
-                  <span className="text-slate-400">服务费</span>
+                  <span className="text-slate-400">{t("ui.orderId.125")}</span>
                   <span>¥{order.serviceFee}</span>
                 </div>
               )}
             </div>
             {order.driver && (
               <div className="mt-3 pt-3 border-t border-slate-100 text-sm text-slate-600">
-                <div className="text-xs text-slate-400 mb-1">陪练信息</div>
+                <div className="text-xs text-slate-400 mb-1">{t("ui.orderId.126")}</div>
                 <div>
                   {order.driver.name}
                   {order.driver.tier ? ` · ${order.driver.tier}` : ""}
@@ -288,13 +288,13 @@ export default function OrderDetailPage() {
           {/* Review Section */}
           <section className="dl-card" style={{ padding: 16 }}>
             <div className="text-sm font-semibold text-gray-900 mb-3">
-              {review ? "我的评价" : canReview ? "评价服务" : t("me.orders.008")}
+              {review ? t("ui.orderId.600") : canReview ? t("ui.orderId.674") : t("me.orders.008")}
             </div>
             {review ? (
               <div>
                 <div className="flex items-center gap-1.5 text-emerald-600 text-xs mb-2">
                   <CheckCircle2 size={14} />
-                  <span>已评价</span>
+                  <span>{t("ui.orderId.127")}</span>
                 </div>
                 <ReviewDisplay review={review} />
               </div>
@@ -302,7 +302,7 @@ export default function OrderDetailPage() {
               <ReviewForm orderId={orderId} onSubmitted={setReview} />
             ) : (
               <p className="text-xs text-slate-400">
-                {!isCompleted ? "订单完成后可评价" : !isOwner ? "仅下单用户可评价" : ""}
+                {!isCompleted ? t("ui.orderId.652") : !isOwner ? t("ui.orderId.514") : ""}
               </p>
             )}
           </section>

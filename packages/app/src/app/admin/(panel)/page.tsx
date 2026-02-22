@@ -83,31 +83,31 @@ export default function AdminDashboard() {
       <div className="admin-grid-cards motion-stack">
         <div className="admin-card">
           <div className="admin-card-header">
-            <h3>订单总量</h3>
+            <h3>{t("ui.admin.178")}</h3>
           </div>
           <div className="admin-stat">{stats.totalOrders}</div>
-          <p>本地订单池累计数量</p>
+          <p>{t("ui.admin.179")}</p>
         </div>
         <div className="admin-card">
           <div className="admin-card-header">
-            <h3>待处理订单</h3>
+            <h3>{t("ui.admin.180")}</h3>
           </div>
           <div className="admin-stat">{stats.pendingOrders}</div>
-          <p>未完成/未取消订单</p>
+          <p>{t("ui.admin.181")}</p>
         </div>
         <div className="admin-card">
           <div className="admin-card-header">
-            <h3>可用陪练</h3>
+            <h3>{t("ui.admin.182")}</h3>
           </div>
           <div className="admin-stat">{stats.activePlayers}</div>
-          <p>可接单或忙碌状态</p>
+          <p>{t("ui.admin.183")}</p>
         </div>
         <div className="admin-card">
           <div className="admin-card-header">
-            <h3>已发布公告</h3>
+            <h3>{t("ui.admin.184")}</h3>
           </div>
           <div className="admin-stat">{stats.publishedAnnouncements}</div>
-          <p>当前面向用户的资讯</p>
+          <p>{t("ui.admin.185")}</p>
         </div>
       </div>
 
@@ -117,7 +117,7 @@ export default function AdminDashboard() {
       >
         <div className="admin-card">
           <div className="admin-card-header">
-            <h3>待处理订单</h3>
+            <h3>{t("ui.admin.186")}</h3>
             <div className="admin-card-actions">
               <Link href="/admin/orders" className="admin-btn ghost">
                 <ClipboardList size={16} style={{ marginRight: 6 }} />
@@ -144,9 +144,9 @@ export default function AdminDashboard() {
               <table className="admin-table">
                 <thead>
                   <tr>
-                    <th>订单</th>
-                    <th>状态</th>
-                    <th>时间</th>
+                    <th>{t("ui.admin.187")}</th>
+                    <th>{t("ui.admin.188")}</th>
+                    <th>{t("ui.admin.189")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -172,7 +172,7 @@ export default function AdminDashboard() {
 
         <div className="admin-card">
           <div className="admin-card-header">
-            <h3>陪练状态</h3>
+            <h3>{t("ui.admin.190")}</h3>
             <div className="admin-card-actions">
               <Link href="/admin/players" className="admin-btn ghost">
                 <Users size={16} style={{ marginRight: 6 }} />
@@ -199,8 +199,8 @@ export default function AdminDashboard() {
               <table className="admin-table">
                 <thead>
                   <tr>
-                    <th>名字</th>
-                    <th>状态</th>
+                    <th>{t("ui.admin.191")}</th>
+                    <th>{t("ui.admin.192")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -222,7 +222,7 @@ export default function AdminDashboard() {
 
         <div className="admin-card">
           <div className="admin-card-header">
-            <h3>快速入口</h3>
+            <h3>{t("ui.admin.193")}</h3>
           </div>
           <div className="admin-stack" style={{ marginTop: 10 }}>
             <Link href="/admin/orders" className="admin-chip">

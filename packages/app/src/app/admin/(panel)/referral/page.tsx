@@ -132,8 +132,8 @@ export default function AdminReferralPage() {
       <div className="admin-card">
         <div className="admin-card-header">
           <div>
-            <h3>返利配置</h3>
-            <p>设置邀请返利的模式与奖励金额。</p>
+            <h3>{t("ui.referral.234")}</h3>
+            <p>{t("ui.referral.235")}</p>
           </div>
         </div>
         {configLoading ? (
@@ -153,8 +153,8 @@ export default function AdminReferralPage() {
                     setConfig((prev) => ({ ...prev, enabled: e.target.value === "是" }))
                   }
                 >
-                  <option value={t("admin.referral.004")}>启用</option>
-                  <option value={t("admin.referral.005")}>停用</option>
+                  <option value={t("admin.referral.004")}>{t("ui.referral.236")}</option>
+                  <option value={t("admin.referral.005")}>{t("ui.referral.237")}</option>
                 </select>
               </label>
               <label className="admin-field">
@@ -166,8 +166,8 @@ export default function AdminReferralPage() {
                     setConfig((prev) => ({ ...prev, mode: e.target.value as "fixed" | "percent" }))
                   }
                 >
-                  <option value="fixed">固定金额</option>
-                  <option value="percent">按比例</option>
+                  <option value="fixed">{t("ui.referral.238")}</option>
+                  <option value="percent">{t("ui.referral.239")}</option>
                 </select>
               </label>
               {config.mode === "fixed" ? (
@@ -211,7 +211,7 @@ export default function AdminReferralPage() {
             </div>
             <button className="admin-btn primary" onClick={saveConfig} style={{ marginTop: 14 }}>
               <Save size={16} style={{ marginRight: 6 }} />
-              {configSaving ? "保存中..." : t("admin.referral.006")}
+              {configSaving ? t("ui.referral.531") : t("admin.referral.006")}
             </button>
           </>
         )}
@@ -220,8 +220,8 @@ export default function AdminReferralPage() {
       <div className="admin-card">
         <div className="admin-card-header">
           <div>
-            <h3>邀请记录</h3>
-            <p>查看所有邀请关系与返利状态。</p>
+            <h3>{t("ui.referral.240")}</h3>
+            <p>{t("ui.referral.241")}</p>
           </div>
         </div>
         <div className="admin-toolbar">
@@ -240,9 +240,9 @@ export default function AdminReferralPage() {
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
           >
-            <option value={t("admin.referral.008")}>全部状态</option>
-            <option value="pending">待返利</option>
-            <option value="rewarded">已返利</option>
+            <option value={t("admin.referral.008")}>{t("ui.referral.242")}</option>
+            <option value="pending">{t("ui.referral.243")}</option>
+            <option value="rewarded">{t("ui.referral.244")}</option>
           </select>
           <button
             className="admin-btn ghost"
@@ -260,7 +260,7 @@ export default function AdminReferralPage() {
 
       <div className="admin-card">
         <div className="admin-card-header">
-          <h3>邀请列表</h3>
+          <h3>{t("ui.referral.245")}</h3>
           <div className="admin-card-actions">
             <span className="admin-pill">共 {referrals.length} 条</span>
           </div>
@@ -279,13 +279,13 @@ export default function AdminReferralPage() {
             <table className="admin-table">
               <thead>
                 <tr>
-                  <th>邀请人</th>
-                  <th>被邀请人</th>
-                  <th>状态</th>
-                  <th>邀请人奖励</th>
-                  <th>被邀请人奖励</th>
-                  <th>邀请时间</th>
-                  <th>返利时间</th>
+                  <th>{t("ui.referral.246")}</th>
+                  <th>{t("ui.referral.247")}</th>
+                  <th>{t("ui.referral.248")}</th>
+                  <th>{t("ui.referral.249")}</th>
+                  <th>{t("ui.referral.250")}</th>
+                  <th>{t("ui.referral.251")}</th>
+                  <th>{t("ui.referral.252")}</th>
                 </tr>
               </thead>
               <tbody>

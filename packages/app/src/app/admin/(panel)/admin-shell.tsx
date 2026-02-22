@@ -25,7 +25,7 @@ import {
   BarChart3,
   Gift,
 } from "lucide-react";
-import { useI18n } from "@/lib/i18n/i18n-client";
+import { t, useI18n } from "@/lib/i18n/i18n-client";
 import AutoTranslate from "@/app/components/auto-translate";
 import SwControl from "@/app/components/sw-control";
 import { PageTransition, Stagger, StaggerItem } from "@/components/ui/motion";
@@ -99,20 +99,25 @@ function shouldNotifyAdminError(res: Response, url: string) {
 type NavItem = { href: string; label: string; icon: ElementType; minRole: AdminRole };
 
 const navItems: NavItem[] = [
-  { href: "/admin", label: "运营概览", icon: LayoutGrid, minRole: "viewer" },
-  { href: "/admin/orders", label: "订单调度", icon: ClipboardList, minRole: "viewer" },
-  { href: "/admin/support", label: "客服工单", icon: Headset, minRole: "ops" },
+  { href: "/admin", label: t("ui.admin-shell.693"), icon: LayoutGrid, minRole: "viewer" },
+  { href: "/admin/orders", label: t("ui.admin-shell.666"), icon: ClipboardList, minRole: "viewer" },
+  { href: "/admin/support", label: t("ui.admin-shell.572"), icon: Headset, minRole: "ops" },
   { href: "/admin/coupons", label: "优惠卡券", icon: TicketPercent, minRole: "ops" },
   { href: "/admin/redeem", label: "卡密兑换", icon: KeyRound, minRole: "ops" },
-  { href: "/admin/vip", label: "会员管理", icon: Crown, minRole: "ops" },
-  { href: "/admin/players", label: "陪练管理", icon: Users, minRole: "viewer" },
-  { href: "/admin/guardians", label: "陪练申请", icon: UserCheck, minRole: "ops" },
-  { href: "/admin/announcements", label: "公告资讯", icon: Megaphone, minRole: "viewer" },
+  { href: "/admin/vip", label: t("ui.admin-shell.519"), icon: Crown, minRole: "ops" },
+  { href: "/admin/players", label: t("ui.admin-shell.700"), icon: Users, minRole: "viewer" },
+  { href: "/admin/guardians", label: t("ui.admin-shell.698"), icon: UserCheck, minRole: "ops" },
+  {
+    href: "/admin/announcements",
+    label: t("ui.admin-shell.540"),
+    icon: Megaphone,
+    minRole: "viewer",
+  },
   { href: "/admin/referral", label: "邀请返利", icon: Gift, minRole: "ops" },
-  { href: "/admin/analytics", label: "增长数据", icon: TrendingUp, minRole: "admin" },
+  { href: "/admin/analytics", label: t("ui.admin-shell.567"), icon: TrendingUp, minRole: "admin" },
   { href: "/admin/revenue", label: "营收绩效", icon: BarChart3, minRole: "admin" },
   { href: "/admin/earnings", label: "完单收益", icon: BarChart3, minRole: "finance" },
-  { href: "/admin/ledger", label: "记账中心", icon: Wallet, minRole: "finance" },
+  { href: "/admin/ledger", label: t("ui.admin-shell.670"), icon: Wallet, minRole: "finance" },
   { href: "/admin/mantou", label: "馒头提现", icon: Wallet, minRole: "finance" },
   { href: "/admin/invoices", label: "发票申请", icon: FileCheck, minRole: "finance" },
   { href: "/admin/chain", label: "订单对账", icon: Link2, minRole: "finance" },
@@ -122,9 +127,9 @@ const navItems: NavItem[] = [
 ];
 
 const navSections: Array<{ label: string; items: string[] }> = [
-  { label: "概览", items: ["/admin"] },
+  { label: t("ui.admin-shell.633"), items: ["/admin"] },
   {
-    label: "运营中心",
+    label: t("ui.admin-shell.692"),
     items: [
       "/admin/orders",
       "/admin/support",
@@ -140,7 +145,7 @@ const navSections: Array<{ label: string; items: string[] }> = [
     ],
   },
   {
-    label: "财务结算",
+    label: t("ui.admin-shell.684"),
     items: [
       "/admin/earnings",
       "/admin/ledger",
@@ -150,39 +155,39 @@ const navSections: Array<{ label: string; items: string[] }> = [
       "/admin/payments",
     ],
   },
-  { label: "系统", items: ["/admin/tokens", "/admin/audit"] },
+  { label: t("ui.admin-shell.642"), items: ["/admin/tokens", "/admin/audit"] },
 ];
 
 const navLookup = new Map(navItems.map((item) => [item.href, item]));
 
 const subtitles: Record<string, string> = {
-  "/admin": "关键指标与实时调度情况",
-  "/admin/orders": "订单跟踪、分配与状态更新",
-  "/admin/support": "客服工单受理与跟进",
-  "/admin/coupons": "优惠券配置与发放",
-  "/admin/vip": "会员等级、申请与会员管理",
-  "/admin/players": "陪练档案、状态与接单能力",
-  "/admin/guardians": "陪练申请审核与入库",
-  "/admin/announcements": "公告与资讯统一发布",
+  "/admin": t("ui.admin-shell.541"),
+  "/admin/orders": t("ui.admin-shell.667"),
+  "/admin/support": t("ui.admin-shell.573"),
+  "/admin/coupons": t("ui.admin-shell.516"),
+  "/admin/vip": t("ui.admin-shell.518"),
+  "/admin/players": t("ui.admin-shell.697"),
+  "/admin/guardians": t("ui.admin-shell.699"),
+  "/admin/announcements": t("ui.admin-shell.539"),
   "/admin/referral": "邀请返利配置与记录管理",
   "/admin/redeem": "卡密生成与兑换记录",
-  "/admin/analytics": "访问与转化漏斗监控",
+  "/admin/analytics": t("ui.admin-shell.673"),
   "/admin/revenue": "营收趋势、商品分析与陪练绩效",
   "/admin/earnings": "陪练完单与平台撮合费汇总",
-  "/admin/ledger": "充值记账与凭证管理",
-  "/admin/mantou": "陪练馒头提现审核",
-  "/admin/invoices": "开票申请与处理",
-  "/admin/chain": "订单对账与争议裁决",
-  "/admin/payments": "支付回调记录与核验",
-  "/admin/audit": "后台关键操作审计",
+  "/admin/ledger": t("ui.admin-shell.535"),
+  "/admin/mantou": t("ui.admin-shell.702"),
+  "/admin/invoices": t("ui.admin-shell.593"),
+  "/admin/chain": t("ui.admin-shell.653"),
+  "/admin/payments": t("ui.admin-shell.616"),
+  "/admin/audit": t("ui.admin-shell.564"),
   "/admin/tokens": "后台密钥创建与权限控制",
 };
 
 const roleLabels: Record<AdminRole, string> = {
-  admin: "超级管理员",
-  finance: "财务",
-  ops: "运营",
-  viewer: "只读",
+  admin: t("ui.admin-shell.688"),
+  finance: t("ui.admin-shell.683"),
+  ops: t("ui.admin-shell.691"),
+  viewer: t("ui.admin-shell.563"),
 };
 
 export default function AdminShell({ children }: { children: React.ReactNode }) {
@@ -317,7 +322,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
         <div className="admin-logo">
           <div className="admin-logo-icon">QY</div>
           <div>
-            <h1>情谊电竞</h1>
+            <h1>{t("ui.admin-shell.177")}</h1>
             <p>{t("nav.ops_center")}</p>
           </div>
         </div>
@@ -392,7 +397,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
                 window.location.reload();
               }}
             >
-              {locale === "en" ? "中文" : "English"}
+              {locale === "en" ? t("ui.admin-shell.512") : "English"}
             </button>
             <button
               className="admin-btn ghost admin-menu-toggle"

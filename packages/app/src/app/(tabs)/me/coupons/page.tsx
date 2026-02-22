@@ -157,8 +157,8 @@ export default function CouponsPage() {
           <Link href="/me" className="dl-icon-circle" aria-label={t("me.coupons.002")}>
             <ArrowLeft size={16} />
           </Link>
-          <span className="dl-time-text">优惠卡券</span>
-          <span className="dl-chip">福利中心</span>
+          <span className="dl-time-text">{t("ui.coupons.072")}</span>
+          <span className="dl-chip">{t("ui.coupons.073")}</span>
         </div>
         <div className="dl-actions">
           <span className="dl-icon-circle">
@@ -170,17 +170,17 @@ export default function CouponsPage() {
       <section className="dl-card" style={{ padding: 16 }}>
         <div className="flex items-center justify-between">
           <div>
-            <div className="text-sm font-semibold text-gray-900">我的卡包</div>
+            <div className="text-sm font-semibold text-gray-900">{t("ui.coupons.074")}</div>
             <div className="text-xs text-slate-500 mt-1">
               已领取 {claimedCount} 张，可用 {availableCount} 张
             </div>
           </div>
-          <div className="text-xs text-slate-500">自动叠加最优优惠</div>
+          <div className="text-xs text-slate-500">{t("ui.coupons.075")}</div>
         </div>
       </section>
 
       <section className="dl-card" style={{ padding: 16, marginTop: 12 }}>
-        <div className="text-sm font-semibold text-gray-900">卡密兑换</div>
+        <div className="text-sm font-semibold text-gray-900">{t("ui.coupons.076")}</div>
         <div className="mt-2 flex flex-col gap-2 sm:flex-row">
           <input
             className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-900"
@@ -205,7 +205,7 @@ export default function CouponsPage() {
 
       <section className="dl-card" style={{ padding: 16 }}>
         <div className="flex items-center justify-between">
-          <div className="text-sm font-semibold text-gray-900">可领取优惠</div>
+          <div className="text-sm font-semibold text-gray-900">{t("ui.coupons.077")}</div>
           <TicketPercent size={16} className="text-slate-500" />
         </div>
         {loading ? (
@@ -231,12 +231,16 @@ export default function CouponsPage() {
             {coupons.map((coupon) => {
               const claimed = claims.includes(coupon.id);
               const discountLabel =
-                typeof coupon.discount === "number" ? `立减 ¥${coupon.discount}` : "专属权益";
+                typeof coupon.discount === "number"
+                  ? `立减 ¥${coupon.discount}`
+                  : t("ui.coupons.511");
               const minSpendLabel =
-                typeof coupon.minSpend === "number" ? `满 ¥${coupon.minSpend} 可用` : "无门槛";
+                typeof coupon.minSpend === "number"
+                  ? `满 ¥${coupon.minSpend} 可用`
+                  : t("ui.coupons.620");
               const dateLabel = coupon.expiresAt
                 ? `有效期至 ${new Date(coupon.expiresAt).toLocaleDateString("zh-CN")}`
-                : "长期有效";
+                : t("ui.coupons.694");
               return (
                 <div
                   key={coupon.id}
@@ -260,7 +264,7 @@ export default function CouponsPage() {
                         claimed ? "bg-slate-200 text-slate-500" : "bg-slate-900 text-white"
                       }`}
                     >
-                      {claimed ? "已领取" : t("me.coupons.009")}
+                      {claimed ? t("ui.coupons.590") : t("me.coupons.009")}
                     </button>
                   </div>
                   {coupon.code ? (

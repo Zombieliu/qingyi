@@ -19,12 +19,18 @@ type SupportRequest = {
   createdAt: number;
 };
 
-const topics = ["订单问题", "支付问题", "账号与安全", "陪练服务", "其他"];
+const topics = [
+  t("ui.support.668"),
+  t("ui.support.619"),
+  t("ui.support.685"),
+  t("ui.support.696"),
+  t("ui.support.542"),
+];
 
 const channels = [
-  { label: "在线客服", value: "企业微信：qy-esports", hint: "09:00-24:00" },
-  { label: "客服电话", value: "400-882-1001", hint: "紧急问题优先" },
-  { label: "反馈邮箱", value: "support@qingyi.gg", hint: "1 个工作日内回复" },
+  { label: t("ui.support.565"), value: t("ui.support.515"), hint: "09:00-24:00" },
+  { label: t("ui.support.574"), value: "400-882-1001", hint: t("ui.support.644") },
+  { label: t("ui.support.559"), value: "support@qingyi.gg", hint: t("ui.support.503") },
 ];
 
 function loadLocalRequests(): SupportRequest[] {
@@ -120,8 +126,8 @@ export default function SupportPage() {
           <Link href="/me" className="dl-icon-circle" aria-label={t("me.support.001")}>
             <ArrowLeft size={16} />
           </Link>
-          <span className="dl-time-text">联系客服</span>
-          <span className="dl-chip">实时支持</span>
+          <span className="dl-time-text">{t("ui.support.078")}</span>
+          <span className="dl-chip">{t("ui.support.079")}</span>
         </div>
         <div className="dl-actions">
           <span className="dl-icon-circle">
@@ -131,7 +137,7 @@ export default function SupportPage() {
       </header>
 
       <section className="dl-card" style={{ padding: 16 }}>
-        <div className="text-sm font-semibold text-gray-900">联系通道</div>
+        <div className="text-sm font-semibold text-gray-900">{t("ui.support.080")}</div>
         <div className="mt-3 grid gap-3">
           {channels.map((item) => (
             <div
@@ -156,12 +162,12 @@ export default function SupportPage() {
 
       <section className="dl-card" style={{ padding: 16 }}>
         <div className="flex items-center justify-between">
-          <div className="text-sm font-semibold text-gray-900">问题反馈</div>
-          <span className="text-xs text-slate-500">24 小时内响应</span>
+          <div className="text-sm font-semibold text-gray-900">{t("ui.support.081")}</div>
+          <span className="text-xs text-slate-500">{t("ui.support.082")}</span>
         </div>
         <div className="mt-3 grid gap-3">
           <div className="grid gap-2">
-            <label className="text-xs text-slate-500">称呼</label>
+            <label className="text-xs text-slate-500">{t("ui.support.083")}</label>
             <input
               className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm"
               placeholder={t("me.support.002")}
@@ -170,7 +176,7 @@ export default function SupportPage() {
             />
           </div>
           <div className="grid gap-2">
-            <label className="text-xs text-slate-500">联系方式</label>
+            <label className="text-xs text-slate-500">{t("ui.support.084")}</label>
             <input
               className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm"
               placeholder={t("me.support.003")}
@@ -179,7 +185,7 @@ export default function SupportPage() {
             />
           </div>
           <div className="grid gap-2">
-            <label className="text-xs text-slate-500">问题类型</label>
+            <label className="text-xs text-slate-500">{t("ui.support.085")}</label>
             <div className="flex flex-wrap gap-2">
               {topics.map((topic) => (
                 <button
@@ -198,7 +204,7 @@ export default function SupportPage() {
             </div>
           </div>
           <div className="grid gap-2">
-            <label className="text-xs text-slate-500">问题描述</label>
+            <label className="text-xs text-slate-500">{t("ui.support.086")}</label>
             <textarea
               className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm min-h-[120px]"
               placeholder={t("me.support.004")}
@@ -214,14 +220,14 @@ export default function SupportPage() {
           className="mt-4 w-full rounded-2xl bg-slate-900 text-white py-2 text-sm font-semibold flex items-center justify-center gap-2"
         >
           <Send size={16} />
-          {submitting ? "提交中..." : t("me.support.005")}
+          {submitting ? t("ui.support.606") : t("me.support.005")}
         </button>
         {hint && <div className="mt-3 text-xs text-amber-600">{hint}</div>}
       </section>
 
       <section className="dl-card" style={{ padding: 16 }}>
         <div className="flex items-center justify-between">
-          <div className="text-sm font-semibold text-gray-900">最近反馈</div>
+          <div className="text-sm font-semibold text-gray-900">{t("ui.support.087")}</div>
           <MessageCircle size={16} className="text-slate-500" />
         </div>
         {requests.length === 0 ? (

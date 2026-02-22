@@ -102,8 +102,8 @@ export default function AuditPage() {
       <div className="admin-card">
         <div className="admin-card-header">
           <div>
-            <h3>审计筛选</h3>
-            <p>按操作与目标快速定位关键记录。</p>
+            <h3>{t("ui.audit.346")}</h3>
+            <p>{t("ui.audit.347")}</p>
           </div>
         </div>
         <div className="admin-toolbar">
@@ -133,7 +133,7 @@ export default function AuditPage() {
 
       <div className="admin-card">
         <div className="admin-card-header">
-          <h3>审计日志</h3>
+          <h3>{t("ui.audit.348")}</h3>
           <div className="admin-card-actions">
             <span className="admin-pill">共 {logs.length} 条</span>
             {cacheHint ? <span className="admin-pill">{cacheHint}</span> : null}
@@ -158,10 +158,10 @@ export default function AuditPage() {
             <table className="admin-table">
               <thead>
                 <tr>
-                  <th>时间</th>
-                  <th>角色</th>
-                  <th>操作</th>
-                  <th>目标</th>
+                  <th>{t("ui.audit.349")}</th>
+                  <th>{t("ui.audit.350")}</th>
+                  <th>{t("ui.audit.351")}</th>
+                  <th>{t("ui.audit.352")}</th>
                   <th>IP</th>
                 </tr>
               </thead>

@@ -1,3 +1,4 @@
+import { t } from "@/lib/i18n/i18n-client";
 import type { ReactNode } from "react";
 import { Loader2 } from "lucide-react";
 
@@ -33,7 +34,7 @@ export function ConfirmDialog({
             <div className="ride-modal-title">{title}</div>
             {description ? <div className="ride-modal-sub">{description}</div> : null}
           </div>
-          <div className="ride-modal-amount">确认</div>
+          <div className="ride-modal-amount">{t("ui.confirm-dialog.481")}</div>
         </div>
         {children ? <div className="ride-modal-body">{children}</div> : null}
         <div className="ride-modal-actions">

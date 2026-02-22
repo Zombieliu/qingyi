@@ -247,8 +247,8 @@ export default function PlayersPage() {
       <div className="admin-card">
         <div className="admin-card-header">
           <div>
-            <h3>新增陪练档案</h3>
-            <p>录入陪练信息与授信配置。</p>
+            <h3>{t("ui.players.265")}</h3>
+            <p>{t("ui.players.266")}</p>
           </div>
         </div>
         {canEdit ? (
@@ -394,7 +394,7 @@ export default function PlayersPage() {
 
       <div className="admin-card">
         <div className="admin-card-header">
-          <h3>陪练列表</h3>
+          <h3>{t("ui.players.267")}</h3>
           <div className="admin-card-actions">
             {addressStats.invalid > 0 && (
               <span className="admin-badge warm">地址格式错误 {addressStats.invalid}</span>
@@ -403,7 +403,7 @@ export default function PlayersPage() {
               <span className="admin-badge warm">未绑定地址 {addressStats.missing}</span>
             )}
             {addressStats.invalid === 0 && addressStats.missing === 0 && (
-              <span className="admin-badge">地址已齐全</span>
+              <span className="admin-badge">{t("ui.players.268")}</span>
             )}
             <label className="admin-check">
               <input
@@ -424,7 +424,7 @@ export default function PlayersPage() {
                 批量删除{selectedIds.length > 0 ? `（${selectedIds.length}）` : ""}
               </button>
             ) : (
-              <span className="admin-badge neutral">只读权限</span>
+              <span className="admin-badge neutral">{t("ui.players.269")}</span>
             )}
           </div>
         </div>
@@ -447,20 +447,20 @@ export default function PlayersPage() {
             <table className="admin-table">
               <thead>
                 <tr>
-                  <th>选择</th>
-                  <th>名称</th>
-                  <th>位置</th>
-                  <th>联系方式</th>
-                  <th>钱包地址</th>
-                  <th>基础押金(钻石)</th>
-                  <th>已锁押金(钻石)</th>
-                  <th>授信倍数</th>
-                  <th>可接额度(元)</th>
-                  <th>已占用(元)</th>
-                  <th>可用额度(元)</th>
-                  <th>状态</th>
-                  <th>备注</th>
-                  <th>操作</th>
+                  <th>{t("ui.players.270")}</th>
+                  <th>{t("ui.players.271")}</th>
+                  <th>{t("ui.players.272")}</th>
+                  <th>{t("ui.players.273")}</th>
+                  <th>{t("ui.players.274")}</th>
+                  <th>{t("ui.players.275")}</th>
+                  <th>{t("ui.players.276")}</th>
+                  <th>{t("ui.players.277")}</th>
+                  <th>{t("ui.players.278")}</th>
+                  <th>{t("ui.players.279")}</th>
+                  <th>{t("ui.players.280")}</th>
+                  <th>{t("ui.players.281")}</th>
+                  <th>{t("ui.players.282")}</th>
+                  <th>{t("ui.players.283")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -709,7 +709,7 @@ export default function PlayersPage() {
                       <td data-label={t("admin.players.035")}>
                         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                           <span className="admin-badge neutral">
-                            {saving[player.id] ? "保存中" : t("admin.players.036")}
+                            {saving[player.id] ? t("ui.players.524") : t("admin.players.036")}
                           </span>
                           {canEdit ? (
                             <button

@@ -92,8 +92,8 @@ export default function PaymentsPage() {
       <div className="admin-card">
         <div className="admin-card-header">
           <div>
-            <h3>支付事件</h3>
-            <p>展示支付回调事件与核验状态。</p>
+            <h3>{t("ui.payments.194")}</h3>
+            <p>{t("ui.payments.195")}</p>
           </div>
           <div className="admin-card-actions">
             <button
@@ -113,7 +113,7 @@ export default function PaymentsPage() {
 
       <div className="admin-card">
         <div className="admin-card-header">
-          <h3>事件列表</h3>
+          <h3>{t("ui.payments.196")}</h3>
           <div className="admin-card-actions">
             <span className="admin-pill">共 {events.length} 条</span>
             {cacheHint ? <span className="admin-pill">{cacheHint}</span> : null}
@@ -138,12 +138,12 @@ export default function PaymentsPage() {
             <table className="admin-table">
               <thead>
                 <tr>
-                  <th>时间</th>
-                  <th>事件</th>
-                  <th>订单号</th>
-                  <th>金额</th>
-                  <th>状态</th>
-                  <th>校验</th>
+                  <th>{t("ui.payments.197")}</th>
+                  <th>{t("ui.payments.198")}</th>
+                  <th>{t("ui.payments.199")}</th>
+                  <th>{t("ui.payments.200")}</th>
+                  <th>{t("ui.payments.201")}</th>
+                  <th>{t("ui.payments.202")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -166,7 +166,7 @@ export default function PaymentsPage() {
                     </td>
                     <td data-label={t("admin.payments.011")}>
                       <span className={`admin-badge${event.verified ? "" : " warm"}`}>
-                        {event.verified ? "已校验" : t("admin.payments.012")}
+                        {event.verified ? t("ui.payments.584") : t("admin.payments.012")}
                       </span>
                     </td>
                   </tr>

@@ -309,7 +309,7 @@ export default function ChainPage() {
       <div className="admin-card">
         <div className="admin-card-header">
           <div>
-            <h3>订单对账</h3>
+            <h3>{t("ui.chain.319")}</h3>
             <p>
               对比订单记录与对账数据，处理争议裁决。
               {autoCancelHours ? ` 超期自动取消：${autoCancelHours} 小时。` : ""}
@@ -367,7 +367,7 @@ export default function ChainPage() {
 
       <div className="admin-card">
         <div className="admin-card-header">
-          <h3>争议订单</h3>
+          <h3>{t("ui.chain.320")}</h3>
           <div className="admin-card-actions">
             <span className="admin-pill">共 {disputedOrders.length} 条</span>
           </div>
@@ -446,7 +446,7 @@ export default function ChainPage() {
                       disabled={action === order.orderId}
                       onClick={() => resolveDispute(order.orderId)}
                     >
-                      {action === order.orderId ? "裁决中..." : t("admin.chain.019")}
+                      {action === order.orderId ? t("ui.chain.651") : t("admin.chain.019")}
                     </button>
                   </div>
                 </div>
@@ -458,7 +458,7 @@ export default function ChainPage() {
 
       <div className="admin-card">
         <div className="admin-card-header">
-          <h3>订单列表</h3>
+          <h3>{t("ui.chain.321")}</h3>
           <div className="admin-card-actions">
             <span className="admin-pill">共 {chainOrders.length} 条</span>
           </div>
@@ -482,13 +482,13 @@ export default function ChainPage() {
             <table className="admin-table">
               <thead>
                 <tr>
-                  <th>订单号</th>
-                  <th>状态</th>
-                  <th>撮合费</th>
-                  <th>押金</th>
-                  <th>创建时间</th>
-                  <th>争议截止</th>
-                  <th>操作</th>
+                  <th>{t("ui.chain.322")}</th>
+                  <th>{t("ui.chain.323")}</th>
+                  <th>{t("ui.chain.324")}</th>
+                  <th>{t("ui.chain.325")}</th>
+                  <th>{t("ui.chain.326")}</th>
+                  <th>{t("ui.chain.327")}</th>
+                  <th>{t("ui.chain.328")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -546,7 +546,7 @@ export default function ChainPage() {
                               : t("admin.chain.031")}
                           </button>
                         ) : (
-                          <span className="admin-text-muted">需争议/结算</span>
+                          <span className="admin-text-muted">{t("ui.chain.329")}</span>
                         )}
                       </td>
                     </tr>
@@ -560,7 +560,7 @@ export default function ChainPage() {
 
       <div className="admin-card">
         <div className="admin-card-header">
-          <h3>对账差异</h3>
+          <h3>{t("ui.chain.330")}</h3>
           <div className="admin-card-actions">
             <button
               className="admin-btn ghost"
@@ -586,7 +586,7 @@ export default function ChainPage() {
         ) : (
           <div className="admin-stack">
             <div>
-              <strong>对账侧存在但本地缺失：</strong>
+              <strong>{t("ui.chain.331")}</strong>
               {missingLocal.length === 0 ? (
                 <span> 无</span>
               ) : (
@@ -594,7 +594,7 @@ export default function ChainPage() {
               )}
             </div>
             <div>
-              <strong>本地存在但对账侧缺失：</strong>
+              <strong>{t("ui.chain.332")}</strong>
               {missingChain.length === 0 ? (
                 <span> 无</span>
               ) : (

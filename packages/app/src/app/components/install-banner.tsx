@@ -1,4 +1,5 @@
 "use client";
+import { t } from "@/lib/i18n/i18n-client";
 import { useEffect, useState } from "react";
 import { Download } from "lucide-react";
 
@@ -35,8 +36,8 @@ export function InstallBanner() {
       <div className="flex items-center gap-3">
         <Download className="h-5 w-5 text-cyan-300" />
         <div className="flex-1 text-sm">
-          <div className="font-semibold">添加 情谊电竞 到桌面</div>
-          <div className="text-white/70">离线也能打开，获得类原生体验。</div>
+          <div className="font-semibold">{t("ui.install-banner.493")}</div>
+          <div className="text-white/70">{t("ui.install-banner.494")}</div>
         </div>
         <button
           onClick={install}

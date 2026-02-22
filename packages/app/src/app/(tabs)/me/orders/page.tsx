@@ -11,9 +11,9 @@ import { StateBlock } from "@/app/components/state-block";
 import { formatShortDateTime } from "@/lib/shared/date-utils";
 
 const filters = [
-  { key: "all", label: "全部订单" },
-  { key: "pending-start", label: "待开始" },
-  { key: "pending-confirm", label: "待确认" },
+  { key: "all", label: t("ui.orders.537") },
+  { key: "pending-start", label: t("ui.orders.594") },
+  { key: "pending-confirm", label: t("ui.orders.597") },
 ];
 
 function formatTime(value?: string) {
@@ -68,8 +68,8 @@ export default function OrderCenterPage() {
           <Link href="/me" className="dl-icon-circle" aria-label={t("me.orders.001")}>
             <ArrowLeft size={16} />
           </Link>
-          <span className="dl-time-text">订单中心</span>
-          <span className="dl-chip">服务记录</span>
+          <span className="dl-time-text">{t("ui.orders.115")}</span>
+          <span className="dl-chip">{t("ui.orders.116")}</span>
         </div>
         <div className="dl-actions">
           <button onClick={load} className="dl-icon-circle" aria-label={t("me.orders.002")}>
@@ -98,7 +98,7 @@ export default function OrderCenterPage() {
 
       <section className="dl-card" style={{ padding: 16 }}>
         <div className="flex items-center justify-between">
-          <div className="text-sm font-semibold text-gray-900">订单列表</div>
+          <div className="text-sm font-semibold text-gray-900">{t("ui.orders.117")}</div>
           <span className="text-xs text-slate-500">共 {filtered.length} 单</span>
         </div>
         {loading ? (

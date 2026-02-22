@@ -121,8 +121,8 @@ export default function MantouWithdrawPage() {
       <div className="admin-card">
         <div className="admin-card-header">
           <div>
-            <h3>提现筛选</h3>
-            <p>按状态查看并处理提现申请。</p>
+            <h3>{t("ui.mantou.395")}</h3>
+            <p>{t("ui.mantou.396")}</p>
           </div>
         </div>
         <div className="admin-toolbar">
@@ -131,7 +131,7 @@ export default function MantouWithdrawPage() {
             value={statusFilter}
             onChange={(event) => setStatusFilter(event.target.value)}
           >
-            <option value={t("admin.mantou.003")}>全部状态</option>
+            <option value={t("admin.mantou.003")}>{t("ui.mantou.397")}</option>
             {MANTOU_WITHDRAW_STATUS_OPTIONS.map((status) => (
               <option key={status} value={status}>
                 {status}
@@ -154,7 +154,7 @@ export default function MantouWithdrawPage() {
 
       <div className="admin-card">
         <div className="admin-card-header">
-          <h3>提现申请列表</h3>
+          <h3>{t("ui.mantou.398")}</h3>
           <div className="admin-card-actions">
             <span className="admin-pill">共 {requests.length} 条</span>
             {cacheHint ? <span className="admin-pill">{cacheHint}</span> : null}
@@ -179,13 +179,13 @@ export default function MantouWithdrawPage() {
             <table className="admin-table">
               <thead>
                 <tr>
-                  <th>陪练账号</th>
-                  <th>数量</th>
-                  <th>收款账号</th>
-                  <th>状态</th>
-                  <th>备注</th>
-                  <th>时间</th>
-                  <th>操作</th>
+                  <th>{t("ui.mantou.399")}</th>
+                  <th>{t("ui.mantou.400")}</th>
+                  <th>{t("ui.mantou.401")}</th>
+                  <th>{t("ui.mantou.402")}</th>
+                  <th>{t("ui.mantou.403")}</th>
+                  <th>{t("ui.mantou.404")}</th>
+                  <th>{t("ui.mantou.405")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -237,7 +237,7 @@ export default function MantouWithdrawPage() {
                     </td>
                     <td data-label={t("admin.mantou.015")}>
                       <span className="admin-badge neutral">
-                        {saving[item.id] ? "保存中" : t("admin.mantou.016")}
+                        {saving[item.id] ? t("ui.mantou.528") : t("admin.mantou.016")}
                       </span>
                     </td>
                   </tr>

@@ -18,7 +18,7 @@ export default function HomeError({
   return (
     <div style={{ minHeight: "60vh", display: "grid", placeItems: "center", padding: 24 }}>
       <div style={{ textAlign: "center", maxWidth: 320 }}>
-        <div style={{ fontSize: 20, fontWeight: 700, color: "#0f172a" }}>加载失败</div>
+        <div style={{ fontSize: 20, fontWeight: 700, color: "#0f172a" }}>{t("ui.error.001")}</div>
         <div style={{ marginTop: 8, color: "#64748b", fontSize: 14 }}>
           订单池数据加载出错，请重试。
         </div>

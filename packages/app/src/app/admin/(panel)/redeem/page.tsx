@@ -233,8 +233,8 @@ export default function RedeemAdminPage() {
       <div className="admin-card">
         <div className="admin-card-header">
           <div>
-            <h3>生成兑换卡密</h3>
-            <p>创建批次并生成卡密，支持多种奖励类型。</p>
+            <h3>{t("ui.redeem.284")}</h3>
+            <p>{t("ui.redeem.285")}</p>
           </div>
           <div className="admin-card-actions">
             <button className="admin-btn ghost" onClick={loadCodes}>
@@ -427,8 +427,8 @@ export default function RedeemAdminPage() {
                 value={form.status}
                 onChange={(event) => setForm((prev) => ({ ...prev, status: event.target.value }))}
               >
-                <option value="active">启用</option>
-                <option value="disabled">停用</option>
+                <option value="active">{t("ui.redeem.286")}</option>
+                <option value="disabled">{t("ui.redeem.287")}</option>
               </select>
             </label>
           </div>
@@ -479,18 +479,18 @@ export default function RedeemAdminPage() {
         <div className="admin-card">
           <div className="admin-card-header">
             <div>
-              <h3>最新生成卡密</h3>
-              <p>点击即可复制卡密。</p>
+              <h3>{t("ui.redeem.288")}</h3>
+              <p>{t("ui.redeem.289")}</p>
             </div>
           </div>
           <div className="admin-table-wrap">
             <table className="admin-table">
               <thead>
                 <tr>
-                  <th>卡密</th>
-                  <th>状态</th>
-                  <th>次数</th>
-                  <th>奖励</th>
+                  <th>{t("ui.redeem.290")}</th>
+                  <th>{t("ui.redeem.291")}</th>
+                  <th>{t("ui.redeem.292")}</th>
+                  <th>{t("ui.redeem.293")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -550,8 +550,8 @@ export default function RedeemAdminPage() {
       <div className="admin-card">
         <div className="admin-card-header">
           <div>
-            <h3>卡密列表</h3>
-            <p>查看卡密状态与使用情况。</p>
+            <h3>{t("ui.redeem.294")}</h3>
+            <p>{t("ui.redeem.295")}</p>
           </div>
         </div>
 
@@ -568,11 +568,11 @@ export default function RedeemAdminPage() {
             value={statusFilter}
             onChange={(event) => setStatusFilter(event.target.value)}
           >
-            <option value="all">全部状态</option>
-            <option value="active">启用</option>
-            <option value="disabled">停用</option>
-            <option value="exhausted">用尽</option>
-            <option value="expired">过期</option>
+            <option value="all">{t("ui.redeem.296")}</option>
+            <option value="active">{t("ui.redeem.297")}</option>
+            <option value="disabled">{t("ui.redeem.298")}</option>
+            <option value="exhausted">{t("ui.redeem.299")}</option>
+            <option value="expired">{t("ui.redeem.300")}</option>
           </select>
           <button className="admin-btn ghost" onClick={loadCodes}>
             刷新
@@ -588,13 +588,13 @@ export default function RedeemAdminPage() {
             <table className="admin-table">
               <thead>
                 <tr>
-                  <th>卡密</th>
-                  <th>批次</th>
-                  <th>状态</th>
-                  <th>次数</th>
-                  <th>奖励</th>
-                  <th>有效期</th>
-                  <th>操作</th>
+                  <th>{t("ui.redeem.301")}</th>
+                  <th>{t("ui.redeem.302")}</th>
+                  <th>{t("ui.redeem.303")}</th>
+                  <th>{t("ui.redeem.304")}</th>
+                  <th>{t("ui.redeem.305")}</th>
+                  <th>{t("ui.redeem.306")}</th>
+                  <th>{t("ui.redeem.307")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -678,8 +678,8 @@ export default function RedeemAdminPage() {
       <div className="admin-card">
         <div className="admin-card-header">
           <div>
-            <h3>兑换记录</h3>
-            <p>最新 50 条兑换记录。</p>
+            <h3>{t("ui.redeem.308")}</h3>
+            <p>{t("ui.redeem.309")}</p>
           </div>
         </div>
         {recordsLoading ? (
@@ -691,12 +691,12 @@ export default function RedeemAdminPage() {
             <table className="admin-table">
               <thead>
                 <tr>
-                  <th>时间</th>
-                  <th>用户</th>
-                  <th>卡密</th>
-                  <th>批次</th>
-                  <th>奖励</th>
-                  <th>状态</th>
+                  <th>{t("ui.redeem.310")}</th>
+                  <th>{t("ui.redeem.311")}</th>
+                  <th>{t("ui.redeem.312")}</th>
+                  <th>{t("ui.redeem.313")}</th>
+                  <th>{t("ui.redeem.314")}</th>
+                  <th>{t("ui.redeem.315")}</th>
                 </tr>
               </thead>
               <tbody>

@@ -33,8 +33,8 @@ const options: Option[] = [
 ];
 
 const channels: { key: PayChannel; label: string; note: string }[] = [
-  { key: "alipay", label: "支付宝", note: "跳转支付完成后返回" },
-  { key: "wechat_pay", label: "微信支付", note: "扫码完成付款" },
+  { key: "alipay", label: "支付宝", note: t("ui.wallet.689") },
+  { key: "wechat_pay", label: "微信支付", note: t("ui.wallet.602") },
 ];
 
 const qrImageLoader: ImageLoader = ({ src }) => src;
@@ -74,11 +74,11 @@ export default function Wallet() {
 
   const customError = useMemo(() => {
     if (!customTouched && !customAmount) return null;
-    if (!customAmount) return "请输入数量";
+    if (!customAmount) return t("ui.wallet.678");
     const raw = Number(customAmount);
-    if (!Number.isFinite(raw)) return "请输入整数";
-    if (!Number.isInteger(raw)) return "请输入整数";
-    if (raw <= 0) return "至少 1";
+    if (!Number.isFinite(raw)) return t("ui.wallet.679");
+    if (!Number.isInteger(raw)) return t("ui.wallet.680");
+    if (raw <= 0) return t("ui.wallet.648");
     return null;
   }, [customAmount, customTouched]);
 
@@ -89,7 +89,7 @@ export default function Wallet() {
     if (redirectStatus === "succeeded") {
       setStatus({
         tone: "loading",
-        title: "支付成功，正在刷新余额...",
+        title: t("ui.wallet.618"),
         description: "正在确认支付信息",
       });
       setPollCount(0);
@@ -140,8 +140,8 @@ export default function Wallet() {
   const wechatQrHint = useMemo(() => {
     if (!payInfo) return null;
     if (wechatQrSrc) return null;
-    if (payInfo.qrCodeLink) return "如二维码未显示，可点击下方按钮打开支付指引页";
-    if (payInfo.qrCodeText) return "如二维码未显示，请稍后重试或刷新二维码";
+    if (payInfo.qrCodeLink) return t("ui.wallet.568");
+    if (payInfo.qrCodeText) return t("ui.wallet.569");
     return null;
   }, [payInfo, wechatQrSrc]);
 
@@ -150,7 +150,7 @@ export default function Wallet() {
 
   const handleConfirm = async () => {
     if (!agree) {
-      setStatus({ tone: "warning", title: "请先勾选同意充值协议" });
+      setStatus({ tone: "warning", title: t("ui.wallet.675") });
       return;
     }
     if (loading) return;
@@ -159,7 +159,7 @@ export default function Wallet() {
     setPayInfo(null);
     const address = getCurrentAddress();
     if (!address) {
-      setStatus({ tone: "warning", title: "请先登录账号以便入账" });
+      setStatus({ tone: "warning", title: t("ui.wallet.676") });
       setLoading(false);
       return;
     }
@@ -200,7 +200,7 @@ export default function Wallet() {
       if (!data.qrCodeData && !data.qrCodeUrl && !data.qrCodeLink && !data.qrCodeText) {
         if (channel === "alipay") {
           if (data.status === "succeeded") {
-            setStatus({ tone: "success", title: "支付已完成，可在明细中查看状态。" });
+            setStatus({ tone: "success", title: t("ui.wallet.617") });
           } else {
             const info = data.nextActionType ? `，动作：${data.nextActionType}` : "";
             setStatus({
@@ -229,19 +229,19 @@ export default function Wallet() {
         <Link href="/me" aria-label={t("wallet.002")}>
           <ArrowLeft size={20} />
         </Link>
-        <span className="pay-title">钻石充值</span>
+        <span className="pay-title">{t("ui.wallet.141")}</span>
         <Link href="/wallet/records" className="pay-link">
           明细
         </Link>
       </header>
 
       <div className="pay-balance-card">
-        <div className="pay-balance-label">我的钻石</div>
+        <div className="pay-balance-label">{t("ui.wallet.142")}</div>
         <div className="pay-balance-value">{balance}</div>
       </div>
 
       <div className="pay-options">
-        <div className="pay-options-label">请选择充值数量</div>
+        <div className="pay-options-label">{t("ui.wallet.143")}</div>
         <div className="pay-option-grid">
           {options.map((opt) => (
             <button
@@ -255,7 +255,7 @@ export default function Wallet() {
             </button>
           ))}
           <div className={`pay-option pay-option-custom ${isCustomSelected ? "is-active" : ""}`}>
-            <div className="pay-option-amt">自定义数量</div>
+            <div className="pay-option-amt">{t("ui.wallet.144")}</div>
             <div className="pay-custom-row">
               <input
                 className="admin-input pay-custom-input"
@@ -315,11 +315,11 @@ export default function Wallet() {
           <div className="pay-qr-card">
             <div className="pay-qr-info">
               <div className="pay-qr-title">
-                <span>订单号</span>
-                <span className="pay-badge">待支付</span>
+                <span>{t("ui.wallet.145")}</span>
+                <span className="pay-badge">{t("ui.wallet.146")}</span>
               </div>
               <div className="pay-qr-amount">{orderId}</div>
-              <div className="pay-qr-note">请使用同一订单完成付款。</div>
+              <div className="pay-qr-note">{t("ui.wallet.147")}</div>
             </div>
           </div>
         )}
@@ -327,10 +327,10 @@ export default function Wallet() {
           <div className="pay-qr-card">
             <div className="pay-qr-info">
               <div className="pay-qr-title">
-                <span>支付跳转</span>
-                <span className="pay-badge">支付宝</span>
+                <span>{t("ui.wallet.148")}</span>
+                <span className="pay-badge">{t("ui.wallet.149")}</span>
               </div>
-              <div className="pay-qr-note">若未自动跳转，可点击下方按钮继续支付。</div>
+              <div className="pay-qr-note">{t("ui.wallet.150")}</div>
               <div className="mt-2">
                 <a className="pay-submit" href={payInfo.redirectUrl} rel="noreferrer">
                   打开支付页面
@@ -353,15 +353,15 @@ export default function Wallet() {
                   style={{ width: "100%", height: "100%", objectFit: "cover" }}
                 />
               ) : (
-                <div>请点击下方按钮生成二维码</div>
+                <div>{t("ui.wallet.151")}</div>
               )}
             </div>
             <div className="pay-qr-info">
               <div className="pay-qr-title">
-                <span>微信支付二维码</span>
-                <span className="pay-badge">扫码支付</span>
+                <span>{t("ui.wallet.152")}</span>
+                <span className="pay-badge">{t("ui.wallet.153")}</span>
               </div>
-              <div className="pay-qr-note">完成支付后系统会自动更新订单状态。</div>
+              <div className="pay-qr-note">{t("ui.wallet.154")}</div>
               {wechatQrHint && <div className="pay-qr-note">{wechatQrHint}</div>}
               {payInfo?.qrCodeLink && !wechatQrSrc && (
                 <div className="mt-2">
@@ -383,7 +383,7 @@ export default function Wallet() {
             onChange={(e) => setAgree(e.target.checked)}
             aria-label={t("wallet.005")}
           />
-          <span>同意并阅读《充值服务协议》</span>
+          <span>{t("ui.wallet.155")}</span>
         </label>
         <button
           type="button"
@@ -391,7 +391,7 @@ export default function Wallet() {
           disabled={!agree || loading}
           onClick={handleConfirm}
         >
-          {loading ? "创建支付中..." : `支付 ¥${selected.price.toFixed(2)}`}
+          {loading ? t("ui.wallet.547") : `支付 ¥${selected.price.toFixed(2)}`}
         </button>
         {status && (
           <StateBlock

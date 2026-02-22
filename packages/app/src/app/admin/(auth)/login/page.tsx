@@ -45,8 +45,8 @@ export default function AdminLoginPage() {
       <MotionCard className="admin-card admin-login-card">
         <div className="admin-card-header">
           <div>
-            <h2 className="admin-title">运营管理后台</h2>
-            <p className="admin-subtitle">使用后台密钥登录，开始订单与运营管理</p>
+            <h2 className="admin-title">{t("ui.login.479")}</h2>
+            <p className="admin-subtitle">{t("ui.login.480")}</p>
           </div>
         </div>
         <div className="admin-badge warm" style={{ marginBottom: 12 }}>
@@ -92,7 +92,7 @@ export default function AdminLoginPage() {
             type="submit"
             disabled={loading}
           >
-            {loading ? "登录中..." : t("admin.login.004")}
+            {loading ? t("ui.login.636") : t("admin.login.004")}
           </Button>
         </form>
         <div className="admin-helper">

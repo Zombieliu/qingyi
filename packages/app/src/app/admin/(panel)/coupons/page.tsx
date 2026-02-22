@@ -183,8 +183,8 @@ export default function CouponsPage() {
       <div className="admin-card">
         <div className="admin-card-header">
           <div>
-            <h3>新增优惠券</h3>
-            <p>配置面向用户的优惠券规则。</p>
+            <h3>{t("ui.coupons.333")}</h3>
+            <p>{t("ui.coupons.334")}</p>
           </div>
         </div>
         <div
@@ -282,8 +282,8 @@ export default function CouponsPage() {
       <div className="admin-card">
         <div className="admin-card-header">
           <div>
-            <h3>优惠券筛选</h3>
-            <p>按标题、兑换码与状态快速定位。</p>
+            <h3>{t("ui.coupons.335")}</h3>
+            <p>{t("ui.coupons.336")}</p>
           </div>
           <div className="admin-card-actions">
             <span className="admin-pill">可用 {totalActive} 张</span>
@@ -305,7 +305,7 @@ export default function CouponsPage() {
             value={statusFilter}
             onChange={(event) => setStatusFilter(event.target.value)}
           >
-            <option value={t("admin.coupons.009")}>全部状态</option>
+            <option value={t("admin.coupons.009")}>{t("ui.coupons.337")}</option>
             {COUPON_STATUS_OPTIONS.map((status) => (
               <option key={status} value={status}>
                 {status}
@@ -328,7 +328,7 @@ export default function CouponsPage() {
 
       <div className="admin-card">
         <div className="admin-card-header">
-          <h3>优惠券列表</h3>
+          <h3>{t("ui.coupons.338")}</h3>
           <div className="admin-card-actions">
             <span className="admin-pill">共 {coupons.length} 条</span>
             {cacheHint ? <span className="admin-pill">{cacheHint}</span> : null}
@@ -353,13 +353,13 @@ export default function CouponsPage() {
             <table className="admin-table">
               <thead>
                 <tr>
-                  <th>标题</th>
-                  <th>金额</th>
-                  <th>最低消费</th>
-                  <th>状态</th>
-                  <th>有效期</th>
-                  <th>说明</th>
-                  <th>更新</th>
+                  <th>{t("ui.coupons.339")}</th>
+                  <th>{t("ui.coupons.340")}</th>
+                  <th>{t("ui.coupons.341")}</th>
+                  <th>{t("ui.coupons.342")}</th>
+                  <th>{t("ui.coupons.343")}</th>
+                  <th>{t("ui.coupons.344")}</th>
+                  <th>{t("ui.coupons.345")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -503,7 +503,7 @@ export default function CouponsPage() {
                     </td>
                     <td data-label={t("admin.coupons.020")}>
                       <span className="admin-badge neutral">
-                        {saving[coupon.id] ? "保存中" : t("admin.coupons.021")}
+                        {saving[coupon.id] ? t("ui.coupons.525") : t("admin.coupons.021")}
                       </span>
                     </td>
                   </tr>

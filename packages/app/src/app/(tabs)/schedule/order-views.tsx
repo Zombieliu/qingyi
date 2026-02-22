@@ -36,7 +36,7 @@ function CompanionCard({
         <div className="text-sm text-amber-600 font-semibold">{statusLabel}</div>
         {hasProfile ? (
           <>
-            <div className="text-lg font-bold text-gray-900">陪玩游戏设置</div>
+            <div className="text-lg font-bold text-gray-900">{t("ui.order-views.031")}</div>
             <div className="text-xs text-gray-500">
               游戏名 {companionProfile?.gameName || "-"} · ID {companionProfile?.gameId || "-"}
             </div>
@@ -106,13 +106,13 @@ export function AwaitUserPayView({
           currentOrder={currentOrder}
           companionProfile={companionProfile}
           statusLabel={isEscrow ? "陪练费用已托管" : t("schedule.005")}
-          statusSub="请确认游戏信息"
+          statusSub={t("ui.order-views.032")}
         />
         <div className="ride-driver-actions">
           <button className="dl-tab-btn" onClick={cancelOrder}>
             取消订单
           </button>
-          <button className="dl-tab-btn accent">联系陪练</button>
+          <button className="dl-tab-btn accent">{t("ui.order-views.033")}</button>
         </div>
         {chainStatusHint && (
           <div className="text-xs text-gray-500 mt-2 text-right">{chainStatusHint}</div>
@@ -123,8 +123,8 @@ export function AwaitUserPayView({
       <div className="ride-pay-box">
         <div className="ride-pay-head">
           <div>
-            <div className="ride-pay-title">托管陪练费用</div>
-            <div className="ride-pay-sub">无需扫码，平台将从钻石托管后结算</div>
+            <div className="ride-pay-title">{t("ui.order-views.034")}</div>
+            <div className="ride-pay-sub">{t("ui.order-views.035")}</div>
           </div>
           <div className="ride-pay-amount">¥{playerDue.toFixed(2)}</div>
         </div>
@@ -137,7 +137,7 @@ export function AwaitUserPayView({
             onClick={async () => {
               await patchOrder(currentOrder.id, {
                 playerPaid: true,
-                status: "陪练费已托管",
+                status: t("ui.order-views.701"),
                 userAddress: getCurrentAddress(),
               });
               await refreshOrders();
@@ -224,14 +224,14 @@ export function EnrouteView({
         <CompanionCard
           currentOrder={currentOrder}
           companionProfile={companionProfile}
-          statusLabel="服务已开始"
-          statusSub="请保持在线"
+          statusLabel={t("ui.order-views.036")}
+          statusSub={t("ui.order-views.037")}
         />
         <div className="ride-driver-actions">
           <button className="dl-tab-btn" onClick={cancelOrder}>
             {renderActionLabel(`cancel-${currentOrder.id}`, t("schedule.008"))}
           </button>
-          <button className="dl-tab-btn">安全中心</button>
+          <button className="dl-tab-btn">{t("ui.order-views.038")}</button>
           {canConfirmCompletion && (
             <button
               className="dl-tab-btn"
@@ -261,7 +261,7 @@ export function EnrouteView({
                   await runChainAction(
                     `complete-${currentOrder.id}`,
                     () => markCompletedOnChain(currentOrder.id),
-                    "已确认完成",
+                    t("ui.order-views.587"),
                     currentOrder.id
                   );
                   return;
@@ -277,7 +277,7 @@ export function EnrouteView({
               {renderActionLabel(`complete-${currentOrder.id}`, t("schedule.009"))}
             </button>
           )}
-          <button className="dl-tab-btn accent">联系陪练</button>
+          <button className="dl-tab-btn accent">{t("ui.order-views.039")}</button>
         </div>
         <div className="text-xs text-gray-500 mt-2">订单：{currentOrder.item}</div>
       </div>
@@ -362,10 +362,10 @@ export function PendingSettlementView({
         <CompanionCard
           currentOrder={currentOrder}
           companionProfile={companionProfile}
-          statusLabel="服务已完成"
+          statusLabel={t("ui.order-views.040")}
         />
         <div className="ml-auto text-right">
-          <div className="text-emerald-600 font-semibold text-sm">待结算</div>
+          <div className="text-emerald-600 font-semibold text-sm">{t("ui.order-views.041")}</div>
           <div className="text-xs text-gray-500">
             {inDisputeWindow ? "可发起争议" : t("schedule.012")}
           </div>
@@ -392,7 +392,7 @@ export function PendingSettlementView({
                   await runChainAction(
                     `dispute-${currentOrder.id}`,
                     () => raiseDisputeOnChain(currentOrder.id, value),
-                    "已提交争议",
+                    t("ui.order-views.578"),
                     currentOrder.id
                   );
                 },
@@ -422,7 +422,7 @@ export function PendingSettlementView({
                     await runChainAction(
                       `finalize-${currentOrder.id}`,
                       () => finalizeNoDisputeOnChain(currentOrder.id),
-                      "订单已结算",
+                      t("ui.order-views.658"),
                       currentOrder.id
                     );
                   },
@@ -432,14 +432,14 @@ export function PendingSettlementView({
               runChainAction(
                 `finalize-${currentOrder.id}`,
                 () => finalizeNoDisputeOnChain(currentOrder.id),
-                "订单已结算",
+                t("ui.order-views.659"),
                 currentOrder.id
               );
             }}
           >
             {renderActionLabel(`finalize-${currentOrder.id}`, t("schedule.014"))}
           </button>
-          <button className="dl-tab-btn accent">联系陪练</button>
+          <button className="dl-tab-btn accent">{t("ui.order-views.042")}</button>
         </div>
         {disputeDeadline && (
           <div className="text-xs text-gray-500 mt-2 text-right">

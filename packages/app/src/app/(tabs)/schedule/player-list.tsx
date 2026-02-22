@@ -37,7 +37,7 @@ export function PlayerList({
     <>
       <div className="ride-block-title">
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <span>可接陪练</span>
+          <span>{t("ui.player-list.044")}</span>
           <button
             className="dl-tab-btn"
             style={{ padding: "4px 8px" }}
@@ -97,7 +97,7 @@ export function PlayerList({
             >
               <div className="ride-row-main">
                 <div className="ride-row-title">{player.name}</div>
-                <div className="ride-row-desc">{player.role || "擅长位置待完善"}</div>
+                <div className="ride-row-desc">{player.role || t("ui.player-list.615")}</div>
               </div>
               <div className="ride-row-side">
                 <label className="ride-checkbox" onClick={(event) => event.stopPropagation()}>

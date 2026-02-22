@@ -47,7 +47,7 @@ type StoredProfiles = Record<string, GameProfile>;
 // --- Constants ---
 
 export const FIRST_ORDER_STORAGE_KEY = "qy_first_order_discount_used_v1";
-export const FIRST_ORDER_DISCOUNT = { minSpend: 99, amount: 10, label: "首单满99减10" };
+export const FIRST_ORDER_DISCOUNT = { minSpend: 99, amount: 10, label: t("ui.schedule-data.707") };
 export const PLAYER_SECTION_TITLE = "可接陪练";
 export const MATCH_RATE = 0.15;
 
@@ -55,66 +55,102 @@ export const MATCH_RATE = 0.15;
 
 export const sections: RideSection[] = [
   {
-    title: "推荐单",
+    title: t("schedule.data.001"),
     highlight: true,
     items: [
       {
-        name: "绝密体验单",
-        desc: "15分钟上车",
-        eta: "15分钟",
-        price: "880钻石",
-        old: "1280钻石",
-        tag: "已优惠400",
+        name: t("schedule.data.002"),
+        desc: t("schedule.data.003"),
+        eta: t("schedule.data.004"),
+        price: t("schedule.data.005"),
+        old: t("schedule.data.006"),
+        tag: t("schedule.data.007"),
         bold: true,
-        info: "保1000W",
+        info: t("schedule.data.008"),
         base: 88,
       },
       {
-        name: "绝密快单",
-        desc: "10分钟上车",
-        eta: "10分钟",
-        price: "1280钻石",
-        old: "1580钻石",
-        info: "保1000W",
+        name: t("schedule.data.009"),
+        desc: t("schedule.data.010"),
+        eta: t("schedule.data.011"),
+        price: t("schedule.data.012"),
+        old: t("schedule.data.013"),
+        info: t("schedule.data.014"),
         base: 128,
       },
     ],
   },
   {
-    title: "特价单",
+    title: t("schedule.data.015"),
     items: [
       {
-        name: "机密大坝",
-        desc: "单护/双护随机",
-        eta: "5分钟",
-        price: "280钻石",
-        tag: "保1880",
+        name: t("schedule.data.016"),
+        desc: t("schedule.data.017"),
+        eta: t("schedule.data.018"),
+        price: t("schedule.data.019"),
+        tag: t("schedule.data.020"),
         base: 28,
       },
       {
-        name: "机密航天",
-        desc: "单护/双护随机",
-        eta: "7分钟",
-        price: "380钻石",
-        tag: "保2880",
+        name: t("schedule.data.021"),
+        desc: t("schedule.data.022"),
+        eta: t("schedule.data.023"),
+        price: t("schedule.data.024"),
+        tag: t("schedule.data.025"),
         base: 38,
       },
     ],
   },
   {
-    title: "小时单",
+    title: t("schedule.data.026"),
     items: [
-      { name: "机密单护", desc: "稳定陪练", eta: "7分钟", price: "300钻石", base: 30 },
-      { name: "机密双护", desc: "双人协同", eta: "8分钟", price: "600钻石", base: 60 },
-      { name: "绝密单护", desc: "高强度陪练", eta: "10分钟", price: "500钻石", base: 50 },
-      { name: "绝密双护", desc: "双核保障", eta: "11分钟", price: "1000钻石", base: 100 },
+      {
+        name: t("ui.schedule-data.629"),
+        desc: t("ui.schedule-data.640"),
+        eta: "7分钟",
+        price: "300钻石",
+        base: 30,
+      },
+      {
+        name: t("ui.schedule-data.631"),
+        desc: t("ui.schedule-data.556"),
+        eta: t("ui.schedule-data.509"),
+        price: "600钻石",
+        base: 60,
+      },
+      {
+        name: t("ui.schedule-data.645"),
+        desc: t("ui.schedule-data.708"),
+        eta: "10分钟",
+        price: "500钻石",
+        base: 50,
+      },
+      {
+        name: t("ui.schedule-data.646"),
+        desc: t("ui.schedule-data.557"),
+        eta: t("ui.schedule-data.504"),
+        price: "1000钻石",
+        base: 100,
+      },
     ],
   },
   {
-    title: "趣味单",
+    title: t("schedule.data.027"),
     items: [
-      { name: "摸油", desc: "保证带油出局", eta: "9分钟", price: "5880钻石", base: 588 },
-      { name: "摸心", desc: "保证摸到心", eta: "12分钟", price: "12880钻石", base: 1288 },
+      {
+        name: t("ui.schedule-data.613"),
+        desc: t("ui.schedule-data.533"),
+        eta: t("ui.schedule-data.510"),
+        price: "5880钻石",
+        base: 588,
+      },
+      {
+        name: t("ui.schedule-data.612"),
+        desc: t("ui.schedule-data.534"),
+        eta: t("ui.schedule-data.505"),
+        price: "12880钻石",
+        base: 1288,
+      },
     ],
   },
 ];

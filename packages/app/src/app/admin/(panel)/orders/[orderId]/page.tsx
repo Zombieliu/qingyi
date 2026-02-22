@@ -31,7 +31,7 @@ function ReviewSection({ orderId }: { orderId: string }) {
     return (
       <div className="admin-card" style={{ marginTop: 16 }}>
         <div className="admin-card-header">
-          <h3>用户评价</h3>
+          <h3>{t("ui.orderId.421")}</h3>
         </div>
         <p className="admin-meta" style={{ marginTop: 8 }}>
           暂无评价
@@ -43,7 +43,7 @@ function ReviewSection({ orderId }: { orderId: string }) {
   return (
     <div className="admin-card" style={{ marginTop: 16 }}>
       <div className="admin-card-header">
-        <h3>用户评价</h3>
+        <h3>{t("ui.orderId.422")}</h3>
       </div>
       <div className="admin-form" style={{ marginTop: 12 }}>
         <label className="admin-field">
@@ -158,7 +158,7 @@ export default function OrderDetailPage() {
       <div className="admin-card">
         <div className="admin-card-header">
           <div>
-            <h3>订单详情</h3>
+            <h3>{t("ui.orderId.423")}</h3>
             <div className="admin-meta">{order.id}</div>
           </div>
           <div className="admin-card-actions">

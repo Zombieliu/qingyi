@@ -469,7 +469,7 @@ export default function Schedule() {
       const ok = await runChainAction(
         `cancel-${currentOrder.id}`,
         () => cancelOrderOnChain(currentOrder.id),
-        "订单已取消，托管费已退回",
+        t("ui.schedule.656"),
         currentOrder.id
       );
       if (!ok) return;
@@ -694,11 +694,11 @@ export default function Schedule() {
       const gameProfile = loadGameProfile(getCurrentAddress());
       const result = await createOrder({
         id: chainOrderId || `${Date.now()}`,
-        user: "安排页面",
+        user: t("ui.schedule.571"),
         userAddress: getCurrentAddress(),
         item: locked.items.join("、"),
         amount: locked.total,
-        status: "待派单",
+        status: t("ui.schedule.596"),
         time: new Date().toISOString(),
         chainDigest: chainDigest || undefined,
         serviceFee: locked.service,
@@ -791,7 +791,7 @@ export default function Schedule() {
       if (result.sent === false) {
         setToast(result.error || "订单已创建，通知失败");
       } else {
-        setToast(chainDigest ? "已提交并派单" : t("schedule.015"));
+        setToast(chainDigest ? t("ui.schedule.582") : t("schedule.015"));
       }
     } catch (e) {
       const message = formatErrorMessage(e, t("schedule.016"));
@@ -1080,7 +1080,7 @@ export default function Schedule() {
           <div className="ride-range">
             预估价 {pickedPrice ? pickedDiamonds.toFixed(0) : "40-90"} 钻石
           </div>
-          <div className="ride-extra">动态调价</div>
+          <div className="ride-extra">{t("ui.schedule.043")}</div>
           {firstOrderEligible && (
             <div className="ride-discount-tag">{FIRST_ORDER_DISCOUNT.label}</div>
           )}

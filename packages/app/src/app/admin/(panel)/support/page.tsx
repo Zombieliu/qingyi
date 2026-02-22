@@ -127,8 +127,8 @@ export default function SupportPage() {
       <div className="admin-card">
         <div className="admin-card-header">
           <div>
-            <h3>工单筛选</h3>
-            <p>快速定位客户问题与处理进度。</p>
+            <h3>{t("ui.support.368")}</h3>
+            <p>{t("ui.support.369")}</p>
           </div>
         </div>
         <div className="admin-toolbar">
@@ -147,7 +147,7 @@ export default function SupportPage() {
             value={statusFilter}
             onChange={(event) => setStatusFilter(event.target.value)}
           >
-            <option value={t("admin.support.004")}>全部状态</option>
+            <option value={t("admin.support.004")}>{t("ui.support.370")}</option>
             {SUPPORT_STATUS_OPTIONS.map((status) => (
               <option key={status} value={status}>
                 {status}
@@ -170,7 +170,7 @@ export default function SupportPage() {
 
       <div className="admin-card">
         <div className="admin-card-header">
-          <h3>工单列表</h3>
+          <h3>{t("ui.support.371")}</h3>
           <div className="admin-card-actions">
             <span className="admin-pill">共 {tickets.length} 条</span>
             {cacheHint ? <span className="admin-pill">{cacheHint}</span> : null}
@@ -195,25 +195,27 @@ export default function SupportPage() {
             <table className="admin-table">
               <thead>
                 <tr>
-                  <th>用户</th>
-                  <th>主题</th>
-                  <th>内容</th>
-                  <th>状态</th>
-                  <th>备注</th>
-                  <th>时间</th>
-                  <th>更新</th>
+                  <th>{t("ui.support.372")}</th>
+                  <th>{t("ui.support.373")}</th>
+                  <th>{t("ui.support.374")}</th>
+                  <th>{t("ui.support.375")}</th>
+                  <th>{t("ui.support.376")}</th>
+                  <th>{t("ui.support.377")}</th>
+                  <th>{t("ui.support.378")}</th>
                 </tr>
               </thead>
               <tbody>
                 {tickets.map((ticket) => (
                   <tr key={ticket.id}>
                     <td data-label={t("admin.support.009")}>
-                      <div className="admin-text-strong">{ticket.userName || "访客"}</div>
+                      <div className="admin-text-strong">
+                        {ticket.userName || t("ui.support.672")}
+                      </div>
                       <div className="admin-meta">{ticket.contact || "-"}</div>
                       <div className="admin-meta-faint">{ticket.id}</div>
                     </td>
                     <td data-label={t("admin.support.010")}>
-                      <div className="admin-text-strong">{ticket.topic || "其他"}</div>
+                      <div className="admin-text-strong">{ticket.topic || t("ui.support.543")}</div>
                     </td>
                     <td data-label={t("admin.support.011")}>
                       <div className="admin-meta">{ticket.message}</div>
@@ -259,7 +261,7 @@ export default function SupportPage() {
                     </td>
                     <td data-label={t("admin.support.016")}>
                       <span className="admin-badge neutral">
-                        {saving[ticket.id] ? "保存中" : t("admin.support.017")}
+                        {saving[ticket.id] ? t("ui.support.527") : t("admin.support.017")}
                       </span>
                     </td>
                   </tr>

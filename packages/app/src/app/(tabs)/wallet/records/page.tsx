@@ -102,8 +102,8 @@ export default function WalletRecords() {
           <Link href="/wallet" className="dl-icon-circle" aria-label={t("wallet.records.006")}>
             <ArrowLeft size={16} />
           </Link>
-          <span className="dl-time-text">充值明细</span>
-          <span className="dl-chip">钻石</span>
+          <span className="dl-time-text">{t("ui.records.156")}</span>
+          <span className="dl-chip">{t("ui.records.157")}</span>
         </div>
         <div className="dl-actions">
           <button
@@ -171,7 +171,7 @@ export default function WalletRecords() {
       {hasMore && (
         <div className="mt-4 flex justify-center">
           <button className="dl-tab-btn" onClick={() => load(page + 1, true)} disabled={loading}>
-            {loading ? "加载中..." : t("wallet.records.014")}
+            {loading ? t("ui.records.550") : t("wallet.records.014")}
           </button>
         </div>
       )}

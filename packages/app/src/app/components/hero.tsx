@@ -1,3 +1,4 @@
+import { t } from "@/lib/i18n/i18n-client";
 import { Users, ShieldCheck, Radio, Sparkles, Download } from "lucide-react";
 
 export function Hero() {
@@ -32,11 +33,11 @@ export function Hero() {
           <div className="flex gap-6 text-sm text-cyan-50/70">
             <div className="flex items-center gap-2">
               <Users className="h-4 w-4" />
-              <span>实时分段匹配</span>
+              <span>{t("ui.hero.482")}</span>
             </div>
             <div className="flex items-center gap-2">
               <ShieldCheck className="h-4 w-4" />
-              <span>陪玩实名认证</span>
+              <span>{t("ui.hero.483")}</span>
             </div>
           </div>
         </div>
@@ -55,9 +56,9 @@ export function Hero() {
                   <div className="flex items-center gap-3">
                     <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-cyan-500 to-purple-500" />
                     <div>
-                      <div className="text-sm text-white/60">三角洲行动</div>
-                      <div className="text-lg font-semibold text-white">战术陪玩房间</div>
-                      <div className="text-xs text-cyan-100/80">SR 1700 · 语音中 · 6/8</div>
+                      <div className="text-sm text-white/60">{t("ui.hero.484")}</div>
+                      <div className="text-lg font-semibold text-white">{t("ui.hero.485")}</div>
+                      <div className="text-xs text-cyan-100/80">{t("ui.hero.486")}</div>
                     </div>
                     <button className="ml-auto rounded-full bg-cyan-500/90 px-3 py-1 text-xs font-semibold text-slate-950">
                       加入
@@ -66,21 +67,21 @@ export function Hero() {
                 </div>
                 <div className="grid grid-cols-2 gap-3 text-xs text-white/70">
                   <div className="rounded-lg border border-white/10 bg-white/5 p-3">
-                    <div className="text-white/60">匹配速度</div>
+                    <div className="text-white/60">{t("ui.hero.487")}</div>
                     <div className="text-2xl font-semibold text-white">0:35s</div>
-                    <div className="text-[11px] text-cyan-100/80">较昨日 +12%</div>
+                    <div className="text-[11px] text-cyan-100/80">{t("ui.hero.488")}</div>
                   </div>
                   <div className="rounded-lg border border-white/10 bg-white/5 p-3">
-                    <div className="text-white/60">陪玩好评</div>
+                    <div className="text-white/60">{t("ui.hero.489")}</div>
                     <div className="text-2xl font-semibold text-white">98.4%</div>
-                    <div className="text-[11px] text-cyan-100/80">近 200 场</div>
+                    <div className="text-[11px] text-cyan-100/80">{t("ui.hero.490")}</div>
                   </div>
                 </div>
               </div>
               <div className="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 p-3 text-xs text-white/80">
                 <div>
-                  <div className="text-white/60">下一场约战</div>
-                  <div className="text-sm font-semibold text-white">今晚 21:00 · 8 人房</div>
+                  <div className="text-white/60">{t("ui.hero.491")}</div>
+                  <div className="text-sm font-semibold text-white">{t("ui.hero.492")}</div>
                 </div>
                 <button className="rounded-full border border-cyan-400/70 px-3 py-1 text-[11px] font-semibold text-cyan-100">
                   设提醒

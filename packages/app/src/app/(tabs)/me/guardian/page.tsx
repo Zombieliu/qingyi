@@ -121,8 +121,8 @@ export default function GuardianPage() {
           <Link href="/me" className="dl-icon-circle" aria-label={t("me.guardian.001")}>
             <ArrowLeft size={16} />
           </Link>
-          <span className="dl-time-text">成为陪练</span>
-          <span className="dl-chip">达人招募</span>
+          <span className="dl-time-text">{t("ui.guardian.101")}</span>
+          <span className="dl-chip">{t("ui.guardian.102")}</span>
         </div>
         <div className="dl-actions">
           <span className="dl-icon-circle">
@@ -132,19 +132,19 @@ export default function GuardianPage() {
       </header>
 
       <section className="dl-card" style={{ padding: 16 }}>
-        <div className="text-sm font-semibold text-gray-900">入驻条件</div>
+        <div className="text-sm font-semibold text-gray-900">{t("ui.guardian.103")}</div>
         <div className="mt-2 text-xs text-slate-500 space-y-2">
-          <div>1. 熟练掌握热门游戏，具备稳定上分或教学能力。</div>
-          <div>2. 近 30 天游玩时长 60 小时以上。</div>
-          <div>3. 具备良好的沟通能力与服务意识。</div>
+          <div>{t("ui.guardian.104")}</div>
+          <div>{t("ui.guardian.105")}</div>
+          <div>{t("ui.guardian.106")}</div>
         </div>
       </section>
 
       <section className="dl-card" style={{ padding: 16 }}>
-        <div className="text-sm font-semibold text-gray-900">提交陪练申请</div>
+        <div className="text-sm font-semibold text-gray-900">{t("ui.guardian.107")}</div>
         <div className="mt-3 grid gap-3">
           <div className="grid gap-2">
-            <label className="text-xs text-slate-500">姓名 / 昵称</label>
+            <label className="text-xs text-slate-500">{t("ui.guardian.108")}</label>
             <input
               className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm"
               placeholder={t("me.guardian.002")}
@@ -153,7 +153,7 @@ export default function GuardianPage() {
             />
           </div>
           <div className="grid gap-2">
-            <label className="text-xs text-slate-500">联系方式</label>
+            <label className="text-xs text-slate-500">{t("ui.guardian.109")}</label>
             <input
               className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm"
               placeholder={t("me.guardian.003")}
@@ -162,7 +162,7 @@ export default function GuardianPage() {
             />
           </div>
           <div className="grid gap-2">
-            <label className="text-xs text-slate-500">擅长游戏</label>
+            <label className="text-xs text-slate-500">{t("ui.guardian.110")}</label>
             <input
               className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm"
               placeholder={t("me.guardian.004")}
@@ -171,7 +171,7 @@ export default function GuardianPage() {
             />
           </div>
           <div className="grid gap-2">
-            <label className="text-xs text-slate-500">段位与经验</label>
+            <label className="text-xs text-slate-500">{t("ui.guardian.111")}</label>
             <input
               className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm"
               placeholder={t("me.guardian.005")}
@@ -180,7 +180,7 @@ export default function GuardianPage() {
             />
           </div>
           <div className="grid gap-2">
-            <label className="text-xs text-slate-500">可接单时段</label>
+            <label className="text-xs text-slate-500">{t("ui.guardian.112")}</label>
             <input
               className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm"
               placeholder={t("me.guardian.006")}
@@ -191,7 +191,7 @@ export default function GuardianPage() {
             />
           </div>
           <div className="grid gap-2">
-            <label className="text-xs text-slate-500">补充说明</label>
+            <label className="text-xs text-slate-500">{t("ui.guardian.113")}</label>
             <textarea
               className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm min-h-[90px]"
               placeholder={t("me.guardian.007")}
@@ -207,13 +207,13 @@ export default function GuardianPage() {
           className="mt-4 w-full rounded-2xl bg-slate-900 text-white py-2 text-sm font-semibold flex items-center justify-center gap-2"
         >
           <Send size={16} />
-          {submitting ? "提交中..." : t("me.guardian.008")}
+          {submitting ? t("ui.guardian.608") : t("me.guardian.008")}
         </button>
         {hint && <div className="mt-3 text-xs text-amber-600">{hint}</div>}
       </section>
 
       <section className="dl-card" style={{ padding: 16 }}>
-        <div className="text-sm font-semibold text-gray-900">申请进度</div>
+        <div className="text-sm font-semibold text-gray-900">{t("ui.guardian.114")}</div>
         {applications.length === 0 ? (
           <div className="mt-3">
             <StateBlock
