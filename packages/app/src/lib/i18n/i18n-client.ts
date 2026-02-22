@@ -48,7 +48,15 @@ export function useI18n() {
 
   const messages = useMemo(() => MESSAGES[locale] || MESSAGES[DEFAULT_LOCALE], [locale]);
   const t = useCallback(
-    (key: string, fallback?: string) => messages[key] || fallback || key,
+    (key: string, params?: Record<string, string | number>) => {
+      let msg = messages[key] || key;
+      if (params) {
+        for (const [k, v] of Object.entries(params)) {
+          msg = msg.replaceAll(`{{${k}}}`, String(v));
+        }
+      }
+      return msg;
+    },
     [messages]
   );
 
@@ -59,9 +67,17 @@ export function useI18n() {
  * Standalone translation function (no hook required).
  * Reads the current locale from localStorage/cookie/navigator.
  * Use in helper functions, event handlers, or anywhere outside React render.
+ *
+ * Supports interpolation: t("key", { count: 3 }) replaces {{count}} in the message.
  */
-export function t(key: string, fallback?: string): string {
+export function t(key: string, params?: Record<string, string | number>): string {
   const locale = getClientLocale();
   const messages = MESSAGES[locale] || MESSAGES[DEFAULT_LOCALE];
-  return messages[key] || fallback || key;
+  let msg = messages[key] || key;
+  if (params) {
+    for (const [k, v] of Object.entries(params)) {
+      msg = msg.replaceAll(`{{${k}}}`, String(v));
+    }
+  }
+  return msg;
 }
