@@ -1,8 +1,10 @@
 {
   "name": "情谊电竞",
   "short_name": "情谊电竞",
+  "id": "/",
   "description": "情谊电竞：跨平台陪玩与组队调度，为三角洲行动玩家提供语音、约战与战术工具。",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#0b1324",
