@@ -3,7 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 /**
  * Lightweight middleware for cross-cutting concerns.
  * Heavy auth logic stays in route handlers — this only handles:
- * 1. Security headers
+ * 1. Security headers (including CSP)
  * 2. Admin IP allowlist (early reject before hitting route handler)
  */
 
@@ -24,6 +24,19 @@ function isIpAllowed(ip: string, allowlist: string): boolean {
   });
 }
 
+// CSP directives — permissive enough for Next.js + SUI + Sentry
+const CSP_DIRECTIVES = [
+  "default-src 'self'",
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.sentry.io",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: blob: https://placehold.co",
+  "font-src 'self' data:",
+  "connect-src 'self' https://*.sui.io https://*.sentry.io wss://*.sui.io https://*.upstash.io",
+  "frame-ancestors 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+].join("; ");
+
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
@@ -43,14 +56,14 @@ export function middleware(req: NextRequest) {
   res.headers.set("X-Content-Type-Options", "nosniff");
   res.headers.set("X-Frame-Options", "DENY");
   res.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
+  res.headers.set("Content-Security-Policy", CSP_DIRECTIVES);
 
   return res;
 }
 
 export const config = {
   matcher: [
-    // Match all API routes and admin pages, skip static files
-    "/api/:path*",
-    "/admin/:path*",
+    // Match all routes except static files and _next internals
+    "/((?!_next/static|_next/image|favicon.ico|sw.js|manifest.json|icons/).*)",
   ],
 };
