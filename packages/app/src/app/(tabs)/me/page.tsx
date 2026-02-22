@@ -52,13 +52,13 @@ export default function Me() {
   const copyAddress = async () => {
     const addr = walletAddress || "";
     if (!addr) {
-      setAddrToast("未登录，无法获取地址");
+      setAddrToast("auth.not_logged_in_no_address");
       setTimeout(() => setAddrToast(null), 2000);
       return;
     }
     try {
       await navigator.clipboard.writeText(addr);
-      setAddrToast("已复制 Sui 地址");
+      setAddrToast("clipboard.sui_address_copied");
     } catch {
       setAddrToast(`Sui 地址：${addr}`);
     } finally {

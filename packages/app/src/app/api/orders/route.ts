@@ -96,7 +96,7 @@ const orderSchema = z.object({
   item: z.string().min(1),
   amount: z.number(),
   currency: z.string().default("CNY"),
-  status: z.string().default("已支付"),
+  status: z.string().default("status.paid"),
   note: z.string().optional(),
   orderId: z.string().optional(),
   userAddress: z.string().optional(),

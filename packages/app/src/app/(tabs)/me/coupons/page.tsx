@@ -92,7 +92,7 @@ export default function CouponsPage() {
     const next = [couponId, ...claims];
     setClaims(next);
     saveClaims(next);
-    setHint("已领取，已加入本地卡包");
+    setHint("apply.card_claimed");
     setTimeout(() => setHint(null), 2500);
   };
 
@@ -113,12 +113,12 @@ export default function CouponsPage() {
   const handleRedeem = async () => {
     const raw = redeemCode.trim();
     if (!raw) {
-      setRedeemHint("请输入卡密");
+      setRedeemHint("form.card_code_required");
       return;
     }
     const address = getCurrentAddress();
     if (!address) {
-      setRedeemHint("请先登录账号");
+      setRedeemHint("auth.please_login");
       return;
     }
     if (redeemLoading) return;
@@ -143,7 +143,7 @@ export default function CouponsPage() {
       setRedeemCode("");
       setRedeemHint(data?.duplicated ? "已兑换过该卡密" : "兑换成功");
     } catch {
-      setRedeemHint("兑换失败，请稍后再试");
+      setRedeemHint("diamond.redeem_failed");
     } finally {
       setRedeemLoading(false);
     }

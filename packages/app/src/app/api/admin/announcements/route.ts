@@ -10,7 +10,7 @@ import { parseBody } from "@/lib/shared/api-validation";
 const postSchema = z.object({
   id: z.string().optional(),
   title: z.string().min(1),
-  tag: z.string().default("公告"),
+  tag: z.string().default("nav.news"),
   content: z.string().default(""),
   status: z.enum(["draft", "published", "archived"]).default("draft"),
 });

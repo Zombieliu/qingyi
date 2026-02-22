@@ -9,8 +9,8 @@ import { env } from "@/lib/env";
 
 const paySchema = z.object({
   amount: z.number().positive(),
-  subject: z.string().default("钻石充值"),
-  body: z.string().default("情谊电竞钻石充值"),
+  subject: z.string().default("diamond.topup"),
+  body: z.string().default("diamond.topup_title"),
   channel: z.enum(["alipay", "wechat_pay"]),
   orderId: z.string().min(1),
   userAddress: z.string().min(1),

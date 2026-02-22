@@ -104,12 +104,12 @@ export default function MantouPage() {
       const address = guardianAddress;
       if (!address) {
         setPlayerStatus(null);
-        setStatusHint("请先登录账号");
+        setStatusHint("auth.please_login");
         return;
       }
       if (!isGuardian) {
         setPlayerStatus(null);
-        setStatusHint("未绑定陪练档案，暂不可设置状态");
+        setStatusHint("companion.no_profile_status");
         return;
       }
       setStatusLoading(true);
@@ -123,9 +123,9 @@ export default function MantouPage() {
         if (!res.ok) {
           const data = await res.json().catch(() => ({}));
           if (res.status === 404) {
-            setStatusHint("未绑定陪练档案，请联系运营");
+            setStatusHint("companion.no_profile_contact");
           } else if (res.status === 403) {
-            setStatusHint("无陪练权限，暂不可设置状态");
+            setStatusHint("companion.no_permission");
           } else {
             setStatusHint(data?.error || "状态加载失败");
           }
@@ -135,7 +135,7 @@ export default function MantouPage() {
         const data = await res.json().catch(() => ({}));
         setPlayerStatus((data?.status as PlayerStatus) || null);
       } catch {
-        setStatusHint("状态加载失败");
+        setStatusHint("companion.status_load_failed");
       } finally {
         setStatusLoading(false);
       }
@@ -147,7 +147,7 @@ export default function MantouPage() {
     if (statusSaving) return;
     const address = guardianAddress;
     if (!address) {
-      setStatusHint("请先登录账号");
+      setStatusHint("auth.please_login");
       return;
     }
     setStatusSaving(true);
@@ -170,7 +170,7 @@ export default function MantouPage() {
       }
       setPlayerStatus((data?.status as PlayerStatus) || nextStatus);
       setStatusHintTone("success");
-      setStatusHint("状态已更新");
+      setStatusHint("companion.status_updated");
       setTimeout(() => setStatusHint(null), 2000);
     } catch (error) {
       setStatusHint(formatErrorMessage(error, "状态更新失败"));

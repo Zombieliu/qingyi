@@ -226,7 +226,7 @@ export default function ChainPage() {
             return;
           }
           if (!data?.enabled) {
-            setAutoCancelResult("自动取消未启用");
+            setAutoCancelResult("order.auto_cancel_disabled");
           } else {
             setAutoCancelResult(
               `已取消 ${data?.canceled ?? 0} / ${data?.candidates ?? 0}，失败 ${data?.failures?.length ?? 0}`
@@ -244,7 +244,7 @@ export default function ChainPage() {
     const orderId = manualOrderId.trim();
     const digest = manualDigest.trim();
     if (!orderId || !digest) {
-      setManualSyncResult("请填写订单号和交易 digest");
+      setManualSyncResult("form.order_digest_required");
       return;
     }
     setManualSyncing(true);

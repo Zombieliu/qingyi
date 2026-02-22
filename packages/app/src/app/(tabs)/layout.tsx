@@ -13,11 +13,11 @@ export default function TabsLayout({ children }: { children: React.ReactNode }) 
   const pathname = usePathname();
   const { isGuardian } = useGuardianStatus();
   const items = [
-    { label: t("首页"), href: "/home", icon: HomeIcon },
-    ...(isGuardian ? [{ label: t("展示"), href: "/showcase", icon: Diamond }] : []),
-    { label: t("安排"), href: "/schedule", icon: CalendarCheck },
-    { label: t("资讯"), href: "/news", icon: MessageCircle },
-    { label: t("我的"), href: "/me", icon: User },
+    { label: t("nav.home"), href: "/home", icon: HomeIcon },
+    ...(isGuardian ? [{ label: t("nav.showcase"), href: "/showcase", icon: Diamond }] : []),
+    { label: t("nav.schedule"), href: "/schedule", icon: CalendarCheck },
+    { label: t("nav.news_alt"), href: "/news", icon: MessageCircle },
+    { label: t("nav.me"), href: "/me", icon: User },
   ];
 
   return (

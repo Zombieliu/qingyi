@@ -100,16 +100,16 @@ export default function PlayersPage() {
   const createPlayer = async () => {
     if (!canEdit) return;
     if (!form.name.trim()) {
-      setFormHint("请填写陪练名称");
+      setFormHint("form.companion_name_required");
       return;
     }
     const contactValue = form.contact.trim();
     if (!contactValue) {
-      setFormHint("请填写手机号");
+      setFormHint("form.phone_number_required");
       return;
     }
     if (contactValue && !isMobileNumber(contactValue)) {
-      setFormHint("手机号格式不正确");
+      setFormHint("form.phone_invalid");
       return;
     }
     const addressParsed = parseAddress(form.address);
@@ -158,11 +158,11 @@ export default function PlayersPage() {
     if (typeof nextPatch.contact === "string") {
       const trimmed = nextPatch.contact.trim();
       if (!trimmed) {
-        alert("手机号不能为空");
+        alert("form.phone_required");
         return;
       }
       if (trimmed && !isMobileNumber(trimmed)) {
-        alert("手机号格式不正确");
+        alert("form.phone_invalid");
         return;
       }
       nextPatch.contact = trimmed;
@@ -486,7 +486,7 @@ export default function PlayersPage() {
                             if (!canEdit) return;
                             const nextName = event.target.value.trim();
                             if (!nextName) {
-                              alert("名称不能为空");
+                              alert("form.name_required");
                               loadPlayers();
                               return;
                             }
@@ -557,7 +557,7 @@ export default function PlayersPage() {
                             if (!canEdit) return;
                             const parsed = parseAddress(event.target.value);
                             if (parsed.state === "invalid") {
-                              alert("钱包地址格式不正确");
+                              alert("diamond.invalid_address");
                               return;
                             }
                             const nextAddress = parsed.state === "missing" ? "" : parsed.normalized;

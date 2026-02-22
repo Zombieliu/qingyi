@@ -378,7 +378,7 @@ export default function Showcase() {
   const accept = async (id: string) => {
     const address = getCurrentAddress();
     if (!address) {
-      setChainToast("请先登录账号再接单");
+      setChainToast("auth.login_before_accept");
       setTimeout(() => setChainToast(null), 3000);
       return;
     }
@@ -407,18 +407,18 @@ export default function Showcase() {
         }
       }
       if (!chainOrder) {
-        setChainToast("未找到链上订单（已尝试服务端刷新）");
+        setChainToast("chain.order_not_found");
         setTimeout(() => setChainToast(null), 3000);
         return;
       }
       const effectiveStatus = resolveChainStatus(chainOrder);
       if (effectiveStatus === 0) {
-        setChainToast("链上订单未托管费用，无法接单");
+        setChainToast("order.no_escrow_fee");
         setTimeout(() => setChainToast(null), 3000);
         return;
       }
       if (effectiveStatus >= 2) {
-        setChainToast("押金已锁定，订单已被接走");
+        setChainToast("order.deposit_locked_taken");
         setTimeout(() => setChainToast(null), 3000);
         return;
       }
@@ -469,7 +469,7 @@ export default function Showcase() {
     await refreshOrders(true);
     await refreshMyOrders(true);
     setPendingScrollToAccepted(true);
-    setChainToast("接单成功，已移至「我已接的订单」");
+    setChainToast("order.accepted_moved");
     setTimeout(() => setChainToast(null), 3000);
   };
 
@@ -520,7 +520,7 @@ export default function Showcase() {
       const chainOrder = chainOrders.find((order) => order.orderId === id) || null;
       const effectiveStatus = chainOrder ? resolveChainStatus(chainOrder) : undefined;
       if (typeof effectiveStatus === "number" && effectiveStatus >= 2) {
-        setChainToast("押金已锁定，无法取消，请走争议/客服处理");
+        setChainToast("order.deposit_locked_no_cancel");
         setTimeout(() => setChainToast(null), 3000);
         return;
       }
@@ -673,7 +673,7 @@ export default function Showcase() {
     if (!text) return;
     try {
       await navigator.clipboard.writeText(text);
-      setChainToast("已复制游戏名/ID");
+      setChainToast("clipboard.game_id_copied");
       setCopiedOrderId(orderId);
     } catch {
       const input = document.createElement("textarea");
@@ -685,10 +685,10 @@ export default function Showcase() {
       input.select();
       try {
         document.execCommand("copy");
-        setChainToast("已复制游戏名/ID");
+        setChainToast("clipboard.game_id_copied");
         setCopiedOrderId(orderId);
       } catch {
-        setChainToast("复制失败，请手动复制");
+        setChainToast("clipboard.copy_failed_manual");
       } finally {
         document.body.removeChild(input);
       }
@@ -752,7 +752,7 @@ export default function Showcase() {
   const markCompanionServiceEnded = async (orderId: string, isChain: boolean) => {
     const address = getCurrentAddress();
     if (!address) {
-      setChainToast("请先登录账号再结束服务");
+      setChainToast("auth.login_before_end");
       setTimeout(() => setChainToast(null), 3000);
       return;
     }
@@ -1114,7 +1114,7 @@ export default function Showcase() {
                                   const data = await res.json().catch(() => ({}));
                                   if (res.ok) {
                                     if (!data?.duplicated) {
-                                      setChainToast("已自动转换为馒头");
+                                      setChainToast("diamond.auto_converted");
                                     }
                                   } else {
                                     setChainToast(data?.error || "馒头转换失败");

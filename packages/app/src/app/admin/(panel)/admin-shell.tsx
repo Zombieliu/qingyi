@@ -305,7 +305,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
       <AdminToast />
       {sidebarOpen ? (
         <button
-          aria-label={t("关闭侧边栏")}
+          aria-label={t("nav.close_sidebar")}
           className="admin-scrim"
           onClick={() => setSidebarOpen(false)}
         />
@@ -315,7 +315,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
           <div className="admin-logo-icon">QY</div>
           <div>
             <h1>情谊电竞</h1>
-            <p>{t("运营管理中心")}</p>
+            <p>{t("nav.ops_center")}</p>
           </div>
         </div>
         <nav className="admin-nav">
@@ -356,29 +356,29 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
         </nav>
         <div className="admin-sidebar-footer">
           <div>
-            {t("当前权限：")}
+            {t("nav.current_role")}
             {t(roleLabels[role] || role)}
           </div>
           <SwControl />
           <button className="admin-btn secondary" onClick={handleLogout}>
             <LogOut size={16} style={{ marginRight: 6 }} />
-            {t("退出登录")}
+            {t("nav.logout")}
           </button>
         </div>
       </aside>
       <main className="admin-main" data-route={routePath}>
         <div className="admin-topbar">
           <div className="admin-topbar-main">
-            <h2 className="admin-title">{active?.label ? t(active.label) : t("管理后台")}</h2>
+            <h2 className="admin-title">{active?.label ? t(active.label) : t("nav.admin")}</h2>
             <p className="admin-subtitle">
               {subtitles[active?.href || "/admin"]
                 ? t(subtitles[active?.href || "/admin"])
-                : t("运营状态一览")}
+                : t("nav.ops_overview")}
             </p>
           </div>
           <div className="admin-actions">
             <span className="admin-pill">
-              {t("当前权限：")}
+              {t("nav.current_role")}
               {t(roleLabels[role] || role)}
             </span>
             <button
@@ -396,7 +396,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
               onClick={() => setSidebarOpen(true)}
             >
               <Menu size={16} style={{ marginRight: 6 }} />
-              {t("菜单")}
+              {t("nav.menu")}
             </button>
           </div>
         </div>

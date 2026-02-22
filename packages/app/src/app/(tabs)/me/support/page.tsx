@@ -70,7 +70,7 @@ export default function SupportPage() {
 
   const submit = async () => {
     if (!form.message.trim()) {
-      setHint("请补充问题描述");
+      setHint("form.description_required");
       return;
     }
     setSubmitting(true);
@@ -104,9 +104,9 @@ export default function SupportPage() {
       setRequests(updated);
       persistLocalRequests(updated);
       setForm((prev) => ({ ...prev, message: "" }));
-      setHint("已提交客服工单，稍后会有专员与您联系");
+      setHint("apply.support_ticket_submitted");
     } catch {
-      setHint("网络异常，请稍后再试");
+      setHint("error.network");
     } finally {
       setSubmitting(false);
     }

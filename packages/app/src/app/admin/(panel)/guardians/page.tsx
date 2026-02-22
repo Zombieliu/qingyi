@@ -50,7 +50,7 @@ export default function GuardiansPage() {
       setCopiedId(applicationId);
       setTimeout(() => setCopiedId(null), 2000);
     } catch {
-      setExportHint("复制失败，请重试");
+      setExportHint("clipboard.copy_failed_retry");
     }
   };
 
@@ -108,7 +108,7 @@ export default function GuardiansPage() {
       }
 
       if (items.length === 0) {
-        setExportHint("暂无可导出的数据");
+        setExportHint("export.no_data");
         return;
       }
 
@@ -153,7 +153,7 @@ export default function GuardiansPage() {
       link.click();
       URL.revokeObjectURL(url);
     } catch {
-      setExportHint("导出失败，请稍后重试");
+      setExportHint("export.failed");
     } finally {
       setExporting(false);
     }

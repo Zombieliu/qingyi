@@ -10,8 +10,8 @@ const precreateSchema = z.object({
   orderId: z.string().min(1),
   amount: z.number().positive(),
   userAddress: z.string().min(1),
-  subject: z.string().default("钻石充值"),
-  body: z.string().default("情谊电竞钻石充值"),
+  subject: z.string().default("diamond.topup"),
+  body: z.string().default("diamond.topup_title"),
 });
 
 function buildMockParams(platform: "wechat" | "alipay" | "douyin", orderId: string) {

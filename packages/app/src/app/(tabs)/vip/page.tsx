@@ -125,11 +125,11 @@ export default function Vip() {
 
   const handleRequest = async () => {
     if (!walletAddress) {
-      setHint("请先完成登录后再申请会员");
+      setHint("auth.login_before_vip");
       return;
     }
     if (!selectedTier) {
-      setHint("暂无可用会员等级");
+      setHint("vip.no_levels");
       return;
     }
     setSubmitting(true);
@@ -154,9 +154,9 @@ export default function Vip() {
         setHint(data?.error || "提交失败，请稍后重试");
         return;
       }
-      setHint("申请已提交，运营审核后开通会员权益");
+      setHint("apply.vip_submitted");
     } catch {
-      setHint("网络异常，请稍后再试");
+      setHint("error.network");
     } finally {
       setSubmitting(false);
     }

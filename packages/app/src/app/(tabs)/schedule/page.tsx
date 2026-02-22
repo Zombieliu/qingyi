@@ -467,7 +467,7 @@ export default function Schedule() {
           ? (chainCurrentStatus ?? chainCurrentOrder.status)
           : chainCurrentOrder?.status;
       if (typeof effectiveStatus === "number" && effectiveStatus >= 2) {
-        setToast("押金已锁定，无法取消，请走争议/客服处理");
+        setToast("order.deposit_locked_no_cancel");
         setTimeout(() => setToast(null), 3000);
         return;
       }
@@ -608,7 +608,7 @@ export default function Schedule() {
 
   const submit = () => {
     if (pickedNames.length === 0) {
-      setToast("请先选择服务");
+      setToast("form.select_service");
       return;
     }
     const originalTotal = pickedPrice || Math.max(pickedNames.length * 10, 10);
@@ -676,12 +676,12 @@ export default function Schedule() {
     if (!balanceReady) return;
     const addr = getCurrentAddress();
     if (!addr) {
-      setToast("请先登录账号以便扣减钻石");
+      setToast("auth.login_for_diamond");
       return;
     }
     if (!hasEnoughDiamonds && !redirectRef.current) {
       redirectRef.current = true;
-      setToast("钻石余额不足，正在跳转充值...");
+      setToast("diamond.insufficient_redirecting");
       setTimeout(() => {
         window.location.href = "/wallet";
       }, 1200);
@@ -883,7 +883,7 @@ export default function Schedule() {
                     }
                     const effectiveStatus = mergeChainStatus(localChainStatus, chainOrder?.status);
                     if (typeof effectiveStatus !== "number") {
-                      setToast("链上订单未同步（已尝试服务端刷新）");
+                      setToast("chain.order_not_synced");
                       return;
                     }
                     if (effectiveStatus !== 2) {
@@ -991,11 +991,11 @@ export default function Schedule() {
                 if (!currentOrder) return;
                 if (!canDispute) {
                   if (!disputeDeadline) {
-                    setToast("争议截止时间未同步，请稍后刷新");
+                    setToast("chain.dispute_deadline_not_synced");
                   } else if (!inDisputeWindow) {
-                    setToast("争议期已结束，无法发起争议");
+                    setToast("dispute.period_ended");
                   } else {
-                    setToast("当前状态无法发起争议");
+                    setToast("dispute.invalid_status");
                   }
                   return;
                 }
@@ -1023,7 +1023,7 @@ export default function Schedule() {
               onClick={() => {
                 if (!currentOrder) return;
                 if (!canFinalize) {
-                  setToast("当前状态无法结算");
+                  setToast("dispute.cannot_settle");
                   return;
                 }
                 if (inDisputeWindow) {
@@ -1079,12 +1079,12 @@ export default function Schedule() {
 
   const callOrder = async () => {
     if (!feeChecked) {
-      setToast("请先确认使用钻石托管费用");
+      setToast("form.confirm_escrow_fee");
       setTimeout(() => setToast(null), 2000);
       return;
     }
     if (!locked.items.length) {
-      setToast("请选择服务");
+      setToast("form.service_required");
       return;
     }
     setCalling(true);
@@ -1187,7 +1187,7 @@ export default function Schedule() {
           }
           setChainSyncing(false);
           setChainSyncRetries(0);
-          setChainToast("链上同步超时，请稍后手动刷新");
+          setChainToast("chain.sync_timeout");
         };
         void retrySync();
       }

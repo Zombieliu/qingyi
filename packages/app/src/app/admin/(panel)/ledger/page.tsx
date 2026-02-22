@@ -38,7 +38,7 @@ export default function LedgerPage() {
       if (!res.ok) {
         setError(data?.error || "写入失败");
       } else {
-        setResult("已完成记账");
+        setResult("apply.ledger_done");
         setForm({ user: "", amount: "", receiptId: "", note: "" });
       }
     } catch {

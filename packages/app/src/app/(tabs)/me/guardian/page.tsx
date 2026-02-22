@@ -63,11 +63,11 @@ export default function GuardianPage() {
 
   const submit = async () => {
     if (!form.name.trim() || !form.contact.trim()) {
-      setHint("请填写姓名与联系方式");
+      setHint("form.name_contact_required");
       return;
     }
     if (!walletAddress) {
-      setHint("请先登录账号再提交申请");
+      setHint("auth.login_before_apply");
       return;
     }
     setSubmitting(true);
@@ -104,10 +104,10 @@ export default function GuardianPage() {
       const updated = [next, ...applications];
       setApplications(updated);
       persistLocalApplications(updated);
-      setHint("申请已提交，审核通过后会通知你加入陪练库");
+      setHint("apply.companion_submitted");
       setForm((prev) => ({ ...prev, note: "" }));
     } catch {
-      setHint("网络异常，请稍后再试");
+      setHint("error.network");
     } finally {
       setSubmitting(false);
     }
