@@ -1,4 +1,5 @@
 "use client";
+import { t } from "@/lib/i18n/i18n-client";
 
 import { useEffect } from "react";
 import * as Sentry from "@sentry/nextjs";
@@ -26,7 +27,7 @@ export default function HomeError({
             onClick={reset}
             className="dl-tab-btn primary"
             style={{ padding: "10px 14px", cursor: "pointer" }}
-            aria-label="重试加载"
+            aria-label={t("home.error.001")}
           >
             重试
           </button>

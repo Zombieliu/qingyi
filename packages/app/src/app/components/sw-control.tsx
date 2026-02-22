@@ -1,4 +1,5 @@
 "use client";
+import { t } from "@/lib/i18n/i18n-client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { RefreshCw, ArrowUpCircle } from "lucide-react";
@@ -86,15 +87,15 @@ export default function SwControl() {
     try {
       const reg = await readRegistration();
       if (!reg) {
-        setMessage("未注册 Service Worker");
+        setMessage(t("comp.sw_control.001"));
         return;
       }
       await reg.update();
       await readRegistration();
-      setMessage(reg.waiting ? "发现新版本，请强制更新" : "已是最新版本");
+      setMessage(reg.waiting ? "发现新版本，请强制更新" : t("comp.sw_control.002"));
     } catch {
       setStatus("error");
-      setMessage("检查失败");
+      setMessage(t("comp.sw_control.003"));
     } finally {
       setStatus((prev) => (prev === "error" ? prev : "idle"));
     }
@@ -106,7 +107,7 @@ export default function SwControl() {
     try {
       const reg = await navigator.serviceWorker.getRegistration();
       if (!reg) {
-        setMessage("未注册 Service Worker");
+        setMessage(t("comp.sw_control.004"));
         return;
       }
       if (reg.waiting) {
@@ -116,11 +117,11 @@ export default function SwControl() {
         (window as any).serwist?.messageSkipWaiting?.();
         await reg.update();
       }
-      setMessage("已触发更新，正在刷新");
+      setMessage(t("comp.sw_control.005"));
       setTimeout(() => window.location.reload(), 600);
     } catch {
       setStatus("error");
-      setMessage("更新失败");
+      setMessage(t("comp.sw_control.006"));
     } finally {
       setStatus((prev) => (prev === "error" ? prev : "idle"));
     }
@@ -138,10 +139,10 @@ export default function SwControl() {
       if (reg) {
         await reg.update();
       }
-      setMessage("已清理缓存，请刷新确认");
+      setMessage(t("comp.sw_control.007"));
     } catch {
       setStatus("error");
-      setMessage("清理失败");
+      setMessage(t("comp.sw_control.008"));
     } finally {
       setStatus((prev) => (prev === "error" ? prev : "idle"));
     }
@@ -168,7 +169,7 @@ export default function SwControl() {
           disabled={status === "checking" || status === "forcing" || status === "clearing"}
         >
           <RefreshCw size={14} />
-          {status === "checking" ? "检查中..." : "检查更新"}
+          {status === "checking" ? "检查中..." : t("comp.sw_control.009")}
         </button>
         <button
           className="admin-btn secondary"
@@ -176,14 +177,14 @@ export default function SwControl() {
           disabled={status === "checking" || status === "forcing" || status === "clearing"}
         >
           <ArrowUpCircle size={14} />
-          {status === "forcing" ? "更新中..." : "强制更新"}
+          {status === "forcing" ? "更新中..." : t("comp.sw_control.010")}
         </button>
         <button
           className="admin-btn ghost"
           onClick={clearCache}
           disabled={status === "checking" || status === "forcing" || status === "clearing"}
         >
-          {status === "clearing" ? "清理中..." : "清理缓存"}
+          {status === "clearing" ? "清理中..." : t("comp.sw_control.011")}
         </button>
       </div>
     </div>

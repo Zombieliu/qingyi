@@ -1,4 +1,5 @@
 "use client";
+import { t } from "@/lib/i18n/i18n-client";
 import { Diamond, Gamepad2, Gift, Phone, ShieldCheck, User, Settings } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -142,10 +143,10 @@ export default function Me() {
           <span className="dl-chip dl-chip-soft">实时</span>
         </div>
         <div className="dl-actions">
-          <button className="dl-icon-circle" onClick={copyAddress} aria-label="复制 Sui 地址">
+          <button className="dl-icon-circle" onClick={copyAddress} aria-label={t("me.001")}>
             <ShieldCheck size={16} />
           </button>
-          <button onClick={goSettings} className="dl-icon-circle" aria-label="设置">
+          <button onClick={goSettings} className="dl-icon-circle" aria-label={t("me.002")}>
             <Settings size={16} />
           </button>
         </div>
@@ -160,10 +161,10 @@ export default function Me() {
             <span className="dl-chip">个人主页</span>
           </div>
           <div className="dl-id">
-            {gameProfile?.gameId ? `ID ${gameProfile.gameId}` : "请先在游戏设置填写"}
+            {gameProfile?.gameId ? `ID ${gameProfile.gameId}` : t("me.003")}
           </div>
         </div>
-        <button className="dl-edit" onClick={goGameSettings} aria-label="编辑游戏设置">
+        <button className="dl-edit" onClick={goGameSettings} aria-label={t("me.004")}>
           编辑
         </button>
         <div className="dl-stats">

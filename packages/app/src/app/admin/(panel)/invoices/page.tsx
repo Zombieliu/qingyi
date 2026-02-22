@@ -1,4 +1,5 @@
 "use client";
+import { t } from "@/lib/i18n/i18n-client";
 
 import { useCallback, useEffect, useState } from "react";
 import { RefreshCw, Search } from "lucide-react";
@@ -13,7 +14,7 @@ export default function InvoicesPage() {
   const [loading, setLoading] = useState(true);
   const [cacheHint, setCacheHint] = useState<string | null>(null);
   const [query, setQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState("全部");
+  const [statusFilter, setStatusFilter] = useState(t("admin.invoices.001"));
   const [saving, setSaving] = useState<Record<string, boolean>>({});
   const [page, setPage] = useState(1);
   const [cursor, setCursor] = useState<string | null>(null);
@@ -42,7 +43,7 @@ export default function InvoicesPage() {
           setRequests(Array.isArray(cached.value?.items) ? cached.value.items : []);
           setPage(nextPage);
           setNextCursor(cached.value?.nextCursor || null);
-          setCacheHint(cached.fresh ? null : "显示缓存数据，正在刷新…");
+          setCacheHint(cached.fresh ? null : t("admin.invoices.002"));
         }
         const res = await fetch(`/api/admin/invoices?${params.toString()}`);
         if (res.ok) {
@@ -133,7 +134,7 @@ export default function InvoicesPage() {
             <input
               className="admin-input"
               style={{ paddingLeft: 36 }}
-              placeholder="搜索抬头 / 税号 / 订单号"
+              placeholder={t("admin.invoices.003")}
               value={query}
               onChange={(event) => setQuery(event.target.value)}
             />
@@ -143,7 +144,7 @@ export default function InvoicesPage() {
             value={statusFilter}
             onChange={(event) => setStatusFilter(event.target.value)}
           >
-            <option value="全部">全部状态</option>
+            <option value={t("admin.invoices.004")}>全部状态</option>
             {INVOICE_STATUS_OPTIONS.map((status) => (
               <option key={status} value={status}>
                 {status}
@@ -176,15 +177,15 @@ export default function InvoicesPage() {
           <StateBlock
             tone="loading"
             size="compact"
-            title="加载发票申请中"
-            description="正在同步最新发票申请"
+            title={t("admin.invoices.005")}
+            description={t("admin.invoices.006")}
           />
         ) : requests.length === 0 ? (
           <StateBlock
             tone="empty"
             size="compact"
-            title="暂无发票申请"
-            description="目前没有待处理申请"
+            title={t("admin.invoices.007")}
+            description={t("admin.invoices.008")}
           />
         ) : (
           <div className="admin-table-wrap">
@@ -204,21 +205,21 @@ export default function InvoicesPage() {
               <tbody>
                 {requests.map((item) => (
                   <tr key={item.id}>
-                    <td data-label="抬头 / 税号">
+                    <td data-label={t("admin.invoices.009")}>
                       <div className="admin-text-strong">{item.title || "-"}</div>
                       <div className="admin-meta">{item.taxId || "-"}</div>
                     </td>
-                    <td data-label="金额">
+                    <td data-label={t("admin.invoices.010")}>
                       {typeof item.amount === "number" ? `¥${item.amount}` : "-"}
                     </td>
-                    <td data-label="订单号">
+                    <td data-label={t("admin.invoices.011")}>
                       <div className="admin-meta">{item.orderId || "-"}</div>
                     </td>
-                    <td data-label="联系方式">
+                    <td data-label={t("admin.invoices.012")}>
                       <div className="admin-meta">{item.email || "-"}</div>
                       <div className="admin-meta">{item.contact || "-"}</div>
                     </td>
-                    <td data-label="状态">
+                    <td data-label={t("admin.invoices.013")}>
                       <select
                         className="admin-select"
                         value={item.status}
@@ -237,10 +238,10 @@ export default function InvoicesPage() {
                         ))}
                       </select>
                     </td>
-                    <td data-label="备注">
+                    <td data-label={t("admin.invoices.014")}>
                       <input
                         className="admin-input"
-                        placeholder="财务备注"
+                        placeholder={t("admin.invoices.015")}
                         value={item.note || ""}
                         onChange={(event) =>
                           setRequests((prev) =>
@@ -252,10 +253,12 @@ export default function InvoicesPage() {
                         onBlur={(event) => updateRequest(item.id, { note: event.target.value })}
                       />
                     </td>
-                    <td data-label="时间">{formatShortDateTime(item.createdAt)}</td>
-                    <td data-label="更新">
+                    <td data-label={t("admin.invoices.016")}>
+                      {formatShortDateTime(item.createdAt)}
+                    </td>
+                    <td data-label={t("admin.invoices.017")}>
                       <span className="admin-badge neutral">
-                        {saving[item.id] ? "保存中" : "已同步"}
+                        {saving[item.id] ? "保存中" : t("admin.invoices.018")}
                       </span>
                     </td>
                   </tr>

@@ -1,4 +1,5 @@
 "use client";
+import { t } from "@/lib/i18n/i18n-client";
 
 import { useEffect, useState } from "react";
 import { Megaphone, Pencil, PlusCircle, Trash2, Archive } from "lucide-react";
@@ -125,7 +126,7 @@ export default function AnnouncementsPage() {
 
   const removeItem = async (id: string) => {
     if (!canEdit) return;
-    if (!confirm("确定要删除该公告吗？")) return;
+    if (!confirm(t("admin.announcements.001"))) return;
     const res = await fetch(`/api/admin/announcements/${id}`, { method: "DELETE" });
     if (res.ok) {
       setAnnouncements((prev) => {
@@ -173,7 +174,7 @@ export default function AnnouncementsPage() {
       <div className="admin-card">
         <div className="admin-card-header">
           <div>
-            <h3>{editingId ? "编辑公告" : "发布新公告"}</h3>
+            <h3>{editingId ? "编辑公告" : t("admin.announcements.002")}</h3>
             <p>管理公告与资讯内容。</p>
           </div>
         </div>
@@ -184,7 +185,7 @@ export default function AnnouncementsPage() {
                 标题
                 <input
                   className="admin-input"
-                  placeholder="公告标题"
+                  placeholder={t("admin.announcements.003")}
                   value={form.title}
                   onChange={(event) => setForm((prev) => ({ ...prev, title: event.target.value }))}
                 />
@@ -193,7 +194,7 @@ export default function AnnouncementsPage() {
                 标签
                 <input
                   className="admin-input"
-                  placeholder="公告 / 安全 / 活动"
+                  placeholder={t("admin.announcements.004")}
                   value={form.tag}
                   onChange={(event) => setForm((prev) => ({ ...prev, tag: event.target.value }))}
                 />
@@ -202,7 +203,7 @@ export default function AnnouncementsPage() {
                 内容
                 <textarea
                   className="admin-textarea"
-                  placeholder="公告正文内容"
+                  placeholder={t("admin.announcements.005")}
                   value={form.content}
                   onChange={(event) =>
                     setForm((prev) => ({ ...prev, content: event.target.value }))
@@ -232,7 +233,7 @@ export default function AnnouncementsPage() {
             <div className="admin-card-actions" style={{ marginTop: 14 }}>
               <button className="admin-btn primary" onClick={submitForm}>
                 <PlusCircle size={16} style={{ marginRight: 6 }} />
-                {editingId ? "保存修改" : "发布公告"}
+                {editingId ? "保存修改" : t("admin.announcements.006")}
               </button>
               {editingId ? (
                 <button className="admin-btn ghost" onClick={resetForm}>
@@ -246,8 +247,8 @@ export default function AnnouncementsPage() {
             <StateBlock
               tone="warning"
               size="compact"
-              title="只读权限"
-              description="当前账号无法编辑公告内容"
+              title={t("admin.announcements.007")}
+              description={t("admin.announcements.008")}
             />
           </div>
         )}
@@ -285,13 +286,18 @@ export default function AnnouncementsPage() {
           </div>
         </div>
         {loading ? (
-          <StateBlock tone="loading" size="compact" title="加载中" description="正在同步公告列表" />
+          <StateBlock
+            tone="loading"
+            size="compact"
+            title={t("admin.announcements.010")}
+            description={t("admin.announcements.009")}
+          />
         ) : announcements.length === 0 ? (
           <StateBlock
             tone="empty"
             size="compact"
-            title="暂无公告记录"
-            description="发布第一条公告吧"
+            title={t("admin.announcements.011")}
+            description={t("admin.announcements.012")}
           />
         ) : (
           <div className="admin-stack">

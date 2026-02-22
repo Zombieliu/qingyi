@@ -1,4 +1,5 @@
 "use client";
+import { t } from "@/lib/i18n/i18n-client";
 
 import { useCallback, useEffect, useState } from "react";
 import { RefreshCw } from "lucide-react";
@@ -12,7 +13,7 @@ export default function MantouWithdrawPage() {
   const [requests, setRequests] = useState<MantouWithdrawRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [cacheHint, setCacheHint] = useState<string | null>(null);
-  const [statusFilter, setStatusFilter] = useState("全部");
+  const [statusFilter, setStatusFilter] = useState(t("admin.mantou.001"));
   const [saving, setSaving] = useState<Record<string, boolean>>({});
   const [page, setPage] = useState(1);
   const [cursor, setCursor] = useState<string | null>(null);
@@ -40,7 +41,7 @@ export default function MantouWithdrawPage() {
           setRequests(Array.isArray(cached.value?.items) ? cached.value.items : []);
           setPage(nextPage);
           setNextCursor(cached.value?.nextCursor || null);
-          setCacheHint(cached.fresh ? null : "显示缓存数据，正在刷新…");
+          setCacheHint(cached.fresh ? null : t("admin.mantou.002"));
         }
         const res = await fetch(`/api/admin/mantou/withdraws?${params.toString()}`);
         if (res.ok) {
@@ -130,7 +131,7 @@ export default function MantouWithdrawPage() {
             value={statusFilter}
             onChange={(event) => setStatusFilter(event.target.value)}
           >
-            <option value="全部">全部状态</option>
+            <option value={t("admin.mantou.003")}>全部状态</option>
             {MANTOU_WITHDRAW_STATUS_OPTIONS.map((status) => (
               <option key={status} value={status}>
                 {status}
@@ -163,15 +164,15 @@ export default function MantouWithdrawPage() {
           <StateBlock
             tone="loading"
             size="compact"
-            title="加载提现申请中"
-            description="正在同步最新提现记录"
+            title={t("admin.mantou.004")}
+            description={t("admin.mantou.005")}
           />
         ) : requests.length === 0 ? (
           <StateBlock
             tone="empty"
             size="compact"
-            title="暂无提现申请"
-            description="目前没有待处理的提现"
+            title={t("admin.mantou.006")}
+            description={t("admin.mantou.007")}
           />
         ) : (
           <div className="admin-table-wrap">
@@ -190,14 +191,14 @@ export default function MantouWithdrawPage() {
               <tbody>
                 {requests.map((item) => (
                   <tr key={item.id}>
-                    <td data-label="陪练账号">
+                    <td data-label={t("admin.mantou.008")}>
                       <div className="admin-meta">{item.address}</div>
                     </td>
-                    <td data-label="数量">{item.amount}</td>
-                    <td data-label="收款账号">
+                    <td data-label={t("admin.mantou.009")}>{item.amount}</td>
+                    <td data-label={t("admin.mantou.010")}>
                       <div className="admin-meta">{item.account || "-"}</div>
                     </td>
-                    <td data-label="状态">
+                    <td data-label={t("admin.mantou.011")}>
                       <select
                         className="admin-select"
                         value={item.status}
@@ -216,10 +217,10 @@ export default function MantouWithdrawPage() {
                         ))}
                       </select>
                     </td>
-                    <td data-label="备注">
+                    <td data-label={t("admin.mantou.012")}>
                       <input
                         className="admin-input"
-                        placeholder="财务备注"
+                        placeholder={t("admin.mantou.013")}
                         value={item.note || ""}
                         onChange={(event) =>
                           setRequests((prev) =>
@@ -231,10 +232,12 @@ export default function MantouWithdrawPage() {
                         onBlur={(event) => updateRequest(item.id, item.status, event.target.value)}
                       />
                     </td>
-                    <td data-label="时间">{formatShortDateTime(item.createdAt)}</td>
-                    <td data-label="操作">
+                    <td data-label={t("admin.mantou.014")}>
+                      {formatShortDateTime(item.createdAt)}
+                    </td>
+                    <td data-label={t("admin.mantou.015")}>
                       <span className="admin-badge neutral">
-                        {saving[item.id] ? "保存中" : "已同步"}
+                        {saving[item.id] ? "保存中" : t("admin.mantou.016")}
                       </span>
                     </td>
                   </tr>

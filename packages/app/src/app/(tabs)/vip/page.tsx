@@ -1,4 +1,5 @@
 "use client";
+import { t } from "@/lib/i18n/i18n-client";
 
 import Link from "next/link";
 import { ArrowLeft, Crown, Shield } from "lucide-react";
@@ -165,7 +166,7 @@ export default function Vip() {
   return (
     <div className="vip-screen">
       <header className="vip-top">
-        <Link href="/me" aria-label="返回我的">
+        <Link href="/me" aria-label={t("vip.001")}>
           <ArrowLeft size={20} />
         </Link>
         <span className="vip-title">财富等级</span>
@@ -173,7 +174,7 @@ export default function Vip() {
       </header>
 
       <div className="vip-card">
-        <div className="vip-rank">{member ? member.status : "未解锁"}</div>
+        <div className="vip-rank">{member ? member.status : t("vip.002")}</div>
         <div className="vip-name">{currentTier?.name || "暂未开通"}</div>
         <div className="vip-progress">{progressText}</div>
         {member?.expiresAt ? (
@@ -187,7 +188,12 @@ export default function Vip() {
         <div className="vip-rank">可选等级</div>
         <div style={{ display: "grid", gap: 10, marginTop: 10 }}>
           {tiers.length === 0 ? (
-            <StateBlock tone="empty" size="compact" title="暂无可用等级" description="请稍后再试" />
+            <StateBlock
+              tone="empty"
+              size="compact"
+              title={t("vip.004")}
+              description={t("vip.003")}
+            />
           ) : (
             tiers.map((tier) => (
               <button
@@ -208,8 +214,8 @@ export default function Vip() {
               >
                 <div style={{ fontSize: 14, fontWeight: 700 }}>{tier.name}</div>
                 <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 4 }}>
-                  Lv.{tier.level} · {tier.durationDays ? `${tier.durationDays} 天` : "长期"} ·
-                  {typeof tier.price === "number" ? ` ¥${tier.price}` : " 价格待定"}
+                  Lv.{tier.level} · {tier.durationDays ? `${tier.durationDays} 天` : t("vip.005")} ·
+                  {typeof tier.price === "number" ? ` ¥${tier.price}` : t("vip.006")}
                 </div>
               </button>
             ))
@@ -222,7 +228,7 @@ export default function Vip() {
           <input
             value={contact}
             onChange={(event) => setContact(event.target.value)}
-            placeholder="微信 / 手机"
+            placeholder={t("vip.007")}
             style={{
               width: "100%",
               padding: "10px 12px",
@@ -249,7 +255,7 @@ export default function Vip() {
             fontWeight: 700,
           }}
         >
-          {submitting ? "提交中..." : "申请开通"}
+          {submitting ? "提交中..." : t("vip.008")}
         </button>
         {hint ? (
           <div className="vip-progress" style={{ marginTop: 8 }}>

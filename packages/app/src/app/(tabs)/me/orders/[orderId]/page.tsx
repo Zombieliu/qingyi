@@ -1,4 +1,5 @@
 "use client";
+import { t } from "@/lib/i18n/i18n-client";
 
 import Link from "next/link";
 import { ArrowLeft, Star, CheckCircle2 } from "lucide-react";
@@ -130,7 +131,7 @@ function ReviewForm({
       const data = await res.json();
       onSubmitted(data.review);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "提交失败");
+      setError(err instanceof Error ? err.message : t("me.orders.001"));
     } finally {
       setSubmitting(false);
     }
@@ -168,7 +169,7 @@ function ReviewForm({
           onChange={(e) => setContent(e.target.value)}
           maxLength={500}
           rows={3}
-          placeholder="分享你的体验..."
+          placeholder={t("me.orders.002")}
           className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm resize-none focus:outline-none focus:border-slate-400"
         />
       </div>
@@ -178,7 +179,7 @@ function ReviewForm({
         disabled={submitting}
         className="w-full py-2 rounded-xl bg-slate-900 text-white text-sm font-semibold disabled:opacity-50"
       >
-        {submitting ? "提交中..." : "提交评价（+5 馒头）"}
+        {submitting ? "提交中..." : t("me.orders.003")}
       </button>
     </div>
   );
@@ -228,7 +229,7 @@ export default function OrderDetailPage() {
     <div className="dl-main">
       <header className="dl-topbar">
         <div className="dl-time">
-          <Link href="/me/orders" className="dl-icon-circle" aria-label="返回订单列表">
+          <Link href="/me/orders" className="dl-icon-circle" aria-label={t("me.orders.004")}>
             <ArrowLeft size={16} />
           </Link>
           <span className="dl-time-text">订单详情</span>
@@ -237,11 +238,11 @@ export default function OrderDetailPage() {
 
       {loading ? (
         <section className="dl-card" style={{ padding: 16 }}>
-          <StateBlock tone="loading" size="compact" title="加载中" />
+          <StateBlock tone="loading" size="compact" title={t("me.orders.005")} />
         </section>
       ) : !order ? (
         <section className="dl-card" style={{ padding: 16 }}>
-          <StateBlock tone="warning" title="订单不存在" description="该订单可能已被删除" />
+          <StateBlock tone="warning" title={t("me.orders.007")} description={t("me.orders.006")} />
         </section>
       ) : (
         <>
@@ -287,7 +288,7 @@ export default function OrderDetailPage() {
           {/* Review Section */}
           <section className="dl-card" style={{ padding: 16 }}>
             <div className="text-sm font-semibold text-gray-900 mb-3">
-              {review ? "我的评价" : canReview ? "评价服务" : "评价"}
+              {review ? "我的评价" : canReview ? "评价服务" : t("me.orders.008")}
             </div>
             {review ? (
               <div>

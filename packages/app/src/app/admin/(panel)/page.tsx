@@ -1,4 +1,5 @@
 "use client";
+import { t } from "@/lib/i18n/i18n-client";
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
@@ -128,15 +129,15 @@ export default function AdminDashboard() {
             <StateBlock
               tone="loading"
               size="compact"
-              title="正在加载"
-              description="同步最新订单数据"
+              title={t("admin.001")}
+              description={t("admin.002")}
             />
           ) : recentOrders.length === 0 ? (
             <StateBlock
               tone="empty"
               size="compact"
-              title="暂无订单记录"
-              description="稍后再来查看"
+              title={t("admin.003")}
+              description={t("admin.004")}
             />
           ) : (
             <div className="admin-table-wrap">
@@ -151,14 +152,14 @@ export default function AdminDashboard() {
                 <tbody>
                   {recentOrders.map((order) => (
                     <tr key={order.id}>
-                      <td data-label="订单">
+                      <td data-label={t("admin.005")}>
                         <div className="admin-text-strong">{order.user}</div>
                         <div className="admin-meta">{order.item}</div>
                       </td>
-                      <td data-label="状态">
+                      <td data-label={t("admin.006")}>
                         <span className="admin-badge">{order.stage}</span>
                       </td>
-                      <td data-label="时间" className="admin-meta">
+                      <td data-label={t("admin.007")} className="admin-meta">
                         {formatShortDateTime(order.createdAt)}
                       </td>
                     </tr>
@@ -180,13 +181,18 @@ export default function AdminDashboard() {
             </div>
           </div>
           {loading ? (
-            <StateBlock tone="loading" size="compact" title="正在加载" description="同步陪练状态" />
+            <StateBlock
+              tone="loading"
+              size="compact"
+              title={t("admin.009")}
+              description={t("admin.008")}
+            />
           ) : activePlayers.length === 0 ? (
             <StateBlock
               tone="empty"
               size="compact"
-              title="暂无陪练档案"
-              description="先去创建陪练资料"
+              title={t("admin.010")}
+              description={t("admin.011")}
             />
           ) : (
             <div className="admin-table-wrap">
@@ -200,10 +206,10 @@ export default function AdminDashboard() {
                 <tbody>
                   {activePlayers.map((player) => (
                     <tr key={player.id}>
-                      <td data-label="名字" className="admin-text-strong">
+                      <td data-label={t("admin.012")} className="admin-text-strong">
                         {player.name}
                       </td>
-                      <td data-label="状态">
+                      <td data-label={t("admin.013")}>
                         <span className="admin-badge neutral">{player.status}</span>
                       </td>
                     </tr>

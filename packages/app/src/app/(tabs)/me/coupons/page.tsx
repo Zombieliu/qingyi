@@ -1,4 +1,5 @@
 "use client";
+import { t } from "@/lib/i18n/i18n-client";
 
 import Link from "next/link";
 import { ArrowLeft, TicketPercent, Sparkles } from "lucide-react";
@@ -141,7 +142,7 @@ export default function CouponsPage() {
       }
       setRedeemReward(data?.reward || null);
       setRedeemCode("");
-      setRedeemHint(data?.duplicated ? "已兑换过该卡密" : "兑换成功");
+      setRedeemHint(data?.duplicated ? "已兑换过该卡密" : t("me.coupons.001"));
     } catch {
       setRedeemHint("diamond.redeem_failed");
     } finally {
@@ -153,7 +154,7 @@ export default function CouponsPage() {
     <div className="dl-main">
       <header className="dl-topbar">
         <div className="dl-time">
-          <Link href="/me" className="dl-icon-circle" aria-label="返回我的">
+          <Link href="/me" className="dl-icon-circle" aria-label={t("me.coupons.002")}>
             <ArrowLeft size={16} />
           </Link>
           <span className="dl-time-text">优惠卡券</span>
@@ -183,7 +184,7 @@ export default function CouponsPage() {
         <div className="mt-2 flex flex-col gap-2 sm:flex-row">
           <input
             className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-900"
-            placeholder="输入卡密"
+            placeholder={t("me.coupons.003")}
             value={redeemCode}
             onChange={(event) => setRedeemCode(event.target.value)}
           />
@@ -195,7 +196,7 @@ export default function CouponsPage() {
               redeemLoading ? "bg-slate-200 text-slate-500" : "bg-slate-900 text-white"
             }`}
           >
-            {redeemLoading ? "兑换中..." : "立即兑换"}
+            {redeemLoading ? "兑换中..." : t("me.coupons.004")}
           </button>
         </div>
         {redeemHint && <div className="mt-2 text-xs text-emerald-600">{redeemHint}</div>}
@@ -209,15 +210,20 @@ export default function CouponsPage() {
         </div>
         {loading ? (
           <div className="mt-3">
-            <StateBlock tone="loading" size="compact" title="加载中" description="正在同步优惠券" />
+            <StateBlock
+              tone="loading"
+              size="compact"
+              title={t("me.coupons.006")}
+              description={t("me.coupons.005")}
+            />
           </div>
         ) : coupons.length === 0 ? (
           <div className="mt-3">
             <StateBlock
               tone="empty"
               size="compact"
-              title="暂无可用优惠券"
-              description="稍后再试或留意活动"
+              title={t("me.coupons.007")}
+              description={t("me.coupons.008")}
             />
           </div>
         ) : (
@@ -254,7 +260,7 @@ export default function CouponsPage() {
                         claimed ? "bg-slate-200 text-slate-500" : "bg-slate-900 text-white"
                       }`}
                     >
-                      {claimed ? "已领取" : "领取"}
+                      {claimed ? "已领取" : t("me.coupons.009")}
                     </button>
                   </div>
                   {coupon.code ? (

@@ -1,4 +1,5 @@
 "use client";
+import { t } from "@/lib/i18n/i18n-client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { PlusCircle, RefreshCw, Search } from "lucide-react";
@@ -18,7 +19,7 @@ export default function CouponsPage() {
   const [loading, setLoading] = useState(true);
   const [cacheHint, setCacheHint] = useState<string | null>(null);
   const [query, setQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState("全部");
+  const [statusFilter, setStatusFilter] = useState(t("admin.coupons.001"));
   const [saving, setSaving] = useState<Record<string, boolean>>({});
   const [page, setPage] = useState(1);
   const [cursor, setCursor] = useState<string | null>(null);
@@ -58,7 +59,7 @@ export default function CouponsPage() {
           setCoupons(Array.isArray(cached.value?.items) ? cached.value.items : []);
           setPage(nextPage);
           setNextCursor(cached.value?.nextCursor || null);
-          setCacheHint(cached.fresh ? null : "显示缓存数据，正在刷新…");
+          setCacheHint(cached.fresh ? null : t("admin.coupons.002"));
         }
         const res = await fetch(`/api/admin/coupons?${params.toString()}`);
         if (res.ok) {
@@ -194,7 +195,7 @@ export default function CouponsPage() {
             标题
             <input
               className="admin-input"
-              placeholder="节日专享券"
+              placeholder={t("admin.coupons.003")}
               value={form.title}
               onChange={(event) => setForm((prev) => ({ ...prev, title: event.target.value }))}
             />
@@ -203,7 +204,7 @@ export default function CouponsPage() {
             兑换码
             <input
               className="admin-input"
-              placeholder="可选"
+              placeholder={t("admin.coupons.004")}
               value={form.code}
               onChange={(event) => setForm((prev) => ({ ...prev, code: event.target.value }))}
             />
@@ -212,7 +213,7 @@ export default function CouponsPage() {
             立减金额
             <input
               className="admin-input"
-              placeholder="例如 20"
+              placeholder={t("admin.coupons.005")}
               value={form.discount}
               onChange={(event) => setForm((prev) => ({ ...prev, discount: event.target.value }))}
             />
@@ -221,7 +222,7 @@ export default function CouponsPage() {
             最低消费
             <input
               className="admin-input"
-              placeholder="例如 199"
+              placeholder={t("admin.coupons.006")}
               value={form.minSpend}
               onChange={(event) => setForm((prev) => ({ ...prev, minSpend: event.target.value }))}
             />
@@ -264,7 +265,7 @@ export default function CouponsPage() {
             说明
             <input
               className="admin-input"
-              placeholder="使用说明"
+              placeholder={t("admin.coupons.007")}
               value={form.description}
               onChange={(event) =>
                 setForm((prev) => ({ ...prev, description: event.target.value }))
@@ -294,7 +295,7 @@ export default function CouponsPage() {
             <input
               className="admin-input"
               style={{ paddingLeft: 36 }}
-              placeholder="搜索标题 / 兑换码"
+              placeholder={t("admin.coupons.008")}
               value={query}
               onChange={(event) => setQuery(event.target.value)}
             />
@@ -304,7 +305,7 @@ export default function CouponsPage() {
             value={statusFilter}
             onChange={(event) => setStatusFilter(event.target.value)}
           >
-            <option value="全部">全部状态</option>
+            <option value={t("admin.coupons.009")}>全部状态</option>
             {COUPON_STATUS_OPTIONS.map((status) => (
               <option key={status} value={status}>
                 {status}
@@ -337,11 +338,16 @@ export default function CouponsPage() {
           <StateBlock
             tone="loading"
             size="compact"
-            title="加载优惠券中"
-            description="正在同步最新优惠券"
+            title={t("admin.coupons.010")}
+            description={t("admin.coupons.011")}
           />
         ) : coupons.length === 0 ? (
-          <StateBlock tone="empty" size="compact" title="暂无优惠券" description="可以新建优惠券" />
+          <StateBlock
+            tone="empty"
+            size="compact"
+            title={t("admin.coupons.013")}
+            description={t("admin.coupons.012")}
+          />
         ) : (
           <div className="admin-table-wrap">
             <table className="admin-table">
@@ -359,11 +365,11 @@ export default function CouponsPage() {
               <tbody>
                 {coupons.map((coupon) => (
                   <tr key={coupon.id}>
-                    <td data-label="标题">
+                    <td data-label={t("admin.coupons.014")}>
                       <div className="admin-text-strong">{coupon.title}</div>
                       <div className="admin-meta">{coupon.code || "-"}</div>
                     </td>
-                    <td data-label="金额">
+                    <td data-label={t("admin.coupons.015")}>
                       <input
                         className="admin-input"
                         value={coupon.discount ?? ""}
@@ -383,7 +389,7 @@ export default function CouponsPage() {
                         }
                       />
                     </td>
-                    <td data-label="最低消费">
+                    <td data-label={t("admin.coupons.016")}>
                       <input
                         className="admin-input"
                         value={coupon.minSpend ?? ""}
@@ -403,7 +409,7 @@ export default function CouponsPage() {
                         }
                       />
                     </td>
-                    <td data-label="状态">
+                    <td data-label={t("admin.coupons.017")}>
                       <select
                         className="admin-select"
                         value={coupon.status}
@@ -424,7 +430,7 @@ export default function CouponsPage() {
                         ))}
                       </select>
                     </td>
-                    <td data-label="有效期">
+                    <td data-label={t("admin.coupons.018")}>
                       <input
                         className="admin-input"
                         type="date"
@@ -477,7 +483,7 @@ export default function CouponsPage() {
                         style={{ marginTop: 6 }}
                       />
                     </td>
-                    <td data-label="说明">
+                    <td data-label={t("admin.coupons.019")}>
                       <input
                         className="admin-input"
                         value={coupon.description || ""}
@@ -495,9 +501,9 @@ export default function CouponsPage() {
                         }
                       />
                     </td>
-                    <td data-label="更新">
+                    <td data-label={t("admin.coupons.020")}>
                       <span className="admin-badge neutral">
-                        {saving[coupon.id] ? "保存中" : "已同步"}
+                        {saving[coupon.id] ? "保存中" : t("admin.coupons.021")}
                       </span>
                     </td>
                   </tr>

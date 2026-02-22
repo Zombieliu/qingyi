@@ -1,4 +1,5 @@
 "use client";
+import { t } from "@/lib/i18n/i18n-client";
 
 import { useCallback, useEffect, useState } from "react";
 import { Check, Copy, RefreshCw, Search } from "lucide-react";
@@ -13,7 +14,7 @@ export default function GuardiansPage() {
   const [loading, setLoading] = useState(true);
   const [cacheHint, setCacheHint] = useState<string | null>(null);
   const [query, setQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState("全部");
+  const [statusFilter, setStatusFilter] = useState(t("admin.guardians.001"));
   const [saving, setSaving] = useState<Record<string, boolean>>({});
   const [page, setPage] = useState(1);
   const [cursor, setCursor] = useState<string | null>(null);
@@ -148,7 +149,7 @@ export default function GuardiansPage() {
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      const scopeLabel = exportScope === "current" ? "当前页" : "筛选";
+      const scopeLabel = exportScope === "current" ? "当前页" : t("admin.guardians.002");
       link.download = `陪练${scopeLabel}_${new Date().toISOString().replace(/[:T]/g, "-").slice(0, 19)}.csv`;
       link.click();
       URL.revokeObjectURL(url);
@@ -179,7 +180,7 @@ export default function GuardiansPage() {
           setApplications(Array.isArray(cached.value?.items) ? cached.value.items : []);
           setPage(nextPage);
           setNextCursor(cached.value?.nextCursor || null);
-          setCacheHint(cached.fresh ? null : "显示缓存数据，正在刷新…");
+          setCacheHint(cached.fresh ? null : t("admin.guardians.003"));
         }
         const res = await fetch(`/api/admin/guardians?${params.toString()}`);
         if (res.ok) {
@@ -273,7 +274,7 @@ export default function GuardiansPage() {
             <input
               className="admin-input"
               style={{ paddingLeft: 36 }}
-              placeholder="搜索姓名 / 游戏 / 联系方式"
+              placeholder={t("admin.guardians.004")}
               value={query}
               onChange={(event) => setQuery(event.target.value)}
             />
@@ -283,7 +284,7 @@ export default function GuardiansPage() {
             value={statusFilter}
             onChange={(event) => setStatusFilter(event.target.value)}
           >
-            <option value="全部">全部状态</option>
+            <option value={t("admin.guardians.005")}>全部状态</option>
             {GUARDIAN_STATUS_OPTIONS.map((status) => (
               <option key={status} value={status}>
                 {status}
@@ -294,13 +295,13 @@ export default function GuardiansPage() {
             className="admin-select"
             value={exportScope}
             onChange={(event) => setExportScope(event.target.value as "current" | "filtered")}
-            title="导出范围"
+            title={t("admin.guardians.006")}
           >
             <option value="current">导出当前页</option>
             <option value="filtered">导出全部筛选</option>
           </select>
           <button className="admin-btn ghost" onClick={exportFiltered} disabled={exporting}>
-            {exporting ? "导出中..." : "导出"}
+            {exporting ? "导出中..." : t("admin.guardians.007")}
           </button>
           <button
             className="admin-btn ghost"
@@ -333,15 +334,15 @@ export default function GuardiansPage() {
           <StateBlock
             tone="loading"
             size="compact"
-            title="加载陪练申请中"
-            description="正在同步最新申请"
+            title={t("admin.guardians.008")}
+            description={t("admin.guardians.009")}
           />
         ) : applications.length === 0 ? (
           <StateBlock
             tone="empty"
             size="compact"
-            title="暂无陪练申请"
-            description="当前没有待处理的申请"
+            title={t("admin.guardians.010")}
+            description={t("admin.guardians.011")}
           />
         ) : (
           <div className="admin-table-wrap">
@@ -362,19 +363,19 @@ export default function GuardiansPage() {
               <tbody>
                 {applications.map((item) => (
                   <tr key={item.id}>
-                    <td data-label="申请人">
+                    <td data-label={t("admin.guardians.012")}>
                       <div className="admin-text-strong">{item.user || "-"}</div>
                       <div className="admin-meta">{item.contact || "-"}</div>
                     </td>
-                    <td data-label="擅长游戏">{item.games || "-"}</td>
-                    <td data-label="经验" className="admin-meta">
+                    <td data-label={t("admin.guardians.013")}>{item.games || "-"}</td>
+                    <td data-label={t("admin.guardians.014")} className="admin-meta">
                       {item.experience || "-"}
                     </td>
-                    <td data-label="可接单时段" className="admin-meta">
+                    <td data-label={t("admin.guardians.015")} className="admin-meta">
                       {item.availability || "-"}
                     </td>
                     <td
-                      data-label="钱包地址"
+                      data-label={t("admin.guardians.016")}
                       className="admin-meta"
                       style={{ maxWidth: 220, wordBreak: "break-all" }}
                     >
@@ -392,16 +393,18 @@ export default function GuardiansPage() {
                               gap: 6,
                             }}
                             onClick={() => copyAddress(item.id, item.userAddress)}
-                            title={copiedId === item.id ? "已复制" : "复制完整地址"}
-                            aria-label="复制钱包地址"
+                            title={copiedId === item.id ? "已复制" : t("admin.guardians.017")}
+                            aria-label={t("admin.guardians.018")}
                           >
                             {copiedId === item.id ? <Check size={14} /> : <Copy size={14} />}
-                            <span>{copiedId === item.id ? "已复制" : "复制"}</span>
+                            <span>
+                              {copiedId === item.id ? "已复制" : t("admin.guardians.019")}
+                            </span>
                           </button>
                         )}
                       </div>
                     </td>
-                    <td data-label="状态">
+                    <td data-label={t("admin.guardians.020")}>
                       <select
                         className="admin-select"
                         value={item.status}
@@ -420,10 +423,10 @@ export default function GuardiansPage() {
                         ))}
                       </select>
                     </td>
-                    <td data-label="备注">
+                    <td data-label={t("admin.guardians.021")}>
                       <input
                         className="admin-input"
-                        placeholder="审核备注"
+                        placeholder={t("admin.guardians.022")}
                         value={item.note || ""}
                         onChange={(event) =>
                           setApplications((prev) =>
@@ -435,10 +438,12 @@ export default function GuardiansPage() {
                         onBlur={(event) => updateApplication(item.id, { note: event.target.value })}
                       />
                     </td>
-                    <td data-label="时间">{formatShortDateTime(item.createdAt)}</td>
-                    <td data-label="更新">
+                    <td data-label={t("admin.guardians.023")}>
+                      {formatShortDateTime(item.createdAt)}
+                    </td>
+                    <td data-label={t("admin.guardians.024")}>
                       <span className="admin-badge neutral">
-                        {saving[item.id] ? "保存中" : "已同步"}
+                        {saving[item.id] ? "保存中" : t("admin.guardians.025")}
                       </span>
                     </td>
                   </tr>

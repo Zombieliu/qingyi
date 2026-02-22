@@ -1,4 +1,5 @@
 "use client";
+import { t } from "@/lib/i18n/i18n-client";
 
 import Link from "next/link";
 import { ArrowLeft, Gamepad2, Save } from "lucide-react";
@@ -59,7 +60,7 @@ export default function GameSettingsPage() {
     <div className="dl-main">
       <header className="dl-topbar">
         <div className="dl-time">
-          <Link href="/me" className="dl-icon-circle" aria-label="返回我的">
+          <Link href="/me" className="dl-icon-circle" aria-label={t("me.game_settings.001")}>
             <ArrowLeft size={16} />
           </Link>
           <span className="dl-time-text">游戏设置</span>
@@ -121,7 +122,7 @@ function GameSettingsForm({
           <label className="text-xs text-slate-500">游戏用户名</label>
           <input
             className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm"
-            placeholder="如：夜风"
+            placeholder={t("me.game_settings.002")}
             value={form.gameName}
             onChange={(event) => setForm((prev) => ({ ...prev, gameName: event.target.value }))}
           />
@@ -130,7 +131,7 @@ function GameSettingsForm({
           <label className="text-xs text-slate-500">游戏ID</label>
           <input
             className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm"
-            placeholder="请输入游戏ID"
+            placeholder={t("me.game_settings.003")}
             value={form.gameId}
             onChange={(event) => setForm((prev) => ({ ...prev, gameId: event.target.value }))}
           />
@@ -143,7 +144,7 @@ function GameSettingsForm({
         className="mt-4 w-full rounded-2xl bg-slate-900 text-white py-2 text-sm font-semibold flex items-center justify-center gap-2"
       >
         <Save size={16} />
-        {saving ? "保存中..." : "保存设置"}
+        {saving ? "保存中..." : t("me.game_settings.004")}
       </button>
       {hint && <div className="mt-3 text-xs text-emerald-600">{hint}</div>}
       {savedAt && (

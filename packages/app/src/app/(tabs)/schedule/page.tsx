@@ -1,4 +1,5 @@
 "use client";
+import { t } from "@/lib/i18n/i18n-client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Clock3, QrCode, Loader2, CheckCircle2 } from "lucide-react";
@@ -58,7 +59,7 @@ import { NotifyingView } from "./notifying-view";
 
 export default function Schedule() {
   const [checked, setChecked] = useState<Record<string, boolean>>(() => ({}));
-  const [active, setActive] = useState("推荐");
+  const [active, setActive] = useState(t("schedule.001"));
   const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const [infoOpen, setInfoOpen] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
@@ -287,7 +288,7 @@ export default function Schedule() {
       found = list.find((order) => order.orderId === orderId) || null;
       if (found) return found;
     } catch (error) {
-      const errorMsg = formatErrorMessage(error, "链上订单同步失败");
+      const errorMsg = formatErrorMessage(error, t("schedule.002"));
       // 如果是 chain order not found 错误，提供更友好的提示
       if (errorMsg.includes("not found") || errorMsg.includes("未找到")) {
         throw new Error("链上订单暂未索引完成，请稍后再试（通常需要等待3-10秒）");
@@ -341,7 +342,7 @@ export default function Schedule() {
       setPlayers(next);
       writeCache(cacheKey, next);
     } catch (e) {
-      setPlayersError(formatErrorMessage(e, "加载陪练失败"));
+      setPlayersError(formatErrorMessage(e, t("schedule.003")));
     } finally {
       setPlayersLoading(false);
     }
@@ -503,7 +504,11 @@ export default function Schedule() {
       </span>
     );
   };
-  const renderLoadingLabel = (loading: boolean, label: string, loadingLabel = "处理中") => {
+  const renderLoadingLabel = (
+    loading: boolean,
+    label: string,
+    loadingLabel = t("schedule.004")
+  ) => {
     if (!loading) return label;
     return (
       <span className="inline-flex items-center gap-1">
@@ -707,7 +712,7 @@ export default function Schedule() {
             <div className="ride-driver-avatar" />
             <div>
               <div className="text-sm text-amber-600 font-semibold">
-                {isEscrow ? "陪练费用已托管" : "等待支付陪练费用"}
+                {isEscrow ? "陪练费用已托管" : t("schedule.005")}
               </div>
               {hasCompanionProfile ? (
                 <>
@@ -807,8 +812,8 @@ export default function Schedule() {
             tone="loading"
             size="compact"
             align="center"
-            title="地图加载中"
-            description="正在定位服务区域"
+            title={t("schedule.006")}
+            description={t("schedule.007")}
           />
         </div>
         {canConfirmCompletion && (
@@ -860,7 +865,7 @@ export default function Schedule() {
           <div className="ride-driver-actions">
             <button className="dl-tab-btn" onClick={cancelOrder}>
               {currentOrder
-                ? renderActionLabel(`cancel-${currentOrder.id}`, "取消订单")
+                ? renderActionLabel(`cancel-${currentOrder.id}`, t("schedule.008"))
                 : "取消订单"}
             </button>
             <button className="dl-tab-btn">安全中心</button>
@@ -909,7 +914,7 @@ export default function Schedule() {
                 }}
               >
                 {currentOrder
-                  ? renderActionLabel(`complete-${currentOrder.id}`, "确认完成")
+                  ? renderActionLabel(`complete-${currentOrder.id}`, t("schedule.009"))
                   : "确认完成"}
               </button>
             )}
@@ -953,8 +958,8 @@ export default function Schedule() {
             tone="loading"
             size="compact"
             align="center"
-            title="地图加载中"
-            description="正在定位服务区域"
+            title={t("schedule.010")}
+            description={t("schedule.011")}
           />
         </div>
         <div className="ride-driver-card dl-card">
@@ -980,7 +985,7 @@ export default function Schedule() {
             <div className="ml-auto text-right">
               <div className="text-emerald-600 font-semibold text-sm">待结算</div>
               <div className="text-xs text-gray-500">
-                {inDisputeWindow ? "可发起争议" : "争议期已结束"}
+                {inDisputeWindow ? "可发起争议" : t("schedule.012")}
               </div>
             </div>
           </div>
@@ -1015,7 +1020,7 @@ export default function Schedule() {
               }}
             >
               {currentOrder
-                ? renderActionLabel(`dispute-${currentOrder.id}`, "发起争议")
+                ? renderActionLabel(`dispute-${currentOrder.id}`, t("schedule.013"))
                 : "发起争议"}
             </button>
             <button
@@ -1056,7 +1061,7 @@ export default function Schedule() {
               }}
             >
               {currentOrder
-                ? renderActionLabel(`finalize-${currentOrder.id}`, "无争议结算")
+                ? renderActionLabel(`finalize-${currentOrder.id}`, t("schedule.014"))
                 : "无争议结算"}
             </button>
             <button className="dl-tab-btn accent">联系陪练</button>
@@ -1212,10 +1217,10 @@ export default function Schedule() {
       if (result.sent === false) {
         setToast(result.error || "订单已创建，通知失败");
       } else {
-        setToast(chainDigest ? "已提交并派单" : "托管费用已记录，正在派单");
+        setToast(chainDigest ? "已提交并派单" : t("schedule.015"));
       }
     } catch (e) {
-      const message = formatErrorMessage(e, "创建订单失败");
+      const message = formatErrorMessage(e, t("schedule.016"));
       trackEvent("order_create_failed", {
         error: message,
         total: locked.total,
@@ -1240,11 +1245,11 @@ export default function Schedule() {
               onClick={loadChain}
               disabled={chainLoading}
             >
-              {renderLoadingLabel(chainLoading, "刷新", "刷新中")}
+              {renderLoadingLabel(chainLoading, t("schedule.018"), t("schedule.017"))}
             </button>
           </div>
           <div className="text-xs text-gray-500 mt-2">
-            当前账号：{chainAddress ? "已登录" : "未登录"}
+            当前账号：{chainAddress ? "已登录" : t("schedule.019")}
           </div>
           <div className="text-xs text-gray-500 mt-1">
             上次刷新：{chainUpdatedAt ? new Date(chainUpdatedAt).toLocaleTimeString() : "-"}
@@ -1271,12 +1276,12 @@ export default function Schedule() {
             <StateBlock
               tone={chainLoading ? "loading" : chainError ? "danger" : "empty"}
               size="compact"
-              title={chainLoading ? "同步中" : chainError ? "加载失败" : "暂无订单"}
+              title={chainLoading ? "同步中" : chainError ? "加载失败" : t("schedule.020")}
               description={chainLoading ? "正在刷新链上订单" : chainError || "点击刷新获取最新状态"}
               actions={
                 chainLoading ? null : (
                   <button className="dl-tab-btn" onClick={loadChain} disabled={chainLoading}>
-                    {renderLoadingLabel(chainLoading, "刷新", "刷新中")}
+                    {renderLoadingLabel(chainLoading, t("schedule.022"), t("schedule.021"))}
                   </button>
                 )
               }
@@ -1303,7 +1308,7 @@ export default function Schedule() {
                       )
                     }
                   >
-                    {renderActionLabel(`pay-${chainCurrentDisplay.orderId}`, "支付托管费")}
+                    {renderActionLabel(`pay-${chainCurrentDisplay.orderId}`, t("schedule.023"))}
                   </button>
                 )}
                 {(chainCurrentDisplay.status === 0 || chainCurrentDisplay.status === 1) && (
@@ -1320,7 +1325,7 @@ export default function Schedule() {
                       )
                     }
                   >
-                    {renderActionLabel(`cancel-${chainCurrentDisplay.orderId}`, "取消订单")}
+                    {renderActionLabel(`cancel-${chainCurrentDisplay.orderId}`, t("schedule.024"))}
                   </button>
                 )}
                 {chainCurrentDisplay.status === 2 && (
@@ -1337,7 +1342,10 @@ export default function Schedule() {
                       )
                     }
                   >
-                    {renderActionLabel(`complete-${chainCurrentDisplay.orderId}`, "确认完成")}
+                    {renderActionLabel(
+                      `complete-${chainCurrentDisplay.orderId}`,
+                      t("schedule.025")
+                    )}
                   </button>
                 )}
                 {chainCurrentDisplay.status === 3 && (
@@ -1362,7 +1370,10 @@ export default function Schedule() {
                         });
                       }}
                     >
-                      {renderActionLabel(`dispute-${chainCurrentDisplay.orderId}`, "发起争议")}
+                      {renderActionLabel(
+                        `dispute-${chainCurrentDisplay.orderId}`,
+                        t("schedule.026")
+                      )}
                     </button>
                     <button
                       className="dl-tab-btn"
@@ -1394,7 +1405,10 @@ export default function Schedule() {
                         );
                       }}
                     >
-                      {renderActionLabel(`finalize-${chainCurrentDisplay.orderId}`, "无争议结算")}
+                      {renderActionLabel(
+                        `finalize-${chainCurrentDisplay.orderId}`,
+                        t("schedule.027")
+                      )}
                     </button>
                   </>
                 )}
@@ -1453,7 +1467,7 @@ export default function Schedule() {
                 <div className="text-xs text-gray-500" style={{ marginTop: 6 }}>
                   当前余额：
                   {balanceLoading
-                    ? "查询中..."
+                    ? t("schedule.028")
                     : balanceReady
                       ? `${diamondBalance} 钻石`
                       : "查询失败，请刷新"}
@@ -1469,14 +1483,14 @@ export default function Schedule() {
                   onClick={refreshBalance}
                   disabled={balanceLoading}
                 >
-                  {renderLoadingLabel(balanceLoading, "刷新余额", "刷新中")}
+                  {renderLoadingLabel(balanceLoading, t("schedule.030"), t("schedule.029"))}
                 </button>
                 <label className="ride-status-toggle" style={{ marginTop: 10 }}>
                   <input
                     type="checkbox"
                     checked={feeChecked}
                     onChange={(e) => setFeeChecked(e.target.checked)}
-                    aria-label="已确认托管费用"
+                    aria-label={t("schedule.031")}
                   />
                   <span>使用钻石托管费用</span>
                   {feeChecked && <CheckCircle2 size={16} color="#22c55e" />}
@@ -1501,7 +1515,12 @@ export default function Schedule() {
       )}
 
       {debugOpen && (
-        <div className="ride-modal-mask" role="dialog" aria-modal="true" aria-label="链上调试信息">
+        <div
+          className="ride-modal-mask"
+          role="dialog"
+          aria-modal="true"
+          aria-label={t("schedule.032")}
+        >
           <div className="ride-modal">
             <div className="ride-modal-head">
               <div>
@@ -1605,7 +1624,7 @@ export default function Schedule() {
                     type="button"
                     disabled={playersLoading}
                   >
-                    {renderLoadingLabel(playersLoading, "刷新", "加载中")}
+                    {renderLoadingLabel(playersLoading, t("schedule.034"), t("schedule.033"))}
                   </button>
                 </div>
               </div>
@@ -1614,14 +1633,14 @@ export default function Schedule() {
                   <StateBlock
                     tone="loading"
                     size="compact"
-                    title="加载中"
-                    description="正在获取可接陪练"
+                    title={t("schedule.035")}
+                    description={t("schedule.036")}
                   />
                 ) : playersError && players.length === 0 ? (
                   <StateBlock
                     tone="danger"
                     size="compact"
-                    title="陪练列表加载失败"
+                    title={t("schedule.037")}
                     description={playersError}
                     actions={
                       <button
@@ -1630,7 +1649,7 @@ export default function Schedule() {
                         type="button"
                         disabled={playersLoading}
                       >
-                        {renderLoadingLabel(playersLoading, "重新加载", "加载中")}
+                        {renderLoadingLabel(playersLoading, t("schedule.039"), t("schedule.038"))}
                       </button>
                     }
                   />
@@ -1638,8 +1657,8 @@ export default function Schedule() {
                   <StateBlock
                     tone="empty"
                     size="compact"
-                    title="暂无可接陪练"
-                    description="稍后刷新或切换时间段试试"
+                    title={t("schedule.040")}
+                    description={t("schedule.041")}
                   />
                 ) : (
                   players.map((player) => (

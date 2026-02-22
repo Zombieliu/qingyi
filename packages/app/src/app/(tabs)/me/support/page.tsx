@@ -1,4 +1,5 @@
 "use client";
+import { t } from "@/lib/i18n/i18n-client";
 
 import Link from "next/link";
 import { ArrowLeft, Headset, MessageCircle, Send, Clock3 } from "lucide-react";
@@ -116,7 +117,7 @@ export default function SupportPage() {
     <div className="dl-main">
       <header className="dl-topbar">
         <div className="dl-time">
-          <Link href="/me" className="dl-icon-circle" aria-label="返回我的">
+          <Link href="/me" className="dl-icon-circle" aria-label={t("me.support.001")}>
             <ArrowLeft size={16} />
           </Link>
           <span className="dl-time-text">联系客服</span>
@@ -163,7 +164,7 @@ export default function SupportPage() {
             <label className="text-xs text-slate-500">称呼</label>
             <input
               className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm"
-              placeholder="如：糕手玩玩"
+              placeholder={t("me.support.002")}
               value={form.name}
               onChange={(event) => setForm((prev) => ({ ...prev, name: event.target.value }))}
             />
@@ -172,7 +173,7 @@ export default function SupportPage() {
             <label className="text-xs text-slate-500">联系方式</label>
             <input
               className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm"
-              placeholder="微信 / 手机 / 邮箱"
+              placeholder={t("me.support.003")}
               value={form.contact}
               onChange={(event) => setForm((prev) => ({ ...prev, contact: event.target.value }))}
             />
@@ -200,7 +201,7 @@ export default function SupportPage() {
             <label className="text-xs text-slate-500">问题描述</label>
             <textarea
               className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm min-h-[120px]"
-              placeholder="请尽量详细描述，我们将更快定位问题"
+              placeholder={t("me.support.004")}
               value={form.message}
               onChange={(event) => setForm((prev) => ({ ...prev, message: event.target.value }))}
             />
@@ -213,7 +214,7 @@ export default function SupportPage() {
           className="mt-4 w-full rounded-2xl bg-slate-900 text-white py-2 text-sm font-semibold flex items-center justify-center gap-2"
         >
           <Send size={16} />
-          {submitting ? "提交中..." : "提交工单"}
+          {submitting ? "提交中..." : t("me.support.005")}
         </button>
         {hint && <div className="mt-3 text-xs text-amber-600">{hint}</div>}
       </section>
@@ -228,8 +229,8 @@ export default function SupportPage() {
             <StateBlock
               tone="empty"
               size="compact"
-              title="暂无记录"
-              description="提交工单后会在这里显示"
+              title={t("me.support.006")}
+              description={t("me.support.007")}
             />
           </div>
         ) : (

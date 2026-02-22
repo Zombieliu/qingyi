@@ -1,4 +1,5 @@
 "use client";
+import { t } from "@/lib/i18n/i18n-client";
 
 import Image, { type ImageLoader } from "next/image";
 import Link from "next/link";
@@ -216,7 +217,7 @@ export default function Wallet() {
         }
       }
     } catch (error) {
-      setStatus({ tone: "danger", title: formatErrorMessage(error, "网络错误，请稍后重试") });
+      setStatus({ tone: "danger", title: formatErrorMessage(error, t("wallet.001")) });
     } finally {
       setLoading(false);
     }
@@ -225,7 +226,7 @@ export default function Wallet() {
   return (
     <div className="pay-screen">
       <header className="pay-top">
-        <Link href="/me" aria-label="返回我的">
+        <Link href="/me" aria-label={t("wallet.002")}>
           <ArrowLeft size={20} />
         </Link>
         <span className="pay-title">钻石充值</span>
@@ -261,7 +262,7 @@ export default function Wallet() {
                 type="number"
                 min={1}
                 step={1}
-                placeholder="输入钻石数"
+                placeholder={t("wallet.003")}
                 value={customAmount}
                 onChange={(event) => {
                   setCustomTouched(true);
@@ -344,7 +345,7 @@ export default function Wallet() {
               {wechatQrSrc ? (
                 <Image
                   src={wechatQrSrc}
-                  alt="微信支付二维码"
+                  alt={t("wallet.004")}
                   width={120}
                   height={120}
                   loader={qrImageLoader}
@@ -380,7 +381,7 @@ export default function Wallet() {
             type="checkbox"
             checked={agree}
             onChange={(e) => setAgree(e.target.checked)}
-            aria-label="同意充值协议"
+            aria-label={t("wallet.005")}
           />
           <span>同意并阅读《充值服务协议》</span>
         </label>

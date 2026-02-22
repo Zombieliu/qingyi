@@ -1,4 +1,5 @@
 "use client";
+import { t } from "@/lib/i18n/i18n-client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Check, Copy, RefreshCw, Trash2 } from "lucide-react";
@@ -47,7 +48,7 @@ export default function AdminTokensPage() {
 
   const createHint = useMemo(() => {
     if (!createdToken) return null;
-    return "密钥仅显示一次，请立即保存";
+    return t("admin.tokens.001");
   }, [createdToken]);
 
   const copyText = async (value: string, id?: string) => {
@@ -73,7 +74,7 @@ export default function AdminTokensPage() {
         setTimeout(() => setCopiedToken(false), 2000);
       }
     } catch {
-      setError("复制失败，请稍后再试");
+      setError(t("admin.tokens.002"));
     }
   };
 
@@ -90,7 +91,7 @@ export default function AdminTokensPage() {
       const data = await res.json();
       setTokens(Array.isArray(data) ? data : []);
     } catch {
-      setError("加载失败，请稍后重试");
+      setError(t("admin.tokens.003"));
     } finally {
       setLoading(false);
     }
@@ -103,7 +104,7 @@ export default function AdminTokensPage() {
   const createToken = async () => {
     if (creating) return;
     if (!form.role) {
-      setError("请选择角色");
+      setError(t("admin.tokens.004"));
       return;
     }
     setCreating(true);
@@ -134,7 +135,7 @@ export default function AdminTokensPage() {
       }
       setForm({ role: form.role, label: "" });
     } catch {
-      setError("创建失败，请稍后再试");
+      setError(t("admin.tokens.005"));
     } finally {
       setCreating(false);
     }
@@ -158,7 +159,7 @@ export default function AdminTokensPage() {
       }
       setTokens((prev) => prev.map((item) => (item.id === tokenId ? (data as TokenView) : item)));
     } catch {
-      setError("更新失败，请稍后再试");
+      setError(t("admin.tokens.006"));
       await loadTokens();
     } finally {
       setSaving((prev) => ({ ...prev, [tokenId]: false }));
@@ -167,7 +168,7 @@ export default function AdminTokensPage() {
 
   const removeToken = async (tokenId: string) => {
     if (saving[tokenId]) return;
-    if (!confirm("确定要删除该密钥吗？删除后无法恢复。")) return;
+    if (!confirm(t("admin.tokens.007"))) return;
     setSaving((prev) => ({ ...prev, [tokenId]: true }));
     setError(null);
     try {
@@ -179,7 +180,7 @@ export default function AdminTokensPage() {
       }
       setTokens((prev) => prev.filter((item) => item.id !== tokenId));
     } catch {
-      setError("删除失败，请稍后再试");
+      setError(t("admin.tokens.008"));
     } finally {
       setSaving((prev) => ({ ...prev, [tokenId]: false }));
     }
@@ -224,14 +225,14 @@ export default function AdminTokensPage() {
             备注
             <input
               className="admin-input"
-              placeholder="例如：财务专用密钥"
+              placeholder={t("admin.tokens.009")}
               value={form.label}
               onChange={(event) => setForm((prev) => ({ ...prev, label: event.target.value }))}
             />
           </label>
         </div>
         <button className="admin-btn primary" onClick={createToken} disabled={creating}>
-          {creating ? "创建中..." : "生成密钥"}
+          {creating ? "创建中..." : t("admin.tokens.010")}
         </button>
         {error ? (
           <div style={{ marginTop: 12 }}>
@@ -279,9 +280,19 @@ export default function AdminTokensPage() {
           </div>
         </div>
         {loading ? (
-          <StateBlock tone="loading" size="compact" title="加载中" description="正在同步密钥列表" />
+          <StateBlock
+            tone="loading"
+            size="compact"
+            title={t("admin.tokens.012")}
+            description={t("admin.tokens.011")}
+          />
         ) : tokens.length === 0 ? (
-          <StateBlock tone="empty" size="compact" title="暂无密钥" description="请先创建后台密钥" />
+          <StateBlock
+            tone="empty"
+            size="compact"
+            title={t("admin.tokens.014")}
+            description={t("admin.tokens.013")}
+          />
         ) : (
           <div className="admin-table-wrap">
             <table className="admin-table">
@@ -299,7 +310,7 @@ export default function AdminTokensPage() {
               <tbody>
                 {tokens.map((token) => (
                   <tr key={token.id}>
-                    <td data-label="备注" style={{ minWidth: 180 }}>
+                    <td data-label={t("admin.tokens.015")} style={{ minWidth: 180 }}>
                       <input
                         className="admin-input"
                         value={token.label || ""}
@@ -319,7 +330,7 @@ export default function AdminTokensPage() {
                         }}
                       />
                     </td>
-                    <td data-label="角色">
+                    <td data-label={t("admin.tokens.016")}>
                       <select
                         className="admin-select"
                         value={token.role}
@@ -334,19 +345,19 @@ export default function AdminTokensPage() {
                         ))}
                       </select>
                     </td>
-                    <td data-label="密钥前缀">
+                    <td data-label={t("admin.tokens.017")}>
                       <span className="admin-text-strong">{token.tokenPrefix}****</span>
                     </td>
-                    <td data-label="状态">
+                    <td data-label={t("admin.tokens.018")}>
                       <span
                         className={`admin-badge ${token.status === "disabled" ? "neutral" : ""}`}
                       >
                         {statusLabels[token.status] || token.status}
                       </span>
                     </td>
-                    <td data-label="最后使用">{formatTime(token.lastUsedAt)}</td>
-                    <td data-label="创建时间">{formatTime(token.createdAt)}</td>
-                    <td data-label="操作">
+                    <td data-label={t("admin.tokens.019")}>{formatTime(token.lastUsedAt)}</td>
+                    <td data-label={t("admin.tokens.020")}>{formatTime(token.createdAt)}</td>
+                    <td data-label={t("admin.tokens.021")}>
                       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                         <button
                           className="admin-btn ghost"
@@ -357,7 +368,7 @@ export default function AdminTokensPage() {
                           }
                           disabled={saving[token.id]}
                         >
-                          {token.status === "active" ? "禁用" : "启用"}
+                          {token.status === "active" ? "禁用" : t("admin.tokens.022")}
                         </button>
                         <button
                           className="admin-btn ghost"

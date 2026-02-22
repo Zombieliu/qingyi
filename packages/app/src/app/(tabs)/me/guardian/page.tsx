@@ -1,4 +1,5 @@
 "use client";
+import { t } from "@/lib/i18n/i18n-client";
 
 import Link from "next/link";
 import { ArrowLeft, ShieldCheck, Send } from "lucide-react";
@@ -117,7 +118,7 @@ export default function GuardianPage() {
     <div className="dl-main">
       <header className="dl-topbar">
         <div className="dl-time">
-          <Link href="/me" className="dl-icon-circle" aria-label="返回我的">
+          <Link href="/me" className="dl-icon-circle" aria-label={t("me.guardian.001")}>
             <ArrowLeft size={16} />
           </Link>
           <span className="dl-time-text">成为陪练</span>
@@ -146,7 +147,7 @@ export default function GuardianPage() {
             <label className="text-xs text-slate-500">姓名 / 昵称</label>
             <input
               className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm"
-              placeholder="如：夜风"
+              placeholder={t("me.guardian.002")}
               value={form.name}
               onChange={(event) => setForm((prev) => ({ ...prev, name: event.target.value }))}
             />
@@ -155,7 +156,7 @@ export default function GuardianPage() {
             <label className="text-xs text-slate-500">联系方式</label>
             <input
               className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm"
-              placeholder="手机 / 微信"
+              placeholder={t("me.guardian.003")}
               value={form.contact}
               onChange={(event) => setForm((prev) => ({ ...prev, contact: event.target.value }))}
             />
@@ -164,7 +165,7 @@ export default function GuardianPage() {
             <label className="text-xs text-slate-500">擅长游戏</label>
             <input
               className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm"
-              placeholder="三角洲行动 / 王者荣耀 / 无畏契约"
+              placeholder={t("me.guardian.004")}
               value={form.games}
               onChange={(event) => setForm((prev) => ({ ...prev, games: event.target.value }))}
             />
@@ -173,7 +174,7 @@ export default function GuardianPage() {
             <label className="text-xs text-slate-500">段位与经验</label>
             <input
               className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm"
-              placeholder="最高段位、带队经验等"
+              placeholder={t("me.guardian.005")}
               value={form.experience}
               onChange={(event) => setForm((prev) => ({ ...prev, experience: event.target.value }))}
             />
@@ -182,7 +183,7 @@ export default function GuardianPage() {
             <label className="text-xs text-slate-500">可接单时段</label>
             <input
               className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm"
-              placeholder="工作日晚 19:00-24:00"
+              placeholder={t("me.guardian.006")}
               value={form.availability}
               onChange={(event) =>
                 setForm((prev) => ({ ...prev, availability: event.target.value }))
@@ -193,7 +194,7 @@ export default function GuardianPage() {
             <label className="text-xs text-slate-500">补充说明</label>
             <textarea
               className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm min-h-[90px]"
-              placeholder="自我介绍、战绩截图等"
+              placeholder={t("me.guardian.007")}
               value={form.note}
               onChange={(event) => setForm((prev) => ({ ...prev, note: event.target.value }))}
             />
@@ -206,7 +207,7 @@ export default function GuardianPage() {
           className="mt-4 w-full rounded-2xl bg-slate-900 text-white py-2 text-sm font-semibold flex items-center justify-center gap-2"
         >
           <Send size={16} />
-          {submitting ? "提交中..." : "提交申请"}
+          {submitting ? "提交中..." : t("me.guardian.008")}
         </button>
         {hint && <div className="mt-3 text-xs text-amber-600">{hint}</div>}
       </section>
@@ -218,8 +219,8 @@ export default function GuardianPage() {
             <StateBlock
               tone="empty"
               size="compact"
-              title="暂无申请记录"
-              description="提交申请后会显示进度"
+              title={t("me.guardian.009")}
+              description={t("me.guardian.010")}
             />
           </div>
         ) : (

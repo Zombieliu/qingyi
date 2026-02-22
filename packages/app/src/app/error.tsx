@@ -1,4 +1,5 @@
 "use client";
+import { t } from "@/lib/i18n/i18n-client";
 
 import { useEffect } from "react";
 import * as Sentry from "@sentry/nextjs";
@@ -19,7 +20,7 @@ export default function ErrorPage({
       <div style={{ textAlign: "center" }}>
         <div style={{ fontSize: 28, fontWeight: 700, color: "#0f172a" }}>页面出错</div>
         <div style={{ marginTop: 8, color: "#64748b" }}>
-          {error.digest ? `错误代码：${error.digest}` : "请稍后重试，或返回首页。"}
+          {error.digest ? `错误代码：${error.digest}` : t("error.001")}
         </div>
         <div style={{ marginTop: 16, display: "flex", gap: 12, justifyContent: "center" }}>
           <button

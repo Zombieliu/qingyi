@@ -1,4 +1,5 @@
 "use client";
+import { t } from "@/lib/i18n/i18n-client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Copy, RefreshCw } from "lucide-react";
@@ -99,7 +100,7 @@ export default function RedeemAdminPage() {
       }
       setCodes(Array.isArray(data?.items) ? data.items : []);
     } catch {
-      setError("加载失败，请稍后重试");
+      setError(t("admin.redeem.001"));
     } finally {
       setLoading(false);
     }
@@ -129,21 +130,21 @@ export default function RedeemAdminPage() {
   const createBatch = async () => {
     setError(null);
     if (!form.title.trim()) {
-      setError("请输入批次标题");
+      setError(t("admin.redeem.002"));
       return;
     }
     const rewardPayload = buildRewardPayload();
     if (form.rewardType === "mantou" || form.rewardType === "diamond") {
       const amount = Number(form.rewardValue);
       if (!Number.isFinite(amount) || amount <= 0) {
-        setError("请输入有效的奖励数量");
+        setError(t("admin.redeem.003"));
         return;
       }
     }
     if (form.rewardType === "vip") {
       const days = Number(form.rewardDays);
       if (!Number.isFinite(days) || days <= 0) {
-        setError("请输入有效的会员天数");
+        setError(t("admin.redeem.004"));
         return;
       }
     }
@@ -151,7 +152,7 @@ export default function RedeemAdminPage() {
       const couponId = form.couponId.trim();
       const couponCode = form.couponCode.trim();
       if (!couponId && !couponCode) {
-        setError("请输入优惠券 ID 或兑换码");
+        setError(t("admin.redeem.005"));
         return;
       }
     }
@@ -193,7 +194,7 @@ export default function RedeemAdminPage() {
       await loadRecords();
       setForm((prev) => ({ ...prev, title: "", description: "", codesText: "" }));
     } catch {
-      setError("创建失败，请稍后再试");
+      setError(t("admin.redeem.006"));
     }
   };
 
@@ -205,12 +206,12 @@ export default function RedeemAdminPage() {
         body: JSON.stringify({ status }),
       });
       if (!res.ok) {
-        setError("更新失败");
+        setError(t("admin.redeem.007"));
         return;
       }
       await loadCodes();
     } catch {
-      setError("更新失败");
+      setError(t("admin.redeem.008"));
     }
   };
 
@@ -218,7 +219,7 @@ export default function RedeemAdminPage() {
     try {
       await navigator.clipboard.writeText(value);
     } catch {
-      setError("复制失败，请稍后再试");
+      setError(t("admin.redeem.009"));
     }
   };
 
@@ -256,7 +257,7 @@ export default function RedeemAdminPage() {
               className="admin-input"
               value={form.title}
               onChange={(event) => setForm((prev) => ({ ...prev, title: event.target.value }))}
-              placeholder="例如：春节礼包"
+              placeholder={t("admin.redeem.010")}
             />
           </label>
           <label className="admin-field">
@@ -267,7 +268,7 @@ export default function RedeemAdminPage() {
               onChange={(event) =>
                 setForm((prev) => ({ ...prev, description: event.target.value }))
               }
-              placeholder="可选，给运营备注"
+              placeholder={t("admin.redeem.011")}
             />
           </label>
           <div className="admin-grid-cards">
@@ -296,7 +297,7 @@ export default function RedeemAdminPage() {
                   onChange={(event) =>
                     setForm((prev) => ({ ...prev, rewardValue: event.target.value }))
                   }
-                  placeholder="输入数量"
+                  placeholder={t("admin.redeem.012")}
                 />
               </label>
             )}
@@ -310,7 +311,7 @@ export default function RedeemAdminPage() {
                     onChange={(event) =>
                       setForm((prev) => ({ ...prev, rewardDays: event.target.value }))
                     }
-                    placeholder="输入天数"
+                    placeholder={t("admin.redeem.013")}
                   />
                 </label>
                 <label className="admin-field">
@@ -321,7 +322,7 @@ export default function RedeemAdminPage() {
                     onChange={(event) =>
                       setForm((prev) => ({ ...prev, tierId: event.target.value }))
                     }
-                    placeholder="可选，留空则取默认等级"
+                    placeholder={t("admin.redeem.014")}
                   />
                 </label>
               </>
@@ -336,7 +337,7 @@ export default function RedeemAdminPage() {
                     onChange={(event) =>
                       setForm((prev) => ({ ...prev, couponId: event.target.value }))
                     }
-                    placeholder="可选"
+                    placeholder={t("admin.redeem.015")}
                   />
                 </label>
                 <label className="admin-field">
@@ -347,7 +348,7 @@ export default function RedeemAdminPage() {
                     onChange={(event) =>
                       setForm((prev) => ({ ...prev, couponCode: event.target.value }))
                     }
-                    placeholder="可选"
+                    placeholder={t("admin.redeem.016")}
                   />
                 </label>
               </>
@@ -361,7 +362,7 @@ export default function RedeemAdminPage() {
                   onChange={(event) =>
                     setForm((prev) => ({ ...prev, message: event.target.value }))
                   }
-                  placeholder="例如：兑换成功"
+                  placeholder={t("admin.redeem.017")}
                 />
               </label>
             )}
@@ -374,7 +375,7 @@ export default function RedeemAdminPage() {
                 className="admin-input"
                 value={form.count}
                 onChange={(event) => setForm((prev) => ({ ...prev, count: event.target.value }))}
-                placeholder="默认 10"
+                placeholder={t("admin.redeem.018")}
               />
             </label>
             <label className="admin-field">
@@ -383,7 +384,7 @@ export default function RedeemAdminPage() {
                 className="admin-input"
                 value={form.prefix}
                 onChange={(event) => setForm((prev) => ({ ...prev, prefix: event.target.value }))}
-                placeholder="可选，例如 QY"
+                placeholder={t("admin.redeem.019")}
               />
             </label>
             <label className="admin-field">
@@ -394,7 +395,7 @@ export default function RedeemAdminPage() {
                 onChange={(event) =>
                   setForm((prev) => ({ ...prev, codeLength: event.target.value }))
                 }
-                placeholder="默认 10"
+                placeholder={t("admin.redeem.020")}
               />
             </label>
             <label className="admin-field">
@@ -405,7 +406,7 @@ export default function RedeemAdminPage() {
                 onChange={(event) =>
                   setForm((prev) => ({ ...prev, maxRedeem: event.target.value }))
                 }
-                placeholder="默认 1"
+                placeholder={t("admin.redeem.021")}
               />
             </label>
             <label className="admin-field">
@@ -416,7 +417,7 @@ export default function RedeemAdminPage() {
                 onChange={(event) =>
                   setForm((prev) => ({ ...prev, maxRedeemPerUser: event.target.value }))
                 }
-                placeholder="默认 1"
+                placeholder={t("admin.redeem.022")}
               />
             </label>
             <label className="admin-field">
@@ -461,7 +462,7 @@ export default function RedeemAdminPage() {
               className="admin-textarea"
               value={form.codesText}
               onChange={(event) => setForm((prev) => ({ ...prev, codesText: event.target.value }))}
-              placeholder="每行一个卡密或使用空格分隔"
+              placeholder={t("admin.redeem.023")}
             />
           </label>
 
@@ -560,7 +561,7 @@ export default function RedeemAdminPage() {
             style={{ maxWidth: 240 }}
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="搜索卡密或批次"
+            placeholder={t("admin.redeem.024")}
           />
           <select
             className="admin-select"
@@ -579,9 +580,9 @@ export default function RedeemAdminPage() {
         </div>
 
         {loading ? (
-          <StateBlock tone="loading" size="compact" title="加载中" />
+          <StateBlock tone="loading" size="compact" title={t("admin.redeem.025")} />
         ) : codes.length === 0 ? (
-          <StateBlock tone="empty" size="compact" title="暂无卡密" />
+          <StateBlock tone="empty" size="compact" title={t("admin.redeem.026")} />
         ) : (
           <div className="admin-table-wrap">
             <table className="admin-table">
@@ -643,8 +644,8 @@ export default function RedeemAdminPage() {
                         {rewardLabels[rewardType] || rewardType} · {summary}
                       </td>
                       <td>
-                        {code.startsAt ? formatTime(code.startsAt) : "不限"} ~{" "}
-                        {code.expiresAt ? formatTime(code.expiresAt) : "不限"}
+                        {code.startsAt ? formatTime(code.startsAt) : t("admin.redeem.027")} ~{" "}
+                        {code.expiresAt ? formatTime(code.expiresAt) : t("admin.redeem.028")}
                       </td>
                       <td>
                         {code.status === "active" ? (
@@ -682,9 +683,9 @@ export default function RedeemAdminPage() {
           </div>
         </div>
         {recordsLoading ? (
-          <StateBlock tone="loading" size="compact" title="加载中" />
+          <StateBlock tone="loading" size="compact" title={t("admin.redeem.029")} />
         ) : records.length === 0 ? (
-          <StateBlock tone="empty" size="compact" title="暂无兑换记录" />
+          <StateBlock tone="empty" size="compact" title={t("admin.redeem.030")} />
         ) : (
           <div className="admin-table-wrap">
             <table className="admin-table">

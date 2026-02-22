@@ -1,4 +1,5 @@
 "use client";
+import { t } from "@/lib/i18n/i18n-client";
 
 import { useCallback, useEffect, useState } from "react";
 import { RefreshCw, Search } from "lucide-react";
@@ -13,7 +14,7 @@ export default function SupportPage() {
   const [loading, setLoading] = useState(true);
   const [cacheHint, setCacheHint] = useState<string | null>(null);
   const [query, setQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState("全部");
+  const [statusFilter, setStatusFilter] = useState(t("admin.support.001"));
   const [saving, setSaving] = useState<Record<string, boolean>>({});
   const [page, setPage] = useState(1);
   const [cursor, setCursor] = useState<string | null>(null);
@@ -42,7 +43,7 @@ export default function SupportPage() {
           setTickets(Array.isArray(cached.value?.items) ? cached.value.items : []);
           setPage(nextPage);
           setNextCursor(cached.value?.nextCursor || null);
-          setCacheHint(cached.fresh ? null : "显示缓存数据，正在刷新…");
+          setCacheHint(cached.fresh ? null : t("admin.support.002"));
         }
         const res = await fetch(`/api/admin/support?${params.toString()}`);
         if (res.ok) {
@@ -136,7 +137,7 @@ export default function SupportPage() {
             <input
               className="admin-input"
               style={{ paddingLeft: 36 }}
-              placeholder="搜索联系人 / 主题 / 内容"
+              placeholder={t("admin.support.003")}
               value={query}
               onChange={(event) => setQuery(event.target.value)}
             />
@@ -146,7 +147,7 @@ export default function SupportPage() {
             value={statusFilter}
             onChange={(event) => setStatusFilter(event.target.value)}
           >
-            <option value="全部">全部状态</option>
+            <option value={t("admin.support.004")}>全部状态</option>
             {SUPPORT_STATUS_OPTIONS.map((status) => (
               <option key={status} value={status}>
                 {status}
@@ -179,15 +180,15 @@ export default function SupportPage() {
           <StateBlock
             tone="loading"
             size="compact"
-            title="加载工单中"
-            description="正在同步工单列表"
+            title={t("admin.support.005")}
+            description={t("admin.support.006")}
           />
         ) : tickets.length === 0 ? (
           <StateBlock
             tone="empty"
             size="compact"
-            title="暂无客服工单"
-            description="目前没有待处理工单"
+            title={t("admin.support.007")}
+            description={t("admin.support.008")}
           />
         ) : (
           <div className="admin-table-wrap">
@@ -206,18 +207,18 @@ export default function SupportPage() {
               <tbody>
                 {tickets.map((ticket) => (
                   <tr key={ticket.id}>
-                    <td data-label="用户">
+                    <td data-label={t("admin.support.009")}>
                       <div className="admin-text-strong">{ticket.userName || "访客"}</div>
                       <div className="admin-meta">{ticket.contact || "-"}</div>
                       <div className="admin-meta-faint">{ticket.id}</div>
                     </td>
-                    <td data-label="主题">
+                    <td data-label={t("admin.support.010")}>
                       <div className="admin-text-strong">{ticket.topic || "其他"}</div>
                     </td>
-                    <td data-label="内容">
+                    <td data-label={t("admin.support.011")}>
                       <div className="admin-meta">{ticket.message}</div>
                     </td>
-                    <td data-label="状态">
+                    <td data-label={t("admin.support.012")}>
                       <select
                         className="admin-select"
                         value={ticket.status}
@@ -238,10 +239,10 @@ export default function SupportPage() {
                         ))}
                       </select>
                     </td>
-                    <td data-label="备注">
+                    <td data-label={t("admin.support.013")}>
                       <input
                         className="admin-input"
-                        placeholder="跟进备注"
+                        placeholder={t("admin.support.014")}
                         value={ticket.note || ""}
                         onChange={(event) =>
                           setTickets((prev) =>
@@ -253,10 +254,12 @@ export default function SupportPage() {
                         onBlur={(event) => updateTicket(ticket.id, { note: event.target.value })}
                       />
                     </td>
-                    <td data-label="时间">{formatShortDateTime(ticket.createdAt)}</td>
-                    <td data-label="更新">
+                    <td data-label={t("admin.support.015")}>
+                      {formatShortDateTime(ticket.createdAt)}
+                    </td>
+                    <td data-label={t("admin.support.016")}>
                       <span className="admin-badge neutral">
-                        {saving[ticket.id] ? "保存中" : "已同步"}
+                        {saving[ticket.id] ? "保存中" : t("admin.support.017")}
                       </span>
                     </td>
                   </tr>

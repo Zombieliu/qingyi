@@ -1,4 +1,5 @@
 "use client";
+import { t } from "@/lib/i18n/i18n-client";
 import { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { type LocalOrder } from "@/lib/services/order-store";
@@ -267,7 +268,7 @@ export default function Showcase() {
       setChainOrders(list);
       setChainUpdatedAt(Date.now());
     } catch (e) {
-      setChainError(formatErrorMessage(e, "链上订单加载失败，请检查链上配置"));
+      setChainError(formatErrorMessage(e, t("showcase.001")));
     } finally {
       if (!visualTest) {
         setChainLoading(false);
@@ -300,7 +301,7 @@ export default function Showcase() {
     try {
       await confirmAction.action();
     } catch (error) {
-      setChainToast(formatErrorMessage(error, "操作失败"));
+      setChainToast(formatErrorMessage(error, t("showcase.002")));
       setTimeout(() => setChainToast(null), 3000);
     } finally {
       setConfirmBusy(false);
@@ -365,7 +366,7 @@ export default function Showcase() {
       found = list.find((order) => order.orderId === orderId) || null;
       if (found) return found;
     } catch (error) {
-      const errorMsg = formatErrorMessage(error, "链上订单同步失败");
+      const errorMsg = formatErrorMessage(error, t("showcase.003"));
       // 如果是 chain order not found 错误，提供更友好的提示
       if (errorMsg.includes("not found") || errorMsg.includes("未找到")) {
         throw new Error("链上订单暂未索引完成，请稍后再试（通常需要等待3-10秒）");
@@ -401,7 +402,7 @@ export default function Showcase() {
         try {
           chainOrder = await fetchOrSyncChainOrder(id, digest);
         } catch (e) {
-          setChainToast(formatErrorMessage(e, "链上订单加载失败，请检查链上配置"));
+          setChainToast(formatErrorMessage(e, t("showcase.004")));
           setTimeout(() => setChainToast(null), 3000);
           return;
         }
@@ -451,7 +452,7 @@ export default function Showcase() {
           }
         : null;
     await patchOrder(id, {
-      status: needsChain ? undefined : "已接单",
+      status: needsChain ? undefined : t("showcase.005"),
       depositPaid: true,
       driver: {
         name: "陪练·刘师傅",
@@ -565,19 +566,19 @@ export default function Showcase() {
   const statusLabel = (status: number) => {
     switch (status) {
       case 0:
-        return "已创建";
+        return t("showcase.006");
       case 1:
-        return "已托管费用";
+        return t("showcase.007");
       case 2:
-        return "押金已锁定";
+        return t("showcase.008");
       case 3:
-        return "已完成待结算";
+        return t("showcase.009");
       case 4:
-        return "争议中";
+        return t("showcase.010");
       case 5:
-        return "已结算";
+        return t("showcase.011");
       case 6:
-        return "已取消";
+        return t("showcase.012");
       default:
         return `未知状态(${status})`;
     }
@@ -630,7 +631,7 @@ export default function Showcase() {
         return detail;
       } catch (error) {
         if (options.toastOnError) {
-          setChainToast(formatErrorMessage(error, "加载用户信息失败"));
+          setChainToast(formatErrorMessage(error, t("showcase.013")));
           setTimeout(() => setChainToast(null), 3000);
         }
       } finally {
@@ -741,7 +742,7 @@ export default function Showcase() {
       }
       return true;
     } catch (e) {
-      setChainToast(formatErrorMessage(e, "操作失败"));
+      setChainToast(formatErrorMessage(e, t("showcase.014")));
       return false;
     } finally {
       setChainAction(null);
@@ -760,7 +761,7 @@ export default function Showcase() {
     try {
       await patchOrder(orderId, {
         companionAddress: address,
-        status: isChain ? undefined : "待结算",
+        status: isChain ? undefined : t("showcase.015"),
         meta: { companionEndedAt: endedAt },
       });
       setOrderMetaOverrides((prev) => ({
@@ -770,9 +771,9 @@ export default function Showcase() {
       if (!isChain) {
         await refreshMyOrders(true);
       }
-      setChainToast(isChain ? "已标记服务完成，等待用户确认" : "已结束服务，等待结算");
+      setChainToast(isChain ? "已标记服务完成，等待用户确认" : t("showcase.016"));
     } catch (error) {
-      setChainToast(formatErrorMessage(error, "结束服务失败"));
+      setChainToast(formatErrorMessage(error, t("showcase.017")));
     } finally {
       setTimeout(() => setChainToast(null), 3000);
     }
@@ -803,8 +804,8 @@ export default function Showcase() {
         <StateBlock
           tone="loading"
           size="compact"
-          title="权限校验中"
-          description="正在确认访问权限"
+          title={t("showcase.018")}
+          description={t("showcase.019")}
         />
       </div>
     );
@@ -816,8 +817,8 @@ export default function Showcase() {
         <StateBlock
           tone="empty"
           size="compact"
-          title="暂无权限访问"
-          description="请使用陪练账号访问接单大厅"
+          title={t("showcase.020")}
+          description={t("showcase.021")}
         />
       </div>
     );
@@ -842,9 +843,9 @@ export default function Showcase() {
             <button
               className="dl-icon-circle"
               onClick={refreshAll}
-              aria-label="刷新订单"
+              aria-label={t("showcase.022")}
               disabled={chainLoading}
-              title={chainLoading ? "刷新中..." : "刷新订单"}
+              title={chainLoading ? "刷新中..." : t("showcase.023")}
             >
               {chainLoading ? (
                 <Loader2 className="h-4 w-4 spin" />
@@ -856,9 +857,9 @@ export default function Showcase() {
           <button
             className="dl-icon-circle"
             onClick={() => refreshOrders(true)}
-            aria-label="刷新公开订单"
+            aria-label={t("showcase.024")}
             disabled={publicLoading}
-            title={publicLoading ? "刷新中..." : "刷新公开订单"}
+            title={publicLoading ? "刷新中..." : t("showcase.025")}
           >
             {publicLoading ? (
               <Loader2 className="h-4 w-4 spin" />
@@ -866,7 +867,7 @@ export default function Showcase() {
               <span style={{ fontSize: 12 }}>公</span>
             )}
           </button>
-          <button className="dl-icon-circle" onClick={clearAll} aria-label="清空订单">
+          <button className="dl-icon-circle" onClick={clearAll} aria-label={t("showcase.026")}>
             <span style={{ fontSize: 12 }}>清</span>
           </button>
         </div>
@@ -875,7 +876,7 @@ export default function Showcase() {
       {isChainOrdersEnabled() && (
         <div className="space-y-3 mb-6">
           <div className="dl-card text-xs text-gray-500">
-            <div>未接单的公开链单（{chainAddress ? "已登录" : "未登录"}）</div>
+            <div>未接单的公开链单（{chainAddress ? "已登录" : t("showcase.027")}）</div>
             <div className="mt-1">
               上次刷新：{chainUpdatedAt ? new Date(chainUpdatedAt).toLocaleTimeString() : "-"}
             </div>
@@ -893,9 +894,9 @@ export default function Showcase() {
               tone={chainLoading ? "loading" : chainError ? "danger" : "empty"}
               title={
                 chainLoading
-                  ? "正在同步链上订单"
+                  ? t("showcase.028")
                   : chainError
-                    ? "链上订单加载失败"
+                    ? t("showcase.029")
                     : "暂时没有可接订单"
               }
               description={
@@ -988,7 +989,7 @@ export default function Showcase() {
                               onClick={() => hydrateOrderMeta(o.orderId, { toastOnError: true })}
                               disabled={metaLoading}
                             >
-                              {metaLoading ? "加载中..." : "加载用户信息"}
+                              {metaLoading ? "加载中..." : t("showcase.030")}
                             </button>
                           )}
                         </div>
@@ -1021,7 +1022,7 @@ export default function Showcase() {
                             )
                           }
                         >
-                          {renderActionLabel(`pay-${o.orderId}`, "支付撮合费")}
+                          {renderActionLabel(`pay-${o.orderId}`, t("showcase.031"))}
                         </button>
                       )}
                       {isUser && (effectiveStatus === 0 || effectiveStatus === 1) && (
@@ -1038,7 +1039,7 @@ export default function Showcase() {
                             )
                           }
                         >
-                          {renderActionLabel(`cancel-${o.orderId}`, "取消订单")}
+                          {renderActionLabel(`cancel-${o.orderId}`, t("showcase.032"))}
                         </button>
                       )}
                       {isCompanion && effectiveStatus === 1 && (
@@ -1087,7 +1088,7 @@ export default function Showcase() {
                                     setPendingScrollToAccepted(true);
                                   }
                                 } catch (error) {
-                                  setChainToast(formatErrorMessage(error, "接单信息同步失败"));
+                                  setChainToast(formatErrorMessage(error, t("showcase.033")));
                                 }
                                 await hydrateOrderMeta(o.orderId, { toastOnError: true });
                                 try {
@@ -1120,7 +1121,7 @@ export default function Showcase() {
                                     setChainToast(data?.error || "馒头转换失败");
                                   }
                                 } catch (error) {
-                                  setChainToast(formatErrorMessage(error, "馒头转换失败"));
+                                  setChainToast(formatErrorMessage(error, t("showcase.034")));
                                 } finally {
                                   setTimeout(() => setChainToast(null), 3000);
                                 }
@@ -1128,7 +1129,7 @@ export default function Showcase() {
                             });
                           }}
                         >
-                          {renderActionLabel(`deposit-${o.orderId}`, "付押金接单")}
+                          {renderActionLabel(`deposit-${o.orderId}`, t("showcase.035"))}
                         </button>
                       )}
                       {isCompanion && effectiveStatus === 2 && (
@@ -1138,7 +1139,7 @@ export default function Showcase() {
                           disabled={companionEnded}
                           onClick={() => confirmEndService(o.orderId)}
                         >
-                          {companionEnded ? "已结束服务" : "结束服务"}
+                          {companionEnded ? "已结束服务" : t("showcase.036")}
                         </button>
                       )}
                       {isUser && effectiveStatus === 2 && (
@@ -1150,7 +1151,7 @@ export default function Showcase() {
                             confirmMarkCompleted(o.orderId);
                           }}
                         >
-                          {renderActionLabel(`complete-${o.orderId}`, "确认完成")}
+                          {renderActionLabel(`complete-${o.orderId}`, t("showcase.037"))}
                         </button>
                       )}
                       {(isUser || isCompanion) && canDispute && (
@@ -1160,7 +1161,7 @@ export default function Showcase() {
                           disabled={chainAction === `dispute-${o.orderId}`}
                           onClick={() => setDisputeOpen({ orderId: o.orderId, evidence: "" })}
                         >
-                          {renderActionLabel(`dispute-${o.orderId}`, "发起争议")}
+                          {renderActionLabel(`dispute-${o.orderId}`, t("showcase.038"))}
                         </button>
                       )}
                       {(isUser || isCompanion) && canFinalize && (
@@ -1197,7 +1198,7 @@ export default function Showcase() {
                             );
                           }}
                         >
-                          {renderActionLabel(`finalize-${o.orderId}`, "无争议结算")}
+                          {renderActionLabel(`finalize-${o.orderId}`, t("showcase.039"))}
                         </button>
                       )}
                     </div>
@@ -1253,7 +1254,7 @@ export default function Showcase() {
                     disabled={companionEnded}
                     onClick={() => markCompanionServiceEnded(order.id, false)}
                   >
-                    {companionEnded ? "已结束服务" : "结束服务"}
+                    {companionEnded ? "已结束服务" : t("showcase.040")}
                   </button>
                 </div>
               </MotionCard>
@@ -1265,8 +1266,8 @@ export default function Showcase() {
       {visibleOrders.length === 0 ? (
         <StateBlock
           tone="empty"
-          title="暂无呼叫记录"
-          description="去首页/安排页选择服务吧"
+          title={t("showcase.041")}
+          description={t("showcase.042")}
           actions={
             <a className="dl-tab-btn" href="/schedule">
               立即下单
@@ -1374,7 +1375,9 @@ export default function Showcase() {
                 </div>
                 <div className="mt-2 text-xs text-gray-500">
                   状态：{o.status} · 撮合费
-                  {typeof o.serviceFee === "number" ? ` ¥${o.serviceFee.toFixed(2)}` : "已付"}
+                  {typeof o.serviceFee === "number"
+                    ? ` ¥${o.serviceFee.toFixed(2)}`
+                    : t("showcase.043")}
                 </div>
                 {o.userAddress && o.userAddress === chainAddress ? (
                   <div className="mt-2 text-xs text-rose-500">不能接自己发的单</div>
@@ -1396,7 +1399,7 @@ export default function Showcase() {
                     disabled={Boolean(o.userAddress && o.userAddress === chainAddress)}
                     title={
                       o.userAddress && o.userAddress === chainAddress
-                        ? "不能接自己发的单"
+                        ? t("showcase.044")
                         : undefined
                     }
                   >
@@ -1423,7 +1426,7 @@ export default function Showcase() {
             onClick={loadMoreOrders}
             disabled={publicLoading}
           >
-            {publicLoading ? "加载中..." : "加载更多"}
+            {publicLoading ? "加载中..." : t("showcase.045")}
           </button>
         ) : (
           <div className="text-xs text-gray-400">没有更多了</div>
@@ -1439,7 +1442,12 @@ export default function Showcase() {
         </button>
       </div>
       {disputeOpen && (
-        <div className="ride-modal-mask" role="dialog" aria-modal="true" aria-label="发起争议">
+        <div
+          className="ride-modal-mask"
+          role="dialog"
+          aria-modal="true"
+          aria-label={t("showcase.046")}
+        >
           <div className="ride-modal">
             <div className="ride-modal-head">
               <div>
@@ -1451,7 +1459,7 @@ export default function Showcase() {
             <div className="ride-modal-body">
               <textarea
                 className="dl-textarea"
-                placeholder="请输入争议说明或证据哈希"
+                placeholder={t("showcase.047")}
                 value={disputeEvidence}
                 onChange={(e) =>
                   setDisputeOpen({ orderId: disputeOpen.orderId, evidence: e.target.value })
@@ -1489,7 +1497,12 @@ export default function Showcase() {
         </div>
       )}
       {debugOpen && (
-        <div className="ride-modal-mask" role="dialog" aria-modal="true" aria-label="链上调试信息">
+        <div
+          className="ride-modal-mask"
+          role="dialog"
+          aria-modal="true"
+          aria-label={t("showcase.048")}
+        >
           <div className="ride-modal">
             <div className="ride-modal-head">
               <div>

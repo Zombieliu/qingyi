@@ -1,4 +1,5 @@
 "use client";
+import { t } from "@/lib/i18n/i18n-client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { RefreshCw, Search } from "lucide-react";
@@ -19,7 +20,7 @@ export default function OrdersPage() {
   const [players, setPlayers] = useState<AdminPlayer[]>([]);
   const [playersLoading, setPlayersLoading] = useState(true);
   const [query, setQuery] = useState("");
-  const [stageFilter, setStageFilter] = useState("全部");
+  const [stageFilter, setStageFilter] = useState(t("admin.orders.001"));
   const [saving, setSaving] = useState<Record<string, boolean>>({});
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [page, setPage] = useState(1);
@@ -51,7 +52,7 @@ export default function OrdersPage() {
           setOrders(Array.isArray(cached.value?.items) ? cached.value.items : []);
           setPage(nextPage);
           setNextCursor(cached.value?.nextCursor || null);
-          setCacheHint(cached.fresh ? null : "显示缓存数据，正在刷新…");
+          setCacheHint(cached.fresh ? null : t("admin.orders.002"));
         }
         const res = await fetch(`/api/admin/orders?${params.toString()}`);
         if (res.ok) {
@@ -187,7 +188,7 @@ export default function OrdersPage() {
 
   const cleanupE2e = async () => {
     if (!canEdit) return;
-    if (!confirm("确认清理所有 E2E 测试订单？")) return;
+    if (!confirm(t("admin.orders.003"))) return;
     setCleaningE2e(true);
     setCleanResult(null);
     try {
@@ -243,7 +244,7 @@ export default function OrdersPage() {
             <input
               className="admin-input"
               style={{ paddingLeft: 36 }}
-              placeholder="搜索用户 / 订单号 / 商品"
+              placeholder={t("admin.orders.004")}
               value={query}
               onChange={(event) => setQuery(event.target.value)}
             />
@@ -253,7 +254,7 @@ export default function OrdersPage() {
             value={stageFilter}
             onChange={(event) => setStageFilter(event.target.value)}
           >
-            <option value="全部">全部状态</option>
+            <option value={t("admin.orders.005")}>全部状态</option>
             {ORDER_STAGE_OPTIONS.map((stage) => (
               <option key={stage} value={stage}>
                 {stage}
@@ -282,7 +283,7 @@ export default function OrdersPage() {
           ) : null}
           {canEdit ? (
             <button className="admin-btn ghost" disabled={cleaningE2e} onClick={cleanupE2e}>
-              {cleaningE2e ? "清理中..." : "清理 E2E"}
+              {cleaningE2e ? "清理中..." : t("admin.orders.006")}
             </button>
           ) : null}
           {canEdit ? (
@@ -320,15 +321,15 @@ export default function OrdersPage() {
           <StateBlock
             tone="loading"
             size="compact"
-            title="加载订单中"
-            description="正在同步最新订单列表"
+            title={t("admin.orders.007")}
+            description={t("admin.orders.008")}
           />
         ) : orders.length === 0 ? (
           <StateBlock
             tone="empty"
             size="compact"
-            title="没有符合条件的订单"
-            description="调整筛选条件试试"
+            title={t("admin.orders.009")}
+            description={t("admin.orders.010")}
           />
         ) : (
           <div className="admin-table-wrap">
@@ -371,7 +372,7 @@ export default function OrdersPage() {
 
                   return (
                     <tr key={order.id}>
-                      <td data-label="选择">
+                      <td data-label={t("admin.orders.011")}>
                         <input
                           type="checkbox"
                           checked={selectedIds.includes(order.id)}
@@ -379,7 +380,7 @@ export default function OrdersPage() {
                           disabled={!canEdit}
                         />
                       </td>
-                      <td data-label="订单信息">
+                      <td data-label={t("admin.orders.012")}>
                         <div className="admin-text-strong">{order.user}</div>
                         <div className="admin-meta">{order.item}</div>
                         <div className="admin-meta-faint">{order.id}</div>
@@ -392,18 +393,18 @@ export default function OrdersPage() {
                           {formatShortDateTime(order.createdAt)}
                         </div>
                       </td>
-                      <td data-label="金额">
+                      <td data-label={t("admin.orders.013")}>
                         <div className="admin-text-strong">
                           {order.currency === "CNY" ? "¥" : order.currency} {order.amount}
                         </div>
                       </td>
-                      <td data-label="付款状态">
+                      <td data-label={t("admin.orders.014")}>
                         {isChainOrder || !canEdit ? (
                           <input
                             className="admin-input"
                             readOnly
                             value={order.paymentStatus || ""}
-                            title={isChainOrder ? "订单状态由系统同步" : "只读权限"}
+                            title={isChainOrder ? "订单状态由系统同步" : t("admin.orders.015")}
                           />
                         ) : (
                           <input
@@ -424,11 +425,11 @@ export default function OrdersPage() {
                           />
                         )}
                       </td>
-                      <td data-label="流程状态">
+                      <td data-label={t("admin.orders.016")}>
                         <select
                           className="admin-select"
                           value={order.stage}
-                          aria-label="订单阶段"
+                          aria-label={t("admin.orders.017")}
                           disabled={isChainOrder || !canEdit}
                           title={isChainOrder ? "订单阶段由系统同步" : !canEdit ? "只读权限" : ""}
                           onChange={(event) => {
@@ -449,12 +450,12 @@ export default function OrdersPage() {
                           ))}
                         </select>
                       </td>
-                      <td data-label="派单">
+                      <td data-label={t("admin.orders.018")}>
                         <div style={{ display: "grid", gap: 6 }}>
                           <select
                             className="admin-select"
                             value={selectValue}
-                            aria-label="陪练/客服"
+                            aria-label={t("admin.orders.019")}
                             disabled={!canEdit}
                             onChange={(event) => {
                               if (!canEdit) return;
@@ -486,7 +487,7 @@ export default function OrdersPage() {
                             className={`admin-meta-faint${insufficient ? " admin-text-danger" : ""}`}
                           >
                             {playersLoading
-                              ? "额度加载中..."
+                              ? t("admin.orders.020")
                               : matchedPlayer
                                 ? `可用 ${available} 元 / 占用 ${used} 元 / 总额度 ${limit} 元`
                                 : "未选择陪练"}
@@ -494,10 +495,10 @@ export default function OrdersPage() {
                           </div>
                         </div>
                       </td>
-                      <td data-label="备注">
+                      <td data-label={t("admin.orders.021")}>
                         <input
                           className="admin-input"
-                          placeholder="备注"
+                          placeholder={t("admin.orders.022")}
                           value={order.note || ""}
                           readOnly={!canEdit}
                           onChange={(event) => {
@@ -514,12 +515,12 @@ export default function OrdersPage() {
                           }}
                         />
                       </td>
-                      <td data-label="更新">
+                      <td data-label={t("admin.orders.023")}>
                         <span className="admin-badge neutral">
-                          {saving[order.id] ? "保存中" : "已同步"}
+                          {saving[order.id] ? "保存中" : t("admin.orders.024")}
                         </span>
                       </td>
-                      <td data-label="详情">
+                      <td data-label={t("admin.orders.025")}>
                         <Link className="admin-btn ghost" href={`/admin/orders/${order.id}`}>
                           查看
                         </Link>

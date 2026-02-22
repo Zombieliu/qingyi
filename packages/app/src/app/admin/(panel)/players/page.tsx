@@ -1,4 +1,5 @@
 "use client";
+import { t } from "@/lib/i18n/i18n-client";
 
 import { useEffect, useMemo, useState } from "react";
 import { PlusCircle, Trash2 } from "lucide-react";
@@ -47,15 +48,15 @@ export default function PlayersPage() {
   const formatAddressError = (error?: string) => {
     switch (error) {
       case "address_required":
-        return "请填写钱包地址";
+        return t("admin.players.001");
       case "contact_required":
-        return "请填写手机号";
+        return t("admin.players.002");
       case "invalid_address":
-        return "钱包地址格式不正确";
+        return t("admin.players.003");
       case "invalid_contact":
-        return "手机号格式不正确";
+        return t("admin.players.004");
       case "address_in_use":
-        return "钱包地址已绑定其他陪练";
+        return t("admin.players.005");
       default:
         return error || "保存失败";
     }
@@ -114,7 +115,7 @@ export default function PlayersPage() {
     }
     const addressParsed = parseAddress(form.address);
     if (addressParsed.state !== "valid") {
-      setFormHint(addressParsed.state === "missing" ? "请填写钱包地址" : "钱包地址格式不正确");
+      setFormHint(addressParsed.state === "missing" ? "请填写钱包地址" : t("admin.players.006"));
       return;
     }
     const res = await fetch("/api/admin/players", {
@@ -188,7 +189,7 @@ export default function PlayersPage() {
 
   const removePlayer = async (playerId: string) => {
     if (!canEdit) return;
-    if (!confirm("确定要删除该陪练吗？")) return;
+    if (!confirm(t("admin.players.007"))) return;
     setSaving((prev) => ({ ...prev, [playerId]: true }));
     try {
       const res = await fetch(`/api/admin/players/${playerId}`, { method: "DELETE" });
@@ -260,7 +261,7 @@ export default function PlayersPage() {
                 名称
                 <input
                   className="admin-input"
-                  placeholder="姓名 / 昵称"
+                  placeholder={t("admin.players.008")}
                   value={form.name}
                   onChange={(event) => setForm((prev) => ({ ...prev, name: event.target.value }))}
                 />
@@ -269,7 +270,7 @@ export default function PlayersPage() {
                 擅长位置
                 <input
                   className="admin-input"
-                  placeholder="突破 / 指挥 / 医疗"
+                  placeholder={t("admin.players.009")}
                   value={form.role}
                   onChange={(event) => setForm((prev) => ({ ...prev, role: event.target.value }))}
                 />
@@ -278,7 +279,7 @@ export default function PlayersPage() {
                 手机号（必填）
                 <input
                   className="admin-input"
-                  placeholder="11位手机号"
+                  placeholder={t("admin.players.010")}
                   value={form.contact}
                   onChange={(event) =>
                     setForm((prev) => ({ ...prev, contact: event.target.value }))
@@ -289,7 +290,7 @@ export default function PlayersPage() {
                 钱包地址
                 <input
                   className="admin-input"
-                  placeholder="Sui 地址（0x...）"
+                  placeholder={t("admin.players.011")}
                   value={form.address}
                   onChange={(event) => {
                     setFormHint(null);
@@ -301,7 +302,7 @@ export default function PlayersPage() {
                 基础押金(钻石)
                 <input
                   className="admin-input"
-                  placeholder="如 1000"
+                  placeholder={t("admin.players.012")}
                   value={form.depositBase}
                   onChange={(event) =>
                     setForm((prev) => ({ ...prev, depositBase: event.target.value }))
@@ -312,7 +313,7 @@ export default function PlayersPage() {
                 已锁押金(钻石)
                 <input
                   className="admin-input"
-                  placeholder="如 1000"
+                  placeholder={t("admin.players.013")}
                   value={form.depositLocked}
                   onChange={(event) =>
                     setForm((prev) => ({ ...prev, depositLocked: event.target.value }))
@@ -363,7 +364,7 @@ export default function PlayersPage() {
                 备注
                 <input
                   className="admin-input"
-                  placeholder="常用时间、特点等"
+                  placeholder={t("admin.players.014")}
                   value={form.notes}
                   onChange={(event) => setForm((prev) => ({ ...prev, notes: event.target.value }))}
                 />
@@ -384,8 +385,8 @@ export default function PlayersPage() {
             <StateBlock
               tone="warning"
               size="compact"
-              title="只读权限"
-              description="当前账号无法新增或编辑陪练"
+              title={t("admin.players.015")}
+              description={t("admin.players.016")}
             />
           </div>
         )}
@@ -428,13 +429,18 @@ export default function PlayersPage() {
           </div>
         </div>
         {loading ? (
-          <StateBlock tone="loading" size="compact" title="加载中" description="正在同步陪练档案" />
+          <StateBlock
+            tone="loading"
+            size="compact"
+            title={t("admin.players.018")}
+            description={t("admin.players.017")}
+          />
         ) : players.length === 0 ? (
           <StateBlock
             tone="empty"
             size="compact"
-            title="暂无陪练档案"
-            description="可以先创建陪练资料"
+            title={t("admin.players.019")}
+            description={t("admin.players.020")}
           />
         ) : (
           <div className="admin-table-wrap">
@@ -462,7 +468,7 @@ export default function PlayersPage() {
                   const addressState = parseAddress(player.address || "").state;
                   return (
                     <tr key={player.id}>
-                      <td data-label="选择">
+                      <td data-label={t("admin.players.021")}>
                         <input
                           type="checkbox"
                           checked={selectedIds.includes(player.id)}
@@ -470,7 +476,7 @@ export default function PlayersPage() {
                           disabled={!canEdit}
                         />
                       </td>
-                      <td data-label="名称">
+                      <td data-label={t("admin.players.022")}>
                         <input
                           className="admin-input admin-text-strong"
                           value={player.name}
@@ -494,7 +500,7 @@ export default function PlayersPage() {
                           }}
                         />
                       </td>
-                      <td data-label="位置">
+                      <td data-label={t("admin.players.023")}>
                         <input
                           className="admin-input"
                           value={player.role || ""}
@@ -512,11 +518,11 @@ export default function PlayersPage() {
                           }}
                         />
                       </td>
-                      <td data-label="联系方式">
+                      <td data-label={t("admin.players.024")}>
                         <input
                           className="admin-input"
                           value={player.contact || ""}
-                          placeholder="11位手机号"
+                          placeholder={t("admin.players.025")}
                           readOnly={!canEdit}
                           onChange={(event) =>
                             setPlayers((prev) =>
@@ -531,7 +537,7 @@ export default function PlayersPage() {
                           }}
                         />
                       </td>
-                      <td data-label="钱包地址">
+                      <td data-label={t("admin.players.026")}>
                         {addressState === "invalid" && (
                           <span className="admin-badge warm" style={{ marginBottom: 6 }}>
                             格式错误
@@ -570,7 +576,7 @@ export default function PlayersPage() {
                           }}
                         />
                       </td>
-                      <td data-label="基础押金(钻石)">
+                      <td data-label={t("admin.players.027")}>
                         <input
                           className="admin-input"
                           value={player.depositBase ?? ""}
@@ -592,7 +598,7 @@ export default function PlayersPage() {
                           }}
                         />
                       </td>
-                      <td data-label="已锁押金(钻石)">
+                      <td data-label={t("admin.players.028")}>
                         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                           <input
                             className="admin-input"
@@ -634,7 +640,7 @@ export default function PlayersPage() {
                           </button>
                         </div>
                       </td>
-                      <td data-label="授信倍数">
+                      <td data-label={t("admin.players.029")}>
                         <input
                           className="admin-input"
                           value={player.creditMultiplier ?? 1}
@@ -656,10 +662,10 @@ export default function PlayersPage() {
                           }}
                         />
                       </td>
-                      <td data-label="可接额度(元)">{player.creditLimit ?? 0}</td>
-                      <td data-label="已占用(元)">{player.usedCredit ?? 0}</td>
-                      <td data-label="可用额度(元)">{player.availableCredit ?? 0}</td>
-                      <td data-label="状态">
+                      <td data-label={t("admin.players.030")}>{player.creditLimit ?? 0}</td>
+                      <td data-label={t("admin.players.031")}>{player.usedCredit ?? 0}</td>
+                      <td data-label={t("admin.players.032")}>{player.availableCredit ?? 0}</td>
+                      <td data-label={t("admin.players.033")}>
                         <select
                           className="admin-select"
                           value={player.status}
@@ -682,7 +688,7 @@ export default function PlayersPage() {
                           ))}
                         </select>
                       </td>
-                      <td data-label="备注">
+                      <td data-label={t("admin.players.034")}>
                         <input
                           className="admin-input"
                           value={player.notes || ""}
@@ -700,10 +706,10 @@ export default function PlayersPage() {
                           }}
                         />
                       </td>
-                      <td data-label="操作">
+                      <td data-label={t("admin.players.035")}>
                         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                           <span className="admin-badge neutral">
-                            {saving[player.id] ? "保存中" : "已同步"}
+                            {saving[player.id] ? "保存中" : t("admin.players.036")}
                           </span>
                           {canEdit ? (
                             <button

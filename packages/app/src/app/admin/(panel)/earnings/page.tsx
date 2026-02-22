@@ -1,4 +1,5 @@
 "use client";
+import { t } from "@/lib/i18n/i18n-client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { readCache, writeCache } from "@/lib/shared/client-cache";
@@ -77,7 +78,7 @@ export default function EarningsPage() {
       setData(next);
       writeCache(cacheKey, next);
     } catch {
-      setError("网络错误，请稍后重试");
+      setError(t("admin.earnings.001"));
     } finally {
       setLoading(false);
     }
@@ -195,15 +196,25 @@ export default function EarningsPage() {
           </div>
         </div>
         {loading ? (
-          <StateBlock tone="loading" size="compact" title="加载中" description="正在汇总完单数据" />
+          <StateBlock
+            tone="loading"
+            size="compact"
+            title={t("admin.earnings.003")}
+            description={t("admin.earnings.002")}
+          />
         ) : error ? (
-          <StateBlock tone="danger" size="compact" title="加载失败" description={error} />
+          <StateBlock
+            tone="danger"
+            size="compact"
+            title={t("admin.earnings.004")}
+            description={error}
+          />
         ) : rows.length === 0 ? (
           <StateBlock
             tone="empty"
             size="compact"
-            title="暂无数据"
-            description="调整筛选条件后再试"
+            title={t("admin.earnings.005")}
+            description={t("admin.earnings.006")}
           />
         ) : (
           <div className="admin-table-wrap">
@@ -220,14 +231,16 @@ export default function EarningsPage() {
               <tbody>
                 {rows.map((item) => (
                   <tr key={item.companionAddress}>
-                    <td data-label="陪练">
+                    <td data-label={t("admin.earnings.007")}>
                       <div className="admin-text-strong">{item.companionName || "未绑定"}</div>
                       <div className="admin-meta-faint">{item.companionAddress || "-"}</div>
                     </td>
-                    <td data-label="完单数">{item.orderCount}</td>
-                    <td data-label="订单金额">¥{formatMoney(item.totalAmount)}</td>
-                    <td data-label="平台撮合费">¥{formatMoney(item.totalServiceFee)}</td>
-                    <td data-label="最近完单">{formatDate(item.lastCompletedAt)}</td>
+                    <td data-label={t("admin.earnings.008")}>{item.orderCount}</td>
+                    <td data-label={t("admin.earnings.009")}>¥{formatMoney(item.totalAmount)}</td>
+                    <td data-label={t("admin.earnings.010")}>
+                      ¥{formatMoney(item.totalServiceFee)}
+                    </td>
+                    <td data-label={t("admin.earnings.011")}>{formatDate(item.lastCompletedAt)}</td>
                   </tr>
                 ))}
               </tbody>

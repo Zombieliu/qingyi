@@ -1,4 +1,5 @@
 "use client";
+import { t } from "@/lib/i18n/i18n-client";
 
 import Link from "next/link";
 import { ArrowLeft, Info, ShieldCheck, Phone, Mail, Globe2 } from "lucide-react";
@@ -20,7 +21,7 @@ export default function AboutPage() {
     <div className="dl-main">
       <header className="dl-topbar">
         <div className="dl-time">
-          <Link href="/me?settings=1" className="dl-icon-circle" aria-label="返回设置">
+          <Link href="/me?settings=1" className="dl-icon-circle" aria-label={t("me.about.001")}>
             <ArrowLeft size={16} />
           </Link>
           <span className="dl-time-text">关于平台</span>

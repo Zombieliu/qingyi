@@ -1,4 +1,5 @@
 "use client";
+import { t } from "@/lib/i18n/i18n-client";
 
 import type { LocalOrder } from "@/lib/services/order-store";
 import { Step } from "./schedule-data";
@@ -19,8 +20,8 @@ export function NotifyingView({ currentOrder, escrowFeeDisplay }: NotifyingViewP
           label={`托管费 ¥${escrowFeeDisplay.toFixed(2)} 已收`}
           done={!!currentOrder.serviceFeePaid}
         />
-        <Step label="陪练支付押金" done={!!currentOrder.depositPaid} />
-        <Step label="派单匹配" done={!!currentOrder.driver} />
+        <Step label={t("schedule.notifying_view.001")} done={!!currentOrder.depositPaid} />
+        <Step label={t("schedule.notifying_view.002")} done={!!currentOrder.driver} />
       </div>
       <div className="ride-notify-illu" />
       <div className="dl-card" style={{ padding: 16 }}>

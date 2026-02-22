@@ -1,4 +1,5 @@
 "use client";
+import { t } from "@/lib/i18n/i18n-client";
 
 import { useCallback, useEffect, useState } from "react";
 import { RefreshCw } from "lucide-react";
@@ -45,7 +46,7 @@ export default function PaymentsPage() {
           setEvents(Array.isArray(cached.value?.items) ? cached.value.items : []);
           setPage(nextPage);
           setNextCursor(cached.value?.nextCursor || null);
-          setCacheHint(cached.fresh ? null : "显示缓存数据，正在刷新…");
+          setCacheHint(cached.fresh ? null : t("admin.payments.001"));
         }
         const res = await fetch(`/api/admin/payments?${params.toString()}`);
         if (res.ok) {
@@ -119,13 +120,18 @@ export default function PaymentsPage() {
           </div>
         </div>
         {loading ? (
-          <StateBlock tone="loading" size="compact" title="加载中" description="正在同步支付事件" />
+          <StateBlock
+            tone="loading"
+            size="compact"
+            title={t("admin.payments.003")}
+            description={t("admin.payments.002")}
+          />
         ) : events.length === 0 ? (
           <StateBlock
             tone="empty"
             size="compact"
-            title="暂无支付事件"
-            description="目前没有支付记录"
+            title={t("admin.payments.004")}
+            description={t("admin.payments.005")}
           />
         ) : (
           <div className="admin-table-wrap">
@@ -143,24 +149,24 @@ export default function PaymentsPage() {
               <tbody>
                 {events.map((event) => (
                   <tr key={event.id}>
-                    <td data-label="时间" className="admin-meta">
+                    <td data-label={t("admin.payments.006")} className="admin-meta">
                       {new Date(event.createdAt).toLocaleString()}
                     </td>
-                    <td data-label="事件">{event.event}</td>
-                    <td data-label="订单号">{event.orderNo || "-"}</td>
-                    <td data-label="金额">
+                    <td data-label={t("admin.payments.007")}>{event.event}</td>
+                    <td data-label={t("admin.payments.008")}>{event.orderNo || "-"}</td>
+                    <td data-label={t("admin.payments.009")}>
                       {typeof event.amount === "number" ? event.amount : "-"}
                     </td>
-                    <td data-label="状态">
+                    <td data-label={t("admin.payments.010")}>
                       {event.status ? (
                         <span className="admin-badge neutral">{event.status}</span>
                       ) : (
                         "-"
                       )}
                     </td>
-                    <td data-label="校验">
+                    <td data-label={t("admin.payments.011")}>
                       <span className={`admin-badge${event.verified ? "" : " warm"}`}>
-                        {event.verified ? "已校验" : "未校验"}
+                        {event.verified ? "已校验" : t("admin.payments.012")}
                       </span>
                     </td>
                   </tr>

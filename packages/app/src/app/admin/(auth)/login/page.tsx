@@ -1,4 +1,5 @@
 "use client";
+import { t } from "@/lib/i18n/i18n-client";
 
 import { useState } from "react";
 import { ShieldCheck, KeyRound } from "lucide-react";
@@ -16,7 +17,7 @@ export default function AdminLoginPage() {
     event.preventDefault();
     setError("");
     if (!token.trim()) {
-      setError("请输入后台密钥");
+      setError(t("admin.login.001"));
       return;
     }
     setLoading(true);
@@ -33,7 +34,7 @@ export default function AdminLoginPage() {
       }
       window.location.href = "/admin";
     } catch {
-      setError("网络异常，请稍后再试");
+      setError(t("admin.login.002"));
     } finally {
       setLoading(false);
     }
@@ -73,7 +74,7 @@ export default function AdminLoginPage() {
                 className="admin-input"
                 style={{ paddingLeft: 36 }}
                 type="password"
-                placeholder="请输入 ADMIN_DASH_TOKEN"
+                placeholder={t("admin.login.003")}
                 value={token}
                 onChange={(event) => setToken(event.target.value)}
               />
@@ -91,7 +92,7 @@ export default function AdminLoginPage() {
             type="submit"
             disabled={loading}
           >
-            {loading ? "登录中..." : "进入后台"}
+            {loading ? "登录中..." : t("admin.login.004")}
           </Button>
         </form>
         <div className="admin-helper">

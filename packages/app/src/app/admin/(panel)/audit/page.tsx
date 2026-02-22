@@ -1,4 +1,5 @@
 "use client";
+import { t } from "@/lib/i18n/i18n-client";
 
 import { useCallback, useEffect, useState } from "react";
 import { RefreshCw, Search } from "lucide-react";
@@ -46,7 +47,7 @@ export default function AuditPage() {
           setLogs(Array.isArray(cached.value?.items) ? cached.value.items : []);
           setPage(nextPage);
           setNextCursor(cached.value?.nextCursor || null);
-          setCacheHint(cached.fresh ? null : "显示缓存数据，正在刷新…");
+          setCacheHint(cached.fresh ? null : t("admin.audit.001"));
         }
         const res = await fetch(`/api/admin/audit?${params.toString()}`);
         if (res.ok) {
@@ -111,7 +112,7 @@ export default function AuditPage() {
             <input
               className="admin-input"
               style={{ paddingLeft: 36 }}
-              placeholder="搜索 action / 目标"
+              placeholder={t("admin.audit.002")}
               value={query}
               onChange={(event) => setQuery(event.target.value)}
             />
@@ -139,13 +140,18 @@ export default function AuditPage() {
           </div>
         </div>
         {loading ? (
-          <StateBlock tone="loading" size="compact" title="加载中" description="正在同步审计日志" />
+          <StateBlock
+            tone="loading"
+            size="compact"
+            title={t("admin.audit.004")}
+            description={t("admin.audit.003")}
+          />
         ) : logs.length === 0 ? (
           <StateBlock
             tone="empty"
             size="compact"
-            title="暂无审计记录"
-            description="暂时没有可展示的日志"
+            title={t("admin.audit.005")}
+            description={t("admin.audit.006")}
           />
         ) : (
           <div className="admin-table-wrap">
@@ -162,10 +168,12 @@ export default function AuditPage() {
               <tbody>
                 {logs.map((log) => (
                   <tr key={log.id}>
-                    <td data-label="时间">{new Date(log.createdAt).toLocaleString()}</td>
-                    <td data-label="角色">{log.actorRole}</td>
-                    <td data-label="操作">{log.action}</td>
-                    <td data-label="目标">
+                    <td data-label={t("admin.audit.007")}>
+                      {new Date(log.createdAt).toLocaleString()}
+                    </td>
+                    <td data-label={t("admin.audit.008")}>{log.actorRole}</td>
+                    <td data-label={t("admin.audit.009")}>{log.action}</td>
+                    <td data-label={t("admin.audit.010")}>
                       {log.targetType ? `${log.targetType}:${log.targetId || "-"}` : "-"}
                     </td>
                     <td data-label="IP">{log.ip || "-"}</td>

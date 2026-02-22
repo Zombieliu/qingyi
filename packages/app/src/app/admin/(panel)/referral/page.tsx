@@ -1,4 +1,5 @@
 "use client";
+import { t } from "@/lib/i18n/i18n-client";
 
 import { useCallback, useEffect, useState } from "react";
 import { RefreshCw, Search, Save } from "lucide-react";
@@ -38,7 +39,7 @@ export default function AdminReferralPage() {
   const [referrals, setReferrals] = useState<ReferralItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState("全部");
+  const [statusFilter, setStatusFilter] = useState(t("admin.referral.001"));
   const [page, setPage] = useState(1);
   const [cursor, setCursor] = useState<string | null>(null);
   const [prevCursors, setPrevCursors] = useState<Array<string | null>>([]);
@@ -136,7 +137,7 @@ export default function AdminReferralPage() {
           </div>
         </div>
         {configLoading ? (
-          <StateBlock tone="loading" size="compact" title="加载配置中" />
+          <StateBlock tone="loading" size="compact" title={t("admin.referral.002")} />
         ) : (
           <>
             <div
@@ -147,13 +148,13 @@ export default function AdminReferralPage() {
                 启用返利
                 <select
                   className="admin-select"
-                  value={config.enabled ? "是" : "否"}
+                  value={config.enabled ? "是" : t("admin.referral.003")}
                   onChange={(e) =>
                     setConfig((prev) => ({ ...prev, enabled: e.target.value === "是" }))
                   }
                 >
-                  <option value="是">启用</option>
-                  <option value="否">停用</option>
+                  <option value={t("admin.referral.004")}>启用</option>
+                  <option value={t("admin.referral.005")}>停用</option>
                 </select>
               </label>
               <label className="admin-field">
@@ -210,7 +211,7 @@ export default function AdminReferralPage() {
             </div>
             <button className="admin-btn primary" onClick={saveConfig} style={{ marginTop: 14 }}>
               <Save size={16} style={{ marginRight: 6 }} />
-              {configSaving ? "保存中..." : "保存配置"}
+              {configSaving ? "保存中..." : t("admin.referral.006")}
             </button>
           </>
         )}
@@ -229,7 +230,7 @@ export default function AdminReferralPage() {
             <input
               className="admin-input"
               style={{ paddingLeft: 36 }}
-              placeholder="搜索地址"
+              placeholder={t("admin.referral.007")}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
             />
@@ -239,7 +240,7 @@ export default function AdminReferralPage() {
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
           >
-            <option value="全部">全部状态</option>
+            <option value={t("admin.referral.008")}>全部状态</option>
             <option value="pending">待返利</option>
             <option value="rewarded">已返利</option>
           </select>
@@ -265,13 +266,13 @@ export default function AdminReferralPage() {
           </div>
         </div>
         {loading ? (
-          <StateBlock tone="loading" size="compact" title="加载邀请记录中" />
+          <StateBlock tone="loading" size="compact" title={t("admin.referral.009")} />
         ) : referrals.length === 0 ? (
           <StateBlock
             tone="empty"
             size="compact"
-            title="暂无邀请记录"
-            description="用户通过邀请链接注册后会显示在这里"
+            title={t("admin.referral.010")}
+            description={t("admin.referral.011")}
           />
         ) : (
           <div className="admin-table-wrap">
@@ -290,19 +291,19 @@ export default function AdminReferralPage() {
               <tbody>
                 {referrals.map((r) => (
                   <tr key={r.id}>
-                    <td data-label="邀请人">{shortAddr(r.inviterAddress)}</td>
-                    <td data-label="被邀请人">{shortAddr(r.inviteeAddress)}</td>
-                    <td data-label="状态">
+                    <td data-label={t("admin.referral.012")}>{shortAddr(r.inviterAddress)}</td>
+                    <td data-label={t("admin.referral.013")}>{shortAddr(r.inviteeAddress)}</td>
+                    <td data-label={t("admin.referral.014")}>
                       <span
                         className={`admin-badge ${r.status === "rewarded" ? "success" : "neutral"}`}
                       >
-                        {r.status === "rewarded" ? "已返利" : "待返利"}
+                        {r.status === "rewarded" ? "已返利" : t("admin.referral.015")}
                       </span>
                     </td>
-                    <td data-label="邀请人奖励">{r.rewardInviter ?? "—"}</td>
-                    <td data-label="被邀请人奖励">{r.rewardInvitee ?? "—"}</td>
-                    <td data-label="邀请时间">{formatShortDateTime(r.createdAt)}</td>
-                    <td data-label="返利时间">
+                    <td data-label={t("admin.referral.016")}>{r.rewardInviter ?? "—"}</td>
+                    <td data-label={t("admin.referral.017")}>{r.rewardInvitee ?? "—"}</td>
+                    <td data-label={t("admin.referral.018")}>{formatShortDateTime(r.createdAt)}</td>
+                    <td data-label={t("admin.referral.019")}>
                       {r.rewardedAt ? formatShortDateTime(r.rewardedAt) : "—"}
                     </td>
                   </tr>

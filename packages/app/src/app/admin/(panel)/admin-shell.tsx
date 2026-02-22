@@ -25,7 +25,7 @@ import {
   BarChart3,
   Gift,
 } from "lucide-react";
-import { useI18n } from "@/lib/i18n/i18n-client";
+import { useI18n, t } from "@/lib/i18n/i18n-client";
 import AutoTranslate from "@/app/components/auto-translate";
 import SwControl from "@/app/components/sw-control";
 import { PageTransition, Stagger, StaggerItem } from "@/components/ui/motion";
@@ -404,15 +404,15 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
           <AutoTranslate>
             {!session.ready ? (
               <div className="admin-section">
-                <StateBlock tone="loading" size="compact" title="权限加载中" />
+                <StateBlock tone="loading" size="compact" title={t("admin.admin_shell.001")} />
               </div>
             ) : requiredRole && !hasAccess ? (
               <div className="admin-section">
                 <StateBlock
                   tone="warning"
                   size="compact"
-                  title="无权限访问该页面"
-                  description="请联系管理员调整权限"
+                  title={t("admin.admin_shell.002")}
+                  description={t("admin.admin_shell.003")}
                   actions={
                     <Link className="admin-btn ghost" href={fallbackHref}>
                       返回可用页面

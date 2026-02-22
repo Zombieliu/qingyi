@@ -1,4 +1,5 @@
 "use client";
+import { t } from "@/lib/i18n/i18n-client";
 import { useEffect, useMemo, useState } from "react";
 import { KeyRound } from "lucide-react";
 import {
@@ -224,7 +225,7 @@ export default function PasskeyWallet() {
       const publicKey = keypair.getPublicKey();
       const address = publicKey.toSuiAddress();
       const stored: StoredWallet = { address, publicKey: toBase64(publicKey.toRawBytes()) };
-      await persist(stored, "账号已创建");
+      await persist(stored, t("comp.passkey_wallet.001"));
     } catch (e) {
       setError((e as Error).message || "创建失败");
     } finally {
@@ -235,7 +236,7 @@ export default function PasskeyWallet() {
   const login = async (target?: StoredWallet | null) => {
     const nextWallet = target || wallet || loadStoredWallet();
     if (!nextWallet) {
-      setError("未找到可登录账号，请先创建或找回");
+      setError(t("comp.passkey_wallet.002"));
       return;
     }
     try {
@@ -246,10 +247,10 @@ export default function PasskeyWallet() {
       const keypair = new PasskeyKeypair(fromBase64(nextWallet.publicKey), provider);
       const testMsg = new TextEncoder().encode("login-check");
       await keypair.signPersonalMessage(testMsg);
-      await persist(nextWallet, "登录成功");
+      await persist(nextWallet, t("comp.passkey_wallet.003"));
     } catch (e) {
       if (isMissingCredential(e)) {
-        setError("此设备未找到该账号，请使用找回已有账号");
+        setError(t("comp.passkey_wallet.004"));
       } else {
         setError((e as Error).message || "登录失败");
       }
@@ -274,7 +275,7 @@ export default function PasskeyWallet() {
         address: pk.toSuiAddress(),
         publicKey: toBase64(pk.toRawBytes()),
       };
-      await persist(stored, "已找回账号");
+      await persist(stored, t("comp.passkey_wallet.005"));
     } catch (e) {
       setError((e as Error).message || "找回失败");
     } finally {
@@ -350,7 +351,7 @@ export default function PasskeyWallet() {
           className="lc-tab-btn"
           style={{ padding: "10px 12px" }}
         >
-          {busy ? "登录中..." : "登录已有账号"}
+          {busy ? "登录中..." : t("comp.passkey_wallet.006")}
         </button>
         <button
           onClick={create}
@@ -358,7 +359,7 @@ export default function PasskeyWallet() {
           className="lc-tab-btn"
           style={{ padding: "10px 12px" }}
         >
-          {busy ? "创建中..." : "创建新账号"}
+          {busy ? "创建中..." : t("comp.passkey_wallet.007")}
         </button>
         <button
           onClick={recover}
@@ -366,7 +367,7 @@ export default function PasskeyWallet() {
           className="lc-tab-btn"
           style={{ padding: "10px 12px", backgroundColor: "#f3f4f6", color: "#111827" }}
         >
-          {busy ? "找回中..." : "找回已有账号"}
+          {busy ? "找回中..." : t("comp.passkey_wallet.008")}
         </button>
       </div>
 

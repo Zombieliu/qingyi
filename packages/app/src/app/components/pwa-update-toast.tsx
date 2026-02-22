@@ -1,4 +1,5 @@
 "use client";
+import { t } from "@/lib/i18n/i18n-client";
 import { useEffect, useState } from "react";
 import { ArrowUpCircle, X } from "lucide-react";
 
@@ -64,7 +65,7 @@ export default function PwaUpdateToast() {
           更新
         </button>
         <button
-          aria-label="关闭更新提示"
+          aria-label={t("comp.pwa_update_toast.001")}
           onClick={() => setReady(false)}
           className="rounded-full p-2 text-slate-400 hover:text-slate-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-400"
         >

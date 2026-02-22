@@ -54,3 +54,14 @@ export function useI18n() {
 
   return { locale, setLocale, t };
 }
+
+/**
+ * Standalone translation function (no hook required).
+ * Reads the current locale from localStorage/cookie/navigator.
+ * Use in helper functions, event handlers, or anywhere outside React render.
+ */
+export function t(key: string, fallback?: string): string {
+  const locale = getClientLocale();
+  const messages = MESSAGES[locale] || MESSAGES[DEFAULT_LOCALE];
+  return messages[key] || fallback || key;
+}

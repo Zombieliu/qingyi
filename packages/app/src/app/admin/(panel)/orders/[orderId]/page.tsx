@@ -1,4 +1,5 @@
 "use client";
+import { t } from "@/lib/i18n/i18n-client";
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -90,7 +91,7 @@ export default function OrderDetailPage() {
 
   useEffect(() => {
     if (!orderId) {
-      setError("缺少订单号");
+      setError(t("admin.orders.001"));
       setLoading(false);
       return;
     }
@@ -113,7 +114,7 @@ export default function OrderDetailPage() {
         setOrder(data);
         writeCache(cacheKey, data);
       } catch {
-        setError("加载失败，请稍后重试");
+        setError(t("admin.orders.002"));
       } finally {
         setLoading(false);
       }
@@ -124,7 +125,12 @@ export default function OrderDetailPage() {
   if (loading) {
     return (
       <div className="admin-card">
-        <StateBlock tone="loading" size="compact" title="加载中" description="正在获取订单详情" />
+        <StateBlock
+          tone="loading"
+          size="compact"
+          title={t("admin.orders.004")}
+          description={t("admin.orders.003")}
+        />
       </div>
     );
   }
@@ -135,7 +141,7 @@ export default function OrderDetailPage() {
         <StateBlock
           tone="danger"
           size="compact"
-          title="订单不可用"
+          title={t("admin.orders.005")}
           description={error || "订单不存在"}
           actions={
             <Link href="/admin/orders" className="admin-btn ghost">

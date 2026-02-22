@@ -1,4 +1,5 @@
 "use client";
+import { t } from "@/lib/i18n/i18n-client";
 
 import { useEffect, useState } from "react";
 import { RefreshCw } from "lucide-react";
@@ -150,7 +151,12 @@ export default function AnalyticsPage() {
           </div>
         </div>
         {loading ? (
-          <StateBlock tone="loading" size="compact" title="加载中" description="同步增长概览数据" />
+          <StateBlock
+            tone="loading"
+            size="compact"
+            title={t("admin.analytics.002")}
+            description={t("admin.analytics.001")}
+          />
         ) : data ? (
           <div className="admin-grid-cards" style={{ marginTop: 6 }}>
             <div className="admin-card admin-card--subtle">
@@ -224,7 +230,12 @@ export default function AnalyticsPage() {
             </div>
           </div>
         ) : (
-          <StateBlock tone="empty" size="compact" title="暂无数据" description="稍后刷新再看" />
+          <StateBlock
+            tone="empty"
+            size="compact"
+            title={t("admin.analytics.004")}
+            description={t("admin.analytics.003")}
+          />
         )}
       </div>
 
@@ -259,15 +270,20 @@ export default function AnalyticsPage() {
           <h3>转化漏斗</h3>
         </div>
         {loading ? (
-          <StateBlock tone="loading" size="compact" title="加载中" description="同步转化漏斗" />
+          <StateBlock
+            tone="loading"
+            size="compact"
+            title={t("admin.analytics.006")}
+            description={t("admin.analytics.005")}
+          />
         ) : data && data.funnel.length > 0 ? (
           <FunnelBar funnel={data.funnel} />
         ) : (
           <StateBlock
             tone="empty"
             size="compact"
-            title="暂无数据"
-            description="暂未收集到漏斗数据"
+            title={t("admin.analytics.007")}
+            description={t("admin.analytics.008")}
           />
         )}
       </div>
@@ -277,7 +293,12 @@ export default function AnalyticsPage() {
           <h3>事件分布</h3>
         </div>
         {loading ? (
-          <StateBlock tone="loading" size="compact" title="加载中" description="同步热门页面" />
+          <StateBlock
+            tone="loading"
+            size="compact"
+            title={t("admin.analytics.010")}
+            description={t("admin.analytics.009")}
+          />
         ) : data ? (
           <div className="admin-table-wrap">
             <table className="admin-table">
@@ -291,18 +312,23 @@ export default function AnalyticsPage() {
               <tbody>
                 {data.events.map((item) => (
                   <tr key={item.event}>
-                    <td data-label="事件" className="admin-text-strong">
+                    <td data-label={t("admin.analytics.011")} className="admin-text-strong">
                       {item.event}
                     </td>
-                    <td data-label="总量">{item.count}</td>
-                    <td data-label="独立人数">{item.unique}</td>
+                    <td data-label={t("admin.analytics.012")}>{item.count}</td>
+                    <td data-label={t("admin.analytics.013")}>{item.unique}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
         ) : (
-          <StateBlock tone="empty" size="compact" title="暂无数据" description="暂无热门页面记录" />
+          <StateBlock
+            tone="empty"
+            size="compact"
+            title={t("admin.analytics.015")}
+            description={t("admin.analytics.014")}
+          />
         )}
       </div>
 
@@ -311,7 +337,12 @@ export default function AnalyticsPage() {
           <h3>热门页面</h3>
         </div>
         {loading ? (
-          <StateBlock tone="loading" size="compact" title="加载中" description="同步事件排行" />
+          <StateBlock
+            tone="loading"
+            size="compact"
+            title={t("admin.analytics.017")}
+            description={t("admin.analytics.016")}
+          />
         ) : data ? (
           <div className="admin-table-wrap">
             <table className="admin-table">
@@ -324,17 +355,22 @@ export default function AnalyticsPage() {
               <tbody>
                 {data.topPaths.map((item) => (
                   <tr key={item.path}>
-                    <td data-label="页面" className="admin-text-strong">
+                    <td data-label={t("admin.analytics.018")} className="admin-text-strong">
                       {item.path}
                     </td>
-                    <td data-label="访问次数">{item.count}</td>
+                    <td data-label={t("admin.analytics.019")}>{item.count}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
         ) : (
-          <StateBlock tone="empty" size="compact" title="暂无数据" description="暂无事件排行记录" />
+          <StateBlock
+            tone="empty"
+            size="compact"
+            title={t("admin.analytics.021")}
+            description={t("admin.analytics.020")}
+          />
         )}
       </div>
     </div>

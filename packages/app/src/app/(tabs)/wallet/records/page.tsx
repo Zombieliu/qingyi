@@ -1,4 +1,5 @@
 "use client";
+import { t } from "@/lib/i18n/i18n-client";
 
 import Link from "next/link";
 import { ArrowLeft, RefreshCw } from "lucide-react";
@@ -41,13 +42,13 @@ function formatStatus(status: string) {
 function formatChannel(channel?: string) {
   switch (channel) {
     case "alipay":
-      return "支付宝";
+      return t("wallet.records.001");
     case "wechat_pay":
-      return "微信支付";
+      return t("wallet.records.002");
     case "stripe":
       return "Stripe";
     case "manual":
-      return "人工记账";
+      return t("wallet.records.003");
     default:
       return channel || "未知渠道";
   }
@@ -63,7 +64,7 @@ export default function WalletRecords() {
   const load = async (pageNo = 1, append = false) => {
     const address = getCurrentAddress();
     if (!address) {
-      setError("请先登录账号查看明细");
+      setError(t("wallet.records.004"));
       return;
     }
     setLoading(true);
@@ -83,7 +84,7 @@ export default function WalletRecords() {
       setPage(data.page || pageNo);
       setHasMore(Boolean(data.totalPages && data.page < data.totalPages));
     } catch (err) {
-      setError(formatErrorMessage(err, "明细加载失败"));
+      setError(formatErrorMessage(err, t("wallet.records.005")));
     } finally {
       setLoading(false);
     }
@@ -98,7 +99,7 @@ export default function WalletRecords() {
     <div className="dl-main">
       <header className="dl-topbar">
         <div className="dl-time">
-          <Link href="/wallet" className="dl-icon-circle" aria-label="返回充值">
+          <Link href="/wallet" className="dl-icon-circle" aria-label={t("wallet.records.006")}>
             <ArrowLeft size={16} />
           </Link>
           <span className="dl-time-text">充值明细</span>
@@ -108,7 +109,7 @@ export default function WalletRecords() {
           <button
             className="dl-icon-circle"
             onClick={() => load(1, false)}
-            aria-label="刷新明细"
+            aria-label={t("wallet.records.007")}
             disabled={loading}
           >
             <RefreshCw size={16} className={loading ? "spin" : ""} />
@@ -117,15 +118,25 @@ export default function WalletRecords() {
       </header>
 
       {loading && records.length === 0 ? (
-        <StateBlock tone="loading" size="compact" title="加载中" description="正在获取充值明细" />
+        <StateBlock
+          tone="loading"
+          size="compact"
+          title={t("wallet.records.009")}
+          description={t("wallet.records.008")}
+        />
       ) : error ? (
-        <StateBlock tone="danger" size="compact" title="加载失败" description={error} />
+        <StateBlock
+          tone="danger"
+          size="compact"
+          title={t("wallet.records.010")}
+          description={error}
+        />
       ) : records.length === 0 ? (
         <StateBlock
           tone="empty"
           size="compact"
-          title="暂无明细"
-          description="完成充值后会显示在这里"
+          title={t("wallet.records.011")}
+          description={t("wallet.records.012")}
         />
       ) : (
         <div className="grid gap-3">
@@ -141,7 +152,7 @@ export default function WalletRecords() {
                 </div>
                 <div className="mt-1 text-xs text-gray-500">
                   {formatChannel(item.channel)} ·{" "}
-                  {item.amount ? `¥${item.amount.toFixed(2)}` : "金额待确认"}
+                  {item.amount ? `¥${item.amount.toFixed(2)}` : t("wallet.records.013")}
                 </div>
                 <div className="mt-1 text-xs text-gray-500">
                   时间：{new Date(item.createdAt).toLocaleString()}
@@ -160,7 +171,7 @@ export default function WalletRecords() {
       {hasMore && (
         <div className="mt-4 flex justify-center">
           <button className="dl-tab-btn" onClick={() => load(page + 1, true)} disabled={loading}>
-            {loading ? "加载中..." : "加载更多"}
+            {loading ? "加载中..." : t("wallet.records.014")}
           </button>
         </div>
       )}

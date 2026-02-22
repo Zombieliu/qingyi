@@ -1,4 +1,5 @@
 "use client";
+import { t } from "@/lib/i18n/i18n-client";
 
 import { useState } from "react";
 import { Send } from "lucide-react";
@@ -19,7 +20,7 @@ export default function LedgerPage() {
     setError("");
     setResult("");
     if (!form.user.trim() || !form.amount.trim() || !form.receiptId.trim()) {
-      setError("请填写 user / amount / receiptId");
+      setError(t("admin.ledger.001"));
       return;
     }
     setLoading(true);
@@ -42,7 +43,7 @@ export default function LedgerPage() {
         setForm({ user: "", amount: "", receiptId: "", note: "" });
       }
     } catch {
-      setError("网络错误，请稍后重试");
+      setError(t("admin.ledger.002"));
     } finally {
       setLoading(false);
     }
@@ -89,7 +90,7 @@ export default function LedgerPage() {
             备注（可选）
             <input
               className="admin-input"
-              placeholder="补记说明"
+              placeholder={t("admin.ledger.003")}
               value={form.note}
               onChange={(event) => setForm((prev) => ({ ...prev, note: event.target.value }))}
             />
@@ -102,16 +103,26 @@ export default function LedgerPage() {
           disabled={loading}
         >
           <Send size={16} style={{ marginRight: 6 }} />
-          {loading ? "提交中..." : "提交记账"}
+          {loading ? "提交中..." : t("admin.ledger.004")}
         </button>
         {result ? (
           <div style={{ marginTop: 14 }}>
-            <StateBlock tone="success" size="compact" title="记账成功" description={result} />
+            <StateBlock
+              tone="success"
+              size="compact"
+              title={t("admin.ledger.005")}
+              description={result}
+            />
           </div>
         ) : null}
         {error ? (
           <div style={{ marginTop: 14 }}>
-            <StateBlock tone="danger" size="compact" title="记账失败" description={error} />
+            <StateBlock
+              tone="danger"
+              size="compact"
+              title={t("admin.ledger.006")}
+              description={error}
+            />
           </div>
         ) : null}
       </div>

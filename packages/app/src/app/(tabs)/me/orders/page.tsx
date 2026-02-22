@@ -1,4 +1,5 @@
 "use client";
+import { t } from "@/lib/i18n/i18n-client";
 
 import Link from "next/link";
 import { ArrowLeft, RefreshCw, CalendarCheck } from "lucide-react";
@@ -64,14 +65,14 @@ export default function OrderCenterPage() {
     <div className="dl-main">
       <header className="dl-topbar">
         <div className="dl-time">
-          <Link href="/me" className="dl-icon-circle" aria-label="返回我的">
+          <Link href="/me" className="dl-icon-circle" aria-label={t("me.orders.001")}>
             <ArrowLeft size={16} />
           </Link>
           <span className="dl-time-text">订单中心</span>
           <span className="dl-chip">服务记录</span>
         </div>
         <div className="dl-actions">
-          <button onClick={load} className="dl-icon-circle" aria-label="刷新订单">
+          <button onClick={load} className="dl-icon-circle" aria-label={t("me.orders.002")}>
             <RefreshCw size={16} />
           </button>
         </div>
@@ -105,16 +106,16 @@ export default function OrderCenterPage() {
             <StateBlock
               tone="loading"
               size="compact"
-              title="加载中"
-              description="正在同步订单列表"
+              title={t("me.orders.003")}
+              description={t("me.orders.004")}
             />
           </div>
         ) : filtered.length === 0 ? (
           <div className="mt-4">
             <StateBlock
               tone="empty"
-              title="暂无订单"
-              description="去安排页选择服务吧"
+              title={t("me.orders.005")}
+              description={t("me.orders.006")}
               actions={
                 <Link href="/schedule" className="dl-tab-btn">
                   <CalendarCheck size={14} />

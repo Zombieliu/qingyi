@@ -1,4 +1,5 @@
 "use client";
+import { t } from "@/lib/i18n/i18n-client";
 
 import type { LocalOrder } from "@/lib/services/order-store";
 
@@ -185,19 +186,19 @@ export function deriveMode(list: LocalOrder[]): Mode {
 export function statusLabel(status: number) {
   switch (status) {
     case 0:
-      return "已创建";
+      return t("schedule.schedule_data.001");
     case 1:
-      return "已托管费用";
+      return t("schedule.schedule_data.002");
     case 2:
-      return "押金已锁定";
+      return t("schedule.schedule_data.003");
     case 3:
-      return "已完成待结算";
+      return t("schedule.schedule_data.004");
     case 4:
-      return "争议中";
+      return t("schedule.schedule_data.005");
     case 5:
-      return "已结算";
+      return t("schedule.schedule_data.006");
     case 6:
-      return "已取消";
+      return t("schedule.schedule_data.007");
     default:
       return `未知状态(${status})`;
   }

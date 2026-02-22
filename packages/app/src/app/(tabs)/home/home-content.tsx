@@ -1,4 +1,5 @@
 "use client";
+import { t } from "@/lib/i18n/i18n-client";
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
@@ -186,7 +187,7 @@ export default function HomeContent({
           className={styles["lc-search-input"]}
           value={query}
           onChange={(event) => setQuery(event.target.value)}
-          placeholder="输入关键词搜索陪练或套餐"
+          placeholder={t("home.home_content.002")}
         />
       </div>
       {searchHint ? <div className={styles["lc-search-hint"]}>{searchHint}</div> : null}
@@ -228,7 +229,9 @@ export default function HomeContent({
       <section className={styles["lc-section"]}>
         <div className={styles["lc-section-head"]}>
           <div>
-            <div className={styles["lc-section-title"]}>{hasQuery ? "搜索套餐" : "推荐套餐"}</div>
+            <div className={styles["lc-section-title"]}>
+              {hasQuery ? "搜索套餐" : t("home.home_content.003")}
+            </div>
             <div className={styles["lc-section-sub"]}>更快匹配，更高胜率</div>
           </div>
           <Link href="/schedule" className={styles["lc-section-link"]}>
@@ -257,7 +260,7 @@ export default function HomeContent({
                 prev === "default" ? "asc" : prev === "asc" ? "desc" : "default"
               )
             }
-            aria-label={`价格排序：${sortPrice === "asc" ? "升序" : sortPrice === "desc" ? "降序" : "默认"}`}
+            aria-label={`价格排序：${sortPrice === "asc" ? "升序" : sortPrice === "desc" ? "降序" : t("home.home_content.004")}`}
           >
             价格{sortPrice === "asc" ? "↑" : sortPrice === "desc" ? "↓" : ""}
           </button>
@@ -266,8 +269,8 @@ export default function HomeContent({
           <StateBlock
             tone="empty"
             size="compact"
-            title="未找到匹配套餐"
-            description="试试其他关键词"
+            title={t("home.home_content.005")}
+            description={t("home.home_content.006")}
           />
         ) : (
           <Stagger className={styles["lc-package-grid"]}>
@@ -301,7 +304,9 @@ export default function HomeContent({
       <section className={styles["lc-section"]}>
         <div className={styles["lc-section-head"]}>
           <div>
-            <div className={styles["lc-section-title"]}>{hasQuery ? "搜索陪练" : "可接陪练"}</div>
+            <div className={styles["lc-section-title"]}>
+              {hasQuery ? "搜索陪练" : t("home.home_content.007")}
+            </div>
             <div className={styles["lc-section-sub"]}>在线陪护，极速响应</div>
           </div>
           <Link href="/schedule" className={styles["lc-section-link"]}>
@@ -314,8 +319,8 @@ export default function HomeContent({
             tone="empty"
             size="compact"
             align="center"
-            title={hasQuery ? "未找到匹配陪练" : "当前暂无可接陪练"}
-            description={hasQuery ? "换个关键词试试" : "请稍后刷新或前往套餐下单"}
+            title={hasQuery ? "未找到匹配陪练" : t("home.home_content.008")}
+            description={hasQuery ? "换个关键词试试" : t("home.home_content.009")}
           />
         ) : (
           <Stagger className={styles["lc-player-grid"]}>

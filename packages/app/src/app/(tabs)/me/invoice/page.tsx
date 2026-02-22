@@ -1,4 +1,5 @@
 "use client";
+import { t } from "@/lib/i18n/i18n-client";
 
 import Link from "next/link";
 import { ArrowLeft, FileText, Send } from "lucide-react";
@@ -118,7 +119,7 @@ export default function InvoicePage() {
     <div className="dl-main">
       <header className="dl-topbar">
         <div className="dl-time">
-          <Link href="/me" className="dl-icon-circle" aria-label="返回我的">
+          <Link href="/me" className="dl-icon-circle" aria-label={t("me.invoice.001")}>
             <ArrowLeft size={16} />
           </Link>
           <span className="dl-time-text">发票申请</span>
@@ -145,7 +146,7 @@ export default function InvoicePage() {
             <label className="text-xs text-slate-500">发票抬头</label>
             <input
               className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm"
-              placeholder="公司名称或个人"
+              placeholder={t("me.invoice.002")}
               value={form.title}
               onChange={(event) => setForm((prev) => ({ ...prev, title: event.target.value }))}
             />
@@ -154,7 +155,7 @@ export default function InvoicePage() {
             <label className="text-xs text-slate-500">税号（选填）</label>
             <input
               className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm"
-              placeholder="统一社会信用代码"
+              placeholder={t("me.invoice.003")}
               value={form.taxId}
               onChange={(event) => setForm((prev) => ({ ...prev, taxId: event.target.value }))}
             />
@@ -172,7 +173,7 @@ export default function InvoicePage() {
             <label className="text-xs text-slate-500">联系方式</label>
             <input
               className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm"
-              placeholder="手机 / 微信"
+              placeholder={t("me.invoice.004")}
               value={form.contact}
               onChange={(event) => setForm((prev) => ({ ...prev, contact: event.target.value }))}
             />
@@ -181,7 +182,7 @@ export default function InvoicePage() {
             <label className="text-xs text-slate-500">订单号（选填）</label>
             <input
               className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm"
-              placeholder="如有多单可留空"
+              placeholder={t("me.invoice.005")}
               value={form.orderId}
               onChange={(event) => setForm((prev) => ({ ...prev, orderId: event.target.value }))}
             />
@@ -199,7 +200,7 @@ export default function InvoicePage() {
             <label className="text-xs text-slate-500">开户地址（选填）</label>
             <input
               className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm"
-              placeholder="省市区 / 街道"
+              placeholder={t("me.invoice.006")}
               value={form.address}
               onChange={(event) => setForm((prev) => ({ ...prev, address: event.target.value }))}
             />
@@ -208,7 +209,7 @@ export default function InvoicePage() {
             <label className="text-xs text-slate-500">备注</label>
             <textarea
               className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm min-h-[90px]"
-              placeholder="补充需求（如多个订单号）"
+              placeholder={t("me.invoice.007")}
               value={form.note}
               onChange={(event) => setForm((prev) => ({ ...prev, note: event.target.value }))}
             />
@@ -221,7 +222,7 @@ export default function InvoicePage() {
           className="mt-4 w-full rounded-2xl bg-slate-900 text-white py-2 text-sm font-semibold flex items-center justify-center gap-2"
         >
           <Send size={16} />
-          {submitting ? "提交中..." : "提交申请"}
+          {submitting ? "提交中..." : t("me.invoice.008")}
         </button>
         {hint && <div className="mt-3 text-xs text-amber-600">{hint}</div>}
       </section>
@@ -233,8 +234,8 @@ export default function InvoicePage() {
             <StateBlock
               tone="empty"
               size="compact"
-              title="暂无记录"
-              description="提交申请后会显示在这里"
+              title={t("me.invoice.009")}
+              description={t("me.invoice.010")}
             />
           </div>
         ) : (

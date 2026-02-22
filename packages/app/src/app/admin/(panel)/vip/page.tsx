@@ -1,4 +1,5 @@
 "use client";
+import { t } from "@/lib/i18n/i18n-client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { PlusCircle, RefreshCw, Search } from "lucide-react";
@@ -55,7 +56,7 @@ export default function VipAdminPage() {
   const [loading, setLoading] = useState(true);
   const [cacheHint, setCacheHint] = useState<string | null>(null);
   const [query, setQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState("全部");
+  const [statusFilter, setStatusFilter] = useState(t("admin.vip.001"));
   const [saving, setSaving] = useState<Record<string, boolean>>({});
   const [page, setPage] = useState(1);
   const [cursor, setCursor] = useState<string | null>(null);
@@ -126,7 +127,7 @@ export default function VipAdminPage() {
           setRequests(Array.isArray(cached.value?.items) ? cached.value.items : []);
           setPage(nextPage);
           setNextCursor(cached.value?.nextCursor || null);
-          setCacheHint(cached.fresh ? null : "显示缓存数据，正在刷新…");
+          setCacheHint(cached.fresh ? null : t("admin.vip.002"));
         }
         const res = await fetch(`/api/admin/vip/requests?${params.toString()}`);
         if (res.ok) {
@@ -313,7 +314,7 @@ export default function VipAdminPage() {
             等级名称
             <input
               className="admin-input"
-              placeholder="坚韧白银"
+              placeholder={t("admin.vip.003")}
               value={form.name}
               onChange={(event) => setForm((prev) => ({ ...prev, name: event.target.value }))}
             />
@@ -376,7 +377,7 @@ export default function VipAdminPage() {
             特权列表（每行：标题|描述）
             <textarea
               className="admin-textarea"
-              placeholder="贵族铭牌|专属身份标识\n快速响应+|无限次"
+              placeholder={t("admin.vip.004")}
               value={form.perksText}
               onChange={(event) => setForm((prev) => ({ ...prev, perksText: event.target.value }))}
             />
@@ -404,7 +405,7 @@ export default function VipAdminPage() {
             <input
               className="admin-input"
               style={{ paddingLeft: 36 }}
-              placeholder="搜索申请人 / 联系方式"
+              placeholder={t("admin.vip.005")}
               value={query}
               onChange={(event) => setQuery(event.target.value)}
             />
@@ -414,7 +415,7 @@ export default function VipAdminPage() {
             value={statusFilter}
             onChange={(event) => setStatusFilter(event.target.value)}
           >
-            <option value="全部">全部申请状态</option>
+            <option value={t("admin.vip.006")}>全部申请状态</option>
             {MEMBERSHIP_REQUEST_STATUS_OPTIONS.map((status) => (
               <option key={status} value={status}>
                 {status}
@@ -446,8 +447,8 @@ export default function VipAdminPage() {
           <StateBlock
             tone="empty"
             size="compact"
-            title="暂无会员等级"
-            description="先创建会员等级"
+            title={t("admin.vip.007")}
+            description={t("admin.vip.008")}
           />
         ) : (
           <div className="admin-table-wrap">
@@ -466,11 +467,11 @@ export default function VipAdminPage() {
               <tbody>
                 {tiers.map((tier) => (
                   <tr key={tier.id}>
-                    <td data-label="等级">
+                    <td data-label={t("admin.vip.009")}>
                       <div className="admin-text-strong">{tier.name}</div>
                       <div className="admin-meta">Lv.{tier.level}</div>
                     </td>
-                    <td data-label="价格">
+                    <td data-label={t("admin.vip.010")}>
                       <input
                         className="admin-input"
                         value={tier.price ?? ""}
@@ -495,7 +496,7 @@ export default function VipAdminPage() {
                         }
                       />
                     </td>
-                    <td data-label="有效期">
+                    <td data-label={t("admin.vip.011")}>
                       <input
                         className="admin-input"
                         value={tier.durationDays ?? ""}
@@ -520,7 +521,7 @@ export default function VipAdminPage() {
                         }
                       />
                     </td>
-                    <td data-label="成长值">
+                    <td data-label={t("admin.vip.012")}>
                       <input
                         className="admin-input"
                         value={tier.minPoints ?? ""}
@@ -545,7 +546,7 @@ export default function VipAdminPage() {
                         }
                       />
                     </td>
-                    <td data-label="状态">
+                    <td data-label={t("admin.vip.013")}>
                       <select
                         className="admin-select"
                         value={tier.status}
@@ -566,7 +567,7 @@ export default function VipAdminPage() {
                         ))}
                       </select>
                     </td>
-                    <td data-label="特权">
+                    <td data-label={t("admin.vip.014")}>
                       <textarea
                         className="admin-textarea"
                         value={perksDraft[tier.id] ?? ""}
@@ -578,9 +579,9 @@ export default function VipAdminPage() {
                         }
                       />
                     </td>
-                    <td data-label="更新">
+                    <td data-label={t("admin.vip.015")}>
                       <span className="admin-badge neutral">
-                        {saving[tier.id] ? "保存中" : "已同步"}
+                        {saving[tier.id] ? "保存中" : t("admin.vip.016")}
                       </span>
                     </td>
                   </tr>
@@ -609,13 +610,18 @@ export default function VipAdminPage() {
           </div>
         </div>
         {loading ? (
-          <StateBlock tone="loading" size="compact" title="加载中" description="正在同步会员申请" />
+          <StateBlock
+            tone="loading"
+            size="compact"
+            title={t("admin.vip.018")}
+            description={t("admin.vip.017")}
+          />
         ) : requests.length === 0 ? (
           <StateBlock
             tone="empty"
             size="compact"
-            title="暂无会员申请"
-            description="暂无待处理申请"
+            title={t("admin.vip.019")}
+            description={t("admin.vip.020")}
           />
         ) : (
           <div className="admin-table-wrap">
@@ -634,16 +640,16 @@ export default function VipAdminPage() {
               <tbody>
                 {requests.map((req) => (
                   <tr key={req.id}>
-                    <td data-label="用户">
+                    <td data-label={t("admin.vip.021")}>
                       <div className="admin-text-strong">{req.userName || "访客"}</div>
                       <div className="admin-meta">{req.userAddress || "-"}</div>
                       <div className="admin-meta-faint">{req.id}</div>
                     </td>
-                    <td data-label="等级">{req.tierName || "-"}</td>
-                    <td data-label="联系方式" className="admin-meta">
+                    <td data-label={t("admin.vip.022")}>{req.tierName || "-"}</td>
+                    <td data-label={t("admin.vip.023")} className="admin-meta">
                       {req.contact || "-"}
                     </td>
-                    <td data-label="状态">
+                    <td data-label={t("admin.vip.024")}>
                       <select
                         className="admin-select"
                         value={req.status}
@@ -664,10 +670,10 @@ export default function VipAdminPage() {
                         ))}
                       </select>
                     </td>
-                    <td data-label="备注">
+                    <td data-label={t("admin.vip.025")}>
                       <input
                         className="admin-input"
-                        placeholder="审核备注"
+                        placeholder={t("admin.vip.026")}
                         value={req.note || ""}
                         onChange={(event) =>
                           setRequests((prev) =>
@@ -679,10 +685,10 @@ export default function VipAdminPage() {
                         onBlur={(event) => updateRequest(req.id, { note: event.target.value })}
                       />
                     </td>
-                    <td data-label="时间">{formatShortDateTime(req.createdAt)}</td>
-                    <td data-label="更新">
+                    <td data-label={t("admin.vip.027")}>{formatShortDateTime(req.createdAt)}</td>
+                    <td data-label={t("admin.vip.028")}>
                       <span className="admin-badge neutral">
-                        {saving[req.id] ? "保存中" : "已同步"}
+                        {saving[req.id] ? "保存中" : t("admin.vip.029")}
                       </span>
                     </td>
                   </tr>
@@ -704,8 +710,8 @@ export default function VipAdminPage() {
           <StateBlock
             tone="empty"
             size="compact"
-            title="暂无会员记录"
-            description="当前没有会员记录"
+            title={t("admin.vip.030")}
+            description={t("admin.vip.031")}
           />
         ) : (
           <div className="admin-table-wrap">
@@ -724,12 +730,12 @@ export default function VipAdminPage() {
               <tbody>
                 {members.map((member) => (
                   <tr key={member.id}>
-                    <td data-label="用户">
+                    <td data-label={t("admin.vip.032")}>
                       <div className="admin-text-strong">{member.userName || "-"}</div>
                       <div className="admin-meta">{member.userAddress || "-"}</div>
                     </td>
-                    <td data-label="等级">{member.tierName || "-"}</td>
-                    <td data-label="成长值">
+                    <td data-label={t("admin.vip.033")}>{member.tierName || "-"}</td>
+                    <td data-label={t("admin.vip.034")}>
                       <input
                         className="admin-input"
                         value={member.points ?? ""}
@@ -754,7 +760,7 @@ export default function VipAdminPage() {
                         }
                       />
                     </td>
-                    <td data-label="有效期">
+                    <td data-label={t("admin.vip.035")}>
                       <input
                         className="admin-input"
                         type="date"
@@ -782,7 +788,7 @@ export default function VipAdminPage() {
                         }
                       />
                     </td>
-                    <td data-label="状态">
+                    <td data-label={t("admin.vip.036")}>
                       <select
                         className="admin-select"
                         value={member.status}
@@ -803,10 +809,10 @@ export default function VipAdminPage() {
                         ))}
                       </select>
                     </td>
-                    <td data-label="备注">
+                    <td data-label={t("admin.vip.037")}>
                       <input
                         className="admin-input"
-                        placeholder="备注"
+                        placeholder={t("admin.vip.038")}
                         value={member.note || ""}
                         onChange={(event) =>
                           setMembers((prev) =>
@@ -818,9 +824,9 @@ export default function VipAdminPage() {
                         onBlur={(event) => updateMember(member.id, { note: event.target.value })}
                       />
                     </td>
-                    <td data-label="更新">
+                    <td data-label={t("admin.vip.039")}>
                       <span className="admin-badge neutral">
-                        {saving[member.id] ? "保存中" : "已同步"}
+                        {saving[member.id] ? "保存中" : t("admin.vip.040")}
                       </span>
                     </td>
                   </tr>

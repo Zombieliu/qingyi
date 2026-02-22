@@ -19,7 +19,7 @@ import {
   shortAddress,
 } from "./passkey-wallet";
 import { trackEvent } from "@/lib/services/analytics";
-import { useI18n } from "@/lib/i18n/i18n-client";
+import { useI18n, t } from "@/lib/i18n/i18n-client";
 import { ensureUserSession } from "@/lib/auth/user-auth-client";
 
 const toBase64 = (bytes: Uint8Array) => btoa(String.fromCharCode(...Array.from(bytes)));
@@ -128,7 +128,7 @@ export default function PasskeyLoginButton() {
       setOverlay(true);
       setToast(null);
       trackEvent("login_click", { method: "passkey", stage });
-      const provider = new BrowserPasskeyProvider("情谊电竞", providerOpts);
+      const provider = new BrowserPasskeyProvider(t("comp.passkey_login_button.001"), providerOpts);
       const keypair = new PasskeyKeypair(fromBase64(target.publicKey), provider);
       await keypair.signPersonalMessage(new TextEncoder().encode("login-check"));
       await persist(target, t("passkey.success.login"));
@@ -151,7 +151,7 @@ export default function PasskeyLoginButton() {
       setOverlay(true);
       setToast(null);
       trackEvent("passkey_created", { method: "passkey" });
-      const provider = new BrowserPasskeyProvider("情谊电竞", providerOpts);
+      const provider = new BrowserPasskeyProvider(t("comp.passkey_login_button.002"), providerOpts);
       const keypair = await PasskeyKeypair.getPasskeyInstance(provider);
       const publicKey = keypair.getPublicKey();
       const address = publicKey.toSuiAddress();
@@ -175,7 +175,7 @@ export default function PasskeyLoginButton() {
       setLoading(true);
       setOverlay(true);
       setToast(null);
-      const provider = new BrowserPasskeyProvider("情谊电竞", providerOpts);
+      const provider = new BrowserPasskeyProvider(t("comp.passkey_login_button.003"), providerOpts);
       const msg1 = new TextEncoder().encode("recover-1");
       const msg2 = new TextEncoder().encode("recover-2");
       const pks1 = await PasskeyKeypair.signAndRecover(provider, msg1);

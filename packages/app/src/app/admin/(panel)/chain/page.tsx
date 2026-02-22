@@ -1,4 +1,5 @@
 "use client";
+import { t } from "@/lib/i18n/i18n-client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { RefreshCw } from "lucide-react";
@@ -86,7 +87,7 @@ export default function ChainPage() {
         missingChain: nextMissingChain,
       });
     } catch {
-      setError("网络错误，请稍后再试");
+      setError(t("admin.chain.001"));
     } finally {
       setLoading(false);
     }
@@ -99,19 +100,19 @@ export default function ChainPage() {
   const statusLabel = (status: number) => {
     switch (status) {
       case 0:
-        return "已创建";
+        return t("admin.chain.002");
       case 1:
-        return "已支付撮合费";
+        return t("admin.chain.003");
       case 2:
-        return "押金已锁定";
+        return t("admin.chain.004");
       case 3:
-        return "已完成待结算";
+        return t("admin.chain.005");
       case 4:
-        return "争议中";
+        return t("admin.chain.006");
       case 5:
-        return "已结算";
+        return t("admin.chain.007");
       case 6:
-        return "已取消";
+        return t("admin.chain.008");
       default:
         return `未知(${status})`;
     }
@@ -319,19 +320,19 @@ export default function ChainPage() {
               <input
                 className="admin-input"
                 style={{ width: 140 }}
-                placeholder="订单号"
+                placeholder={t("admin.chain.009")}
                 value={manualOrderId}
                 onChange={(event) => setManualOrderId(event.target.value)}
               />
               <input
                 className="admin-input"
                 style={{ width: 220 }}
-                placeholder="交易 digest"
+                placeholder={t("admin.chain.010")}
                 value={manualDigest}
                 onChange={(event) => setManualDigest(event.target.value)}
               />
               <button className="admin-btn ghost" onClick={runManualSync} disabled={manualSyncing}>
-                {manualSyncing ? "补单中..." : "按 digest 补单"}
+                {manualSyncing ? "补单中..." : t("admin.chain.011")}
               </button>
             </div>
             <button
@@ -339,7 +340,7 @@ export default function ChainPage() {
               onClick={runAutoCancel}
               disabled={autoCanceling || autoCancelDisabled}
             >
-              {autoCanceling ? "处理中..." : "执行超期取消"}
+              {autoCanceling ? "处理中..." : t("admin.chain.012")}
             </button>
             <button className="admin-btn ghost" onClick={loadData} disabled={loading}>
               <RefreshCw size={16} style={{ marginRight: 6 }} />
@@ -372,13 +373,18 @@ export default function ChainPage() {
           </div>
         </div>
         {loading ? (
-          <StateBlock tone="loading" size="compact" title="加载中" description="正在同步争议订单" />
+          <StateBlock
+            tone="loading"
+            size="compact"
+            title={t("admin.chain.014")}
+            description={t("admin.chain.013")}
+          />
         ) : disputedOrders.length === 0 ? (
           <StateBlock
             tone="empty"
             size="compact"
-            title="暂无争议订单"
-            description="目前没有待处理争议"
+            title={t("admin.chain.015")}
+            description={t("admin.chain.016")}
           />
         ) : (
           <div className="admin-stack">
@@ -406,7 +412,7 @@ export default function ChainPage() {
                       <input
                         className="admin-input"
                         style={{ width: 90 }}
-                        placeholder="服务退款 BPS"
+                        placeholder={t("admin.chain.017")}
                         value={bps[order.orderId]?.service || ""}
                         onChange={(event) =>
                           setBps((prev) => ({
@@ -421,7 +427,7 @@ export default function ChainPage() {
                       <input
                         className="admin-input"
                         style={{ width: 90 }}
-                        placeholder="押金扣罚 BPS"
+                        placeholder={t("admin.chain.018")}
                         value={bps[order.orderId]?.deposit || ""}
                         onChange={(event) =>
                           setBps((prev) => ({
@@ -440,7 +446,7 @@ export default function ChainPage() {
                       disabled={action === order.orderId}
                       onClick={() => resolveDispute(order.orderId)}
                     >
-                      {action === order.orderId ? "裁决中..." : "提交裁决"}
+                      {action === order.orderId ? "裁决中..." : t("admin.chain.019")}
                     </button>
                   </div>
                 </div>
@@ -458,9 +464,19 @@ export default function ChainPage() {
           </div>
         </div>
         {loading ? (
-          <StateBlock tone="loading" size="compact" title="加载中" description="正在同步链上订单" />
+          <StateBlock
+            tone="loading"
+            size="compact"
+            title={t("admin.chain.021")}
+            description={t("admin.chain.020")}
+          />
         ) : chainOrders.length === 0 ? (
-          <StateBlock tone="empty" size="compact" title="暂无订单" description="暂无链上订单记录" />
+          <StateBlock
+            tone="empty"
+            size="compact"
+            title={t("admin.chain.023")}
+            description={t("admin.chain.022")}
+          />
         ) : (
           <div className="admin-table-wrap">
             <table className="admin-table">
@@ -489,8 +505,8 @@ export default function ChainPage() {
                     );
                   return (
                     <tr key={order.orderId}>
-                      <td data-label="订单号">{order.orderId}</td>
-                      <td data-label="状态">
+                      <td data-label={t("admin.chain.024")}>{order.orderId}</td>
+                      <td data-label={t("admin.chain.025")}>
                         <span className={statusBadgeClass(effectiveStatus)}>
                           {statusLabel(effectiveStatus)}
                         </span>
@@ -506,26 +522,28 @@ export default function ChainPage() {
                           </span>
                         ) : null}
                       </td>
-                      <td data-label="撮合费">¥{formatAmount(order.serviceFee)}</td>
-                      <td data-label="押金">¥{formatAmount(order.deposit)}</td>
-                      <td data-label="创建时间">
+                      <td data-label={t("admin.chain.026")}>¥{formatAmount(order.serviceFee)}</td>
+                      <td data-label={t("admin.chain.027")}>¥{formatAmount(order.deposit)}</td>
+                      <td data-label={t("admin.chain.028")}>
                         {Number.isFinite(createdAt) && createdAt > 0
                           ? new Date(createdAt).toLocaleString()
                           : "-"}
                       </td>
-                      <td data-label="争议截止">
+                      <td data-label={t("admin.chain.029")}>
                         {Number(order.disputeDeadline) > 0
                           ? new Date(Number(order.disputeDeadline)).toLocaleString()
                           : "-"}
                       </td>
-                      <td data-label="操作">
+                      <td data-label={t("admin.chain.030")}>
                         {canCancel ? (
                           <button
                             className="admin-btn ghost"
                             onClick={() => forceCancel(order.orderId)}
                             disabled={cancelingOrderId === order.orderId}
                           >
-                            {cancelingOrderId === order.orderId ? "取消中..." : "强制取消"}
+                            {cancelingOrderId === order.orderId
+                              ? "取消中..."
+                              : t("admin.chain.031")}
                           </button>
                         ) : (
                           <span className="admin-text-muted">需争议/结算</span>
@@ -549,7 +567,7 @@ export default function ChainPage() {
               onClick={cleanupMissingChain}
               disabled={cleanupMissing || missingChain.length === 0}
             >
-              {cleanupMissing ? "清理中..." : "清理缺链订单"}
+              {cleanupMissing ? "清理中..." : t("admin.chain.032")}
             </button>
           </div>
         </div>
@@ -562,8 +580,8 @@ export default function ChainPage() {
           <StateBlock
             tone="loading"
             size="compact"
-            title="加载中"
-            description="正在对账链上/本地订单"
+            title={t("admin.chain.033")}
+            description={t("admin.chain.034")}
           />
         ) : (
           <div className="admin-stack">

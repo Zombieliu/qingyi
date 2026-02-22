@@ -1,4 +1,5 @@
 "use client";
+import { t } from "@/lib/i18n/i18n-client";
 
 import Link from "next/link";
 import { ArrowLeft, Copy, Gift, Trophy } from "lucide-react";
@@ -110,7 +111,7 @@ export default function ReferralPage() {
     <div className="dl-main">
       <header className="dl-topbar">
         <div className="dl-time">
-          <Link href="/me" className="dl-icon-circle" aria-label="返回我的">
+          <Link href="/me" className="dl-icon-circle" aria-label={t("me.referral.001")}>
             <ArrowLeft size={16} />
           </Link>
           <span className="dl-time-text">邀请返利</span>
@@ -125,15 +126,15 @@ export default function ReferralPage() {
 
       {loading ? (
         <section className="dl-card" style={{ padding: 16 }}>
-          <StateBlock tone="loading" size="compact" title="加载中" />
+          <StateBlock tone="loading" size="compact" title={t("me.referral.002")} />
         </section>
       ) : !address ? (
         <section className="dl-card" style={{ padding: 16 }}>
           <StateBlock
             tone="warning"
             size="compact"
-            title="请先登录"
-            description="登录后可查看邀请码和返利信息"
+            title={t("me.referral.003")}
+            description={t("me.referral.004")}
           />
         </section>
       ) : (
@@ -150,7 +151,7 @@ export default function ReferralPage() {
                 className="flex items-center gap-1 rounded-lg bg-pink-50 px-3 py-1.5 text-xs font-medium text-pink-600"
               >
                 <Copy size={12} />
-                {copied ? "已复制" : "复制链接"}
+                {copied ? "已复制" : t("me.referral.005")}
               </button>
             </div>
             <div className="mt-2 text-xs text-slate-500">
@@ -250,11 +251,16 @@ export default function ReferralPage() {
 
         {boardLoading ? (
           <div className="mt-3">
-            <StateBlock tone="loading" size="compact" title="加载中" />
+            <StateBlock tone="loading" size="compact" title={t("me.referral.006")} />
           </div>
         ) : board.length === 0 ? (
           <div className="mt-3">
-            <StateBlock tone="empty" size="compact" title="暂无数据" description="还没有排行数据" />
+            <StateBlock
+              tone="empty"
+              size="compact"
+              title={t("me.referral.008")}
+              description={t("me.referral.007")}
+            />
           </div>
         ) : (
           <div className="mt-3 grid gap-2">

@@ -1,4 +1,5 @@
 "use client";
+import { t } from "@/lib/i18n/i18n-client";
 
 import Link from "next/link";
 import { ArrowLeft, Wallet } from "lucide-react";
@@ -173,7 +174,7 @@ export default function MantouPage() {
       setStatusHint("companion.status_updated");
       setTimeout(() => setStatusHint(null), 2000);
     } catch (error) {
-      setStatusHint(formatErrorMessage(error, "状态更新失败"));
+      setStatusHint(formatErrorMessage(error, t("me.mantou.001")));
     } finally {
       setStatusSaving(false);
     }
@@ -230,7 +231,7 @@ export default function MantouPage() {
       setNote("");
       setStatus({ tone: "success", title: "已提交提现申请，等待后台审核" });
     } catch (error) {
-      setStatus({ tone: "danger", title: formatErrorMessage(error, "提交失败") });
+      setStatus({ tone: "danger", title: formatErrorMessage(error, t("me.mantou.002")) });
     } finally {
       setSubmitting(false);
     }
@@ -240,7 +241,7 @@ export default function MantouPage() {
     <div className="dl-main">
       <header className="dl-topbar">
         <div className="dl-time">
-          <Link href="/me" className="dl-icon-circle" aria-label="返回我的">
+          <Link href="/me" className="dl-icon-circle" aria-label={t("me.mantou.003")}>
             <ArrowLeft size={16} />
           </Link>
           <span className="dl-time-text">馒头提现</span>
@@ -264,15 +265,15 @@ export default function MantouPage() {
         <div className="mt-2 text-xs text-slate-500">仅陪练账号可设置接单状态</div>
         {guardianState === "checking" || statusLoading ? (
           <div className="mt-3">
-            <StateBlock tone="loading" size="compact" title="状态加载中" />
+            <StateBlock tone="loading" size="compact" title={t("me.mantou.004")} />
           </div>
         ) : !guardianAddress ? (
           <div className="mt-3">
             <StateBlock
               tone="warning"
               size="compact"
-              title="请先登录账号"
-              description="登录后可设置接单状态"
+              title={t("me.mantou.005")}
+              description={t("me.mantou.006")}
             />
           </div>
         ) : !isGuardian ? (
@@ -280,8 +281,8 @@ export default function MantouPage() {
             <StateBlock
               tone="warning"
               size="compact"
-              title="未绑定陪练档案"
-              description="请联系运营绑定陪练"
+              title={t("me.mantou.007")}
+              description={t("me.mantou.008")}
             />
           </div>
         ) : playerStatus ? (
@@ -312,7 +313,7 @@ export default function MantouPage() {
               tone="warning"
               size="compact"
               title={statusHint || "暂无可用状态"}
-              description="请联系运营绑定陪练档案"
+              description={t("me.mantou.009")}
             />
           </div>
         )}
@@ -338,7 +339,7 @@ export default function MantouPage() {
             <label className="text-xs text-slate-500">收款账号</label>
             <input
               className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm"
-              placeholder="微信/支付宝账号"
+              placeholder={t("me.mantou.010")}
               value={account}
               onChange={(event) => setAccount(event.target.value)}
             />
@@ -347,7 +348,7 @@ export default function MantouPage() {
             <label className="text-xs text-slate-500">备注（可选）</label>
             <input
               className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm"
-              placeholder="可填写打款说明"
+              placeholder={t("me.mantou.011")}
               value={note}
               onChange={(event) => setNote(event.target.value)}
             />
@@ -359,7 +360,7 @@ export default function MantouPage() {
           disabled={submitting}
           className="mt-4 w-full rounded-2xl bg-emerald-600 text-white py-2 text-sm font-semibold"
         >
-          {submitting ? "提交中..." : "提交提现"}
+          {submitting ? "提交中..." : t("me.mantou.012")}
         </button>
         {status && (
           <div className="mt-3">
@@ -375,8 +376,8 @@ export default function MantouPage() {
             <StateBlock
               tone="empty"
               size="compact"
-              title="暂无提现记录"
-              description="提交提现后会出现在这里"
+              title={t("me.mantou.013")}
+              description={t("me.mantou.014")}
             />
           </div>
         ) : (
@@ -404,8 +405,8 @@ export default function MantouPage() {
             <StateBlock
               tone="empty"
               size="compact"
-              title="暂无流水"
-              description="暂无馒头流水记录"
+              title={t("me.mantou.015")}
+              description={t("me.mantou.016")}
             />
           </div>
         ) : (
