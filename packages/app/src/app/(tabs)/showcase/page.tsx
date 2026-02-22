@@ -477,12 +477,49 @@ export default function Showcase() {
     setTimeout(() => setChainToast(null), 3000);
   };
 
-  const confirmDepositAccept = (orderId: string, depositLabel?: string) => {
+  const confirmDepositAccept = async (orderId: string, depositLabel?: string) => {
+    // Fetch customer tags for the order's user
+    const order = orders.find((o) => o.id === orderId);
+    let tagWarning = "";
+    if (order?.userAddress) {
+      try {
+        const res = await fetch(`/api/companion/customer-tags?userAddress=${order.userAddress}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.tagCount > 0) {
+            const tagLabels = data.tags.map((t: { tag: string; note?: string }) => {
+              const label =
+                t.tag === "difficult"
+                  ? "⚠️ 事多/难伺候"
+                  : t.tag === "slow_pay"
+                    ? "⏳ 拖延付款"
+                    : t.tag === "rude"
+                      ? "😤 态度差"
+                      : t.tag === "no_show"
+                        ? "👻 放鸽子"
+                        : t.tag === "frequent_dispute"
+                          ? "⚖️ 频繁争议"
+                          : t.tag === "vip_treat"
+                            ? "👑 VIP 优待"
+                            : `📌 ${t.note || "其他"}`;
+              return label;
+            });
+            const severity =
+              data.maxSeverity >= 3 ? "🚨 高危客户" : data.maxSeverity >= 2 ? "⚠️ 注意" : "💡 提示";
+            tagWarning = `\n\n${severity}：该老板有 ${data.tagCount} 条内部标记：\n${tagLabels.join("、")}`;
+          }
+        }
+      } catch {
+        /* ignore */
+      }
+    }
+
     openConfirm({
       title: t("tabs.showcase.i059"),
-      description: depositLabel
-        ? `将锁定押金 ${depositLabel} 并认领订单。押金锁定后如需取消请走争议/客服流程。`
-        : t("tabs.showcase.i124"),
+      description:
+        (depositLabel
+          ? `将锁定押金 ${depositLabel} 并认领订单。押金锁定后如需取消请走争议/客服流程。`
+          : t("tabs.showcase.i124")) + tagWarning,
       confirmLabel: t("tabs.showcase.i060"),
       action: async () => {
         await accept(orderId);

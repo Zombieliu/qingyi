@@ -528,3 +528,20 @@ model UserCoupon {
   @@index([userAddress, status])
   @@index([couponId])
 }
+
+// 客户内部标签 — 陪练/运营对老板的内部备注，老板不可见
+model CustomerTag {
+  id              String   @id @default(cuid())
+  userAddress     String   // 被标记的老板地址
+  tag             String   // 标签类型: difficult, slow_pay, rude, no_show, frequent_dispute, vip_treat, other
+  note            String?  // 备注说明
+  severity        Int      @default(1) // 1=提醒 2=警告 3=高危
+  reportedBy      String   // 提交人地址或 admin token name
+  reportedByRole  String   @default("companion") // companion, admin, ops
+  active          Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([userAddress, active])
+  @@index([reportedBy])
+}
