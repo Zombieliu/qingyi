@@ -7,9 +7,11 @@ export function isChainOrder(order: Pick<AdminOrder, "chainDigest" | "chainStatu
 const STAGE_FLOW: Record<OrderStage, OrderStage[]> = {
   待处理: ["待处理", "已确认", "进行中", "已取消"],
   已确认: ["已确认", "进行中", "已取消"],
-  进行中: ["进行中", "已完成", "已取消"],
-  已完成: ["已完成"],
+  进行中: ["进行中", "已完成", "已取消", "争议中"],
+  已完成: ["已完成", "争议中"],
   已取消: ["已取消"],
+  争议中: ["争议中", "已完成", "已退款"],
+  已退款: ["已退款"],
 };
 
 export function canTransitionStage(current: OrderStage, next: OrderStage) {

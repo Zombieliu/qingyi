@@ -1,4 +1,4 @@
-export type OrderStage = "待处理" | "已确认" | "进行中" | "已完成" | "已取消";
+export type OrderStage = "待处理" | "已确认" | "进行中" | "已完成" | "已取消" | "争议中" | "已退款";
 export type PlayerStatus = "可接单" | "忙碌" | "停用";
 export type AnnouncementStatus = "draft" | "published" | "archived";
 export type SupportStatus = "待处理" | "处理中" | "已完成";
@@ -388,7 +388,15 @@ export interface AdminStore {
   membershipRequests: AdminMembershipRequest[];
 }
 
-export const ORDER_STAGE_OPTIONS: OrderStage[] = ["待处理", "已确认", "进行中", "已完成", "已取消"];
+export const ORDER_STAGE_OPTIONS: OrderStage[] = [
+  "待处理",
+  "已确认",
+  "进行中",
+  "已完成",
+  "已取消",
+  "争议中",
+  "已退款",
+];
 export const PLAYER_STATUS_OPTIONS: PlayerStatus[] = ["可接单", "忙碌", "停用"];
 export const ANNOUNCEMENT_STATUS_OPTIONS: AnnouncementStatus[] = ["draft", "published", "archived"];
 export const SUPPORT_STATUS_OPTIONS: SupportStatus[] = ["待处理", "处理中", "已完成"];

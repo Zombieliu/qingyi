@@ -103,6 +103,26 @@ export async function setup() {
     `CREATE INDEX IF NOT EXISTS "idx_referral_status" ON "${TEST_SCHEMA}"."Referral" ("status")`
   );
 
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS "${TEST_SCHEMA}"."UserCoupon" (
+      "id" TEXT PRIMARY KEY,
+      "userAddress" TEXT NOT NULL,
+      "couponId" TEXT NOT NULL,
+      "couponTitle" TEXT NOT NULL,
+      "discount" DOUBLE PRECISION,
+      "minSpend" DOUBLE PRECISION,
+      "status" TEXT NOT NULL DEFAULT 'unused',
+      "usedOrderId" TEXT,
+      "usedAt" TIMESTAMP(3),
+      "expiresAt" TIMESTAMP(3),
+      "createdAt" TIMESTAMP(3) NOT NULL,
+      UNIQUE("userAddress", "couponId")
+    )
+  `);
+  await prisma.$executeRawUnsafe(
+    `CREATE INDEX IF NOT EXISTS "idx_coupon_user_status" ON "${TEST_SCHEMA}"."UserCoupon" ("userAddress", "status")`
+  );
+
   await prisma.$disconnect();
 }
 
