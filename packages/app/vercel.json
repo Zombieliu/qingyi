@@ -1,5 +1,15 @@
 {
   "installCommand": "corepack enable && corepack prepare pnpm@9.15.4 --activate && corepack pnpm install --node-linker=hoisted --ignore-scripts --config.link-workspace-packages=false && corepack pnpm --filter app prisma generate",
   "buildCommand": "echo BUILD_START && node -v && pnpm -v && NODE_OPTIONS=--max_old_space_size=4096 NEXT_TELEMETRY_DISABLED=1 PWA_BUILD=1 pnpm build:webpack",
-  "framework": "nextjs"
+  "framework": "nextjs",
+  "crons": [
+    {
+      "path": "/api/cron/chain-sync",
+      "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/cleanup",
+      "schedule": "0 3 * * *"
+    }
+  ]
 }
