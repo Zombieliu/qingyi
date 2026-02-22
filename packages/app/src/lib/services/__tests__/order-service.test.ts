@@ -244,3 +244,224 @@ describe("ORDER_SOURCE resolution", () => {
     expect(isServerOrderEnabled()).toBe(false);
   });
 });
+
+// ─── fetchOrdersWithMeta (local mode) ───
+
+describe("fetchOrdersWithMeta", () => {
+  it("returns local orders when ORDER_SOURCE is local", async () => {
+    const { loadOrders } = await import("../order-store");
+    (loadOrders as ReturnType<typeof vi.fn>).mockReturnValue([
+      { id: "o1", item: "test", status: "待处理" },
+    ]);
+    const { fetchOrdersWithMeta } = await import("../order-service");
+    const result = await fetchOrdersWithMeta();
+    expect(result.meta.fromCache).toBe(true);
+    expect(result.items).toHaveLength(1);
+  });
+});
+
+// ─── fetchOrderDetail (local mode) ───
+
+describe("fetchOrderDetail", () => {
+  it("returns null for empty orderId", async () => {
+    const { fetchOrderDetail } = await import("../order-service");
+    const result = await fetchOrderDetail("");
+    expect(result).toBeNull();
+  });
+
+  it("returns order from local store", async () => {
+    const { loadOrders } = await import("../order-store");
+    (loadOrders as ReturnType<typeof vi.fn>).mockReturnValue([
+      { id: "ORD-1", item: "test", status: "待处理" },
+    ]);
+    const { fetchOrderDetail } = await import("../order-service");
+    const result = await fetchOrderDetail("ORD-1");
+    expect(result).not.toBeNull();
+    expect(result!.id).toBe("ORD-1");
+  });
+
+  it("returns null when order not found locally", async () => {
+    const { loadOrders } = await import("../order-store");
+    (loadOrders as ReturnType<typeof vi.fn>).mockReturnValue([]);
+    const { fetchOrderDetail } = await import("../order-service");
+    const result = await fetchOrderDetail("ORD-999");
+    expect(result).toBeNull();
+  });
+});
+
+// ─── createOrder (local mode) ───
+
+describe("createOrder", () => {
+  it("creates order locally", async () => {
+    const { addOrder } = await import("../order-store");
+    (addOrder as ReturnType<typeof vi.fn>).mockReturnValue(undefined);
+    const { createOrder } = await import("../order-service");
+    const order = {
+      id: "ORD-NEW",
+      user: "user1",
+      item: "陪玩",
+      amount: 50,
+      currency: "CNY",
+      paymentStatus: "未支付",
+      status: "待处理",
+      time: Date.now(),
+    };
+    const result = await createOrder(order as Parameters<typeof createOrder>[0]);
+    expect(result).not.toBeNull();
+  });
+});
+
+// ─── deleteOrder (local mode) ───
+
+describe("deleteOrder", () => {
+  it("deletes order locally without throwing", async () => {
+    const { removeOrder } = await import("../order-store");
+    (removeOrder as ReturnType<typeof vi.fn>).mockReturnValue(undefined);
+    const { deleteOrder } = await import("../order-service");
+    await expect(deleteOrder("ORD-1")).resolves.not.toThrow();
+    expect(removeOrder).toHaveBeenCalledWith("ORD-1");
+  });
+});
+
+// ─── fetchPublicOrders ───
+
+describe("fetchPublicOrders", () => {
+  it("returns local orders in local mode", async () => {
+    const { loadOrders } = await import("../order-store");
+    (loadOrders as ReturnType<typeof vi.fn>).mockReturnValue([
+      { id: "PUB-1", item: "test", status: "待处理" },
+    ]);
+    const { fetchPublicOrders } = await import("../order-service");
+    const result = await fetchPublicOrders();
+    expect(result.items).toHaveLength(1);
+  });
+});
+
+// ─── Server mode tests ───
+
+describe("server mode functions", () => {
+  beforeEach(() => {
+    vi.stubEnv("NEXT_PUBLIC_ORDER_SOURCE", "server");
+  });
+
+  it("fetchOrderDetail returns null when no address", async () => {
+    vi.resetModules();
+    vi.stubEnv("NEXT_PUBLIC_ORDER_SOURCE", "server");
+    const mod = await import("../order-service");
+    const result = await mod.fetchOrderDetail("ORD-1");
+    expect(result).toBeNull();
+  });
+
+  it("fetchOrderDetail fetches from API with address", async () => {
+    vi.resetModules();
+    vi.stubEnv("NEXT_PUBLIC_ORDER_SOURCE", "server");
+    const { fetchWithUserAuth } = await import("@/lib/auth/user-auth-client");
+    (fetchWithUserAuth as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: true,
+      json: async () => makeServerOrder({ id: "ORD-1" }),
+    });
+    const { getCurrentAddress } = await import("@/lib/chain/qy-chain");
+    (getCurrentAddress as ReturnType<typeof vi.fn>).mockReturnValue("0xabc");
+    const mod = await import("../order-service");
+    const result = await mod.fetchOrderDetail("ORD-1", "0xabc");
+    expect(result).not.toBeNull();
+    expect(result!.id).toBe("ORD-1");
+  });
+
+  it("fetchOrderDetail returns null on API error", async () => {
+    vi.resetModules();
+    vi.stubEnv("NEXT_PUBLIC_ORDER_SOURCE", "server");
+    const { fetchWithUserAuth } = await import("@/lib/auth/user-auth-client");
+    (fetchWithUserAuth as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: false,
+      status: 500,
+    });
+    const mod = await import("../order-service");
+    const result = await mod.fetchOrderDetail("ORD-1", "0xabc");
+    expect(result).toBeNull();
+  });
+
+  it("createOrder calls API in server mode", async () => {
+    vi.resetModules();
+    vi.stubEnv("NEXT_PUBLIC_ORDER_SOURCE", "server");
+    const { fetchWithUserAuth } = await import("@/lib/auth/user-auth-client");
+    (fetchWithUserAuth as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: true,
+      json: async () => makeServerOrder({ id: "ORD-NEW" }),
+    });
+    const { getCurrentAddress } = await import("@/lib/chain/qy-chain");
+    (getCurrentAddress as ReturnType<typeof vi.fn>).mockReturnValue("0xabc");
+    const mod = await import("../order-service");
+    const result = await mod.createOrder({
+      id: "ORD-NEW",
+      user: "user1",
+      item: "陪玩",
+      amount: 50,
+      currency: "CNY",
+      paymentStatus: "未支付",
+      status: "待处理",
+      time: Date.now(),
+    } as Parameters<typeof mod.createOrder>[0]);
+    expect(result).not.toBeNull();
+  });
+
+  it("patchOrder calls API in server mode", async () => {
+    vi.resetModules();
+    vi.stubEnv("NEXT_PUBLIC_ORDER_SOURCE", "server");
+    const { fetchWithUserAuth } = await import("@/lib/auth/user-auth-client");
+    (fetchWithUserAuth as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: true,
+      json: async () => makeServerOrder({ id: "ORD-1", stage: "已确认" }),
+    });
+    const { getCurrentAddress } = await import("@/lib/chain/qy-chain");
+    (getCurrentAddress as ReturnType<typeof vi.fn>).mockReturnValue("0xabc");
+    const mod = await import("../order-service");
+    const result = await mod.patchOrder("ORD-1", { stage: "已确认" }, "0xabc");
+    expect(result).not.toBeNull();
+  });
+
+  it("patchOrder throws on API failure", async () => {
+    vi.resetModules();
+    vi.stubEnv("NEXT_PUBLIC_ORDER_SOURCE", "server");
+    const { fetchWithUserAuth } = await import("@/lib/auth/user-auth-client");
+    (fetchWithUserAuth as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: false,
+      status: 500,
+      json: async () => ({ error: "fail" }),
+    });
+    const { getCurrentAddress } = await import("@/lib/chain/qy-chain");
+    (getCurrentAddress as ReturnType<typeof vi.fn>).mockReturnValue("0xabc");
+    const mod = await import("../order-service");
+    await expect(
+      mod.patchOrder("ORD-1", { stage: "已确认" } as Parameters<typeof mod.patchOrder>[1], "0xabc")
+    ).rejects.toThrow();
+  });
+
+  it("deleteOrder calls API in server mode", async () => {
+    vi.resetModules();
+    vi.stubEnv("NEXT_PUBLIC_ORDER_SOURCE", "server");
+    const { fetchWithUserAuth } = await import("@/lib/auth/user-auth-client");
+    (fetchWithUserAuth as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: true,
+      json: async () => ({ ok: true }),
+    });
+    const { getCurrentAddress } = await import("@/lib/chain/qy-chain");
+    (getCurrentAddress as ReturnType<typeof vi.fn>).mockReturnValue("0xabc");
+    const mod = await import("../order-service");
+    await expect(mod.deleteOrder("ORD-1", "0xabc")).resolves.not.toThrow();
+  });
+
+  it("syncChainOrder calls API", async () => {
+    vi.resetModules();
+    vi.stubEnv("NEXT_PUBLIC_ORDER_SOURCE", "server");
+    const { fetchWithUserAuth } = await import("@/lib/auth/user-auth-client");
+    (fetchWithUserAuth as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: true,
+      json: async () => ({ ok: true }),
+    });
+    const { getCurrentAddress } = await import("@/lib/chain/qy-chain");
+    (getCurrentAddress as ReturnType<typeof vi.fn>).mockReturnValue("0xabc");
+    const mod = await import("../order-service");
+    await expect(mod.syncChainOrder("ORD-1", "0xabc", "digest")).resolves.not.toThrow();
+  });
+});

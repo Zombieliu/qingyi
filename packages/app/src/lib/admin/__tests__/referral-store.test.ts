@@ -56,6 +56,8 @@ import {
   getReferralByInvitee,
   queryReferralsByInviter,
   getReferralConfig,
+  processReferralReward,
+  queryReferrals,
 } from "../referral-store";
 
 beforeEach(() => {
@@ -142,5 +144,61 @@ describe("getReferralConfig", () => {
     const config = await getReferralConfig();
     expect(config.mode).toBe("percent");
     expect(config.enabled).toBe(false);
+  });
+});
+
+describe("processReferralReward", () => {
+  it("returns null if no referral exists", async () => {
+    mockFindUnique.mockResolvedValue(null);
+    const result = await processReferralReward("ORD-1", "0xnobody", 100);
+    expect(result).toBeNull();
+  });
+
+  it("returns null if referral already rewarded", async () => {
+    mockFindUnique.mockResolvedValue({ ...baseReferral, status: "rewarded" });
+    const result = await processReferralReward("ORD-1", "0xinvitee", 100);
+    expect(result).toBeNull();
+  });
+
+  it("processes reward for pending referral (fixed mode)", async () => {
+    // First findUnique: referral lookup
+    mockFindUnique
+      .mockResolvedValueOnce({ ...baseReferral, status: "pending" })
+      // Second findUnique: config lookup
+      .mockResolvedValueOnce(null); // use default config
+    mockUpdate.mockResolvedValue({ ...baseReferral, status: "rewarded" });
+
+    const result = await processReferralReward("ORD-1", "0xinvitee", 100);
+    expect(result).not.toBeNull();
+    expect(result!.inviterReward).toBe(50); // default fixedInviter
+    expect(result!.inviteeReward).toBe(30); // default fixedInvitee
+  });
+});
+
+describe("queryReferrals", () => {
+  it("returns paginated referrals", async () => {
+    mockCount.mockResolvedValue(15);
+    mockFindMany.mockResolvedValue([baseReferral]);
+
+    const result = await queryReferrals({ page: 1, pageSize: 10 });
+    expect(result.total).toBe(15);
+    expect(result.items).toHaveLength(1);
+    expect(result.totalPages).toBe(2);
+  });
+
+  it("filters by status", async () => {
+    mockCount.mockResolvedValue(5);
+    mockFindMany.mockResolvedValue([]);
+
+    const result = await queryReferrals({ page: 1, pageSize: 10, status: "rewarded" });
+    expect(result.total).toBe(5);
+  });
+
+  it("filters by keyword", async () => {
+    mockCount.mockResolvedValue(1);
+    mockFindMany.mockResolvedValue([baseReferral]);
+
+    const result = await queryReferrals({ page: 1, pageSize: 10, q: "0xinviter" });
+    expect(result.items).toHaveLength(1);
   });
 });
