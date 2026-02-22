@@ -1,0 +1,274 @@
+openapi: 3.0.3
+info:
+  title: 情谊电竞 API
+  version: 1.0.0
+  description: |
+    情谊电竞（Qingyi Esports）平台 API。
+    
+    认证方式：
+    - 用户端：Bearer token（通过 /api/auth 获取）
+    - 管理端：x-admin-token header
+    - Cron：x-vercel-cron 或 x-cron-secret header
+
+servers:
+  - url: /api
+    description: Relative API base
+
+paths:
+  /health:
+    get:
+      summary: 健康检查
+      tags: [System]
+      responses:
+        "200":
+          description: 服务健康
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, enum: [healthy, degraded] }
+                  uptime: { type: number }
+                  timestamp: { type: string, format: date-time }
+                  version: { type: string }
+                  checks:
+                    type: object
+                    properties:
+                      database:
+                        type: object
+                        properties:
+                          ok: { type: boolean }
+                          ms: { type: number }
+
+  /events:
+    get:
+      summary: SSE 订单状态推送
+      tags: [Realtime]
+      parameters:
+        - name: address
+          in: query
+          required: true
+          schema: { type: string }
+          description: 用户钱包地址
+      responses:
+        "200":
+          description: SSE 事件流
+          content:
+            text/event-stream:
+              schema:
+                type: string
+
+  /orders:
+    get:
+      summary: 获取用户订单列表
+      tags: [Orders]
+      parameters:
+        - name: userAddress
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: 订单列表
+    post:
+      summary: 创建订单
+      tags: [Orders]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [id, user, item, amount]
+              properties:
+                id: { type: string }
+                user: { type: string }
+                item: { type: string }
+                amount: { type: number }
+                userAddress: { type: string }
+                chainDigest: { type: string }
+      responses:
+        "200":
+          description: 订单创建成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  orderId: { type: string }
+                  sent: { type: boolean }
+
+  /admin/stats:
+    get:
+      summary: 管理后台统计
+      tags: [Admin]
+      security:
+        - adminToken: []
+      responses:
+        "200":
+          description: 统计数据
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  totalOrders: { type: integer }
+                  pendingOrders: { type: integer }
+                  activePlayers: { type: integer }
+                  completedOrders: { type: integer }
+                  totalRevenue: { type: number }
+                  totalServiceFee: { type: number }
+
+  /admin/revenue:
+    get:
+      summary: 营收报表
+      tags: [Admin]
+      security:
+        - adminToken: []
+      parameters:
+        - name: days
+          in: query
+          schema: { type: integer, default: 30, minimum: 1, maximum: 90 }
+      responses:
+        "200":
+          description: 营收数据
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  rangeDays: { type: integer }
+                  summary:
+                    type: object
+                    properties:
+                      totalRevenue: { type: number }
+                      completedOrders: { type: integer }
+                      avgOrderValue: { type: number }
+                      cancelledAmount: { type: number }
+                  daily:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        date: { type: string }
+                        revenue: { type: number }
+                        orders: { type: integer }
+                  byItem:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        item: { type: string }
+                        revenue: { type: number }
+                        count: { type: integer }
+
+  /admin/performance:
+    get:
+      summary: 陪练绩效
+      tags: [Admin]
+      security:
+        - adminToken: []
+      parameters:
+        - name: days
+          in: query
+          schema: { type: integer, default: 30, minimum: 1, maximum: 90 }
+      responses:
+        "200":
+          description: 绩效数据
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  rangeDays: { type: integer }
+                  performance:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        playerId: { type: string }
+                        name: { type: string }
+                        total: { type: integer }
+                        completed: { type: integer }
+                        completionRate: { type: number }
+                        revenue: { type: number }
+                        avgRating: { type: number, nullable: true }
+
+  /admin/analytics:
+    get:
+      summary: 用户行为分析
+      tags: [Admin]
+      security:
+        - adminToken: []
+      parameters:
+        - name: days
+          in: query
+          schema: { type: integer, default: 7, minimum: 1, maximum: 90 }
+      responses:
+        "200":
+          description: 分析数据（事件统计 + 漏斗 + 热门路径）
+
+  /admin/orders/export:
+    get:
+      summary: 订单数据导出
+      tags: [Admin]
+      security:
+        - adminToken: []
+      parameters:
+        - name: format
+          in: query
+          schema: { type: string, enum: [csv, json], default: csv }
+        - name: stage
+          in: query
+          schema: { type: string }
+        - name: q
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: CSV 或 JSON 格式的订单数据
+
+  /cron/chain-sync:
+    get:
+      summary: 链上订单同步
+      tags: [Cron]
+      security:
+        - cronSecret: []
+      responses:
+        "200":
+          description: 同步结果
+
+  /cron/cleanup:
+    get:
+      summary: 数据清理
+      tags: [Cron]
+      security:
+        - cronSecret: []
+      responses:
+        "200":
+          description: 清理结果
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  cleaned:
+                    type: object
+                    properties:
+                      growthEvents: { type: integer }
+                      userSessions: { type: integer }
+                      adminSessions: { type: integer }
+
+components:
+  securitySchemes:
+    adminToken:
+      type: apiKey
+      in: header
+      name: x-admin-token
+    cronSecret:
+      type: apiKey
+      in: header
+      name: x-cron-secret
+    bearerAuth:
+      type: http
+      scheme: bearer
