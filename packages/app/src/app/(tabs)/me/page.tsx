@@ -23,9 +23,9 @@ import { LevelCard } from "@/app/components/level-card";
 import { useUnreadCount } from "@/app/components/use-notifications";
 
 const grid = [
-  { label: "联系客服", icon: Phone, color: "#6366f1", href: "/me/support" },
-  { label: "优惠卡券", icon: Diamond, color: "#f97316", href: "/me/coupons" },
-  { label: "馒头提现", icon: Diamond, color: "#22c55e", href: "/me/mantou" },
+  { label: t("tabs.me.i077"), icon: Phone, color: "#6366f1", href: "/me/support" },
+  { label: t("tabs.me.i078"), icon: Diamond, color: "#f97316", href: "/me/coupons" },
+  { label: t("tabs.me.i079"), icon: Diamond, color: "#22c55e", href: "/me/mantou" },
   { label: t("ui.me.538"), icon: Gamepad2, color: "#0ea5e9", href: "/me/orders" },
   {
     label: t("ui.me.595"),
@@ -40,9 +40,9 @@ const grid = [
     href: "/me/orders?filter=pending-confirm",
   },
   { label: t("ui.me.592"), icon: Phone, color: "#22c55e", href: "/me/invoice" },
-  { label: "成为陪练", icon: User, color: "#d946ef", href: "/me/guardian" },
-  { label: "陪练工作台", icon: Briefcase, color: "#0891b2", href: "/companion" },
-  { label: "邀请返利", icon: Gift, color: "#ec4899", href: "/me/referral" },
+  { label: t("tabs.me.i080"), icon: User, color: "#d946ef", href: "/me/guardian" },
+  { label: t("tabs.me.i081"), icon: Briefcase, color: "#0891b2", href: "/companion" },
+  { label: t("tabs.me.i082"), icon: Gift, color: "#ec4899", href: "/me/referral" },
   // 其他功能暂时隐藏
 ];
 
@@ -165,7 +165,7 @@ export default function Me() {
           <button
             className="dl-icon-circle"
             onClick={() => router.push("/me/notifications")}
-            aria-label="消息中心"
+            aria-label={t("tabs.me.i083")}
             style={{ position: "relative" }}
           >
             <Bell size={16} />
@@ -218,9 +218,9 @@ export default function Me() {
         </button>
         <div className="dl-stats">
           {[
-            { label: "钻石", value: balance, onClick: goWallet },
+            { label: t("tabs.me.i084"), value: balance, onClick: goWallet },
             { label: t("ui.me.622"), value: "0" },
-            { label: "馒头", value: mantouBalance, onClick: goMantou },
+            { label: t("tabs.me.i085"), value: mantouBalance, onClick: goMantou },
           ].map((item) => (
             <button
               key={item.label}

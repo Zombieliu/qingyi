@@ -5,22 +5,18 @@ import Link from "next/link";
 import { ArrowLeft, BookOpen, Sparkles, ShieldCheck, MessageCircle } from "lucide-react";
 
 const quickSteps = [
-  { title: "1. 完成登录", desc: "使用 Passkey 一键登录，首次登录后完善昵称与联系方式。" },
-  { title: "2. 选择服务", desc: "在安排页挑选服务与时间，确认价格与规则。" },
-  { title: "3. 提交订单", desc: "确认信息后提交订单，等待接单与确认。" },
-  { title: "4. 完成服务", desc: "服务结束后确认完成，可在订单中心查看记录。" },
+  { title: t("tabs.me.guide.i032"), desc: t("tabs.me.guide.i033") },
+  { title: t("tabs.me.guide.i034"), desc: t("tabs.me.guide.i035") },
+  { title: t("tabs.me.guide.i036"), desc: t("tabs.me.guide.i037") },
+  { title: t("tabs.me.guide.i038"), desc: t("tabs.me.guide.i039") },
 ];
 
-const safetyTips = [
-  "保持联系方式真实有效，便于服务沟通。",
-  "涉及押金/支付请以平台页面提示为准。",
-  "遇到异常订单可在 24 小时内提交工单。",
-];
+const safetyTips = [t("tabs.me.guide.i040"), t("tabs.me.guide.i041"), t("tabs.me.guide.i042")];
 
 const faqList = [
-  { q: t("ui.guide.604"), a: "检查网络与账户状态，必要时提交工单。" },
-  { q: t("ui.guide.664"), a: "常见状态：待处理、已确认、进行中、已完成、已取消。" },
-  { q: t("ui.guide.603"), a: "用于保障履约与服务质量，完成后按规则结算或退回。" },
+  { q: t("ui.guide.604"), a: t("tabs.me.guide.i043") },
+  { q: t("ui.guide.664"), a: t("tabs.me.guide.i044") },
+  { q: t("ui.guide.603"), a: t("tabs.me.guide.i045") },
 ];
 
 export default function GuidePage() {

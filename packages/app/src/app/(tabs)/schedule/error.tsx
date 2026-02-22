@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import * as Sentry from "@sentry/nextjs";
 import { classifyChainError } from "@/lib/chain/chain-error";
+import { t } from "@/lib/i18n/i18n-client";
 
 export default function ScheduleError({
   error,
@@ -27,9 +28,9 @@ export default function ScheduleError({
             onClick={reset}
             className="dl-tab-btn primary"
             style={{ padding: "10px 14px", cursor: "pointer" }}
-            aria-label={info.action || "重试"}
+            aria-label={info.action || t("tabs.schedule.error.i100")}
           >
-            {info.action || "重试"}
+            {info.action || t("tabs.schedule.error.i101")}
           </button>
         </div>
       </div>

@@ -96,7 +96,7 @@ export default function SupportPage() {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setHint(data?.error || "提交失败，请稍后重试");
+        setHint(data?.error || t("tabs.me.support.i095"));
         return;
       }
       const next: SupportRequest = {

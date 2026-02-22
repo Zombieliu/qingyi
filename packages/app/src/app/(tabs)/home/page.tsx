@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { listPlayersPublic, listPublicAnnouncements } from "@/lib/admin/admin-store";
 import HomeContent from "./home-content";
+import { t } from "@/lib/i18n/i18n-client";
 
 export const dynamic = "force-dynamic";
 
@@ -14,9 +15,9 @@ export const metadata: Metadata = {
 };
 
 const fallbackNews = [
-  { id: "guide", title: "新手下单指南", tag: "指南" },
-  { id: "safety", title: "陪练服务保障说明", tag: "安全" },
-  { id: "event", title: "本周福利与活动", tag: "活动" },
+  { id: "guide", title: t("tabs.home.i013"), tag: t("tabs.home.i014") },
+  { id: "safety", title: t("tabs.home.i015"), tag: t("tabs.home.i016") },
+  { id: "event", title: t("tabs.home.i017"), tag: t("tabs.home.i018") },
 ];
 
 export default async function Home() {
@@ -24,7 +25,7 @@ export default async function Home() {
   const announcements = await listPublicAnnouncements();
   const availablePlayers = players
     .filter((player) => {
-      if (player.status !== "可接单") return false;
+      if (player.status !== t("tabs.home.i019")) return false;
       const base = player.depositBase ?? 0;
       const locked = player.depositLocked ?? 0;
       return base <= 0 || locked >= base;

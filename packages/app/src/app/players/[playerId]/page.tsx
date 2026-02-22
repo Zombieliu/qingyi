@@ -5,6 +5,7 @@ import { ArrowLeft, Star, ThumbsUp } from "lucide-react";
 import { StateBlock } from "@/app/components/state-block";
 import { formatShortDateTime } from "@/lib/shared/date-utils";
 import { useParams } from "next/navigation";
+import { t } from "@/lib/i18n/i18n-client";
 
 type ReviewData = {
   player: { id: string; name: string; role?: string; status: string };
@@ -24,7 +25,13 @@ type ReviewData = {
   }[];
 };
 
-const STAR_LABELS = ["1星", "2星", "3星", "4星", "5星"];
+const STAR_LABELS = [
+  t("players.playerId.i234"),
+  t("players.playerId.i235"),
+  t("players.playerId.i236"),
+  t("players.playerId.i237"),
+  t("players.playerId.i238"),
+];
 
 export default function PlayerReviewsPage() {
   const params = useParams();
@@ -43,7 +50,7 @@ export default function PlayerReviewsPage() {
   if (loading) {
     return (
       <div className="dl-main" style={{ padding: 16 }}>
-        <StateBlock tone="loading" title="加载中..." />
+        <StateBlock tone="loading" title={t("players.playerId.i239")} />
       </div>
     );
   }
@@ -51,7 +58,7 @@ export default function PlayerReviewsPage() {
   if (!data) {
     return (
       <div className="dl-main" style={{ padding: 16 }}>
-        <StateBlock tone="warning" title="陪练不存在" />
+        <StateBlock tone="warning" title={t("players.playerId.i240")} />
       </div>
     );
   }
@@ -63,11 +70,11 @@ export default function PlayerReviewsPage() {
     <div className="dl-main">
       <header className="dl-topbar">
         <div className="dl-time">
-          <Link href="/home" className="dl-icon-circle" aria-label="返回">
+          <Link href="/home" className="dl-icon-circle" aria-label={t("players.playerId.i241")}>
             <ArrowLeft size={16} />
           </Link>
           <span className="dl-time-text">{player.name}</span>
-          <span className="dl-chip">{player.role || "陪练"}</span>
+          <span className="dl-chip">{player.role || t("players.playerId.i242")}</span>
         </div>
       </header>
 
@@ -135,7 +142,7 @@ export default function PlayerReviewsPage() {
       <section style={{ marginTop: 12, marginBottom: 24 }}>
         {reviews.length === 0 ? (
           <div className="dl-card" style={{ padding: 16 }}>
-            <StateBlock tone="empty" size="compact" title="暂无评价" />
+            <StateBlock tone="empty" size="compact" title={t("players.playerId.i243")} />
           </div>
         ) : (
           <div className="grid gap-2">

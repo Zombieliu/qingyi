@@ -93,7 +93,7 @@ export default function GuardianPage() {
       );
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setHint(data?.error || "提交失败，请稍后重试");
+        setHint(data?.error || t("tabs.me.guardian.i031"));
         return;
       }
       const next: GuardianApplication = {

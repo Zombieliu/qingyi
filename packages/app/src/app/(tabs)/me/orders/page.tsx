@@ -25,12 +25,20 @@ function formatTime(value?: string) {
 
 function isPendingStart(order: LocalOrder) {
   const status = order.status || "";
-  return ["待派单", "待开始", "待处理", "已确认", "待确认"].some((flag) => status.includes(flag));
+  return [
+    t("tabs.me.orders.i069"),
+    t("tabs.me.orders.i070"),
+    t("tabs.me.orders.i071"),
+    t("tabs.me.orders.i072"),
+    t("tabs.me.orders.i073"),
+  ].some((flag) => status.includes(flag));
 }
 
 function isPendingConfirm(order: LocalOrder) {
   const status = order.status || "";
-  return ["待确认", "待支付", "已支付"].some((flag) => status.includes(flag));
+  return [t("tabs.me.orders.i074"), t("tabs.me.orders.i075"), t("tabs.me.orders.i076")].some(
+    (flag) => status.includes(flag)
+  );
 }
 
 export default function OrderCenterPage() {

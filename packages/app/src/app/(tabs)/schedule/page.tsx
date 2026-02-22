@@ -275,7 +275,7 @@ export default function Schedule() {
       if (found) return found;
     } catch (error) {
       const errorMsg = formatErrorMessage(error, t("schedule.002"));
-      if (errorMsg.includes("not found") || errorMsg.includes("未找到")) {
+      if (errorMsg.includes("not found") || errorMsg.includes(t("tabs.schedule.i107"))) {
         throw new Error("链上订单暂未索引完成，请稍后再试（通常需要等待3-10秒）");
       }
       throw new Error(errorMsg);
@@ -347,7 +347,7 @@ export default function Schedule() {
       setPrefillHint(
         requestedPlayerName
           ? `指定陪练「${requestedPlayerName}」当前不可接，已切换为系统匹配`
-          : "指定陪练当前不可接，已切换为系统匹配"
+          : t("tabs.schedule.i108")
       );
     }
     setPrefillApplied(true);
@@ -367,7 +367,7 @@ export default function Schedule() {
       const parsed =
         item.base ??
         (Number.isFinite(numeric)
-          ? item.price.includes("钻石")
+          ? item.price.includes(t("tabs.schedule.i109"))
             ? numeric / DIAMOND_RATE
             : numeric
           : NaN);
@@ -376,7 +376,12 @@ export default function Schedule() {
   const pickedDiamonds = Math.ceil(pickedPrice * DIAMOND_RATE);
 
   const currentOrder = useMemo(() => {
-    return orders.find((o) => !o.status.includes("取消") && !o.status.includes("完成")) || null;
+    return (
+      orders.find(
+        (o) =>
+          !o.status.includes(t("tabs.schedule.i110")) && !o.status.includes(t("tabs.schedule.i111"))
+      ) || null
+    );
   }, [orders]);
 
   const chainCurrentOrder = useMemo(() => {
@@ -789,7 +794,7 @@ export default function Schedule() {
       setMode("notifying");
       setFeeOpen(false);
       if (result.sent === false) {
-        setToast(result.error || "订单已创建，通知失败");
+        setToast(result.error || t("tabs.schedule.i112"));
       } else {
         setToast(chainDigest ? t("ui.schedule.582") : t("schedule.015"));
       }

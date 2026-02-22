@@ -14,7 +14,7 @@ import { ensureUserSession } from "@/lib/auth/user-auth-client";
 
 export const PASSKEY_STORAGE_KEY = "qy_passkey_wallet_v3";
 export const PASSKEY_WALLETS_KEY = "qy_passkey_wallets_v1";
-const RP_NAME = "情谊电竞";
+const RP_NAME = t("components.passkey_wallet.i164");
 
 export type StoredWallet = {
   address: string;
@@ -227,7 +227,7 @@ export default function PasskeyWallet() {
       const stored: StoredWallet = { address, publicKey: toBase64(publicKey.toRawBytes()) };
       await persist(stored, t("comp.passkey_wallet.001"));
     } catch (e) {
-      setError((e as Error).message || "创建失败");
+      setError((e as Error).message || t("components.passkey_wallet.i165"));
     } finally {
       setBusy(false);
     }
@@ -252,7 +252,7 @@ export default function PasskeyWallet() {
       if (isMissingCredential(e)) {
         setError(t("comp.passkey_wallet.004"));
       } else {
-        setError((e as Error).message || "登录失败");
+        setError((e as Error).message || t("components.passkey_wallet.i166"));
       }
     } finally {
       setBusy(false);
@@ -277,7 +277,7 @@ export default function PasskeyWallet() {
       };
       await persist(stored, t("comp.passkey_wallet.005"));
     } catch (e) {
-      setError((e as Error).message || "找回失败");
+      setError((e as Error).message || t("components.passkey_wallet.i167"));
     } finally {
       setBusy(false);
       setTimeout(() => setMsg(null), 3000);
@@ -367,7 +367,7 @@ export default function PasskeyWallet() {
           className="lc-tab-btn"
           style={{ padding: "10px 12px", backgroundColor: "#f3f4f6", color: "#111827" }}
         >
-          {busy ? "找回中..." : t("comp.passkey_wallet.008")}
+          {busy ? t("components.passkey_wallet.i168") : t("comp.passkey_wallet.008")}
         </button>
       </div>
 

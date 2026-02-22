@@ -33,8 +33,8 @@ const options: Option[] = [
 ];
 
 const channels: { key: PayChannel; label: string; note: string }[] = [
-  { key: "alipay", label: "支付宝", note: t("ui.wallet.689") },
-  { key: "wechat_pay", label: "微信支付", note: t("ui.wallet.602") },
+  { key: "alipay", label: t("tabs.wallet.i136"), note: t("ui.wallet.689") },
+  { key: "wechat_pay", label: t("tabs.wallet.i137"), note: t("ui.wallet.602") },
 ];
 
 const qrImageLoader: ImageLoader = ({ src }) => src;
@@ -189,7 +189,7 @@ export default function Wallet() {
       );
       const data = (await res.json()) as PayResponse & { error?: string };
       if (!res.ok) {
-        setStatus({ tone: "danger", title: data.error || "支付创建失败" });
+        setStatus({ tone: "danger", title: data.error || t("tabs.wallet.i138") });
         return;
       }
       setPayInfo(data);

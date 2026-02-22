@@ -118,7 +118,7 @@ export function PlayerList({
         )}
       </div>
       <div className="px-4 pb-2 text-[11px] text-slate-400">
-        {prefillHint || "未选择将由系统匹配陪练"}
+        {prefillHint || t("tabs.schedule.player_list.i113")}
       </div>
     </>
   );

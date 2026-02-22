@@ -11,9 +11,9 @@ export const metadata: Metadata = {
 };
 
 const fallbackArticles = [
-  { id: "fallback-1", title: "三角洲行动版本更新", tag: "公告", content: "" },
-  { id: "fallback-2", title: "陪玩安全须知", tag: "安全", content: "" },
-  { id: "fallback-3", title: "周末赛事报名开启", tag: "赛事", content: "" },
+  { id: "fallback-1", title: t("tabs.news.i146"), tag: t("tabs.news.i147"), content: "" },
+  { id: "fallback-2", title: t("tabs.news.i148"), tag: t("tabs.news.i149"), content: "" },
+  { id: "fallback-3", title: t("tabs.news.i150"), tag: t("tabs.news.i151"), content: "" },
 ];
 
 export default async function News() {

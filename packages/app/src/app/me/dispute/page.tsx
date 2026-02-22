@@ -7,11 +7,11 @@ import { getCurrentAddress } from "@/lib/chain/qy-chain-lite";
 import { t } from "@/lib/i18n/i18n-client";
 
 const REASONS = [
-  { value: "service_quality", label: "服务质量问题" },
-  { value: "no_show", label: "陪练未到" },
-  { value: "wrong_service", label: "服务内容不符" },
-  { value: "overcharge", label: "多收费" },
-  { value: "other", label: "其他" },
+  { value: "service_quality", label: t("me.dispute.i223") },
+  { value: "no_show", label: t("me.dispute.i224") },
+  { value: "wrong_service", label: t("me.dispute.i225") },
+  { value: "overcharge", label: t("me.dispute.i226") },
+  { value: "other", label: t("me.dispute.i227") },
 ] as const;
 
 export default function DisputePage() {
@@ -27,11 +27,11 @@ export default function DisputePage() {
 
   const handleSubmit = async () => {
     if (!orderId) {
-      setError("缺少订单号");
+      setError(t("me.dispute.i228"));
       return;
     }
     if (description.length < 10) {
-      setError("请详细描述问题（至少10字）");
+      setError(t("me.dispute.i229"));
       return;
     }
 
@@ -54,7 +54,7 @@ export default function DisputePage() {
       }
       setSuccess(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "提交失败");
+      setError(err instanceof Error ? err.message : t("me.dispute.i230"));
     } finally {
       setSubmitting(false);
     }
@@ -127,7 +127,7 @@ export default function DisputePage() {
         <textarea
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          placeholder="请详细描述您遇到的问题（至少10字）"
+          placeholder={t("me.dispute.i231")}
           rows={5}
           style={{
             width: "100%",
@@ -173,7 +173,7 @@ export default function DisputePage() {
           cursor: submitting ? "not-allowed" : "pointer",
         }}
       >
-        {submitting ? "提交中..." : "提交争议"}
+        {submitting ? t("me.dispute.i232") : t("me.dispute.i233")}
       </button>
 
       <p style={{ fontSize: 12, color: "#94a3b8", marginTop: 12, textAlign: "center" }}>

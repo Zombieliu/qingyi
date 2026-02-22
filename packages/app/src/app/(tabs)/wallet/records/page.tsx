@@ -27,13 +27,13 @@ type LedgerRecord = {
 function formatStatus(status: string) {
   switch (status) {
     case "pending":
-      return { label: "待支付", tone: "text-amber-600" };
+      return { label: t("tabs.wallet.records.i139"), tone: "text-amber-600" };
     case "paid":
-      return { label: "已支付", tone: "text-slate-600" };
+      return { label: t("tabs.wallet.records.i140"), tone: "text-slate-600" };
     case "credited":
-      return { label: "已入账", tone: "text-emerald-600" };
+      return { label: t("tabs.wallet.records.i141"), tone: "text-emerald-600" };
     case "failed":
-      return { label: "失败", tone: "text-rose-600" };
+      return { label: t("tabs.wallet.records.i142"), tone: "text-rose-600" };
     default:
       return { label: status, tone: "text-slate-500" };
   }
@@ -50,7 +50,7 @@ function formatChannel(channel?: string) {
     case "manual":
       return t("wallet.records.003");
     default:
-      return channel || "未知渠道";
+      return channel || t("tabs.wallet.records.i143");
   }
 }
 

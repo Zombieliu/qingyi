@@ -106,9 +106,9 @@ export default function CouponsPage() {
     if (redeemReward.type === "coupon") {
       return redeemReward.coupon?.title
         ? `已领取优惠券：${redeemReward.coupon.title}`
-        : "已领取优惠券";
+        : t("tabs.me.coupons.i026");
     }
-    return redeemReward.message || "兑换成功";
+    return redeemReward.message || t("tabs.me.coupons.i027");
   }, [redeemReward]);
 
   const handleRedeem = async () => {
@@ -137,12 +137,12 @@ export default function CouponsPage() {
       );
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setRedeemHint(data?.error || "兑换失败");
+        setRedeemHint(data?.error || t("tabs.me.coupons.i028"));
         return;
       }
       setRedeemReward(data?.reward || null);
       setRedeemCode("");
-      setRedeemHint(data?.duplicated ? "已兑换过该卡密" : t("me.coupons.001"));
+      setRedeemHint(data?.duplicated ? t("tabs.me.coupons.i029") : t("me.coupons.001"));
     } catch {
       setRedeemHint("diamond.redeem_failed");
     } finally {
@@ -196,7 +196,7 @@ export default function CouponsPage() {
               redeemLoading ? "bg-slate-200 text-slate-500" : "bg-slate-900 text-white"
             }`}
           >
-            {redeemLoading ? "兑换中..." : t("me.coupons.004")}
+            {redeemLoading ? t("tabs.me.coupons.i030") : t("me.coupons.004")}
           </button>
         </div>
         {redeemHint && <div className="mt-2 text-xs text-emerald-600">{redeemHint}</div>}

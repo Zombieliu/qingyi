@@ -1,5 +1,6 @@
 import TrackedLink from "@/app/components/tracked-link";
 import { createTranslator, getMessages, getServerLocale } from "@/lib/i18n/i18n";
+import { t } from "@/lib/i18n/i18n-client";
 
 export const metadata = {
   title: "价格与服务 | 情谊电竞",
@@ -63,7 +64,7 @@ export default async function PricingPage() {
               href="/"
               className="public-btn ghost"
               event="cta_click"
-              meta={{ section: "nav", label: "返回首页", page: "pricing" }}
+              meta={{ section: "nav", label: t("pricing.i215"), page: "pricing" }}
             >
               {t("nav.backHome")}
             </TrackedLink>
@@ -71,7 +72,7 @@ export default async function PricingPage() {
               href="/faq"
               className="public-btn"
               event="cta_click"
-              meta={{ section: "nav", label: "常见问题", page: "pricing" }}
+              meta={{ section: "nav", label: t("pricing.i216"), page: "pricing" }}
             >
               {t("nav.faq")}
             </TrackedLink>
@@ -79,7 +80,7 @@ export default async function PricingPage() {
               href="/updates"
               className="public-btn"
               event="cta_click"
-              meta={{ section: "nav", label: "公告更新", page: "pricing" }}
+              meta={{ section: "nav", label: t("pricing.i217"), page: "pricing" }}
             >
               {t("nav.updates")}
             </TrackedLink>
@@ -87,7 +88,7 @@ export default async function PricingPage() {
               href="/home"
               className="public-btn primary"
               event="cta_click"
-              meta={{ section: "nav", label: "进入大厅", page: "pricing" }}
+              meta={{ section: "nav", label: t("pricing.i218"), page: "pricing" }}
             >
               {t("nav.home")}
             </TrackedLink>
@@ -104,7 +105,7 @@ export default async function PricingPage() {
                 href="/home"
                 className="public-btn primary"
                 event="cta_click"
-                meta={{ section: "hero", label: "立即下单", page: "pricing" }}
+                meta={{ section: "hero", label: t("pricing.i219"), page: "pricing" }}
               >
                 {t("pricing.cta.order")}
               </TrackedLink>
@@ -112,7 +113,7 @@ export default async function PricingPage() {
                 href="/faq"
                 className="public-btn"
                 event="cta_click"
-                meta={{ section: "hero", label: "查看规则", page: "pricing" }}
+                meta={{ section: "hero", label: t("pricing.i220"), page: "pricing" }}
               >
                 {t("pricing.cta.rules")}
               </TrackedLink>
@@ -158,7 +159,7 @@ export default async function PricingPage() {
               href="/login"
               className="public-btn primary"
               event="cta_click"
-              meta={{ section: "footer", label: "登录/注册", page: "pricing" }}
+              meta={{ section: "footer", label: t("pricing.i221"), page: "pricing" }}
             >
               {t("pricing.footer.login")}
             </TrackedLink>
@@ -166,7 +167,7 @@ export default async function PricingPage() {
               href="/home"
               className="public-btn"
               event="cta_click"
-              meta={{ section: "footer", label: "直接进入大厅", page: "pricing" }}
+              meta={{ section: "footer", label: t("pricing.i222"), page: "pricing" }}
             >
               {t("pricing.footer.home")}
             </TrackedLink>

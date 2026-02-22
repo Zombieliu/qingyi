@@ -105,7 +105,7 @@ export function AwaitUserPayView({
         <CompanionCard
           currentOrder={currentOrder}
           companionProfile={companionProfile}
-          statusLabel={isEscrow ? "陪练费用已托管" : t("schedule.005")}
+          statusLabel={isEscrow ? t("tabs.schedule.order_views.i103") : t("schedule.005")}
           statusSub={t("ui.order-views.032")}
         />
         <div className="ride-driver-actions">
@@ -254,7 +254,7 @@ export function EnrouteView({
                   }
                   if (effectiveStatus !== 2) {
                     setToast(
-                      `当前链上状态：${statusLabel(effectiveStatus)}，需"押金已锁定"后才能确认完成`
+                      `当前链上状态：${statusLabel(effectiveStatus)}，需t("tabs.schedule.order_views.i104")后才能确认完成`
                     );
                     return;
                   }
@@ -367,7 +367,7 @@ export function PendingSettlementView({
         <div className="ml-auto text-right">
           <div className="text-emerald-600 font-semibold text-sm">{t("ui.order-views.041")}</div>
           <div className="text-xs text-gray-500">
-            {inDisputeWindow ? "可发起争议" : t("schedule.012")}
+            {inDisputeWindow ? t("tabs.schedule.order_views.i105") : t("schedule.012")}
           </div>
         </div>
         <div className="ride-driver-actions">
@@ -416,7 +416,7 @@ export function PendingSettlementView({
                   title: "确认放弃争议期并立即结算？",
                   description: deadlineText
                     ? `争议截止：${deadlineText}`
-                    : "争议期内放弃争议将立即结算。",
+                    : t("tabs.schedule.order_views.i106"),
                   confirmLabel: "确认结算",
                   action: async () => {
                     await runChainAction(

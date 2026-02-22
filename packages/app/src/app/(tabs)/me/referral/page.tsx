@@ -32,15 +32,15 @@ type LeaderboardEntry = {
 };
 
 const BOARD_TYPES = [
-  { key: "spend", label: "消费榜" },
-  { key: "companion", label: "陪练榜" },
-  { key: "referral", label: "邀请榜" },
+  { key: "spend", label: t("tabs.me.referral.i086") },
+  { key: "companion", label: t("tabs.me.referral.i087") },
+  { key: "referral", label: t("tabs.me.referral.i088") },
 ] as const;
 
 const BOARD_PERIODS = [
-  { key: "all", label: "总榜" },
-  { key: "week", label: "周榜" },
-  { key: "month", label: "月榜" },
+  { key: "all", label: t("tabs.me.referral.i089") },
+  { key: "week", label: t("tabs.me.referral.i090") },
+  { key: "month", label: t("tabs.me.referral.i091") },
 ] as const;
 
 function shortAddr(addr: string) {
@@ -151,7 +151,7 @@ export default function ReferralPage() {
                 className="flex items-center gap-1 rounded-lg bg-pink-50 px-3 py-1.5 text-xs font-medium text-pink-600"
               >
                 <Copy size={12} />
-                {copied ? "已复制" : t("me.referral.005")}
+                {copied ? t("tabs.me.referral.i092") : t("me.referral.005")}
               </button>
             </div>
             <div className="mt-2 text-xs text-slate-500">
@@ -182,7 +182,7 @@ export default function ReferralPage() {
                 我的邀请人：{shortAddr(status.invitedBy.inviterAddress)}
                 {status.invitedBy.status === "rewarded" && status.invitedBy.rewardInvitee
                   ? ` · 已获奖励 ${status.invitedBy.rewardInvitee} 馒头`
-                  : " · 待首单完成"}
+                  : t("tabs.me.referral.i093")}
               </div>
             )}
           </section>
@@ -207,7 +207,7 @@ export default function ReferralPage() {
                       >
                         {inv.status === "rewarded"
                           ? `+${inv.rewardInviter ?? 0} 馒头`
-                          : "待完成首单"}
+                          : t("tabs.me.referral.i094")}
                       </span>
                     </div>
                     <div className="mt-1 text-slate-400">{formatFullDateTime(inv.createdAt)}</div>

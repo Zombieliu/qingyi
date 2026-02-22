@@ -13,14 +13,14 @@ import { StateBlock } from "@/app/components/state-block";
 import { formatFullDateTime } from "@/lib/shared/date-utils";
 
 const REVIEW_TAG_OPTIONS = [
-  "技术好",
-  "态度好",
-  "有耐心",
-  "配合默契",
-  "准时上线",
-  "沟通顺畅",
-  "带飞能力强",
-  "氛围轻松",
+  t("tabs.me.orders.i059"),
+  t("tabs.me.orders.i060"),
+  t("tabs.me.orders.i061"),
+  t("tabs.me.orders.i062"),
+  t("tabs.me.orders.i063"),
+  t("tabs.me.orders.i064"),
+  t("tabs.me.orders.i065"),
+  t("tabs.me.orders.i066"),
 ];
 
 type Review = {
@@ -221,7 +221,9 @@ export default function OrderDetailPage() {
     })();
   }, [orderId]);
 
-  const isCompleted = order?.status?.includes("已完成") || order?.meta?.status === "已完成";
+  const isCompleted =
+    order?.status?.includes(t("tabs.me.orders.i067")) ||
+    order?.meta?.status === t("tabs.me.orders.i068");
   const isOwner = order?.userAddress && order.userAddress === getCurrentAddress();
   const canReview = isCompleted && isOwner && review === null;
 

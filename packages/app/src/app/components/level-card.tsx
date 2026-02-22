@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { getCurrentAddress } from "@/lib/chain/qy-chain-lite";
 import { fetchWithUserAuth } from "@/lib/auth/user-auth-client";
 import { readCache, writeCache } from "@/lib/shared/client-cache";
+import { t } from "@/lib/i18n/i18n-client";
 
 type LevelProgress = {
   points: number;
@@ -86,7 +87,11 @@ export function LevelCard() {
           writeCache(`cache:user:level:${addr}`, refreshData);
         }
       } else {
-        setCheckinResult(json.error === "already_checked_in" ? "今日已签到 ✓" : "签到失败");
+        setCheckinResult(
+          json.error === "already_checked_in"
+            ? t("components.level_card.i156")
+            : t("components.level_card.i157")
+        );
       }
     } catch {
       setCheckinResult("签到失败");
@@ -113,7 +118,7 @@ export function LevelCard() {
           <div>
             <div className="text-xs opacity-80">我的等级</div>
             <div className="text-lg font-bold">
-              {currentTier?.badge || "⭐"} {currentTier?.name || "新手"}
+              {currentTier?.badge || "⭐"} {currentTier?.name || t("components.level_card.i158")}
             </div>
           </div>
           <div className="text-right">
@@ -127,7 +132,7 @@ export function LevelCard() {
       {nextTier && (
         <div className="px-0 mb-3">
           <div className="flex justify-between text-xs text-gray-500 mb-1">
-            <span>{currentTier?.name || "新手"}</span>
+            <span>{currentTier?.name || t("components.level_card.i159")}</span>
             <span>{nextTier.name}</span>
           </div>
           <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
@@ -168,7 +173,7 @@ export function LevelCard() {
           onClick={handleCheckin}
           disabled={checkinLoading}
         >
-          {checkinLoading ? "签到中..." : "签到"}
+          {checkinLoading ? t("components.level_card.i160") : t("components.level_card.i161")}
         </button>
       </div>
       {checkinResult && (

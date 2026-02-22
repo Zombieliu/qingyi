@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { listPublicAnnouncements } from "@/lib/admin/admin-store";
+import { t } from "@/lib/i18n/i18n-client";
 
 export const dynamic = "force-dynamic";
 
@@ -8,9 +9,9 @@ export async function generateMetadata({ params }: { params: { id: string } }) {
   const announcements = await listPublicAnnouncements();
   const item = announcements.find((a) => a.id === params.id);
   if (!item) {
-    return { title: "公告不存在 | 情谊电竞", robots: { index: false, follow: false } };
+    return { title: t("updates.id.i244"), robots: { index: false, follow: false } };
   }
-  const description = item.content ? item.content.slice(0, 120) : "情谊电竞公告更新。";
+  const description = item.content ? item.content.slice(0, 120) : t("updates.id.i245");
   return {
     title: `${item.title} | 情谊电竞`,
     description,
@@ -84,7 +85,7 @@ export default async function UpdateDetailPage({ params }: { params: { id: strin
             <span>{new Date(item.updatedAt || item.createdAt).toLocaleDateString("zh-CN")}</span>
           </div>
           <div style={{ marginTop: 14, color: "#334155", lineHeight: 1.7, whiteSpace: "pre-wrap" }}>
-            {item.content || "（无正文）"}
+            {item.content || t("updates.id.i246")}
           </div>
         </article>
         <script

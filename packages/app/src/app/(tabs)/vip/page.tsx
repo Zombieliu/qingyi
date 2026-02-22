@@ -117,7 +117,7 @@ export default function Vip() {
   }, [currentTier, tiers]);
 
   const progressText = useMemo(() => {
-    if (!member || !currentTier) return "完成会员申请后解锁完整权益";
+    if (!member || !currentTier) return t("tabs.vip.i144");
     const points = member.points || 0;
     if (!nextTier || !nextTier.minPoints) return `成长值 ${points}`;
     const remaining = Math.max(nextTier.minPoints - points, 0);
@@ -152,7 +152,7 @@ export default function Vip() {
       );
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setHint(data?.error || "提交失败，请稍后重试");
+        setHint(data?.error || t("tabs.vip.i145"));
         return;
       }
       setHint("apply.vip_submitted");

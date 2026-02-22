@@ -92,7 +92,7 @@ export default function SwControl() {
       }
       await reg.update();
       await readRegistration();
-      setMessage(reg.waiting ? "发现新版本，请强制更新" : t("comp.sw_control.002"));
+      setMessage(reg.waiting ? t("components.sw_control.i169") : t("comp.sw_control.002"));
     } catch {
       setStatus("error");
       setMessage(t("comp.sw_control.003"));
@@ -149,8 +149,8 @@ export default function SwControl() {
   };
 
   const label = useMemo(() => {
-    if (!state.supported) return "浏览器不支持";
-    if (status === "no-sw") return "未注册";
+    if (!state.supported) return t("components.sw_control.i170");
+    if (status === "no-sw") return t("components.sw_control.i171");
     return shortScript(state.waiting || state.active);
   }, [state.active, state.supported, state.waiting, status]);
 
@@ -169,7 +169,7 @@ export default function SwControl() {
           disabled={status === "checking" || status === "forcing" || status === "clearing"}
         >
           <RefreshCw size={14} />
-          {status === "checking" ? "检查中..." : t("comp.sw_control.009")}
+          {status === "checking" ? t("components.sw_control.i172") : t("comp.sw_control.009")}
         </button>
         <button
           className="admin-btn secondary"
@@ -177,14 +177,14 @@ export default function SwControl() {
           disabled={status === "checking" || status === "forcing" || status === "clearing"}
         >
           <ArrowUpCircle size={14} />
-          {status === "forcing" ? "更新中..." : t("comp.sw_control.010")}
+          {status === "forcing" ? t("components.sw_control.i173") : t("comp.sw_control.010")}
         </button>
         <button
           className="admin-btn ghost"
           onClick={clearCache}
           disabled={status === "checking" || status === "forcing" || status === "clearing"}
         >
-          {status === "clearing" ? "清理中..." : t("comp.sw_control.011")}
+          {status === "clearing" ? t("components.sw_control.i174") : t("comp.sw_control.011")}
         </button>
       </div>
     </div>

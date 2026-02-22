@@ -103,7 +103,11 @@ const packages = [
   },
 ];
 
-const CATEGORIES = ["全部", "推荐", "小时单"] as const;
+const CATEGORIES = [
+  t("tabs.home.home_content.i001"),
+  t("tabs.home.home_content.i002"),
+  t("tabs.home.home_content.i003"),
+] as const;
 
 const assurances = [
   {
@@ -150,7 +154,9 @@ export default function HomeContent({
       // ignore
     }
   }, []);
-  const [category, setCategory] = useState<(typeof CATEGORIES)[number]>("全部");
+  const [category, setCategory] = useState<(typeof CATEGORIES)[number]>(
+    t("tabs.home.home_content.i004")
+  );
   const [sortPrice, setSortPrice] = useState<"default" | "asc" | "desc">("default");
   const keyword = query.trim();
   const normalized = keyword.toLowerCase();
@@ -163,7 +169,7 @@ export default function HomeContent({
         [item.name, item.desc, item.tag].some((value) => value.toLowerCase().includes(normalized))
       );
     }
-    if (category !== "全部") {
+    if (category !== t("tabs.home.home_content.i005")) {
       list = list.filter((item) => item.category === category);
     }
     if (sortPrice === "asc") {
@@ -243,7 +249,7 @@ export default function HomeContent({
         <div className={styles["lc-section-head"]}>
           <div>
             <div className={styles["lc-section-title"]}>
-              {hasQuery ? "搜索套餐" : t("home.home_content.003")}
+              {hasQuery ? t("tabs.home.home_content.i006") : t("home.home_content.003")}
             </div>
             <div className={styles["lc-section-sub"]}>{t("ui.home-content.005")}</div>
           </div>
@@ -273,7 +279,7 @@ export default function HomeContent({
                 prev === "default" ? "asc" : prev === "asc" ? "desc" : "default"
               )
             }
-            aria-label={`价格排序：${sortPrice === "asc" ? "升序" : sortPrice === "desc" ? "降序" : t("home.home_content.004")}`}
+            aria-label={`价格排序：${sortPrice === "asc" ? t("tabs.home.home_content.i007") : sortPrice === "desc" ? t("tabs.home.home_content.i008") : t("home.home_content.004")}`}
           >
             价格{sortPrice === "asc" ? "↑" : sortPrice === "desc" ? "↓" : ""}
           </button>
@@ -318,7 +324,7 @@ export default function HomeContent({
         <div className={styles["lc-section-head"]}>
           <div>
             <div className={styles["lc-section-title"]}>
-              {hasQuery ? "搜索陪练" : t("home.home_content.007")}
+              {hasQuery ? t("tabs.home.home_content.i009") : t("home.home_content.007")}
             </div>
             <div className={styles["lc-section-sub"]}>{t("ui.home-content.006")}</div>
           </div>
@@ -332,8 +338,8 @@ export default function HomeContent({
             tone="empty"
             size="compact"
             align="center"
-            title={hasQuery ? "未找到匹配陪练" : t("home.home_content.008")}
-            description={hasQuery ? "换个关键词试试" : t("home.home_content.009")}
+            title={hasQuery ? t("tabs.home.home_content.i010") : t("home.home_content.008")}
+            description={hasQuery ? t("tabs.home.home_content.i011") : t("home.home_content.009")}
           />
         ) : (
           <Stagger className={styles["lc-player-grid"]}>
@@ -347,7 +353,9 @@ export default function HomeContent({
                     <div className={styles["lc-player-avatar"]}>{getInitial(player.name)}</div>
                     <div className={styles["lc-player-body"]}>
                       <div className={styles["lc-player-name"]}>{player.name}</div>
-                      <div className={styles["lc-player-role"]}>{player.role || "认证陪练"}</div>
+                      <div className={styles["lc-player-role"]}>
+                        {player.role || t("tabs.home.home_content.i012")}
+                      </div>
                     </div>
                     <div className={styles["lc-player-actions"]}>
                       <span className={styles["lc-player-status"]}>{t("ui.home-content.007")}</span>

@@ -5,15 +5,20 @@ import Link from "next/link";
 import { ArrowLeft, Info, ShieldCheck, Phone, Mail, Globe2 } from "lucide-react";
 
 const serviceHighlights = [
-  "跨平台陪玩调度与服务撮合",
-  "高素质队友与教练匹配",
-  "订单进度与履约流程透明可追踪",
+  t("tabs.me.about.i020"),
+  t("tabs.me.about.i021"),
+  t("tabs.me.about.i022"),
 ];
 
 const contactList = [
-  { label: "客服热线", value: "400-882-1001", icon: Phone },
+  { label: t("tabs.me.about.i023"), value: "400-882-1001", icon: Phone },
   { label: t("ui.about.558"), value: "support@qingyi.gg", icon: Mail },
-  { label: "在线工单", value: "进入工单中心提交", icon: Globe2, href: "/me/support" },
+  {
+    label: t("tabs.me.about.i024"),
+    value: t("tabs.me.about.i025"),
+    icon: Globe2,
+    href: "/me/support",
+  },
 ];
 
 export default function AboutPage() {

@@ -127,8 +127,18 @@ export function ChainStatusPanel({
         <StateBlock
           tone={chainLoading ? "loading" : chainError ? "danger" : "empty"}
           size="compact"
-          title={chainLoading ? "同步中" : chainError ? "加载失败" : t("schedule.020")}
-          description={chainLoading ? "正在刷新链上订单" : chainError || "点击刷新获取最新状态"}
+          title={
+            chainLoading
+              ? t("tabs.schedule.chain_status_panel.i096")
+              : chainError
+                ? t("tabs.schedule.chain_status_panel.i097")
+                : t("schedule.020")
+          }
+          description={
+            chainLoading
+              ? t("tabs.schedule.chain_status_panel.i098")
+              : chainError || t("tabs.schedule.chain_status_panel.i099")
+          }
           actions={
             chainLoading ? null : (
               <button className="dl-tab-btn" onClick={loadChain} disabled={chainLoading}>

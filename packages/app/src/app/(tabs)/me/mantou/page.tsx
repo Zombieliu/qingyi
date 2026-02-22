@@ -128,7 +128,7 @@ export default function MantouPage() {
           } else if (res.status === 403) {
             setStatusHint("companion.no_permission");
           } else {
-            setStatusHint(data?.error || "状态加载失败");
+            setStatusHint(data?.error || t("tabs.me.mantou.i047"));
           }
           setPlayerStatus(null);
           return;
@@ -166,7 +166,7 @@ export default function MantouPage() {
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         setStatusHintTone("warning");
-        setStatusHint(data?.error || "状态更新失败");
+        setStatusHint(data?.error || t("tabs.me.mantou.i048"));
         return;
       }
       setPlayerStatus((data?.status as PlayerStatus) || nextStatus);
@@ -184,7 +184,7 @@ export default function MantouPage() {
     if (submitting) return;
     const address = getCurrentAddress();
     if (!address) {
-      setStatus({ tone: "warning", title: "请先登录账号" });
+      setStatus({ tone: "warning", title: t("tabs.me.mantou.i049") });
       return;
     }
     if (!Number.isFinite(amount) || amount <= 0) {
@@ -209,7 +209,7 @@ export default function MantouPage() {
       );
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setStatus({ tone: "danger", title: data?.error || "提交失败" });
+        setStatus({ tone: "danger", title: data?.error || t("tabs.me.mantou.i050") });
         return;
       }
       await refresh({ force: true });
@@ -297,7 +297,7 @@ export default function MantouPage() {
                   onClick={() => updateStatus(option)}
                   disabled={statusSaving || playerStatus === option}
                 >
-                  {statusSaving && playerStatus === option ? "更新中..." : option}
+                  {statusSaving && playerStatus === option ? t("tabs.me.mantou.i051") : option}
                 </button>
               ))}
             </div>
@@ -312,7 +312,7 @@ export default function MantouPage() {
             <StateBlock
               tone="warning"
               size="compact"
-              title={statusHint || "暂无可用状态"}
+              title={statusHint || t("tabs.me.mantou.i052")}
               description={t("me.mantou.009")}
             />
           </div>

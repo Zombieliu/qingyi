@@ -83,7 +83,10 @@ export default function Showcase() {
     return myOrders.filter((order) => {
       if (!address || !order.companionAddress) return false;
       if (order.companionAddress !== address) return false;
-      return !order.status.includes("完成") && !order.status.includes("取消");
+      return (
+        !order.status.includes(t("tabs.showcase.i119")) &&
+        !order.status.includes(t("tabs.showcase.i120"))
+      );
     });
   }, [chainAddress, myOrders]);
   const localChainStatusById = useMemo(() => {
@@ -368,7 +371,7 @@ export default function Showcase() {
     } catch (error) {
       const errorMsg = formatErrorMessage(error, t("showcase.003"));
       // 如果是 chain order not found 错误，提供更友好的提示
-      if (errorMsg.includes("not found") || errorMsg.includes("未找到")) {
+      if (errorMsg.includes("not found") || errorMsg.includes(t("tabs.showcase.i121"))) {
         throw new Error("链上订单暂未索引完成，请稍后再试（通常需要等待3-10秒）");
       }
       throw new Error(errorMsg);
@@ -427,7 +430,7 @@ export default function Showcase() {
         const ok = await runChainAction(
           `claim-${id}`,
           () => claimOrderOnChain(id),
-          "已认领订单",
+          t("tabs.showcase.i122"),
           id
         );
         if (!ok) return;
@@ -436,7 +439,7 @@ export default function Showcase() {
         const ok = await runChainAction(
           `deposit-${id}`,
           () => lockDepositOnChain(id),
-          "押金已锁定",
+          t("tabs.showcase.i123"),
           id
         );
         if (!ok) return;
@@ -479,7 +482,7 @@ export default function Showcase() {
       title: "确认付押金并接单？",
       description: depositLabel
         ? `将锁定押金 ${depositLabel} 并认领订单。押金锁定后如需取消请走争议/客服流程。`
-        : "将锁定押金并认领订单。押金锁定后如需取消请走争议/客服流程。",
+        : t("tabs.showcase.i124"),
       confirmLabel: "确认接单",
       action: async () => {
         await accept(orderId);
@@ -771,7 +774,7 @@ export default function Showcase() {
       if (!isChain) {
         await refreshMyOrders(true);
       }
-      setChainToast(isChain ? "已标记服务完成，等待用户确认" : t("showcase.016"));
+      setChainToast(isChain ? t("tabs.showcase.i125") : t("showcase.016"));
     } catch (error) {
       setChainToast(formatErrorMessage(error, t("showcase.017")));
     } finally {
@@ -795,7 +798,8 @@ export default function Showcase() {
   });
 
   const visibleOrders = orders.filter(
-    (o) => !o.status.includes("完成") && !o.status.includes("取消")
+    (o) =>
+      !o.status.includes(t("tabs.showcase.i126")) && !o.status.includes(t("tabs.showcase.i127"))
   );
 
   if (guardianState === "checking") {
@@ -897,10 +901,10 @@ export default function Showcase() {
                   ? t("showcase.028")
                   : chainError
                     ? t("showcase.029")
-                    : "暂时没有可接订单"
+                    : t("tabs.showcase.i128")
               }
               description={
-                chainLoading ? "索引刷新中，请稍等片刻" : chainError || "点击刷新获取最新订单"
+                chainLoading ? t("tabs.showcase.i129") : chainError || t("tabs.showcase.i130")
               }
               actions={
                 chainLoading ? null : (
@@ -1059,7 +1063,7 @@ export default function Showcase() {
                                 const ok = await runChainAction(
                                   `deposit-${o.orderId}`,
                                   () => lockDepositOnChain(o.orderId),
-                                  "押金已锁定",
+                                  t("tabs.showcase.i131"),
                                   o.orderId
                                 );
                                 if (!ok) return;
@@ -1118,7 +1122,7 @@ export default function Showcase() {
                                       setChainToast("diamond.auto_converted");
                                     }
                                   } else {
-                                    setChainToast(data?.error || "馒头转换失败");
+                                    setChainToast(data?.error || t("tabs.showcase.i132"));
                                   }
                                 } catch (error) {
                                   setChainToast(formatErrorMessage(error, t("showcase.034")));
@@ -1139,7 +1143,7 @@ export default function Showcase() {
                           disabled={companionEnded}
                           onClick={() => confirmEndService(o.orderId)}
                         >
-                          {companionEnded ? "已结束服务" : t("showcase.036")}
+                          {companionEnded ? t("tabs.showcase.i133") : t("showcase.036")}
                         </button>
                       )}
                       {isUser && effectiveStatus === 2 && (
@@ -1177,7 +1181,7 @@ export default function Showcase() {
                                 title: "确认放弃争议期并立即结算？",
                                 description: deadlineText
                                   ? `争议截止：${deadlineText}`
-                                  : "争议期内放弃争议将立即结算。",
+                                  : t("tabs.showcase.i134"),
                                 confirmLabel: "确认结算",
                                 action: async () => {
                                   await runChainAction(
@@ -1254,7 +1258,7 @@ export default function Showcase() {
                     disabled={companionEnded}
                     onClick={() => markCompanionServiceEnded(order.id, false)}
                   >
-                    {companionEnded ? "已结束服务" : t("showcase.040")}
+                    {companionEnded ? t("tabs.showcase.i135") : t("showcase.040")}
                   </button>
                 </div>
               </MotionCard>

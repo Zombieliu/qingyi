@@ -48,7 +48,7 @@ type StoredProfiles = Record<string, GameProfile>;
 
 export const FIRST_ORDER_STORAGE_KEY = "qy_first_order_discount_used_v1";
 export const FIRST_ORDER_DISCOUNT = { minSpend: 99, amount: 10, label: t("ui.schedule-data.707") };
-export const PLAYER_SECTION_TITLE = "可接陪练";
+export const PLAYER_SECTION_TITLE = t("tabs.schedule.schedule_data.i114");
 export const MATCH_RATE = 0.15;
 
 // --- Static data ---
@@ -201,14 +201,22 @@ export function loadGameProfile(address: string) {
 }
 
 export function deriveMode(list: LocalOrder[]): Mode {
-  const latest = list.find((o) => !o.status.includes("取消") && !o.status.includes("完成")) || null;
+  const latest =
+    list.find(
+      (o) =>
+        !o.status.includes(t("tabs.schedule.schedule_data.i115")) &&
+        !o.status.includes(t("tabs.schedule.schedule_data.i116"))
+    ) || null;
   if (!latest) return "select";
   const chainStatus = (latest.meta as { chain?: { status?: number } } | undefined)?.chain?.status;
   if (typeof chainStatus === "number") {
     if (chainStatus === 3) return "pending-settlement";
     if (chainStatus >= 2) return "enroute";
   }
-  if (latest.status.includes("待结算") || latest.status.includes("已完成待结算")) {
+  if (
+    latest.status.includes(t("tabs.schedule.schedule_data.i117")) ||
+    latest.status.includes(t("tabs.schedule.schedule_data.i118"))
+  ) {
     return "pending-settlement";
   }
   if (latest.driver) {

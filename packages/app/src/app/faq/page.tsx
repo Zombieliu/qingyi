@@ -1,5 +1,6 @@
 import TrackedLink from "@/app/components/tracked-link";
 import { createTranslator, getMessages, getServerLocale } from "@/lib/i18n/i18n";
+import { t } from "@/lib/i18n/i18n-client";
 
 export const metadata = {
   title: "常见问题 | 情谊电竞",
@@ -92,7 +93,7 @@ export default async function FaqPage() {
               href="/"
               className="public-btn ghost"
               event="cta_click"
-              meta={{ section: "nav", label: "返回首页", page: "faq" }}
+              meta={{ section: "nav", label: t("faq.i207"), page: "faq" }}
             >
               {t("nav.backHome")}
             </TrackedLink>
@@ -100,7 +101,7 @@ export default async function FaqPage() {
               href="/pricing"
               className="public-btn"
               event="cta_click"
-              meta={{ section: "nav", label: "价格与服务", page: "faq" }}
+              meta={{ section: "nav", label: t("faq.i208"), page: "faq" }}
             >
               {t("nav.pricing")}
             </TrackedLink>
@@ -108,7 +109,7 @@ export default async function FaqPage() {
               href="/updates"
               className="public-btn"
               event="cta_click"
-              meta={{ section: "nav", label: "公告更新", page: "faq" }}
+              meta={{ section: "nav", label: t("faq.i209"), page: "faq" }}
             >
               {t("nav.updates")}
             </TrackedLink>
@@ -116,7 +117,7 @@ export default async function FaqPage() {
               href="/home"
               className="public-btn primary"
               event="cta_click"
-              meta={{ section: "nav", label: "进入大厅", page: "faq" }}
+              meta={{ section: "nav", label: t("faq.i210"), page: "faq" }}
             >
               {t("nav.home")}
             </TrackedLink>
@@ -133,7 +134,7 @@ export default async function FaqPage() {
                 href="/home"
                 className="public-btn primary"
                 event="cta_click"
-                meta={{ section: "hero", label: "立即下单", page: "faq" }}
+                meta={{ section: "hero", label: t("faq.i211"), page: "faq" }}
               >
                 {t("faq.cta.order")}
               </TrackedLink>
@@ -141,7 +142,7 @@ export default async function FaqPage() {
                 href="/pricing"
                 className="public-btn"
                 event="cta_click"
-                meta={{ section: "hero", label: "价格与服务", page: "faq" }}
+                meta={{ section: "hero", label: t("faq.i212"), page: "faq" }}
               >
                 {t("faq.cta.pricing")}
               </TrackedLink>
@@ -177,7 +178,7 @@ export default async function FaqPage() {
               href="/home"
               className="public-btn primary"
               event="cta_click"
-              meta={{ section: "footer", label: "前往大厅", page: "faq" }}
+              meta={{ section: "footer", label: t("faq.i213"), page: "faq" }}
             >
               {t("faq.footer.home")}
             </TrackedLink>
@@ -185,7 +186,7 @@ export default async function FaqPage() {
               href="/updates"
               className="public-btn"
               event="cta_click"
-              meta={{ section: "footer", label: "查看公告", page: "faq" }}
+              meta={{ section: "footer", label: t("faq.i214"), page: "faq" }}
             >
               {t("faq.footer.updates")}
             </TrackedLink>

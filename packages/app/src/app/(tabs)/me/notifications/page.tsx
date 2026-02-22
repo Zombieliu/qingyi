@@ -7,6 +7,7 @@ import { fetchWithUserAuth } from "@/lib/auth/user-auth-client";
 import { StateBlock } from "@/app/components/state-block";
 import { formatShortDateTime } from "@/lib/shared/date-utils";
 import type { Notification } from "@/app/components/use-notifications";
+import { t } from "@/lib/i18n/i18n-client";
 
 const TYPE_ICONS: Record<string, typeof Bell> = {
   order_status: Package,
@@ -94,7 +95,7 @@ export default function NotificationsPage() {
     <div className="dl-main">
       <header className="dl-topbar">
         <div className="dl-time">
-          <Link href="/me" className="dl-icon-circle" aria-label="返回">
+          <Link href="/me" className="dl-icon-circle" aria-label={t("tabs.me.notifications.i053")}>
             <ArrowLeft size={16} />
           </Link>
           <span className="dl-time-text">消息中心</span>
@@ -105,7 +106,7 @@ export default function NotificationsPage() {
               className="dl-icon-circle"
               onClick={markAllRead}
               disabled={markingAll}
-              aria-label="全部已读"
+              aria-label={t("tabs.me.notifications.i054")}
             >
               <CheckCheck size={16} />
             </button>
@@ -115,15 +116,20 @@ export default function NotificationsPage() {
 
       {loading ? (
         <section className="dl-card" style={{ padding: 16 }}>
-          <StateBlock tone="loading" size="compact" title="加载中..." />
+          <StateBlock tone="loading" size="compact" title={t("tabs.me.notifications.i055")} />
         </section>
       ) : !address ? (
         <section className="dl-card" style={{ padding: 16 }}>
-          <StateBlock tone="warning" title="请先登录" />
+          <StateBlock tone="warning" title={t("tabs.me.notifications.i056")} />
         </section>
       ) : notifications.length === 0 ? (
         <section className="dl-card" style={{ padding: 16 }}>
-          <StateBlock tone="empty" size="compact" title="暂无消息" description="有新动态会通知你" />
+          <StateBlock
+            tone="empty"
+            size="compact"
+            title={t("tabs.me.notifications.i057")}
+            description={t("tabs.me.notifications.i058")}
+          />
         </section>
       ) : (
         <section style={{ marginBottom: 24 }}>

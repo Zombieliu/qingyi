@@ -97,7 +97,8 @@ export function FeeModal({
             </div>
             <div className="ride-chip">{t("ui.fee-modal.027")}</div>
             <div className="text-xs text-gray-500" style={{ marginTop: 4 }}>
-              仲裁时效：{vipLoading ? "查询中..." : `${disputePolicy.hours}小时`}
+              仲裁时效：
+              {vipLoading ? t("tabs.schedule.fee_modal.i102") : `${disputePolicy.hours}小时`}
               {vipTier?.name ? `（会员：${vipTier.name}）` : ""}
             </div>
             <div className="text-xs text-gray-500" style={{ marginTop: 4 }}>

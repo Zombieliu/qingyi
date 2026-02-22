@@ -115,7 +115,7 @@ export default function OrderButton({ user, item, amount, note }: Props) {
             await new Promise((resolve) => setTimeout(resolve, delay));
           }
           if (!synced) {
-            setStatus({ tone: "warning", title: "链上同步失败，订单已创建，稍后会自动重试" });
+            setStatus({ tone: "warning", title: t("components.order_button.i162") });
             trackEvent("chain_sync_failed", { orderId: chainOrderId, source: "home_card" });
           }
         };
@@ -129,7 +129,7 @@ export default function OrderButton({ user, item, amount, note }: Props) {
           amount,
           reason: result.error || "notify_failed",
         });
-        setStatus({ tone: "warning", title: result.error || "订单已创建，通知失败" });
+        setStatus({ tone: "warning", title: result.error || t("components.order_button.i163") });
       } else {
         trackEvent("order_create_success", { source: "home_card", user, item, amount });
         setStatus({

@@ -15,6 +15,7 @@ import { getCurrentAddress } from "@/lib/chain/qy-chain-lite";
 import { fetchWithUserAuth } from "@/lib/auth/user-auth-client";
 import { StateBlock } from "@/app/components/state-block";
 import { formatShortDateTime } from "@/lib/shared/date-utils";
+import { t } from "@/lib/i18n/i18n-client";
 
 type CompanionStats = {
   player: { id: string; name: string; status: string; role?: string } | null;
@@ -117,8 +118,9 @@ export default function CompanionPage() {
   }, [fetchOrders]);
 
   const toggleStatus = async () => {
-    if (!stats?.player || stats.player.status === "停用") return;
-    const next = stats.player.status === "可接单" ? "忙碌" : "可接单";
+    if (!stats?.player || stats.player.status === t("companion.i175")) return;
+    const next =
+      stats.player.status === t("companion.i176") ? t("companion.i177") : t("companion.i178");
     setStatusToggling(true);
     try {
       const res = await fetchWithUserAuth(
@@ -134,7 +136,7 @@ export default function CompanionPage() {
         setStats((prev) =>
           prev && prev.player ? { ...prev, player: { ...prev.player, status: next } } : prev
         );
-        setToast(next === "可接单" ? "已开启接单" : "已切换为忙碌");
+        setToast(next === t("companion.i179") ? t("companion.i180") : t("companion.i181"));
       } else {
         setToast("切换失败");
       }
@@ -149,30 +151,31 @@ export default function CompanionPage() {
   if (!address) {
     return (
       <div className="dl-main" style={{ padding: 16 }}>
-        <StateBlock tone="warning" title="请先登录" description="登录后查看陪练工作台" />
+        <StateBlock tone="warning" title={t("companion.i182")} description={t("companion.i183")} />
       </div>
     );
   }
 
-  const statusInfo = STATUS_LABELS[stats?.player?.status || ""] || STATUS_LABELS["停用"];
-  const isOnline = stats?.player?.status === "可接单";
+  const statusInfo =
+    STATUS_LABELS[stats?.player?.status || ""] || STATUS_LABELS[t("companion.i184")];
+  const isOnline = stats?.player?.status === t("companion.i185");
 
   return (
     <div className="dl-main">
       <header className="dl-topbar">
         <div className="dl-time">
-          <Link href="/me" className="dl-icon-circle" aria-label="返回">
+          <Link href="/me" className="dl-icon-circle" aria-label={t("companion.i186")}>
             <ArrowLeft size={16} />
           </Link>
           <span className="dl-time-text">陪练工作台</span>
         </div>
         <div className="dl-actions">
-          {stats?.player && stats.player.status !== "停用" && (
+          {stats?.player && stats.player.status !== t("companion.i187") && (
             <button
               className="dl-icon-circle"
               onClick={toggleStatus}
               disabled={statusToggling}
-              aria-label="切换接单状态"
+              aria-label={t("companion.i188")}
             >
               {isOnline ? (
                 <ToggleRight size={18} className="text-emerald-500" />
@@ -188,11 +191,15 @@ export default function CompanionPage() {
 
       {loading ? (
         <section className="dl-card" style={{ padding: 16 }}>
-          <StateBlock tone="loading" size="compact" title="加载中..." />
+          <StateBlock tone="loading" size="compact" title={t("companion.i189")} />
         </section>
       ) : !stats?.player ? (
         <section className="dl-card" style={{ padding: 16 }}>
-          <StateBlock tone="warning" title="非陪练账号" description="当前地址未注册为陪练" />
+          <StateBlock
+            tone="warning"
+            title={t("companion.i190")}
+            description={t("companion.i191")}
+          />
         </section>
       ) : (
         <>
@@ -201,7 +208,9 @@ export default function CompanionPage() {
             <div className="flex items-center justify-between">
               <div>
                 <div className="text-lg font-bold text-gray-900">{stats.player.name}</div>
-                <div className="text-xs text-gray-400">{stats.player.role || "陪练"}</div>
+                <div className="text-xs text-gray-400">
+                  {stats.player.role || t("companion.i192")}
+                </div>
               </div>
               <div className={`text-sm font-semibold ${statusInfo.color}`}>{statusInfo.label}</div>
             </div>
@@ -265,12 +274,12 @@ export default function CompanionPage() {
             </div>
 
             {ordersLoading ? (
-              <StateBlock tone="loading" size="compact" title="加载订单..." />
+              <StateBlock tone="loading" size="compact" title={t("companion.i193")} />
             ) : orders.length === 0 ? (
               <StateBlock
                 tone="empty"
                 size="compact"
-                title={orderTab === "active" ? "暂无进行中订单" : "暂无历史订单"}
+                title={orderTab === "active" ? t("companion.i194") : t("companion.i195")}
               />
             ) : (
               <div className="grid gap-2">
@@ -285,7 +294,7 @@ export default function CompanionPage() {
                       </span>
                     </div>
                     <div className="mt-1 flex items-center justify-between text-xs text-gray-500">
-                      <span>用户: {order.user || "匿名"}</span>
+                      <span>用户: {order.user || t("companion.i196")}</span>
                       <span className="font-semibold text-gray-900">¥{order.amount}</span>
                     </div>
                     <div className="mt-1 flex items-center justify-between text-[10px] text-gray-400">
@@ -320,7 +329,15 @@ export default function CompanionPage() {
 
 // ─── Schedule sub-component ───
 
-const DAY_LABELS = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
+const DAY_LABELS = [
+  t("companion.i197"),
+  t("companion.i198"),
+  t("companion.i199"),
+  t("companion.i200"),
+  t("companion.i201"),
+  t("companion.i202"),
+  t("companion.i203"),
+];
 
 function ScheduleSection({
   address,
@@ -385,7 +402,7 @@ function ScheduleSection({
         <Calendar size={16} className="text-blue-500" />
         排班设置
         <span className="text-xs text-gray-400 ml-auto">
-          {slots.length > 0 ? `${slots.length} 个时段` : "未设置"}
+          {slots.length > 0 ? `${slots.length} 个时段` : t("companion.i204")}
         </span>
       </button>
 
@@ -431,7 +448,7 @@ function ScheduleSection({
             );
           })}
           <button className="lc-tab-btn is-active mt-3 w-full" onClick={save} disabled={saving}>
-            {saving ? "保存中..." : "保存排班"}
+            {saving ? t("companion.i205") : t("companion.i206")}
           </button>
         </div>
       )}

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { listPublicAnnouncements } from "@/lib/admin/admin-store";
+import { t } from "@/lib/i18n/i18n-client";
 
 export const dynamic = "force-dynamic";
 
@@ -55,7 +56,7 @@ export default async function UpdatesPage() {
                   <span style={{ fontSize: 12, color: "#64748b" }}>{item.tag}</span>
                 </div>
                 <div style={{ marginTop: 8, color: "#475569" }}>
-                  {item.content ? item.content.slice(0, 120) : "（无正文）"}
+                  {item.content ? item.content.slice(0, 120) : t("updates.i247")}
                   {item.content && item.content.length > 120 ? "…" : ""}
                 </div>
                 <div style={{ marginTop: 10, fontSize: 12, color: "#94a3b8" }}>
