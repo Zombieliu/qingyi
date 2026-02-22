@@ -490,10 +490,9 @@ export default function Schedule() {
   const chainStatusHint = useMemo(() => {
     if (!isChainOrdersEnabled()) return null;
     if (!currentOrder) return null;
-    const status = chainCurrentStatus ?? localChainStatus;
-    if (typeof status !== "number") return "链上状态：未同步";
-    return `链上状态：${statusLabel(status)}`;
-  }, [chainCurrentStatus, localChainStatus, currentOrder]);
+    if (!currentOrder.chainDigest && currentOrder.chainStatus === undefined) return null;
+    return `链上状态：${currentOrder.status}`;
+  }, [currentOrder]);
 
   const renderActionLabel = (key: string, label: string) => {
     if (chainAction !== key) return label;

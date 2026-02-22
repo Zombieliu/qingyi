@@ -27,6 +27,8 @@ type ServerOrder = {
   currency: string;
   paymentStatus: string;
   stage: string;
+  /** Server-computed display status (single source of truth) */
+  displayStatus?: string;
   note?: string | null;
   assignedTo?: string | null;
   source?: string | null;
@@ -45,15 +47,13 @@ export function normalizeOrder(order: ServerOrder): LocalOrder {
 
   // Determine effective chain status from all sources
   const chainStatus = order.chainStatus ?? chainMeta?.status ?? undefined;
-  const isChain = Boolean(order.chainDigest) || chainStatus !== undefined;
 
   // Status resolution:
-  // - Chain orders use server-derived stage (from chainStatus)
-  // - Non-chain orders fall back to legacy meta.status
+  // - Prefer server-computed displayStatus (single source of truth)
+  // - Fallback to legacy meta.status for backward compatibility
   const metaStatus = typeof meta.status === "string" ? meta.status : undefined;
-  const status = isChain
-    ? order.stage || order.paymentStatus
-    : metaStatus || order.stage || order.paymentStatus;
+  const status =
+    order.displayStatus || metaStatus || order.stage || order.paymentStatus || "待处理";
 
   const time = typeof meta.time === "string" ? meta.time : new Date(order.createdAt).toISOString();
   return {

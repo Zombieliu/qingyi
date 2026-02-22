@@ -72,10 +72,12 @@ export function resolveEffectiveChainStatus(
  * 从 effectiveStatus 一次性派生所有状态字段
  */
 export function deriveOrderStatus(effectiveStatus: number) {
+  const paymentStatus = mapPaymentStatus(effectiveStatus);
   return {
     chainStatus: effectiveStatus,
-    paymentStatus: mapPaymentStatus(effectiveStatus),
+    paymentStatus,
     stage: mapStage(effectiveStatus),
+    displayStatus: paymentStatus,
   };
 }
 

@@ -68,6 +68,7 @@ export async function POST(req: Request) {
     currency: body.currency,
     paymentStatus: body.paymentStatus,
     stage: body.stage as OrderStage,
+    displayStatus: body.paymentStatus || body.stage,
     note: body.note,
     assignedTo: body.assignedTo,
     source: body.source,

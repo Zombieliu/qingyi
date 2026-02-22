@@ -1,4 +1,5 @@
 import type { AdminOrder } from "./admin-types";
+import { mapPaymentStatus } from "@/lib/chain/chain-status";
 import {
   prisma,
   Prisma,
@@ -29,6 +30,13 @@ function mapOrder(row: {
   createdAt: Date;
   updatedAt: Date | null;
 }): AdminOrder {
+  // Compute displayStatus: chain orders use chainStatus, non-chain use stage/paymentStatus
+  const isChain = row.chainDigest !== null || row.chainStatus !== null;
+  const displayStatus =
+    isChain && row.chainStatus !== null
+      ? mapPaymentStatus(row.chainStatus)
+      : row.paymentStatus || row.stage;
+
   return {
     id: row.id,
     user: row.user,
@@ -39,6 +47,7 @@ function mapOrder(row: {
     currency: row.currency,
     paymentStatus: row.paymentStatus,
     stage: row.stage as AdminOrder["stage"],
+    displayStatus,
     note: row.note || undefined,
     assignedTo: row.assignedTo || undefined,
     source: row.source || undefined,

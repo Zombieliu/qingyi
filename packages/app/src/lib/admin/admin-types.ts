@@ -111,6 +111,8 @@ export interface AdminOrder {
   currency: string;
   paymentStatus: string;
   stage: OrderStage;
+  /** Server-computed display status from chainStatus (single source of truth) */
+  displayStatus: string;
   note?: string;
   assignedTo?: string;
   source?: string;

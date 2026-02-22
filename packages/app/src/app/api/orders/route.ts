@@ -319,6 +319,7 @@ export async function POST(req: Request) {
       currency,
       paymentStatus: payload.paymentStatus || status,
       stage: (payload.stage as "待处理" | "已确认" | "进行中" | "已完成" | "已取消") || "待处理",
+      displayStatus: payload.paymentStatus || status || "待处理",
       note,
       source: "app",
       chainDigest: payload.chainDigest,

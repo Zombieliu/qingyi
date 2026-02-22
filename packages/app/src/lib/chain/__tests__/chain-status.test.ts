@@ -75,6 +75,7 @@ describe("deriveOrderStatus", () => {
       chainStatus: 5,
       paymentStatus: "已结算",
       stage: "已完成",
+      displayStatus: "已结算",
     });
   });
 
@@ -84,6 +85,14 @@ describe("deriveOrderStatus", () => {
       chainStatus: 0,
       paymentStatus: "未支付",
       stage: "待处理",
+      displayStatus: "未支付",
     });
+  });
+
+  it("displayStatus matches paymentStatus", () => {
+    for (const status of [0, 1, 2, 3, 4, 5, 6]) {
+      const result = deriveOrderStatus(status);
+      expect(result.displayStatus).toBe(result.paymentStatus);
+    }
   });
 });

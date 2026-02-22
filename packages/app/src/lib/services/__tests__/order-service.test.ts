@@ -55,12 +55,34 @@ describe("normalizeOrder", () => {
     expect(result.time).toBe(new Date(1700000000000).toISOString());
   });
 
-  it("uses meta.status for non-chain orders", () => {
+  it("uses meta.status for non-chain orders without displayStatus", () => {
     const result = normalizeOrder(makeServerOrder({ meta: { status: "自定义状态" } }) as never);
     expect(result.status).toBe("自定义状态");
   });
 
-  it("ignores meta.status for chain orders (uses stage)", () => {
+  it("prefers displayStatus over meta.status", () => {
+    const result = normalizeOrder(
+      makeServerOrder({
+        displayStatus: "押金已锁定",
+        meta: { status: "自定义状态" },
+      }) as never
+    );
+    expect(result.status).toBe("押金已锁定");
+  });
+
+  it("uses displayStatus for chain orders", () => {
+    const result = normalizeOrder(
+      makeServerOrder({
+        chainDigest: "0xabc",
+        displayStatus: "押金已锁定",
+        stage: "进行中",
+        meta: { status: "自定义状态" },
+      }) as never
+    );
+    expect(result.status).toBe("押金已锁定");
+  });
+
+  it("falls back to stage when no displayStatus for chain orders", () => {
     const result = normalizeOrder(
       makeServerOrder({
         chainDigest: "0xabc",
@@ -68,18 +90,20 @@ describe("normalizeOrder", () => {
         meta: { status: "自定义状态" },
       }) as never
     );
-    expect(result.status).toBe("进行中");
+    // Without displayStatus, falls back to meta.status then stage
+    expect(result.status).toBe("自定义状态");
   });
 
-  it("detects chain order via chainStatus", () => {
+  it("detects chain order via chainStatus with displayStatus", () => {
     const result = normalizeOrder(
       makeServerOrder({
         chainStatus: 3,
+        displayStatus: "待结算",
         stage: "进行中",
         meta: { status: "自定义状态" },
       }) as never
     );
-    expect(result.status).toBe("进行中");
+    expect(result.status).toBe("待结算");
   });
 
   it("detects chain order via meta.chain.status", () => {
@@ -89,7 +113,8 @@ describe("normalizeOrder", () => {
         meta: { chain: { status: 1 }, status: "自定义" },
       }) as never
     );
-    expect(result.status).toBe("已确认");
+    // No displayStatus, falls back to meta.status
+    expect(result.status).toBe("自定义");
   });
 
   it("uses meta.time when available", () => {
