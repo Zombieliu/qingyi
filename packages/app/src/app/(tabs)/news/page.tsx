@@ -1,7 +1,13 @@
+import type { Metadata } from "next";
 import { MessageCircle, Flame } from "lucide-react";
 import { listPublicAnnouncements } from "@/lib/admin/admin-store";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "公告 | 情谊电竞",
+  description: "情谊电竞最新公告、活动和更新。",
+};
 
 const fallbackArticles = [
   { id: "fallback-1", title: "三角洲行动版本更新", tag: "公告", content: "" },

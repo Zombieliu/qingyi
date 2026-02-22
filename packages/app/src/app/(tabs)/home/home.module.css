@@ -591,3 +591,46 @@
     background-position: -200% 0;
   }
 }
+
+/* Filter bar */
+.lc-filter-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.lc-filter-tabs {
+  display: flex;
+  gap: 6px;
+}
+
+.lc-filter-tab {
+  padding: 4px 12px;
+  border-radius: 16px;
+  font-size: 13px;
+  border: 1px solid #e2e8f0;
+  background: transparent;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.lc-filter-tab.is-active {
+  background: #0f172a;
+  color: #fff;
+  border-color: #0f172a;
+}
+
+.lc-filter-sort {
+  padding: 4px 10px;
+  border-radius: 16px;
+  font-size: 13px;
+  border: 1px solid #e2e8f0;
+  background: transparent;
+  color: #64748b;
+  cursor: pointer;
+  min-width: 52px;
+  text-align: center;
+}

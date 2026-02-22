@@ -67,32 +67,42 @@ const packages = [
     name: "绝密体验单",
     desc: "15 分钟上车",
     price: "¥88",
+    numPrice: 88,
     tag: "首单推荐",
     eta: "极速",
+    category: "推荐",
     highlight: true,
   },
   {
     name: "绝密快单",
     desc: "10 分钟上车",
     price: "¥128",
+    numPrice: 128,
     tag: "高胜率",
     eta: "热门",
+    category: "推荐",
   },
   {
     name: "机密单护",
     desc: "稳定陪练",
     price: "¥30/小时",
+    numPrice: 30,
     tag: "日常上分",
     eta: "常规",
+    category: "小时单",
   },
   {
     name: "机密双护",
     desc: "双人协同",
     price: "¥60/小时",
+    numPrice: 60,
     tag: "效率提升",
     eta: "进阶",
+    category: "小时单",
   },
 ];
+
+const CATEGORIES = ["全部", "推荐", "小时单"] as const;
 
 const assurances = [
   {
@@ -126,16 +136,29 @@ export default function HomeContent({
   news: HomeNews[];
 }) {
   const [query, setQuery] = useState("");
+  const [category, setCategory] = useState<(typeof CATEGORIES)[number]>("全部");
+  const [sortPrice, setSortPrice] = useState<"default" | "asc" | "desc">("default");
   const keyword = query.trim();
   const normalized = keyword.toLowerCase();
   const hasQuery = normalized.length > 0;
 
   const filteredPackages = useMemo(() => {
-    if (!hasQuery) return packages;
-    return packages.filter((item) =>
-      [item.name, item.desc, item.tag].some((value) => value.toLowerCase().includes(normalized))
-    );
-  }, [hasQuery, normalized]);
+    let list = packages;
+    if (hasQuery) {
+      list = list.filter((item) =>
+        [item.name, item.desc, item.tag].some((value) => value.toLowerCase().includes(normalized))
+      );
+    }
+    if (category !== "全部") {
+      list = list.filter((item) => item.category === category);
+    }
+    if (sortPrice === "asc") {
+      list = [...list].sort((a, b) => a.numPrice - b.numPrice);
+    } else if (sortPrice === "desc") {
+      list = [...list].sort((a, b) => b.numPrice - a.numPrice);
+    }
+    return list;
+  }, [hasQuery, normalized, category, sortPrice]);
 
   const filteredPlayers = useMemo(() => {
     if (!hasQuery) return players;
@@ -212,6 +235,29 @@ export default function HomeContent({
             全部套餐
             <ChevronRight size={14} />
           </Link>
+        </div>
+        <div className={styles["lc-filter-bar"]}>
+          <div className={styles["lc-filter-tabs"]}>
+            {CATEGORIES.map((cat) => (
+              <button
+                key={cat}
+                className={`${styles["lc-filter-tab"]} ${category === cat ? styles["is-active"] : ""}`}
+                onClick={() => setCategory(cat)}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
+          <button
+            className={styles["lc-filter-sort"]}
+            onClick={() =>
+              setSortPrice((prev) =>
+                prev === "default" ? "asc" : prev === "asc" ? "desc" : "default"
+              )
+            }
+          >
+            价格{sortPrice === "asc" ? "↑" : sortPrice === "desc" ? "↓" : ""}
+          </button>
         </div>
         {filteredPackages.length === 0 ? (
           <StateBlock

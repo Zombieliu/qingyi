@@ -1,7 +1,17 @@
+import type { Metadata } from "next";
 import { listPlayersPublic, listPublicAnnouncements } from "@/lib/admin/admin-store";
 import HomeContent from "./home-content";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "首页 | 情谊电竞",
+  description: "三角洲行动陪玩平台，极速匹配高素质陪练，押金保障，订单全程可追踪。",
+  openGraph: {
+    title: "情谊电竞 - 三角洲行动陪玩",
+    description: "极速匹配高素质陪练，押金保障，订单全程可追踪。",
+  },
+};
 
 const fallbackNews = [
   { id: "guide", title: "新手下单指南", tag: "指南" },
