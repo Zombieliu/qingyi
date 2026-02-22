@@ -1,6 +1,7 @@
 "use client";
 import { t } from "@/lib/i18n/i18n-client";
 import {
+  Bell,
   Diamond,
   Gamepad2,
   Gift,
@@ -19,6 +20,7 @@ import SettingsPanel from "@/app/components/settings-panel";
 import { useBalance } from "@/app/components/balance-provider";
 import { useMantouBalance } from "@/app/components/mantou-provider";
 import { LevelCard } from "@/app/components/level-card";
+import { useUnreadCount } from "@/app/components/use-notifications";
 
 const grid = [
   { label: "联系客服", icon: Phone, color: "#6366f1", href: "/me/support" },
@@ -49,6 +51,7 @@ export default function Me() {
   const searchParams = useSearchParams();
   const { balance } = useBalance();
   const { balance: mantouBalance } = useMantouBalance();
+  const { count: unreadCount } = useUnreadCount();
   const [walletAddress, setWalletAddress] = useState(() => {
     if (typeof window === "undefined") return "";
     try {
@@ -159,6 +162,36 @@ export default function Me() {
           <span className="dl-chip dl-chip-soft">{t("ui.me.047")}</span>
         </div>
         <div className="dl-actions">
+          <button
+            className="dl-icon-circle"
+            onClick={() => router.push("/me/notifications")}
+            aria-label="消息中心"
+            style={{ position: "relative" }}
+          >
+            <Bell size={16} />
+            {unreadCount > 0 && (
+              <span
+                style={{
+                  position: "absolute",
+                  top: -2,
+                  right: -2,
+                  minWidth: 16,
+                  height: 16,
+                  borderRadius: 8,
+                  backgroundColor: "#ef4444",
+                  color: "#fff",
+                  fontSize: 10,
+                  fontWeight: 700,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  padding: "0 4px",
+                }}
+              >
+                {unreadCount > 99 ? "99+" : unreadCount}
+              </span>
+            )}
+          </button>
           <button className="dl-icon-circle" onClick={copyAddress} aria-label={t("me.001")}>
             <ShieldCheck size={16} />
           </button>

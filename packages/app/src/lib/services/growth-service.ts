@@ -146,6 +146,20 @@ async function checkAndUpgrade(memberId: string, currentPoints: number) {
     minPoints: qualifiedTier.minPoints,
   });
 
+  // Notify user of level up (non-blocking)
+  try {
+    const { notifyLevelUp } = await import("@/lib/services/notification-service");
+    if (member.userAddress) {
+      await notifyLevelUp({
+        userAddress: member.userAddress,
+        tierName: qualifiedTier.name,
+        level: qualifiedTier.level,
+      });
+    }
+  } catch {
+    // non-critical
+  }
+
   return {
     tierId: qualifiedTier.id,
     tierName: qualifiedTier.name,

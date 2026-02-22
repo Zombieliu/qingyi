@@ -421,6 +421,7 @@ export async function updateOrder(orderId: string, patch: Partial<AdminOrder>) {
     const mapped = mapOrder(row);
     await maybeCreditMantouForCompletedOrder(mapped);
     await maybeAwardGrowthPoints(mapped);
+    await maybeNotifyOrderUpdate(mapped, patch);
     return mapped;
   } catch {
     return null;
@@ -459,6 +460,35 @@ async function maybeAwardGrowthPoints(order: AdminOrder) {
     });
   } catch {
     // Ignore growth point failures to avoid blocking order updates.
+  }
+}
+
+async function maybeNotifyOrderUpdate(order: AdminOrder, patch: Partial<AdminOrder>) {
+  // Only notify on stage changes
+  if (!patch.stage) return;
+  try {
+    const { notifyOrderStatusChange, notifyCompanionNewOrder } =
+      await import("@/lib/services/notification-service");
+    // Notify user
+    if (order.userAddress) {
+      await notifyOrderStatusChange({
+        userAddress: order.userAddress,
+        orderId: order.id,
+        stage: order.stage,
+        item: order.item,
+      });
+    }
+    // Notify companion when order is confirmed or in progress
+    if (order.companionAddress && (patch.stage === "已确认" || patch.stage === "进行中")) {
+      await notifyCompanionNewOrder({
+        companionAddress: order.companionAddress,
+        orderId: order.id,
+        item: order.item,
+        amount: order.amount,
+      });
+    }
+  } catch {
+    // non-critical
   }
 }
 

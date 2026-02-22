@@ -493,3 +493,17 @@ model OrderReview {
   @@index([companionAddress])
   @@index([createdAt])
 }
+
+model Notification {
+  id          String   @id
+  userAddress String
+  type        String   // order_status, referral, system, growth
+  title       String
+  body        String
+  orderId     String?
+  read        Boolean  @default(false)
+  createdAt   DateTime
+
+  @@index([userAddress, read])
+  @@index([userAddress, createdAt])
+}

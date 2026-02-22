@@ -16,6 +16,7 @@ import { env } from "@/lib/env";
 const redis = env.UPSTASH_REDIS_REST_URL && env.UPSTASH_REDIS_REST_TOKEN ? Redis.fromEnv() : null;
 
 const CHANNEL_PREFIX = "rt:order:";
+const NOTIF_PREFIX = "rt:notif:";
 const CHANNEL_TTL = 300; // 5 minutes
 
 export type OrderEvent = {
@@ -60,4 +61,39 @@ export async function getLatestEvent(userAddress: string): Promise<OrderEvent | 
 
 function key(userAddress: string) {
   return `${CHANNEL_PREFIX}${userAddress}`;
+}
+
+// ─── Notification events ───
+
+export type NotificationEvent = {
+  type: "notification";
+  id: string;
+  title: string;
+  body: string;
+  notifType: string;
+  orderId?: string;
+  timestamp: number;
+};
+
+export async function publishNotificationEvent(userAddress: string, event: NotificationEvent) {
+  if (!redis || !userAddress) return;
+  const k = `${NOTIF_PREFIX}${userAddress}`;
+  try {
+    await redis.set(k, JSON.stringify(event), { ex: CHANNEL_TTL });
+  } catch {
+    // silently fail
+  }
+}
+
+export async function getLatestNotificationEvent(
+  userAddress: string
+): Promise<NotificationEvent | null> {
+  if (!redis || !userAddress) return null;
+  try {
+    const raw = await redis.get<string>(`${NOTIF_PREFIX}${userAddress}`);
+    if (!raw) return null;
+    return typeof raw === "string" ? JSON.parse(raw) : (raw as unknown as NotificationEvent);
+  } catch {
+    return null;
+  }
 }

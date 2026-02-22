@@ -1,5 +1,5 @@
 import { getUserSessionFromToken } from "@/lib/auth/user-auth";
-import { getLatestEvent } from "@/lib/realtime";
+import { getLatestEvent, getLatestNotificationEvent } from "@/lib/realtime";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -45,6 +45,7 @@ export async function GET(req: Request) {
 
   const encoder = new TextEncoder();
   let lastTimestamp = 0;
+  let lastNotifTimestamp = 0;
   let closed = false;
 
   const stream = new ReadableStream({
@@ -62,6 +63,14 @@ export async function GET(req: Request) {
           if (event && event.timestamp > lastTimestamp) {
             lastTimestamp = event.timestamp;
             controller.enqueue(encoder.encode(`event: order\ndata: ${JSON.stringify(event)}\n\n`));
+          }
+
+          const notifEvent = await getLatestNotificationEvent(address);
+          if (notifEvent && notifEvent.timestamp > lastNotifTimestamp) {
+            lastNotifTimestamp = notifEvent.timestamp;
+            controller.enqueue(
+              encoder.encode(`event: notification\ndata: ${JSON.stringify(notifEvent)}\n\n`)
+            );
           }
         } catch {
           // Redis error, skip this cycle
