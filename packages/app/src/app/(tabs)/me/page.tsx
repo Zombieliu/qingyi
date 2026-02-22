@@ -9,6 +9,7 @@ import { useEffect, useState } from "react";
 import SettingsPanel from "@/app/components/settings-panel";
 import { useBalance } from "@/app/components/balance-provider";
 import { useMantouBalance } from "@/app/components/mantou-provider";
+import { LevelCard } from "@/app/components/level-card";
 
 const grid = [
   { label: "联系客服", icon: Phone, color: "#6366f1", href: "/me/support" },
@@ -194,6 +195,8 @@ export default function Me() {
           ))}
         </div>
       </section>
+
+      <LevelCard />
 
       <Link href="/vip" className="member-card">
         <div className="member-top">

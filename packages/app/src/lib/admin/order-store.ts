@@ -420,6 +420,7 @@ export async function updateOrder(orderId: string, patch: Partial<AdminOrder>) {
     });
     const mapped = mapOrder(row);
     await maybeCreditMantouForCompletedOrder(mapped);
+    await maybeAwardGrowthPoints(mapped);
     return mapped;
   } catch {
     return null;
@@ -442,6 +443,22 @@ async function maybeCreditMantouForCompletedOrder(order: AdminOrder) {
     });
   } catch {
     // Ignore auto-credit failures to avoid blocking order updates.
+  }
+}
+
+async function maybeAwardGrowthPoints(order: AdminOrder) {
+  if (order.stage !== "已完成") return;
+  const address = (order.userAddress || "").trim();
+  if (!address) return;
+  try {
+    const { onOrderCompleted } = await import("@/lib/services/growth-service");
+    await onOrderCompleted({
+      userAddress: address,
+      amount: order.amount,
+      orderId: order.id,
+    });
+  } catch {
+    // Ignore growth point failures to avoid blocking order updates.
   }
 }
 

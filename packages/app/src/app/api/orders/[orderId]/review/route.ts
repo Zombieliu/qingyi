@@ -124,5 +124,13 @@ export async function POST(req: Request, { params }: RouteContext) {
     // non-critical
   }
 
+  // Award growth points for review (non-blocking)
+  try {
+    const { onReviewSubmitted } = await import("@/lib/services/growth-service");
+    await onReviewSubmitted({ userAddress: address, orderId });
+  } catch {
+    // non-critical
+  }
+
   return NextResponse.json({ review, rewarded: REVIEW_REWARD_MANTOU });
 }
