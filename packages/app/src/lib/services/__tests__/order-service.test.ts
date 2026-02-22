@@ -22,6 +22,11 @@ vi.mock("@/lib/chain/qy-chain", () => ({
   isChainOrdersEnabled: vi.fn(() => false),
 }));
 
+vi.mock("@/lib/chain/qy-chain-lite", () => ({
+  getCurrentAddress: vi.fn(() => ""),
+  isChainOrdersEnabled: vi.fn(() => false),
+}));
+
 import { normalizeOrder, buildMeta } from "../order-service";
 
 beforeEach(() => {
@@ -306,7 +311,7 @@ describe("createOrder", () => {
       status: "待处理",
       time: Date.now(),
     };
-    const result = await createOrder(order as Parameters<typeof createOrder>[0]);
+    const result = await createOrder(order as unknown as Parameters<typeof createOrder>[0]);
     expect(result).not.toBeNull();
   });
 });
@@ -360,7 +365,7 @@ describe("server mode functions", () => {
       ok: true,
       json: async () => makeServerOrder({ id: "ORD-1" }),
     });
-    const { getCurrentAddress } = await import("@/lib/chain/qy-chain");
+    const { getCurrentAddress } = await import("@/lib/chain/qy-chain-lite");
     (getCurrentAddress as ReturnType<typeof vi.fn>).mockReturnValue("0xabc");
     const mod = await import("../order-service");
     const result = await mod.fetchOrderDetail("ORD-1", "0xabc");
@@ -389,7 +394,7 @@ describe("server mode functions", () => {
       ok: true,
       json: async () => makeServerOrder({ id: "ORD-NEW" }),
     });
-    const { getCurrentAddress } = await import("@/lib/chain/qy-chain");
+    const { getCurrentAddress } = await import("@/lib/chain/qy-chain-lite");
     (getCurrentAddress as ReturnType<typeof vi.fn>).mockReturnValue("0xabc");
     const mod = await import("../order-service");
     const result = await mod.createOrder({
@@ -401,7 +406,7 @@ describe("server mode functions", () => {
       paymentStatus: "未支付",
       status: "待处理",
       time: Date.now(),
-    } as Parameters<typeof mod.createOrder>[0]);
+    } as unknown as unknown as Parameters<typeof mod.createOrder>[0]);
     expect(result).not.toBeNull();
   });
 
@@ -413,10 +418,12 @@ describe("server mode functions", () => {
       ok: true,
       json: async () => makeServerOrder({ id: "ORD-1", stage: "已确认" }),
     });
-    const { getCurrentAddress } = await import("@/lib/chain/qy-chain");
+    const { getCurrentAddress } = await import("@/lib/chain/qy-chain-lite");
     (getCurrentAddress as ReturnType<typeof vi.fn>).mockReturnValue("0xabc");
     const mod = await import("../order-service");
-    const result = await mod.patchOrder("ORD-1", { stage: "已确认" }, "0xabc");
+    const result = await mod.patchOrder("ORD-1", { stage: "已确认" } as Parameters<
+      typeof mod.patchOrder
+    >[1]);
     expect(result).not.toBeNull();
   });
 
@@ -429,11 +436,11 @@ describe("server mode functions", () => {
       status: 500,
       json: async () => ({ error: "fail" }),
     });
-    const { getCurrentAddress } = await import("@/lib/chain/qy-chain");
+    const { getCurrentAddress } = await import("@/lib/chain/qy-chain-lite");
     (getCurrentAddress as ReturnType<typeof vi.fn>).mockReturnValue("0xabc");
     const mod = await import("../order-service");
     await expect(
-      mod.patchOrder("ORD-1", { stage: "已确认" } as Parameters<typeof mod.patchOrder>[1], "0xabc")
+      mod.patchOrder("ORD-1", { stage: "已确认" } as Parameters<typeof mod.patchOrder>[1])
     ).rejects.toThrow();
   });
 
@@ -445,7 +452,7 @@ describe("server mode functions", () => {
       ok: true,
       json: async () => ({ ok: true }),
     });
-    const { getCurrentAddress } = await import("@/lib/chain/qy-chain");
+    const { getCurrentAddress } = await import("@/lib/chain/qy-chain-lite");
     (getCurrentAddress as ReturnType<typeof vi.fn>).mockReturnValue("0xabc");
     const mod = await import("../order-service");
     await expect(mod.deleteOrder("ORD-1", "0xabc")).resolves.not.toThrow();
@@ -459,9 +466,310 @@ describe("server mode functions", () => {
       ok: true,
       json: async () => ({ ok: true }),
     });
-    const { getCurrentAddress } = await import("@/lib/chain/qy-chain");
+    const { getCurrentAddress } = await import("@/lib/chain/qy-chain-lite");
     (getCurrentAddress as ReturnType<typeof vi.fn>).mockReturnValue("0xabc");
     const mod = await import("../order-service");
     await expect(mod.syncChainOrder("ORD-1", "0xabc", "digest")).resolves.not.toThrow();
+  });
+});
+
+// ─── Server mode: fetchOrdersWithMeta ───
+
+describe("server mode: fetchOrdersWithMeta", () => {
+  beforeEach(() => {
+    vi.resetModules();
+    vi.stubEnv("NEXT_PUBLIC_ORDER_SOURCE", "server");
+  });
+
+  it("returns empty when no address", async () => {
+    const { getCurrentAddress } = await import("@/lib/chain/qy-chain-lite");
+    (getCurrentAddress as ReturnType<typeof vi.fn>).mockReturnValue("");
+    const mod = await import("../order-service");
+    const result = await mod.fetchOrdersWithMeta();
+    expect(result.items).toHaveLength(0);
+    expect(result.meta.fromCache).toBe(true);
+  });
+
+  it("returns fresh cache when available", async () => {
+    const { getCurrentAddress } = await import("@/lib/chain/qy-chain-lite");
+    (getCurrentAddress as ReturnType<typeof vi.fn>).mockReturnValue("0xabc");
+    const { readCache } = await import("@/lib/shared/client-cache");
+    (readCache as ReturnType<typeof vi.fn>).mockReturnValue({
+      value: [{ id: "cached-1" }],
+      fresh: true,
+    });
+    const mod = await import("../order-service");
+    const result = await mod.fetchOrdersWithMeta();
+    expect(result.meta.fromCache).toBe(true);
+    expect(result.meta.stale).toBe(false);
+  });
+
+  it("fetches from API when cache stale", async () => {
+    const { getCurrentAddress } = await import("@/lib/chain/qy-chain-lite");
+    (getCurrentAddress as ReturnType<typeof vi.fn>).mockReturnValue("0xabc");
+    const { readCache } = await import("@/lib/shared/client-cache");
+    (readCache as ReturnType<typeof vi.fn>).mockReturnValue({
+      value: [{ id: "stale-1" }],
+      fresh: false,
+    });
+    const { fetchWithUserAuth } = await import("@/lib/auth/user-auth-client");
+    (fetchWithUserAuth as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: true,
+      json: async () => ({ items: [makeServerOrder({ id: "fresh-1" })] }),
+    });
+    const mod = await import("../order-service");
+    const result = await mod.fetchOrdersWithMeta();
+    expect(result.meta.fromCache).toBe(false);
+  });
+
+  it("returns stale cache on API error", async () => {
+    const { getCurrentAddress } = await import("@/lib/chain/qy-chain-lite");
+    (getCurrentAddress as ReturnType<typeof vi.fn>).mockReturnValue("0xabc");
+    const { readCache } = await import("@/lib/shared/client-cache");
+    (readCache as ReturnType<typeof vi.fn>).mockReturnValue({
+      value: [{ id: "stale-1" }],
+      fresh: false,
+    });
+    const { fetchWithUserAuth } = await import("@/lib/auth/user-auth-client");
+    (fetchWithUserAuth as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: false,
+      status: 500,
+      headers: new Headers(),
+    });
+    const mod = await import("../order-service");
+    const result = await mod.fetchOrdersWithMeta();
+    expect(result.meta.fromCache).toBe(true);
+    expect(result.meta.error).toContain("500");
+  });
+
+  it("fetches with force bypassing cache", async () => {
+    const { getCurrentAddress } = await import("@/lib/chain/qy-chain-lite");
+    (getCurrentAddress as ReturnType<typeof vi.fn>).mockReturnValue("0xabc");
+    const { fetchWithUserAuth } = await import("@/lib/auth/user-auth-client");
+    (fetchWithUserAuth as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: true,
+      json: async () => ({ items: [makeServerOrder()] }),
+    });
+    const mod = await import("../order-service");
+    const result = await mod.fetchOrdersWithMeta({ force: true });
+    expect(result.meta.fromCache).toBe(false);
+  });
+});
+
+// ─── Server mode: fetchPublicOrdersWithMeta ───
+
+describe("server mode: fetchPublicOrdersWithMeta", () => {
+  beforeEach(() => {
+    vi.resetModules();
+    vi.stubEnv("NEXT_PUBLIC_ORDER_SOURCE", "server");
+  });
+
+  it("returns empty when no address", async () => {
+    const { getCurrentAddress } = await import("@/lib/chain/qy-chain-lite");
+    (getCurrentAddress as ReturnType<typeof vi.fn>).mockReturnValue("");
+    const mod = await import("../order-service");
+    const result = await mod.fetchPublicOrdersWithMeta();
+    expect(result.items).toHaveLength(0);
+  });
+
+  it("returns fresh cache", async () => {
+    const { getCurrentAddress } = await import("@/lib/chain/qy-chain-lite");
+    (getCurrentAddress as ReturnType<typeof vi.fn>).mockReturnValue("0xabc");
+    const { readCache } = await import("@/lib/shared/client-cache");
+    (readCache as ReturnType<typeof vi.fn>).mockReturnValue({
+      value: { items: [{ id: "c1" }], nextCursor: null },
+      fresh: true,
+    });
+    const mod = await import("../order-service");
+    const result = await mod.fetchPublicOrdersWithMeta();
+    expect(result.meta.fromCache).toBe(true);
+  });
+
+  it("fetches from API on cache miss", async () => {
+    const { getCurrentAddress } = await import("@/lib/chain/qy-chain-lite");
+    (getCurrentAddress as ReturnType<typeof vi.fn>).mockReturnValue("0xabc");
+    const { readCache } = await import("@/lib/shared/client-cache");
+    (readCache as ReturnType<typeof vi.fn>).mockReturnValue(null);
+    const { fetchWithUserAuth } = await import("@/lib/auth/user-auth-client");
+    (fetchWithUserAuth as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: true,
+      json: async () => ({ items: [makeServerOrder()], nextCursor: "c2" }),
+    });
+    const mod = await import("../order-service");
+    const result = await mod.fetchPublicOrdersWithMeta();
+    expect(result.meta.fromCache).toBe(false);
+    expect(result.nextCursor).toBe("c2");
+  });
+
+  it("handles 401/403 errors", async () => {
+    const { getCurrentAddress } = await import("@/lib/chain/qy-chain-lite");
+    (getCurrentAddress as ReturnType<typeof vi.fn>).mockReturnValue("0xabc");
+    const { readCache } = await import("@/lib/shared/client-cache");
+    (readCache as ReturnType<typeof vi.fn>).mockReturnValue(null);
+    const { fetchWithUserAuth } = await import("@/lib/auth/user-auth-client");
+    (fetchWithUserAuth as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: false,
+      status: 401,
+    });
+    const mod = await import("../order-service");
+    const result = await mod.fetchPublicOrdersWithMeta();
+    expect(result.items).toHaveLength(0);
+    expect(result.meta.error).toContain("401");
+  });
+
+  it("returns stale cache on server error", async () => {
+    const { getCurrentAddress } = await import("@/lib/chain/qy-chain-lite");
+    (getCurrentAddress as ReturnType<typeof vi.fn>).mockReturnValue("0xabc");
+    const { readCache } = await import("@/lib/shared/client-cache");
+    (readCache as ReturnType<typeof vi.fn>).mockReturnValue({
+      value: { items: [{ id: "stale" }], nextCursor: null },
+      fresh: false,
+    });
+    const { fetchWithUserAuth } = await import("@/lib/auth/user-auth-client");
+    (fetchWithUserAuth as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: false,
+      status: 500,
+      headers: new Headers(),
+    });
+    const mod = await import("../order-service");
+    const result = await mod.fetchPublicOrdersWithMeta();
+    expect(result.meta.fromCache).toBe(true);
+  });
+
+  it("passes cursor to API", async () => {
+    const { getCurrentAddress } = await import("@/lib/chain/qy-chain-lite");
+    (getCurrentAddress as ReturnType<typeof vi.fn>).mockReturnValue("0xabc");
+    const { readCache } = await import("@/lib/shared/client-cache");
+    (readCache as ReturnType<typeof vi.fn>).mockReturnValue(null);
+    const { fetchWithUserAuth } = await import("@/lib/auth/user-auth-client");
+    (fetchWithUserAuth as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: true,
+      json: async () => ({ items: [], nextCursor: null }),
+    });
+    const mod = await import("../order-service");
+    await mod.fetchPublicOrdersWithMeta("cursor123");
+    expect(fetchWithUserAuth).toHaveBeenCalledWith(
+      expect.stringContaining("cursor=cursor123"),
+      expect.anything(),
+      "0xabc"
+    );
+  });
+});
+
+// ─── Server mode: createOrder error ───
+
+describe("server mode: createOrder errors", () => {
+  it("throws on API failure", async () => {
+    vi.resetModules();
+    vi.stubEnv("NEXT_PUBLIC_ORDER_SOURCE", "server");
+    const { fetchWithUserAuth } = await import("@/lib/auth/user-auth-client");
+    (fetchWithUserAuth as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: false,
+      status: 400,
+      json: async () => ({ error: "bad request" }),
+    });
+    const { getCurrentAddress } = await import("@/lib/chain/qy-chain-lite");
+    (getCurrentAddress as ReturnType<typeof vi.fn>).mockReturnValue("0xabc");
+    const mod = await import("../order-service");
+    await expect(
+      mod.createOrder({
+        id: "ORD-1",
+        user: "u",
+        item: "i",
+        amount: 1,
+        currency: "CNY",
+        paymentStatus: "未支付",
+        status: "待处理",
+        time: Date.now(),
+      } as unknown as Parameters<typeof mod.createOrder>[0])
+    ).rejects.toThrow("bad request");
+  });
+
+  it("throws on address mismatch", async () => {
+    vi.resetModules();
+    vi.stubEnv("NEXT_PUBLIC_ORDER_SOURCE", "server");
+    const { getCurrentAddress } = await import("@/lib/chain/qy-chain-lite");
+    (getCurrentAddress as ReturnType<typeof vi.fn>).mockReturnValue("0xdifferent");
+    const mod = await import("../order-service");
+    await expect(
+      mod.createOrder({
+        id: "ORD-1",
+        user: "u",
+        item: "i",
+        amount: 1,
+        currency: "CNY",
+        paymentStatus: "未支付",
+        status: "待处理",
+        time: Date.now(),
+        userAddress: "0xabc",
+      } as unknown as Parameters<typeof mod.createOrder>[0])
+    ).rejects.toThrow("mismatch");
+  });
+});
+
+// ─── Server mode: deleteOrder/syncChainOrder errors ───
+
+describe("server mode: deleteOrder errors", () => {
+  it("throws on address mismatch", async () => {
+    vi.resetModules();
+    vi.stubEnv("NEXT_PUBLIC_ORDER_SOURCE", "server");
+    const { getCurrentAddress } = await import("@/lib/chain/qy-chain-lite");
+    (getCurrentAddress as ReturnType<typeof vi.fn>).mockReturnValue("0xdifferent");
+    const mod = await import("../order-service");
+    await expect(mod.deleteOrder("ORD-1", "0xabc")).rejects.toThrow("mismatch");
+  });
+});
+
+describe("server mode: syncChainOrder errors", () => {
+  it("throws on API failure", async () => {
+    vi.resetModules();
+    vi.stubEnv("NEXT_PUBLIC_ORDER_SOURCE", "server");
+    const { fetchWithUserAuth } = await import("@/lib/auth/user-auth-client");
+    (fetchWithUserAuth as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: false,
+      status: 500,
+      json: async () => ({ error: "sync failed" }),
+    });
+    const { getCurrentAddress } = await import("@/lib/chain/qy-chain-lite");
+    (getCurrentAddress as ReturnType<typeof vi.fn>).mockReturnValue("0xabc");
+    const mod = await import("../order-service");
+    await expect(mod.syncChainOrder("ORD-1", "0xabc")).rejects.toThrow();
+  });
+
+  it("throws on address mismatch", async () => {
+    vi.resetModules();
+    vi.stubEnv("NEXT_PUBLIC_ORDER_SOURCE", "server");
+    const { getCurrentAddress } = await import("@/lib/chain/qy-chain-lite");
+    (getCurrentAddress as ReturnType<typeof vi.fn>).mockReturnValue("0xdifferent");
+    const mod = await import("../order-service");
+    await expect(mod.syncChainOrder("ORD-1", "0xabc")).rejects.toThrow("mismatch");
+  });
+});
+
+// ─── patchOrder local mode ───
+
+describe("patchOrder local mode", () => {
+  it("updates order locally", async () => {
+    vi.resetModules();
+    vi.stubEnv("NEXT_PUBLIC_ORDER_SOURCE", "local");
+    const mod = await import("../order-service");
+    await mod.patchOrder("ORD-1", { status: "已确认" } as Parameters<typeof mod.patchOrder>[1]);
+  });
+});
+
+// ─── patchOrder server mode: companion mismatch ───
+
+describe("server mode: patchOrder companion mismatch", () => {
+  it("throws on companion address mismatch", async () => {
+    vi.resetModules();
+    vi.stubEnv("NEXT_PUBLIC_ORDER_SOURCE", "server");
+    const { getCurrentAddress } = await import("@/lib/chain/qy-chain-lite");
+    (getCurrentAddress as ReturnType<typeof vi.fn>).mockReturnValue("0xdifferent");
+    const mod = await import("../order-service");
+    await expect(
+      mod.patchOrder("ORD-1", { companionAddress: "0xcomp" } as Parameters<
+        typeof mod.patchOrder
+      >[1])
+    ).rejects.toThrow("mismatch");
   });
 });

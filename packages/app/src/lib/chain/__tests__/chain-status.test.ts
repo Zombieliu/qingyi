@@ -96,3 +96,25 @@ describe("deriveOrderStatus", () => {
     }
   });
 });
+
+// ─── mergeChainStatus edge cases ───
+import { mergeChainStatus } from "../chain-status";
+
+describe("mergeChainStatus", () => {
+  it("returns undefined when both undefined", () => {
+    expect(mergeChainStatus(undefined, undefined)).toBeUndefined();
+  });
+
+  it("returns remote when local undefined", () => {
+    expect(mergeChainStatus(undefined, 3)).toBe(3);
+  });
+
+  it("returns local when remote undefined", () => {
+    expect(mergeChainStatus(2, undefined)).toBe(2);
+  });
+
+  it("returns max of both", () => {
+    expect(mergeChainStatus(2, 5)).toBe(5);
+    expect(mergeChainStatus(5, 2)).toBe(5);
+  });
+});

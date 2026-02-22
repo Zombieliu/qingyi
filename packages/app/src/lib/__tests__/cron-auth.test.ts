@@ -44,11 +44,29 @@ describe("isAuthorizedCron (no secret)", () => {
   it("rejects in production when no secret configured", async () => {
     vi.doMock("@/lib/env", () => ({ env: { CRON_SECRET: "" } }));
     const origEnv = process.env.NODE_ENV;
+    // @ts-expect-error test override
     process.env.NODE_ENV = "production";
     const { isAuthorizedCron: cronAuth } = await import("../cron-auth");
     const req = makeRequest({});
     // With empty secret in production, should reject
     expect(cronAuth(req)).toBe(false);
+    // @ts-expect-error test override
+    process.env.NODE_ENV = origEnv;
+    vi.doUnmock("@/lib/env");
+  });
+});
+
+describe("isAuthorizedCron (dev mode, no secret)", () => {
+  it("allows in dev when no secret configured", async () => {
+    vi.resetModules();
+    vi.doMock("@/lib/env", () => ({ env: { CRON_SECRET: "" } }));
+    const origEnv = process.env.NODE_ENV;
+    // @ts-expect-error test override
+    process.env.NODE_ENV = "development";
+    const { isAuthorizedCron: cronAuth } = await import("../cron-auth");
+    const req = makeRequest({});
+    expect(cronAuth(req)).toBe(true);
+    // @ts-expect-error test override
     process.env.NODE_ENV = origEnv;
     vi.doUnmock("@/lib/env");
   });

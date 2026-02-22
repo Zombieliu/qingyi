@@ -269,3 +269,30 @@ describe("getUserLevelProgress", () => {
     expect(progress.pointsToNext).toBe(100);
   });
 });
+
+describe("notification failure in auto-upgrade", () => {
+  it("does not fail when notification import throws", async () => {
+    // Mock notification-service to throw
+    vi.doMock("@/lib/services/notification-service", () => {
+      throw new Error("module not found");
+    });
+
+    mockFindFirst.mockResolvedValue({ ...baseMember, points: 80 });
+    mockUpdate
+      .mockResolvedValueOnce({ ...baseMember, points: 130 })
+      .mockResolvedValueOnce({ ...baseMember, points: 130, tierId: "T1", tierName: "白银" });
+    mockFindMany.mockResolvedValue(tiers);
+    mockFindUnique.mockResolvedValue({ ...baseMember, points: 130, userAddress: "0xabc" });
+
+    const result = await addPointsAndUpgrade({
+      userAddress: "0xabc",
+      points: 50,
+      reason: "test",
+    });
+
+    // Should still succeed despite notification failure
+    expect(result!.upgraded).not.toBeNull();
+
+    vi.doUnmock("@/lib/services/notification-service");
+  });
+});

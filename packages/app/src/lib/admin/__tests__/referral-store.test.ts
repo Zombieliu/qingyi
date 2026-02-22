@@ -202,3 +202,99 @@ describe("queryReferrals", () => {
     expect(result.items).toHaveLength(1);
   });
 });
+
+describe("getLeaderboard", () => {
+  it("returns spend leaderboard", async () => {
+    mockGroupBy.mockResolvedValue([
+      { userAddress: "0xuser1", _sum: { amount: 500 } },
+      { userAddress: "0xuser2", _sum: { amount: 300 } },
+    ]);
+    const { getLeaderboard } = await import("../referral-store");
+    const entries = await getLeaderboard("spend", "all", 10);
+    expect(entries).toHaveLength(2);
+    expect(entries[0].rank).toBe(1);
+    expect(entries[0].value).toBe(500);
+  });
+
+  it("returns companion leaderboard", async () => {
+    mockGroupBy.mockResolvedValue([
+      { companionAddress: "0xcomp1", _count: { id: 10 }, _sum: { amount: 1000 } },
+    ]);
+    const { getLeaderboard } = await import("../referral-store");
+    const entries = await getLeaderboard("companion", "week", 10);
+    expect(entries).toHaveLength(1);
+    expect(entries[0].value).toBe(10);
+  });
+
+  it("returns referral leaderboard", async () => {
+    mockGroupBy.mockResolvedValue([{ inviterAddress: "0xinv1", _count: { id: 5 } }]);
+    const { getLeaderboard } = await import("../referral-store");
+    const entries = await getLeaderboard("referral", "month", 10);
+    expect(entries).toHaveLength(1);
+    expect(entries[0].value).toBe(5);
+  });
+});
+
+describe("updateReferralConfig", () => {
+  it("upserts config", async () => {
+    mockUpsert.mockResolvedValue({
+      id: "default",
+      mode: "percent",
+      fixedInviter: 100,
+      fixedInvitee: 50,
+      percentInviter: 0.1,
+      percentInvitee: 0.05,
+      enabled: true,
+      updatedAt: new Date(),
+    });
+    const { updateReferralConfig } = await import("../referral-store");
+    const config = await updateReferralConfig({ mode: "percent", fixedInviter: 100 });
+    expect(config.mode).toBe("percent");
+    expect(mockUpsert).toHaveBeenCalled();
+  });
+});
+
+describe("processReferralReward percent mode", () => {
+  it("calculates percent rewards", async () => {
+    mockFindUnique
+      .mockResolvedValueOnce({ ...baseReferral, status: "pending" })
+      .mockResolvedValueOnce({
+        id: "default",
+        mode: "percent",
+        fixedInviter: 50,
+        fixedInvitee: 30,
+        percentInviter: 0.1,
+        percentInvitee: 0.05,
+        enabled: true,
+        updatedAt: new Date(),
+      });
+    mockUpdate.mockResolvedValue({ ...baseReferral, status: "rewarded" });
+
+    const { processReferralReward } = await import("../referral-store");
+    const result = await processReferralReward("ORD-1", "0xinvitee", 1000);
+    expect(result).not.toBeNull();
+    expect(result!.inviterReward).toBe(100); // 1000 * 0.1
+    expect(result!.inviteeReward).toBe(50); // 1000 * 0.05
+  });
+});
+
+describe("processReferralReward disabled", () => {
+  it("returns null when config disabled", async () => {
+    mockFindUnique
+      .mockResolvedValueOnce({ ...baseReferral, status: "pending" })
+      .mockResolvedValueOnce({
+        id: "default",
+        mode: "fixed",
+        fixedInviter: 50,
+        fixedInvitee: 30,
+        percentInviter: 0.05,
+        percentInvitee: 0.03,
+        enabled: false,
+        updatedAt: null,
+      });
+
+    const { processReferralReward } = await import("../referral-store");
+    const result = await processReferralReward("ORD-1", "0xinvitee", 100);
+    expect(result).toBeNull();
+  });
+});

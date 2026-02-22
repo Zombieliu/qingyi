@@ -362,3 +362,72 @@ describe("requireUserAuth", () => {
     expect(mockSessionStore.removeUserSessionByHash).toHaveBeenCalled();
   });
 });
+
+describe("requireUserAuth edge cases", () => {
+  it("returns 400 for invalid address with bearer token", async () => {
+    const session = { tokenHash: "h", address: VALID_ADDR, expiresAt: Date.now() + 100000 };
+    mockSessionStore.getUserSessionByHash.mockResolvedValue(session);
+    mockSessionStore.updateUserSessionByHash.mockResolvedValue(undefined);
+    const req = makeRequest({ authorization: "Bearer my-token" });
+    const result = await requireUserAuth(req, { intent: "test", address: "invalid" });
+    expect(result.ok).toBe(false);
+  });
+
+  it("returns 401 for bearer token address mismatch", async () => {
+    const other = "0x" + "b".repeat(64);
+    const session = { tokenHash: "h", address: VALID_ADDR, expiresAt: Date.now() + 100000 };
+    mockSessionStore.getUserSessionByHash.mockResolvedValue(session);
+    mockSessionStore.updateUserSessionByHash.mockResolvedValue(undefined);
+    mockSessionStore.removeUserSessionByHash.mockResolvedValue(true);
+    const req = makeRequest({ authorization: "Bearer my-token" });
+    const result = await requireUserAuth(req, { intent: "test", address: other });
+    expect(result.ok).toBe(false);
+  });
+
+  it("returns 400 for invalid address with cookie session", async () => {
+    mockCookieStore.get.mockReturnValue({ value: "cookie-token" });
+    const session = { tokenHash: "h", address: VALID_ADDR, expiresAt: Date.now() + 100000 };
+    mockSessionStore.getUserSessionByHash.mockResolvedValue(session);
+    mockSessionStore.updateUserSessionByHash.mockResolvedValue(undefined);
+    const req = makeRequest({ origin: "https://example.com", host: "example.com" });
+    const result = await requireUserAuth(req, { intent: "test", address: "bad" });
+    expect(result.ok).toBe(false);
+  });
+});
+
+describe("setUserSessionCookie", () => {
+  it("sets cookie on response", async () => {
+    const { setUserSessionCookie } = await import("../user-auth");
+    const res = { cookies: { set: vi.fn() } } as unknown as import("next/server").NextResponse;
+    setUserSessionCookie(res, "token123", Date.now() + 86400_000);
+    expect(res.cookies.set).toHaveBeenCalledWith(
+      expect.objectContaining({ name: "user_session", value: "token123" })
+    );
+  });
+});
+
+describe("clearUserSessionCookie", () => {
+  it("clears cookie on response", async () => {
+    const { clearUserSessionCookie } = await import("../user-auth");
+    const res = { cookies: { set: vi.fn() } } as unknown as import("next/server").NextResponse;
+    clearUserSessionCookie(res);
+    expect(res.cookies.set).toHaveBeenCalledWith(
+      expect.objectContaining({ name: "user_session", value: "" })
+    );
+  });
+});
+
+describe("getUserSessionFromToken expired", () => {
+  it("removes expired session and returns null", async () => {
+    mockSessionStore.getUserSessionByHash.mockResolvedValue({
+      tokenHash: "h",
+      address: VALID_ADDR,
+      expiresAt: Date.now() - 1000, // expired
+    });
+    mockSessionStore.removeUserSessionByHash.mockResolvedValue(true);
+    const { getUserSessionFromToken } = await import("../user-auth");
+    const result = await getUserSessionFromToken("expired-token");
+    expect(result).toBeNull();
+    expect(mockSessionStore.removeUserSessionByHash).toHaveBeenCalled();
+  });
+});

@@ -322,3 +322,92 @@ describe("syncChainOrders", () => {
     expect(result.updated).toBe(0);
   });
 });
+
+// ─── findChainOrder / findChainOrderDirect / clearCache / getCacheStats ───
+
+describe("findChainOrder", () => {
+  it("delegates to findChainOrderCached", async () => {
+    const { findChainOrderCached } = await import("../chain-order-cache");
+    (findChainOrderCached as ReturnType<typeof vi.fn>).mockResolvedValue({ orderId: "123" });
+    const { findChainOrder } = await import("../chain-sync");
+    const result = await findChainOrder("123");
+    expect(result).toEqual({ orderId: "123" });
+  });
+
+  it("passes forceRefresh", async () => {
+    const { findChainOrderCached } = await import("../chain-order-cache");
+    (findChainOrderCached as ReturnType<typeof vi.fn>).mockResolvedValue(null);
+    const { findChainOrder } = await import("../chain-sync");
+    await findChainOrder("123", true);
+    expect(findChainOrderCached).toHaveBeenCalledWith("123", { forceRefresh: true });
+  });
+});
+
+describe("findChainOrderDirect", () => {
+  it("fetches all orders and finds by id", async () => {
+    mockFetchChainOrdersAdmin.mockResolvedValue([{ orderId: "100" }, { orderId: "200" }]);
+    const { findChainOrderDirect } = await import("../chain-sync");
+    const result = await findChainOrderDirect("200");
+    expect(result).toEqual({ orderId: "200" });
+  });
+
+  it("returns null when not found", async () => {
+    mockFetchChainOrdersAdmin.mockResolvedValue([]);
+    const { findChainOrderDirect } = await import("../chain-sync");
+    const result = await findChainOrderDirect("999");
+    expect(result).toBeNull();
+  });
+});
+
+describe("syncChainOrder", () => {
+  it("upserts found chain order", async () => {
+    const { findChainOrderCached } = await import("../chain-order-cache");
+    (findChainOrderCached as ReturnType<typeof vi.fn>).mockResolvedValue({
+      orderId: "123",
+      buyer: "0xbuyer",
+      companion: "0xcomp",
+      amount: "10000",
+      status: 1,
+      paymentMode: "sui_escrow",
+    });
+    mockGetOrderById.mockResolvedValue(null);
+    mockAddOrder.mockResolvedValue({});
+    const { syncChainOrder } = await import("../chain-sync");
+    const result = await syncChainOrder("123");
+    expect(result).not.toBeNull();
+  });
+
+  it("returns null when chain order not found", async () => {
+    const { findChainOrderCached } = await import("../chain-order-cache");
+    (findChainOrderCached as ReturnType<typeof vi.fn>).mockResolvedValue(null);
+    const { syncChainOrder } = await import("../chain-sync");
+    const result = await syncChainOrder("999");
+    expect(result).toBeNull();
+  });
+});
+
+describe("clearChainOrderCache", () => {
+  it("calls clearCache", async () => {
+    const { clearChainOrderCache } = await import("../chain-sync");
+    clearChainOrderCache();
+    const { clearCache } = await import("../chain-order-cache");
+    expect(clearCache).toHaveBeenCalled();
+  });
+});
+
+describe("getChainOrderCacheStats", () => {
+  it("returns cache stats", async () => {
+    const { getChainOrderCacheStats } = await import("../chain-sync");
+    const stats = getChainOrderCacheStats();
+    expect(stats).toEqual({ hits: 0, misses: 0 });
+  });
+});
+
+describe("syncChainOrders error handling", () => {
+  it("throws on fetch error", async () => {
+    mockGetChainEventCursor.mockResolvedValue(null);
+    mockFetchChainOrdersAdminWithCursor.mockRejectedValue(new Error("network error"));
+    const { syncChainOrders } = await import("../chain-sync");
+    await expect(syncChainOrders()).rejects.toThrow("network error");
+  });
+});
