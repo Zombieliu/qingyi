@@ -7,7 +7,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { fetchOrderDetail } from "@/lib/services/order-service";
 import { fetchWithUserAuth } from "@/lib/auth/user-auth-client";
-import { getCurrentAddress } from "@/lib/chain/qy-chain";
+import { getCurrentAddress } from "@/lib/chain/qy-chain-lite";
 import type { LocalOrder } from "@/lib/services/order-store";
 import { StateBlock } from "@/app/components/state-block";
 import { formatFullDateTime } from "@/lib/shared/date-utils";

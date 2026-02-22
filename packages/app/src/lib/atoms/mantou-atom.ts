@@ -2,7 +2,7 @@
 
 import { atom, useAtom, useSetAtom } from "jotai";
 import { useCallback } from "react";
-import { getCurrentAddress } from "@/lib/chain/qy-chain";
+import { getCurrentAddress } from "@/lib/chain/qy-chain-lite";
 import { readCache, writeCache } from "@/lib/shared/client-cache";
 import { fetchWithUserAuth } from "@/lib/auth/user-auth-client";
 

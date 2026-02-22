@@ -6,7 +6,7 @@ import { ArrowLeft, TicketPercent, Sparkles } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { readCache, writeCache } from "@/lib/shared/client-cache";
 import { StateBlock } from "@/app/components/state-block";
-import { getCurrentAddress } from "@/lib/chain/qy-chain";
+import { getCurrentAddress } from "@/lib/chain/qy-chain-lite";
 import { fetchWithUserAuth } from "@/lib/auth/user-auth-client";
 
 type Coupon = {

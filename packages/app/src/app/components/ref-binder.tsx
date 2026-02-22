@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { getCurrentAddress } from "@/lib/chain/qy-chain";
+import { getCurrentAddress } from "@/lib/chain/qy-chain-lite";
 import { fetchWithUserAuth } from "@/lib/auth/user-auth-client";
 
 const REF_STORAGE_KEY = "qy_ref_code";

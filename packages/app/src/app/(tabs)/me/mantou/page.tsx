@@ -4,7 +4,7 @@ import { t } from "@/lib/i18n/i18n-client";
 import Link from "next/link";
 import { ArrowLeft, Wallet } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { getCurrentAddress } from "@/lib/chain/qy-chain";
+import { getCurrentAddress } from "@/lib/chain/qy-chain-lite";
 import { useMantouBalance } from "@/app/components/mantou-provider";
 import { readCache, writeCache } from "@/lib/shared/client-cache";
 import { fetchWithUserAuth } from "@/lib/auth/user-auth-client";

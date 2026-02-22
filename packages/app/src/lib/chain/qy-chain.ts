@@ -15,14 +15,27 @@ import {
   BrowserPasskeyProvider,
   type BrowserPasswordProviderOptions,
 } from "@mysten/sui/keypairs/passkey";
-import { PASSKEY_STORAGE_KEY } from "@/app/components/passkey-wallet";
 import { DAPP_HUB_ID, DAPP_HUB_INITIAL_SHARED_VERSION, PACKAGE_ID } from "contracts/deployment";
 import { buildAuthMessage } from "../auth/auth-message";
 
-type StoredWallet = {
-  address: string;
-  publicKey: string;
-};
+// Re-export lightweight utilities so existing `import { getCurrentAddress } from "qy-chain"` still works
+// but new code should import from qy-chain-lite directly to avoid pulling SUI SDK
+export {
+  getCurrentAddress,
+  isChainOrdersEnabled,
+  isVisualTestMode,
+  createChainOrderId,
+  getStoredWallet,
+  PASSKEY_STORAGE_KEY,
+} from "./qy-chain-lite";
+import {
+  getCurrentAddress,
+  isChainOrdersEnabled,
+  isVisualTestMode,
+  getStoredWallet,
+  PASSKEY_STORAGE_KEY,
+  type StoredWallet,
+} from "./qy-chain-lite";
 
 export type ChainOrder = {
   orderId: string;
@@ -46,8 +59,6 @@ export type ChainOrder = {
 };
 
 const RP_NAME = "情谊电竞";
-const CHAIN_ORDERS_FLAG = process.env.NEXT_PUBLIC_CHAIN_ORDERS === "1";
-const VISUAL_TEST_FLAG = process.env.NEXT_PUBLIC_VISUAL_TEST === "1";
 const EVENT_LIMIT = Number(process.env.NEXT_PUBLIC_QY_EVENT_LIMIT || "200");
 const EVENT_MIN_INTERVAL_MS = Number(process.env.NEXT_PUBLIC_QY_EVENT_MIN_INTERVAL_MS || "60000");
 const CHAIN_SPONSOR_MODE = (process.env.NEXT_PUBLIC_CHAIN_SPONSOR || "auto").toLowerCase();
@@ -56,13 +67,6 @@ let cachedDubhePackageId: string | null = null;
 let cachedOrders: ChainOrder[] | null = null;
 let lastFetchMs = 0;
 let inFlightFetch: Promise<ChainOrder[]> | null = null;
-
-export function isVisualTestMode(): boolean {
-  if (VISUAL_TEST_FLAG) return true;
-  if (typeof window === "undefined") return false;
-  const flags = window as { __PW_VISUAL_TEST__?: boolean; __VISUAL_TEST__?: boolean };
-  return Boolean(flags.__PW_VISUAL_TEST__ || flags.__VISUAL_TEST__);
-}
 
 function isSponsorEnabled() {
   return !["0", "off", "false"].includes(CHAIN_SPONSOR_MODE);
@@ -85,34 +89,6 @@ function getProviderOptions(): BrowserPasswordProviderOptions {
       userVerification: "preferred",
     },
   };
-}
-
-function getStoredWallet(): StoredWallet {
-  if (typeof window === "undefined") {
-    throw new Error("仅支持在浏览器端使用 Passkey");
-  }
-  const raw = localStorage.getItem(PASSKEY_STORAGE_KEY);
-  if (!raw) {
-    throw new Error("未找到 Passkey 钱包，请先登录");
-  }
-  let parsed: StoredWallet;
-  try {
-    parsed = JSON.parse(raw) as StoredWallet;
-  } catch {
-    throw new Error("Passkey 数据损坏，请重新登录");
-  }
-  if (!parsed.address || !parsed.publicKey) {
-    throw new Error("Passkey 数据不完整，请重新登录");
-  }
-  return parsed;
-}
-
-export function getCurrentAddress(): string {
-  try {
-    return getStoredWallet().address;
-  } catch {
-    return "";
-  }
 }
 
 async function sha256Base64(value: string) {
@@ -416,10 +392,6 @@ async function executeTransaction(tx: Transaction) {
   }
 }
 
-export function isChainOrdersEnabled(): boolean {
-  return CHAIN_ORDERS_FLAG || isVisualTestMode();
-}
-
 export function getChainDebugInfo() {
   return {
     packageId: resolvePackageId(),
@@ -435,12 +407,6 @@ export function getChainDebugInfo() {
     ruleSetId: getRuleSetId(),
     defaultCompanion: getDefaultCompanion(),
   };
-}
-
-export function createChainOrderId(): string {
-  const now = Date.now();
-  const rand = Math.floor(Math.random() * 1000);
-  return String(now * 1000 + rand);
 }
 
 export async function createOrderOnChain(params: {

@@ -8,7 +8,7 @@ import { PASSKEY_STORAGE_KEY } from "@/app/components/passkey-wallet";
 import { readCache, writeCache } from "@/lib/shared/client-cache";
 import { fetchWithUserAuth } from "@/lib/auth/user-auth-client";
 import type { AdminMember, AdminMembershipTier } from "@/lib/admin/admin-types";
-import { isVisualTestMode } from "@/lib/chain/qy-chain";
+import { isVisualTestMode } from "@/lib/chain/qy-chain-lite";
 import { StateBlock } from "@/app/components/state-block";
 
 const fallbackPerks = [

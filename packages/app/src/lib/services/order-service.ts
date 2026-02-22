@@ -3,7 +3,7 @@
 import { addOrder, loadOrders, removeOrder, updateOrder, type LocalOrder } from "./order-store";
 import { readCache, writeCache } from "@/lib/shared/client-cache";
 import { fetchWithUserAuth } from "@/lib/auth/user-auth-client";
-import { getCurrentAddress, isChainOrdersEnabled } from "@/lib/chain/qy-chain";
+import { getCurrentAddress, isChainOrdersEnabled } from "@/lib/chain/qy-chain-lite";
 
 const ORDER_SOURCE = (() => {
   const explicit = process.env.NEXT_PUBLIC_ORDER_SOURCE;

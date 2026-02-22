@@ -5,7 +5,7 @@ import Image, { type ImageLoader } from "next/image";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { getCurrentAddress } from "@/lib/chain/qy-chain";
+import { getCurrentAddress } from "@/lib/chain/qy-chain-lite";
 import { useBalance } from "@/app/components/balance-provider";
 import { StateBlock } from "@/app/components/state-block";
 import { formatErrorMessage } from "@/lib/shared/error-utils";
