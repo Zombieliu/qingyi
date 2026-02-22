@@ -6,8 +6,8 @@ import { listPublicAnnouncements } from "@/lib/admin/admin-store";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "公告 | 情谊电竞",
-  description: "情谊电竞最新公告、活动和更新。",
+  title: t("tabs.news.i078"),
+  description: t("tabs.news.i079"),
 };
 
 const fallbackArticles = [

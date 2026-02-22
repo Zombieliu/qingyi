@@ -6,11 +6,11 @@ import { t } from "@/lib/i18n/i18n-client";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "首页 | 情谊电竞",
-  description: "三角洲行动陪玩平台，极速匹配高素质陪练，押金保障，订单全程可追踪。",
+  title: t("tabs.home.i033"),
+  description: t("tabs.home.i034"),
   openGraph: {
-    title: "情谊电竞 - 三角洲行动陪玩",
-    description: "极速匹配高素质陪练，押金保障，订单全程可追踪。",
+    title: t("tabs.home.i035"),
+    description: t("tabs.home.i036"),
   },
 };
 

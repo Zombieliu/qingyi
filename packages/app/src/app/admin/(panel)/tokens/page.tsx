@@ -23,8 +23,8 @@ const roleLabels: Record<AdminRole, string> = {
 };
 
 const statusLabels: Record<AdminTokenStatus, string> = {
-  active: "启用",
-  disabled: "禁用",
+  active: t("admin.panel.tokens.i174"),
+  disabled: t("admin.panel.tokens.i175"),
 };
 
 function formatTime(ts?: number) {

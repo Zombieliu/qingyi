@@ -3,24 +3,24 @@ import { LobbyCard } from "./lobby-card";
 
 const lobbies = [
   {
-    title: "夜枭小队",
+    title: t("components.match_list.i092"),
     level: "SR 1600-1900",
-    mode: "8 人战术房",
+    mode: t("components.match_list.i093"),
     slots: "6/8",
     voice: true,
     verified: true,
   },
   {
-    title: "北湾进攻",
+    title: t("components.match_list.i094"),
     level: "SR 1400+",
-    mode: "排位 · 沙漠油田",
+    mode: t("components.match_list.i095"),
     slots: "4/5",
     voice: true,
   },
   {
-    title: "新手训练房",
-    level: "不限段位",
-    mode: "教学陪练",
+    title: t("components.match_list.i096"),
+    level: t("components.match_list.i097"),
+    mode: t("components.match_list.i098"),
     slots: "3/4",
     voice: false,
     verified: true,

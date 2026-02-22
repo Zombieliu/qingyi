@@ -9,19 +9,19 @@ import type { DisputeRecord } from "@/lib/services/dispute-service";
 import { t } from "@/lib/i18n/i18n-client";
 
 const STATUS_MAP: Record<string, { label: string; color: string; icon: typeof Clock }> = {
-  pending: { label: "待处理", color: "#f59e0b", icon: Clock },
-  reviewing: { label: "审核中", color: "#3b82f6", icon: AlertTriangle },
-  resolved_refund: { label: "已退款", color: "#10b981", icon: CheckCircle },
-  resolved_reject: { label: "已驳回", color: "#ef4444", icon: XCircle },
-  resolved_partial: { label: "部分退款", color: "#8b5cf6", icon: CheckCircle },
+  pending: { label: t("me.disputes.i130"), color: "#f59e0b", icon: Clock },
+  reviewing: { label: t("me.disputes.i131"), color: "#3b82f6", icon: AlertTriangle },
+  resolved_refund: { label: t("me.disputes.i132"), color: "#10b981", icon: CheckCircle },
+  resolved_reject: { label: t("me.disputes.i133"), color: "#ef4444", icon: XCircle },
+  resolved_partial: { label: t("me.disputes.i134"), color: "#8b5cf6", icon: CheckCircle },
 };
 
 const REASON_MAP: Record<string, string> = {
-  service_quality: "服务质量问题",
-  no_show: "陪练未到",
-  wrong_service: "服务内容不符",
-  overcharge: "多收费",
-  other: "其他",
+  service_quality: t("me.disputes.i135"),
+  no_show: t("me.disputes.i136"),
+  wrong_service: t("me.disputes.i137"),
+  overcharge: t("me.disputes.i138"),
+  other: t("me.disputes.i139"),
 };
 
 export default function DisputeListPage() {

@@ -29,6 +29,10 @@ export async function POST(req: Request) {
 
     if (rating === "poor") {
       console.warn(`[WEB_VITAL_POOR] ${name}=${value} on ${page}`);
+      // Alert on poor metrics (non-blocking)
+      import("@/lib/services/alert-service")
+        .then(({ alertOnVital }) => alertOnVital(name, value, page))
+        .catch(() => {});
     }
 
     // Store in Redis (best-effort)

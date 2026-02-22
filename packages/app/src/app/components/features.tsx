@@ -1,34 +1,35 @@
 import { Clock3, Headphones, Map, Shield, Smartphone, Trophy } from "lucide-react";
+import { t } from "@/lib/i18n/i18n-client";
 
 const features = [
   {
-    title: "快速排队",
-    desc: "根据段位/位置智能匹配陪玩与队友，平均 40 秒入队。",
+    title: t("components.features.i080"),
+    desc: t("components.features.i081"),
     icon: Clock3,
   },
   {
-    title: "语音就绪",
-    desc: "内置低延迟语音，免切换 Discord / YY。",
+    title: t("components.features.i082"),
+    desc: t("components.features.i083"),
     icon: Headphones,
   },
   {
-    title: "战术白板",
-    desc: "战场小地图标注与战术预设，适配三角洲行动地图池。",
+    title: t("components.features.i084"),
+    desc: t("components.features.i085"),
     icon: Map,
   },
   {
-    title: "安全陪玩",
-    desc: "全量陪玩实名认证 + 违规拦截，保证体验。",
+    title: t("components.features.i086"),
+    desc: t("components.features.i087"),
     icon: Shield,
   },
   {
-    title: "跨端一致",
-    desc: "PWA 一键添加到桌面，PC/移动端界面一致。",
+    title: t("components.features.i088"),
+    desc: t("components.features.i089"),
     icon: Smartphone,
   },
   {
-    title: "战绩同步",
-    desc: "上传对局截图，自动识别战绩并生成战报。",
+    title: t("components.features.i090"),
+    desc: t("components.features.i091"),
     icon: Trophy,
   },
 ];

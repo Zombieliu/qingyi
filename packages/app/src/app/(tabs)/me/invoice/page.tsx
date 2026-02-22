@@ -100,7 +100,7 @@ export default function InvoicePage() {
         id: data?.id || `INV-${Date.now()}`,
         title: form.title.trim(),
         amount: form.amount ? Number(form.amount) : undefined,
-        status: "待审核",
+        status: t("tabs.me.invoice.i038"),
         createdAt: Date.now(),
       };
       const updated = [next, ...requests];

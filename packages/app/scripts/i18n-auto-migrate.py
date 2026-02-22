@@ -30,7 +30,7 @@ SKIP_LINE = [
     re.compile(r'^\s*import '), re.compile(r'^\s*//'), re.compile(r'^\s*/\*'),
     re.compile(r'console\.(log|warn|error)'), re.compile(r'throw new Error'),
     re.compile(r'^\s*type\s+\w+'), re.compile(r'^\s*interface\s+\w+'),
-    re.compile(r'^\s*export\s+type\s+'), re.compile(r'^\s*\w+\??:\s'),  # type field definitions
+    re.compile(r'^\s*export\s+type\s+'),
 ]
 
 CN_CHAR = re.compile(r'[\u4e00-\u9fff]')
@@ -85,6 +85,10 @@ def process_file(filepath, en, zh, counter):
             # Check if already in t()
             before = line[:start]
             if before.rstrip().endswith('t(') or before.rstrip().endswith("t('"):
+                continue
+            
+            # Skip type literal unions: "中文" | "中文"
+            if '|' in line and re.search(r':\s*"[^"]*"\s*\|', line):
                 continue
             
             counter[0] += 1

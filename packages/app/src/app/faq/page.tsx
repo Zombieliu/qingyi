@@ -3,8 +3,8 @@ import { createTranslator, getMessages, getServerLocale } from "@/lib/i18n/i18n"
 import { t } from "@/lib/i18n/i18n-client";
 
 export const metadata = {
-  title: "常见问题 | 情谊电竞",
-  description: "情谊电竞常见问题与使用说明。",
+  title: t("faq.i103"),
+  description: t("faq.i104"),
   alternates: { canonical: "/faq" },
 };
 
@@ -13,28 +13,28 @@ export const revalidate = 600;
 const faqs = {
   zh: [
     {
-      q: "如何开始接单？",
-      a: "使用 Passkey 登录后进入大厅，选择可接订单并按提示完成押金步骤即可。",
+      q: t("faq.i105"),
+      a: t("faq.i106"),
     },
     {
-      q: "押金的作用是什么？",
-      a: "押金用于保障履约与服务质量，订单完成后按规则结算或退回。",
+      q: t("faq.i107"),
+      a: t("faq.i108"),
     },
     {
-      q: "我可以接自己的订单吗？",
-      a: "不可以。系统已限制同一地址不能接自己发布的订单。",
+      q: t("faq.i109"),
+      a: t("faq.i110"),
     },
     {
-      q: "订单状态有哪些？",
-      a: "常见状态包括：待处理、已确认、进行中、已完成、已取消。",
+      q: t("faq.i111"),
+      a: t("faq.i112"),
     },
     {
-      q: "接单失败或超时怎么办？",
-      a: "请检查网络与账户状态，必要时联系管理员或客服处理。",
+      q: t("faq.i113"),
+      a: t("faq.i114"),
     },
     {
-      q: "首单优惠如何使用？",
-      a: "首单满 ¥99 自动减 ¥10，下单时系统会自动结算，无需额外操作。",
+      q: t("faq.i115"),
+      a: t("faq.i116"),
     },
   ],
   en: [

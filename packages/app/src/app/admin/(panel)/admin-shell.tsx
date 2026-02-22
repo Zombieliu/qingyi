@@ -357,7 +357,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
       } catch (error) {
         window.dispatchEvent(
           new CustomEvent("admin:toast", {
-            detail: { message: "网络错误，请稍后重试" },
+            detail: { message: t("admin.panel.admin_shell.i144") },
           })
         );
         throw error;

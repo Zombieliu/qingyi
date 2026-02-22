@@ -3,8 +3,8 @@ import { createTranslator, getMessages, getServerLocale } from "@/lib/i18n/i18n"
 import { t } from "@/lib/i18n/i18n-client";
 
 export const metadata = {
-  title: "价格与服务 | 情谊电竞",
-  description: "情谊电竞陪玩服务价格与规则说明。",
+  title: t("pricing.i117"),
+  description: t("pricing.i118"),
   alternates: { canonical: "/pricing" },
 };
 
@@ -12,19 +12,19 @@ export const revalidate = 600;
 
 const plans = [
   {
-    name: "推荐单",
-    price: "¥88 起",
-    desc: "高优先级匹配，快速开局",
+    name: t("pricing.i119"),
+    price: t("pricing.i120"),
+    desc: t("pricing.i121"),
   },
   {
-    name: "小时单",
-    price: "¥30 / 小时",
-    desc: "稳定陪玩，适合日常上分",
+    name: t("pricing.i122"),
+    price: t("pricing.i123"),
+    desc: t("pricing.i124"),
   },
   {
-    name: "双护单",
-    price: "¥60 / 小时",
-    desc: "双人协同，提高胜率",
+    name: t("pricing.i125"),
+    price: t("pricing.i126"),
+    desc: t("pricing.i127"),
   },
 ];
 

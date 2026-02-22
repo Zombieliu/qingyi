@@ -255,9 +255,9 @@ function ChainOrderActions({
               disabled={chainAction === `dispute-${display.orderId}`}
               onClick={() => {
                 openPrompt({
-                  title: "发起争议",
-                  description: "请填写争议说明或证据哈希（可留空）",
-                  confirmLabel: "提交争议",
+                  title: t("tabs.schedule.chain_status_panel.i040"),
+                  description: t("tabs.schedule.chain_status_panel.i041"),
+                  confirmLabel: t("tabs.schedule.chain_status_panel.i042"),
                   action: async (value) => {
                     await runChainAction(
                       `dispute-${display.orderId}`,
@@ -279,9 +279,9 @@ function ChainOrderActions({
                 const deadline = Number(display.disputeDeadline);
                 if (Number.isFinite(deadline) && deadline > Date.now()) {
                   openConfirm({
-                    title: "确认放弃争议期并立即结算？",
+                    title: t("tabs.schedule.chain_status_panel.i043"),
                     description: `争议截止：${new Date(deadline).toLocaleString()}`,
-                    confirmLabel: "确认结算",
+                    confirmLabel: t("tabs.schedule.chain_status_panel.i044"),
                     action: async () => {
                       await runChainAction(
                         `finalize-${display.orderId}`,

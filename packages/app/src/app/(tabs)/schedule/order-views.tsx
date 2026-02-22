@@ -267,7 +267,7 @@ export function EnrouteView({
                   return;
                 }
                 await patchOrder(currentOrder.id, {
-                  status: "待结算",
+                  status: t("tabs.schedule.order_views.i045"),
                   userAddress: getCurrentAddress(),
                 });
                 await refreshOrders();
@@ -385,9 +385,9 @@ export function PendingSettlementView({
                 return;
               }
               openPrompt({
-                title: "发起争议",
-                description: "请填写争议说明或证据哈希（可留空）",
-                confirmLabel: "提交争议",
+                title: t("tabs.schedule.order_views.i046"),
+                description: t("tabs.schedule.order_views.i047"),
+                confirmLabel: t("tabs.schedule.order_views.i048"),
                 action: async (value) => {
                   await runChainAction(
                     `dispute-${currentOrder.id}`,
@@ -413,11 +413,11 @@ export function PendingSettlementView({
                   ? new Date(disputeDeadline).toLocaleString()
                   : "";
                 openConfirm({
-                  title: "确认放弃争议期并立即结算？",
+                  title: t("tabs.schedule.order_views.i049"),
                   description: deadlineText
                     ? `争议截止：${deadlineText}`
                     : t("tabs.schedule.order_views.i106"),
-                  confirmLabel: "确认结算",
+                  confirmLabel: t("tabs.schedule.order_views.i050"),
                   action: async () => {
                     await runChainAction(
                       `finalize-${currentOrder.id}`,

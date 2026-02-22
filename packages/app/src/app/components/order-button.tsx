@@ -75,7 +75,7 @@ export default function OrderButton({ user, item, amount, note }: Props) {
         userAddress: currentAddress || undefined,
         item,
         amount,
-        status: "已支付",
+        status: t("components.order_button.i099"),
         time: new Date().toISOString(),
         chainDigest: chainDigest || undefined,
         note,

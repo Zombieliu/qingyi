@@ -49,9 +49,9 @@ const STAGE_COLORS: Record<string, string> = {
 };
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
-  可接单: { label: "可接单", color: "text-emerald-600" },
-  忙碌: { label: "忙碌中", color: "text-amber-600" },
-  停用: { label: "已停用", color: "text-gray-400" },
+  可接单: { label: t("companion.i100"), color: "text-emerald-600" },
+  忙碌: { label: t("companion.i101"), color: "text-amber-600" },
+  停用: { label: t("companion.i102"), color: "text-gray-400" },
 };
 
 export default function CompanionPage() {

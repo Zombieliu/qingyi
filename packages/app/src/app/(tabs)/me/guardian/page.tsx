@@ -99,7 +99,7 @@ export default function GuardianPage() {
       const next: GuardianApplication = {
         id: data?.id || `GUARD-${Date.now()}`,
         name: form.name.trim(),
-        status: "待审核",
+        status: t("tabs.me.guardian.i037"),
         createdAt: Date.now(),
       };
       const updated = [next, ...applications];

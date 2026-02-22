@@ -104,7 +104,7 @@ export default function SupportPage() {
         topic: form.topic,
         message: form.message.trim(),
         contact: form.contact.trim() || undefined,
-        status: "待处理",
+        status: t("tabs.me.support.i039"),
         createdAt: Date.now(),
       };
       const updated = [next, ...requests];

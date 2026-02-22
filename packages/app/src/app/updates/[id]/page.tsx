@@ -21,7 +21,7 @@ export async function generateMetadata({ params }: { params: { id: string } }) {
       description,
       type: "article",
       url: `/updates/${item.id}`,
-      images: [{ url: "/icon-192.png", width: 192, height: 192, alt: "情谊电竞" }],
+      images: [{ url: "/icon-192.png", width: 192, height: 192, alt: t("updates.id.i140") }],
     },
   };
 }
@@ -39,7 +39,7 @@ export default async function UpdateDetailPage({ params }: { params: { id: strin
     headline: item.title,
     datePublished: publishedTime,
     dateModified: updatedTime,
-    author: { "@type": "Organization", name: "情谊电竞" },
+    author: { "@type": "Organization", name: t("updates.id.i141") },
   };
 
   return (

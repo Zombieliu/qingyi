@@ -95,13 +95,22 @@ export async function reconcileOrders(params: {
     });
   }
 
-  return {
+  const report: ReconcileReport = {
     total: items.length,
     matched: items.filter((i) => !i.mismatch).length,
     mismatched: items.filter((i) => i.mismatch).length,
-    items: items.filter((i) => i.mismatch), // Only return mismatches
+    items: items.filter((i) => i.mismatch),
     generatedAt: new Date().toISOString(),
   };
+
+  // Alert on anomalies (non-blocking)
+  if (report.mismatched > 0) {
+    import("@/lib/services/alert-service")
+      .then(({ alertOnReconcile }) => alertOnReconcile(report.mismatched, report.total))
+      .catch(() => {});
+  }
+
+  return report;
 }
 
 /** Auto-fix reconciliation issues where safe */

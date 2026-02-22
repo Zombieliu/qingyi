@@ -90,7 +90,7 @@ export default function Wallet() {
       setStatus({
         tone: "loading",
         title: t("ui.wallet.618"),
-        description: "正在确认支付信息",
+        description: t("tabs.wallet.i072"),
       });
       setPollCount(0);
     }
@@ -101,8 +101,8 @@ export default function Wallet() {
           if (redirectStatus === "succeeded") {
             setStatus({
               tone: "success",
-              title: "余额已更新",
-              description: "可返回查看余额或继续充值",
+              title: t("tabs.wallet.i073"),
+              description: t("tabs.wallet.i074"),
             });
           }
         }
@@ -118,8 +118,8 @@ export default function Wallet() {
         } else if (redirectStatus === "succeeded") {
           setStatus({
             tone: "warning",
-            title: "余额更新超时",
-            description: "请稍后下拉刷新或重新进入页面。",
+            title: t("tabs.wallet.i075"),
+            description: t("tabs.wallet.i076"),
           });
         }
       }
@@ -179,7 +179,7 @@ export default function Wallet() {
             orderId: nextOrderId,
             userAddress: address,
             diamondAmount: selected.amount,
-            subject: "钻石充值",
+            subject: t("tabs.wallet.i077"),
             body: `钻石充值 ${selected.amount} 钻石`,
             returnUrl:
               typeof window !== "undefined" ? `${window.location.origin}/wallet` : undefined,

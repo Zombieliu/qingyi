@@ -5,8 +5,8 @@ import { t } from "@/lib/i18n/i18n-client";
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-  title: "公告更新 | 情谊电竞",
-  description: "情谊电竞最新公告与更新。",
+  title: t("updates.i142"),
+  description: t("updates.i143"),
 };
 
 export default async function UpdatesPage() {

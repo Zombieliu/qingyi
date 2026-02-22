@@ -24,9 +24,9 @@ const RANGE_OPTIONS = [7, 14, 30];
 
 const FUNNEL_COLORS = ["#6366f1", "#8b5cf6", "#a855f7"];
 const FUNNEL_LABELS: Record<string, string> = {
-  page_view: "访问",
-  order_intent: "意向",
-  order_create_success: "下单",
+  page_view: t("admin.panel.analytics.i145"),
+  order_intent: t("admin.panel.analytics.i146"),
+  order_create_success: t("admin.panel.analytics.i147"),
 };
 
 function FunnelBar({ funnel }: { funnel: AnalyticsSummary["funnel"] }) {

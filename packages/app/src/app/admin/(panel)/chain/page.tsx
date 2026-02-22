@@ -187,9 +187,9 @@ export default function ChainPage() {
 
   const forceCancel = async (orderId: string) => {
     openConfirm({
-      title: "确认强制取消该订单？",
-      description: "仅限未锁押金的链上订单。",
-      confirmLabel: "确认取消",
+      title: t("admin.panel.chain.i150"),
+      description: t("admin.panel.chain.i151"),
+      confirmLabel: t("admin.panel.chain.i152"),
       action: async () => {
         setCancelingOrderId(orderId);
         try {
@@ -213,9 +213,9 @@ export default function ChainPage() {
 
   const runAutoCancel = async () => {
     openConfirm({
-      title: "确认执行超期自动取消？",
-      description: "仅会处理未锁押金订单。",
-      confirmLabel: "确认执行",
+      title: t("admin.panel.chain.i153"),
+      description: t("admin.panel.chain.i154"),
+      confirmLabel: t("admin.panel.chain.i155"),
       action: async () => {
         setAutoCanceling(true);
         setAutoCancelResult(null);
@@ -276,9 +276,9 @@ export default function ChainPage() {
   const cleanupMissingChain = async () => {
     if (missingChain.length === 0) return;
     openConfirm({
-      title: "确认删除本地缺链订单？",
+      title: t("admin.panel.chain.i156"),
       description: `共 ${missingChain.length} 条，仅影响数据库，不会动链上。`,
-      confirmLabel: "确认清理",
+      confirmLabel: t("admin.panel.chain.i157"),
       action: async () => {
         setCleanupMissing(true);
         setCleanupResult(null);

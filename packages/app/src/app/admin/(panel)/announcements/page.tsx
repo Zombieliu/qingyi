@@ -18,7 +18,7 @@ export default function AnnouncementsPage() {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [form, setForm] = useState({
     title: "",
-    tag: "公告",
+    tag: t("admin.panel.announcements.i148"),
     content: "",
     status: "draft" as AnnouncementStatus,
   });
@@ -59,7 +59,7 @@ export default function AnnouncementsPage() {
     if (!form.title.trim()) return;
     const payload = {
       title: form.title.trim(),
-      tag: form.tag.trim() || "公告",
+      tag: form.tag.trim() || t("admin.panel.announcements.i149"),
       content: form.content.trim(),
       status: form.status,
     };

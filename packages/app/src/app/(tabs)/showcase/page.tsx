@@ -479,11 +479,11 @@ export default function Showcase() {
 
   const confirmDepositAccept = (orderId: string, depositLabel?: string) => {
     openConfirm({
-      title: "确认付押金并接单？",
+      title: t("tabs.showcase.i059"),
       description: depositLabel
         ? `将锁定押金 ${depositLabel} 并认领订单。押金锁定后如需取消请走争议/客服流程。`
         : t("tabs.showcase.i124"),
-      confirmLabel: "确认接单",
+      confirmLabel: t("tabs.showcase.i060"),
       action: async () => {
         await accept(orderId);
       },
@@ -492,9 +492,9 @@ export default function Showcase() {
 
   const confirmMarkCompleted = (orderId: string) => {
     openConfirm({
-      title: "确认服务已完成？",
-      description: "确认后将进入结算/争议期，如有问题请先发起争议。",
-      confirmLabel: "确认完成",
+      title: t("tabs.showcase.i061"),
+      description: t("tabs.showcase.i062"),
+      confirmLabel: t("tabs.showcase.i063"),
       action: async () => {
         await runChainAction(
           `complete-${orderId}`,
@@ -508,9 +508,9 @@ export default function Showcase() {
 
   const confirmEndService = (orderId: string) => {
     openConfirm({
-      title: "确认结束服务？",
-      description: "结束后等待用户确认完成，若有争议可发起争议处理。",
-      confirmLabel: "结束服务",
+      title: t("tabs.showcase.i064"),
+      description: t("tabs.showcase.i065"),
+      confirmLabel: t("tabs.showcase.i066"),
       action: async () => {
         await markCompanionServiceEnded(orderId, true);
       },
@@ -1053,9 +1053,9 @@ export default function Showcase() {
                           disabled={chainAction === `deposit-${o.orderId}`}
                           onClick={async () => {
                             openConfirm({
-                              title: "确认付押金并接单？",
-                              description: "押金锁定后如需取消请走争议/客服流程。",
-                              confirmLabel: "确认接单",
+                              title: t("tabs.showcase.i067"),
+                              description: t("tabs.showcase.i068"),
+                              confirmLabel: t("tabs.showcase.i069"),
                               action: async () => {
                                 if (!orderMetaById.get(o.orderId)?.gameProfile) {
                                   await hydrateOrderMeta(o.orderId);
@@ -1178,11 +1178,11 @@ export default function Showcase() {
                               const deadlineText =
                                 hasDeadline && deadline ? new Date(deadline).toLocaleString() : "";
                               openConfirm({
-                                title: "确认放弃争议期并立即结算？",
+                                title: t("tabs.showcase.i070"),
                                 description: deadlineText
                                   ? `争议截止：${deadlineText}`
                                   : t("tabs.showcase.i134"),
-                                confirmLabel: "确认结算",
+                                confirmLabel: t("tabs.showcase.i071"),
                                 action: async () => {
                                   await runChainAction(
                                     `finalize-${o.orderId}`,

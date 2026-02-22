@@ -11,21 +11,21 @@ type RedeemCodeView = AdminRedeemCode & { batch?: AdminRedeemBatch };
 type RedeemRecordView = AdminRedeemRecord & { code?: string; batchTitle?: string };
 
 const rewardLabels: Record<string, string> = {
-  mantou: "馒头",
-  diamond: "钻石",
-  vip: "会员时长",
-  coupon: "优惠券",
-  custom: "自定义",
+  mantou: t("admin.panel.redeem.i162"),
+  diamond: t("admin.panel.redeem.i163"),
+  vip: t("admin.panel.redeem.i164"),
+  coupon: t("admin.panel.redeem.i165"),
+  custom: t("admin.panel.redeem.i166"),
 };
 
 const statusLabels: Record<string, string> = {
-  active: "启用",
-  disabled: "停用",
-  exhausted: "用尽",
-  expired: "过期",
-  pending: "处理中",
-  success: "成功",
-  failed: "失败",
+  active: t("admin.panel.redeem.i167"),
+  disabled: t("admin.panel.redeem.i168"),
+  exhausted: t("admin.panel.redeem.i169"),
+  expired: t("admin.panel.redeem.i170"),
+  pending: t("admin.panel.redeem.i171"),
+  success: t("admin.panel.redeem.i172"),
+  failed: t("admin.panel.redeem.i173"),
 };
 
 function formatTime(ts?: number | null) {
