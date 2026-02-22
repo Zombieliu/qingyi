@@ -115,7 +115,8 @@ export default function VipAdminPage() {
         const params = new URLSearchParams();
         params.set("pageSize", String(pageSize));
         if (cursorValue) params.set("cursor", cursorValue);
-        if (statusFilter && statusFilter !== "全部") params.set("status", statusFilter);
+        if (statusFilter && statusFilter !== t("admin.panel.vip.i095"))
+          params.set("status", statusFilter);
         if (query.trim()) params.set("q", query.trim());
         const cacheKey = `cache:admin:vip:requests:${params.toString()}`;
         const cached = readCache<{ items: AdminMembershipRequest[]; nextCursor?: string | null }>(
@@ -244,7 +245,8 @@ export default function VipAdminPage() {
           const params = new URLSearchParams();
           params.set("pageSize", String(pageSize));
           if (cursor) params.set("cursor", cursor);
-          if (statusFilter && statusFilter !== "全部") params.set("status", statusFilter);
+          if (statusFilter && statusFilter !== t("admin.panel.vip.i096"))
+            params.set("status", statusFilter);
           if (query.trim()) params.set("q", query.trim());
           writeCache(`cache:admin:vip:requests:${params.toString()}`, { items: next, nextCursor });
           return next;
@@ -295,7 +297,10 @@ export default function VipAdminPage() {
     }
   };
 
-  const totalActive = useMemo(() => tiers.filter((t) => t.status === "上架").length, [tiers]);
+  const totalActive = useMemo(
+    () => tiers.filter((tier) => tier.status === t("admin.panel.vip.i097")).length,
+    [tiers]
+  );
 
   return (
     <div className="admin-section">

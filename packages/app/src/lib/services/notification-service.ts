@@ -139,6 +139,20 @@ export function notifyOrderStatusChange(params: {
     已取消: "订单已取消",
     已退款: "订单已退款",
   };
+
+  // Kook notification (best-effort, non-blocking)
+  import("@/lib/services/kook-service")
+    .then(({ isKookEnabled, notifyKookOrderStatus }) => {
+      if (isKookEnabled()) {
+        notifyKookOrderStatus({
+          orderId: params.orderId,
+          item: params.item,
+          stage: params.stage,
+        });
+      }
+    })
+    .catch(() => {});
+
   return createNotification({
     userAddress: params.userAddress,
     type: "order_status",

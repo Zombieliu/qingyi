@@ -95,7 +95,7 @@ export default function RedeemAdminPage() {
       const res = await fetch(`/api/admin/redeem/codes?${params.toString()}`);
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setError(data?.error || "加载失败");
+        setError(data?.error || t("admin.panel.redeem.i084"));
         return;
       }
       setCodes(Array.isArray(data?.items) ? data.items : []);
@@ -186,7 +186,7 @@ export default function RedeemAdminPage() {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setError(data?.error || "创建失败");
+        setError(data?.error || t("admin.panel.redeem.i085"));
         return;
       }
       setCreatedCodes(Array.isArray(data?.codes) ? data.codes : []);

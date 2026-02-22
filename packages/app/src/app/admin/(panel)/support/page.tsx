@@ -31,7 +31,8 @@ export default function SupportPage() {
         const params = new URLSearchParams();
         params.set("pageSize", String(pageSize));
         if (cursorValue) params.set("cursor", cursorValue);
-        if (statusFilter && statusFilter !== "全部") params.set("status", statusFilter);
+        if (statusFilter && statusFilter !== t("admin.panel.support.i088"))
+          params.set("status", statusFilter);
         if (query.trim()) params.set("q", query.trim());
         const cacheKey = `cache:admin:support:${params.toString()}`;
         const cached = readCache<{ items: AdminSupportTicket[]; nextCursor?: string | null }>(
@@ -90,7 +91,8 @@ export default function SupportPage() {
           const params = new URLSearchParams();
           params.set("pageSize", String(pageSize));
           if (cursor) params.set("cursor", cursor);
-          if (statusFilter && statusFilter !== "全部") params.set("status", statusFilter);
+          if (statusFilter && statusFilter !== t("admin.panel.support.i089"))
+            params.set("status", statusFilter);
           if (query.trim()) params.set("q", query.trim());
           writeCache(`cache:admin:support:${params.toString()}`, {
             items: next,

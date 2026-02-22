@@ -79,7 +79,8 @@ export default function AdminReferralPage() {
         const params = new URLSearchParams();
         params.set("pageSize", String(pageSize));
         if (cursorValue) params.set("cursor", cursorValue);
-        if (statusFilter && statusFilter !== "全部") params.set("status", statusFilter);
+        if (statusFilter && statusFilter !== t("admin.panel.referral.i086"))
+          params.set("status", statusFilter);
         if (query.trim()) params.set("q", query.trim());
         const res = await fetch(`/api/admin/referral/list?${params.toString()}`);
         if (res.ok) {
@@ -297,7 +298,9 @@ export default function AdminReferralPage() {
                       <span
                         className={`admin-badge ${r.status === "rewarded" ? "success" : "neutral"}`}
                       >
-                        {r.status === "rewarded" ? "已返利" : t("admin.referral.015")}
+                        {r.status === "rewarded"
+                          ? t("admin.panel.referral.i087")
+                          : t("admin.referral.015")}
                       </span>
                     </td>
                     <td data-label={t("admin.referral.016")}>{r.rewardInviter ?? "—"}</td>

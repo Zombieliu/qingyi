@@ -58,7 +58,7 @@ export default function PlayersPage() {
       case "address_in_use":
         return t("admin.players.005");
       default:
-        return error || "保存失败";
+        return error || t("admin.panel.players.i075");
     }
   };
 
@@ -115,7 +115,9 @@ export default function PlayersPage() {
     }
     const addressParsed = parseAddress(form.address);
     if (addressParsed.state !== "valid") {
-      setFormHint(addressParsed.state === "missing" ? "请填写钱包地址" : t("admin.players.006"));
+      setFormHint(
+        addressParsed.state === "missing" ? t("admin.panel.players.i076") : t("admin.players.006")
+      );
       return;
     }
     const res = await fetch("/api/admin/players", {
@@ -201,7 +203,7 @@ export default function PlayersPage() {
         });
       } else {
         const data = await res.json().catch(() => ({}));
-        alert(data?.error || "删除失败");
+        alert(data?.error || t("admin.panel.players.i077"));
       }
     } finally {
       setSaving((prev) => ({ ...prev, [playerId]: false }));
@@ -238,7 +240,7 @@ export default function PlayersPage() {
       setSelectedIds([]);
     } else {
       const data = await res.json().catch(() => ({}));
-      alert(data?.error || "批量删除失败");
+      alert(data?.error || t("admin.panel.players.i078"));
     }
   };
 

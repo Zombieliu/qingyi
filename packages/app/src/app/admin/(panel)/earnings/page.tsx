@@ -67,7 +67,7 @@ export default function EarningsPage() {
       const res = await fetch(`/api/admin/earnings?${queryKey}`);
       const payload = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setError(payload?.error || "加载失败");
+        setError(payload?.error || t("admin.panel.earnings.i039"));
         return;
       }
       const next = {
@@ -116,7 +116,7 @@ export default function EarningsPage() {
             <span className="admin-pill">{t("ui.earnings.381")}</span>
             {from || to ? (
               <span className="admin-pill">
-                {from || "不限"} ~ {to || "不限"}
+                {from || t("admin.panel.earnings.i040")} ~ {to || t("admin.panel.earnings.i041")}
               </span>
             ) : (
               <span className="admin-pill">{t("ui.earnings.382")}</span>
@@ -232,7 +232,9 @@ export default function EarningsPage() {
                 {rows.map((item) => (
                   <tr key={item.companionAddress}>
                     <td data-label={t("admin.earnings.007")}>
-                      <div className="admin-text-strong">{item.companionName || "未绑定"}</div>
+                      <div className="admin-text-strong">
+                        {item.companionName || t("admin.panel.earnings.i042")}
+                      </div>
                       <div className="admin-meta-faint">{item.companionAddress || "-"}</div>
                     </td>
                     <td data-label={t("admin.earnings.008")}>{item.orderCount}</td>

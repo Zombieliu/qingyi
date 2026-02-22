@@ -29,7 +29,7 @@ export default function AdminLoginPage() {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setError(data?.error || "登录失败，请检查密钥");
+        setError(data?.error || t("admin.auth.login.i003"));
         return;
       }
       window.location.href = "/admin";

@@ -106,7 +106,7 @@ export default function OrderDetailPage() {
         const res = await fetch(`/api/admin/orders/${orderId}`);
         if (!res.ok) {
           const data = await res.json().catch(() => ({}));
-          setError(data?.error || "订单不存在");
+          setError(data?.error || t("admin.panel.orders.i065"));
           setOrder(null);
           return;
         }
@@ -142,7 +142,7 @@ export default function OrderDetailPage() {
           tone="danger"
           size="compact"
           title={t("admin.orders.005")}
-          description={error || "订单不存在"}
+          description={error || t("admin.panel.orders.i066")}
           actions={
             <Link href="/admin/orders" className="admin-btn ghost">
               返回订单列表

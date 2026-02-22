@@ -37,7 +37,7 @@ export default function LedgerPage() {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setError(data?.error || "写入失败");
+        setError(data?.error || t("admin.panel.ledger.i062"));
       } else {
         setResult("apply.ledger_done");
         setForm({ user: "", amount: "", receiptId: "", note: "" });

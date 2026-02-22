@@ -22,6 +22,7 @@ TARGET_DIRS = [
     "app/(tabs)/news", "app/components", "app/companion",
     "app/faq", "app/pricing", "app/login", "app/me",
     "app/players", "app/updates",
+    "app/admin",
 ]
 
 SKIP_ATTRS = {'className', 'href', 'src', 'type', 'name', 'id', 'key', 'htmlFor', 'method', 'action'}

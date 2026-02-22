@@ -85,7 +85,8 @@ export default function GuardiansPage() {
       } else {
         const params = new URLSearchParams();
         params.set("pageSize", "200");
-        if (statusFilter && statusFilter !== "全部") params.set("status", statusFilter);
+        if (statusFilter && statusFilter !== t("admin.panel.guardians.i043"))
+          params.set("status", statusFilter);
         if (query.trim()) params.set("q", query.trim());
         let cursorValue: string | null = null;
         let guard = 0;
@@ -114,16 +115,16 @@ export default function GuardiansPage() {
       }
 
       const headers = [
-        "申请号",
-        "申请人",
-        "联系方式",
-        "钱包地址",
-        "状态",
-        "擅长游戏",
-        "经验",
-        "可接单时段",
-        "备注",
-        "提交时间",
+        t("admin.panel.guardians.i044"),
+        t("admin.panel.guardians.i045"),
+        t("admin.panel.guardians.i046"),
+        t("admin.panel.guardians.i047"),
+        t("admin.panel.guardians.i048"),
+        t("admin.panel.guardians.i049"),
+        t("admin.panel.guardians.i050"),
+        t("admin.panel.guardians.i051"),
+        t("admin.panel.guardians.i052"),
+        t("admin.panel.guardians.i053"),
       ];
       const rows = [buildCsvRow(headers)];
       for (const item of items) {
@@ -149,7 +150,8 @@ export default function GuardiansPage() {
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      const scopeLabel = exportScope === "current" ? "当前页" : t("admin.guardians.002");
+      const scopeLabel =
+        exportScope === "current" ? t("admin.panel.guardians.i054") : t("admin.guardians.002");
       link.download = `陪练${scopeLabel}_${new Date().toISOString().replace(/[:T]/g, "-").slice(0, 19)}.csv`;
       link.click();
       URL.revokeObjectURL(url);
@@ -168,7 +170,8 @@ export default function GuardiansPage() {
         const params = new URLSearchParams();
         params.set("pageSize", String(pageSize));
         if (cursorValue) params.set("cursor", cursorValue);
-        if (statusFilter && statusFilter !== "全部") params.set("status", statusFilter);
+        if (statusFilter && statusFilter !== t("admin.panel.guardians.i055"))
+          params.set("status", statusFilter);
         if (query.trim()) params.set("q", query.trim());
         const cacheKey = `cache:admin:guardians:${params.toString()}`;
         const cached = readCache<{ items: AdminGuardianApplication[]; nextCursor?: string | null }>(
@@ -230,7 +233,8 @@ export default function GuardiansPage() {
           const params = new URLSearchParams();
           params.set("pageSize", String(pageSize));
           if (cursor) params.set("cursor", cursor);
-          if (statusFilter && statusFilter !== "全部") params.set("status", statusFilter);
+          if (statusFilter && statusFilter !== t("admin.panel.guardians.i056"))
+            params.set("status", statusFilter);
           if (query.trim()) params.set("q", query.trim());
           writeCache(`cache:admin:guardians:${params.toString()}`, { items: next, nextCursor });
           return next;
@@ -301,7 +305,7 @@ export default function GuardiansPage() {
             <option value="filtered">{t("ui.guardians.357")}</option>
           </select>
           <button className="admin-btn ghost" onClick={exportFiltered} disabled={exporting}>
-            {exporting ? "导出中..." : t("admin.guardians.007")}
+            {exporting ? t("admin.panel.guardians.i057") : t("admin.guardians.007")}
           </button>
           <button
             className="admin-btn ghost"
@@ -393,12 +397,18 @@ export default function GuardiansPage() {
                               gap: 6,
                             }}
                             onClick={() => copyAddress(item.id, item.userAddress)}
-                            title={copiedId === item.id ? "已复制" : t("admin.guardians.017")}
+                            title={
+                              copiedId === item.id
+                                ? t("admin.panel.guardians.i058")
+                                : t("admin.guardians.017")
+                            }
                             aria-label={t("admin.guardians.018")}
                           >
                             {copiedId === item.id ? <Check size={14} /> : <Copy size={14} />}
                             <span>
-                              {copiedId === item.id ? "已复制" : t("admin.guardians.019")}
+                              {copiedId === item.id
+                                ? t("admin.panel.guardians.i059")
+                                : t("admin.guardians.019")}
                             </span>
                           </button>
                         )}

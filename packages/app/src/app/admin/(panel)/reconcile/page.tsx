@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { RefreshCw, AlertTriangle, CheckCircle, Wrench } from "lucide-react";
+import { t } from "@/lib/i18n/i18n-client";
 
 type ReconcileItem = {
   orderId: string;
@@ -47,7 +48,7 @@ export default function ReconcilePage() {
   };
 
   const runAutoFix = async () => {
-    if (!confirm("确认执行自动修复？仅修复安全的不一致项。")) return;
+    if (!confirm(t("admin.panel.reconcile.i079"))) return;
     setFixing(true);
     try {
       const res = await fetch(`/api/admin/reconcile?days=${days}`, { method: "POST" });
@@ -90,7 +91,7 @@ export default function ReconcilePage() {
           </label>
           <button className="admin-btn" onClick={runReconcile} disabled={loading}>
             <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
-            {loading ? "检查中..." : "开始对账"}
+            {loading ? t("admin.panel.reconcile.i080") : t("admin.panel.reconcile.i081")}
           </button>
           {report && report.mismatched > 0 && (
             <button
@@ -100,7 +101,7 @@ export default function ReconcilePage() {
               style={{ background: "#f59e0b", color: "#fff" }}
             >
               <Wrench size={14} />
-              {fixing ? "修复中..." : "自动修复"}
+              {fixing ? t("admin.panel.reconcile.i082") : t("admin.panel.reconcile.i083")}
             </button>
           )}
         </div>

@@ -51,7 +51,7 @@ export default function AnnouncementsPage() {
 
   const resetForm = () => {
     setEditingId(null);
-    setForm({ title: "", tag: "公告", content: "", status: "draft" });
+    setForm({ title: "", tag: t("admin.panel.announcements.i023"), content: "", status: "draft" });
   };
 
   const submitForm = async () => {

@@ -47,7 +47,8 @@ export default function CouponsPage() {
         const params = new URLSearchParams();
         params.set("pageSize", String(pageSize));
         if (cursorValue) params.set("cursor", cursorValue);
-        if (statusFilter && statusFilter !== "全部") params.set("status", statusFilter);
+        if (statusFilter && statusFilter !== t("admin.panel.coupons.i034"))
+          params.set("status", statusFilter);
         if (query.trim()) params.set("q", query.trim());
         const cacheKey = `cache:admin:coupons:${params.toString()}`;
         const cached = readCache<{ items: AdminCoupon[]; nextCursor?: string | null }>(
@@ -114,7 +115,8 @@ export default function CouponsPage() {
         const params = new URLSearchParams();
         params.set("pageSize", String(pageSize));
         if (cursor) params.set("cursor", cursor);
-        if (statusFilter && statusFilter !== "全部") params.set("status", statusFilter);
+        if (statusFilter && statusFilter !== t("admin.panel.coupons.i035"))
+          params.set("status", statusFilter);
         if (query.trim()) params.set("q", query.trim());
         writeCache(`cache:admin:coupons:${params.toString()}`, { items: next, nextCursor });
         return next;
@@ -147,7 +149,8 @@ export default function CouponsPage() {
           const params = new URLSearchParams();
           params.set("pageSize", String(pageSize));
           if (cursor) params.set("cursor", cursor);
-          if (statusFilter && statusFilter !== "全部") params.set("status", statusFilter);
+          if (statusFilter && statusFilter !== t("admin.panel.coupons.i036"))
+            params.set("status", statusFilter);
           if (query.trim()) params.set("q", query.trim());
           writeCache(`cache:admin:coupons:${params.toString()}`, { items: next, nextCursor });
           return next;
@@ -176,7 +179,10 @@ export default function CouponsPage() {
     setPage((value) => value + 1);
   };
 
-  const totalActive = useMemo(() => coupons.filter((c) => c.status === "可用").length, [coupons]);
+  const totalActive = useMemo(
+    () => coupons.filter((c) => c.status === t("admin.panel.coupons.i037")).length,
+    [coupons]
+  );
 
   return (
     <div className="admin-section">

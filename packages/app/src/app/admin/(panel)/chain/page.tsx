@@ -68,7 +68,7 @@ export default function ChainPage() {
       const res = await fetch("/api/admin/chain/orders");
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        setError(data?.error || "加载失败");
+        setError(data?.error || t("admin.panel.chain.i024"));
         return;
       }
       const data = await res.json();
@@ -156,7 +156,7 @@ export default function ChainPage() {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setError(data?.error || "裁决失败");
+        setError(data?.error || t("admin.panel.chain.i025"));
       } else {
         await loadData();
       }
@@ -200,7 +200,7 @@ export default function ChainPage() {
           });
           const data = await res.json().catch(() => ({}));
           if (!res.ok) {
-            setError(data?.error || "取消失败");
+            setError(data?.error || t("admin.panel.chain.i026"));
           } else {
             await loadData();
           }
@@ -223,7 +223,7 @@ export default function ChainPage() {
           const res = await fetch("/api/admin/chain/auto-cancel", { method: "POST" });
           const data = await res.json().catch(() => ({}));
           if (!res.ok) {
-            setError(data?.error || "执行失败");
+            setError(data?.error || t("admin.panel.chain.i027"));
             return;
           }
           if (!data?.enabled) {
@@ -261,7 +261,7 @@ export default function ChainPage() {
       );
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setManualSyncResult(data?.message || data?.error || "补单失败");
+        setManualSyncResult(data?.message || data?.error || t("admin.panel.chain.i028"));
         return;
       }
       setManualSyncResult(`已补单：订单 #${data?.order?.id || orderId}`);
@@ -286,7 +286,7 @@ export default function ChainPage() {
           const res = await fetch("/api/admin/chain/cleanup-missing", { method: "POST" });
           const data = await res.json().catch(() => ({}));
           if (!res.ok) {
-            setError(data?.error || "清理失败");
+            setError(data?.error || t("admin.panel.chain.i029"));
             return;
           }
           setCleanupResult(`已清理 ${data?.deleted ?? 0} / ${data?.candidates ?? 0} 条`);
@@ -332,7 +332,7 @@ export default function ChainPage() {
                 onChange={(event) => setManualDigest(event.target.value)}
               />
               <button className="admin-btn ghost" onClick={runManualSync} disabled={manualSyncing}>
-                {manualSyncing ? "补单中..." : t("admin.chain.011")}
+                {manualSyncing ? t("admin.panel.chain.i030") : t("admin.chain.011")}
               </button>
             </div>
             <button
@@ -340,7 +340,7 @@ export default function ChainPage() {
               onClick={runAutoCancel}
               disabled={autoCanceling || autoCancelDisabled}
             >
-              {autoCanceling ? "处理中..." : t("admin.chain.012")}
+              {autoCanceling ? t("admin.panel.chain.i031") : t("admin.chain.012")}
             </button>
             <button className="admin-btn ghost" onClick={loadData} disabled={loading}>
               <RefreshCw size={16} style={{ marginRight: 6 }} />
@@ -542,7 +542,7 @@ export default function ChainPage() {
                             disabled={cancelingOrderId === order.orderId}
                           >
                             {cancelingOrderId === order.orderId
-                              ? "取消中..."
+                              ? t("admin.panel.chain.i032")
                               : t("admin.chain.031")}
                           </button>
                         ) : (
@@ -567,7 +567,7 @@ export default function ChainPage() {
               onClick={cleanupMissingChain}
               disabled={cleanupMissing || missingChain.length === 0}
             >
-              {cleanupMissing ? "清理中..." : t("admin.chain.032")}
+              {cleanupMissing ? t("admin.panel.chain.i033") : t("admin.chain.032")}
             </button>
           </div>
         </div>

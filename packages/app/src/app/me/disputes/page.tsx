@@ -6,6 +6,7 @@ import { ArrowLeft, AlertTriangle, CheckCircle, XCircle, Clock } from "lucide-re
 import { fetchWithUserAuth } from "@/lib/auth/user-auth-client";
 import { getCurrentAddress } from "@/lib/chain/qy-chain-lite";
 import type { DisputeRecord } from "@/lib/services/dispute-service";
+import { t } from "@/lib/i18n/i18n-client";
 
 const STATUS_MAP: Record<string, { label: string; color: string; icon: typeof Clock }> = {
   pending: { label: "待处理", color: "#f59e0b", icon: Clock },
@@ -48,7 +49,7 @@ export default function DisputeListPage() {
     <div className="dl-main">
       <header className="dl-topbar">
         <div className="dl-time">
-          <Link href="/me" className="dl-icon-circle" aria-label="返回">
+          <Link href="/me" className="dl-icon-circle" aria-label={t("me.disputes.i001")}>
             <ArrowLeft size={16} />
           </Link>
           <span className="dl-time-text">我的争议</span>
@@ -127,7 +128,9 @@ export default function DisputeListPage() {
                     <div
                       style={{ marginTop: 8, fontSize: 13, color: status.color, fontWeight: 500 }}
                     >
-                      {d.status === "resolved_reject" ? "退款被驳回" : `退款 ¥${d.refundAmount}`}
+                      {d.status === "resolved_reject"
+                        ? t("me.disputes.i002")
+                        : `退款 ¥${d.refundAmount}`}
                     </div>
                   )}
                 </Link>

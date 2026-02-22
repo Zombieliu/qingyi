@@ -40,7 +40,8 @@ export default function OrdersPage() {
         const params = new URLSearchParams();
         params.set("pageSize", String(pageSize));
         if (cursorValue) params.set("cursor", cursorValue);
-        if (stageFilter && stageFilter !== "全部") params.set("stage", stageFilter);
+        if (stageFilter && stageFilter !== t("admin.panel.orders.i067"))
+          params.set("stage", stageFilter);
         if (query.trim()) params.set("q", query.trim());
         const cacheKey = `cache:admin:orders:${params.toString()}`;
         const cached = readCache<{ items: AdminOrder[]; nextCursor?: string | null }>(
@@ -136,7 +137,8 @@ export default function OrdersPage() {
           const params = new URLSearchParams();
           params.set("pageSize", String(pageSize));
           if (cursor) params.set("cursor", cursor);
-          if (stageFilter && stageFilter !== "全部") params.set("stage", stageFilter);
+          if (stageFilter && stageFilter !== t("admin.panel.orders.i068"))
+            params.set("stage", stageFilter);
           if (query.trim()) params.set("q", query.trim());
           writeCache(`cache:admin:orders:${params.toString()}`, {
             items: next,
@@ -149,7 +151,7 @@ export default function OrdersPage() {
         }
       } else {
         const data = await res.json().catch(() => ({}));
-        alert(data?.error || "更新失败");
+        alert(data?.error || t("admin.panel.orders.i069"));
       }
     } finally {
       setSaving((prev) => ({ ...prev, [orderId]: false }));
@@ -182,7 +184,7 @@ export default function OrdersPage() {
       await loadOrders(cursor, page);
     } else {
       const data = await res.json().catch(() => ({}));
-      alert(data?.error || "批量删除失败");
+      alert(data?.error || t("admin.panel.orders.i070"));
     }
   };
 
@@ -199,7 +201,7 @@ export default function OrdersPage() {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        alert(data?.error || "清理失败");
+        alert(data?.error || t("admin.panel.orders.i071"));
         return;
       }
       setCleanResult(`已清理 ${data?.deleted ?? 0} / ${data?.candidates ?? 0} 条`);
@@ -283,7 +285,7 @@ export default function OrdersPage() {
           ) : null}
           {canEdit ? (
             <button className="admin-btn ghost" disabled={cleaningE2e} onClick={cleanupE2e}>
-              {cleaningE2e ? "清理中..." : t("admin.orders.006")}
+              {cleaningE2e ? t("admin.panel.orders.i072") : t("admin.orders.006")}
             </button>
           ) : null}
           {canEdit ? (
@@ -431,7 +433,13 @@ export default function OrdersPage() {
                           value={order.stage}
                           aria-label={t("admin.orders.017")}
                           disabled={isChainOrder || !canEdit}
-                          title={isChainOrder ? t("ui.orders.669") : !canEdit ? "只读权限" : ""}
+                          title={
+                            isChainOrder
+                              ? t("ui.orders.669")
+                              : !canEdit
+                                ? t("admin.panel.orders.i073")
+                                : ""
+                          }
                           onChange={(event) => {
                             if (isChainOrder || !canEdit) return;
                             const nextStage = event.target.value as OrderStage;
@@ -479,7 +487,9 @@ export default function OrdersPage() {
                             {players.map((player) => (
                               <option key={player.id} value={player.id}>
                                 {player.name}
-                                {player.status !== "可接单" ? `（${player.status}）` : ""}
+                                {player.status !== t("admin.panel.orders.i074")
+                                  ? `（${player.status}）`
+                                  : ""}
                               </option>
                             ))}
                           </select>

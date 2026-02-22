@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState, useCallback } from "react";
+import { t } from "@/lib/i18n/i18n-client";
 
 type DashboardData = {
   timestamp: string;
@@ -156,7 +157,7 @@ export default function DashboardPage() {
       setLastUpdate(new Date().toLocaleTimeString());
       setError(null);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "加载失败");
+      setError(e instanceof Error ? e.message : t("admin.panel.dashboard.i038"));
     } finally {
       setLoading(false);
     }

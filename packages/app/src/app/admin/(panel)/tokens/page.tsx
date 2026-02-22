@@ -85,7 +85,7 @@ export default function AdminTokensPage() {
       const res = await fetch("/api/admin/tokens");
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        setError(data?.error || "加载失败");
+        setError(data?.error || t("admin.panel.tokens.i090"));
         return;
       }
       const data = await res.json();
@@ -120,7 +120,7 @@ export default function AdminTokensPage() {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setError(data?.error || "创建失败");
+        setError(data?.error || t("admin.panel.tokens.i091"));
         return;
       }
       if (data?.item) {
@@ -153,7 +153,7 @@ export default function AdminTokensPage() {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setError(data?.error || "更新失败");
+        setError(data?.error || t("admin.panel.tokens.i092"));
         await loadTokens();
         return;
       }
@@ -175,7 +175,7 @@ export default function AdminTokensPage() {
       const res = await fetch(`/api/admin/tokens/${tokenId}`, { method: "DELETE" });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        setError(data?.error || "删除失败");
+        setError(data?.error || t("admin.panel.tokens.i093"));
         return;
       }
       setTokens((prev) => prev.filter((item) => item.id !== tokenId));
@@ -368,7 +368,9 @@ export default function AdminTokensPage() {
                           }
                           disabled={saving[token.id]}
                         >
-                          {token.status === "active" ? "禁用" : t("admin.tokens.022")}
+                          {token.status === "active"
+                            ? t("admin.panel.tokens.i094")
+                            : t("admin.tokens.022")}
                         </button>
                         <button
                           className="admin-btn ghost"

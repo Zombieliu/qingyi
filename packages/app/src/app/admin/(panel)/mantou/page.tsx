@@ -30,7 +30,8 @@ export default function MantouWithdrawPage() {
         const params = new URLSearchParams();
         params.set("pageSize", String(pageSize));
         if (cursorValue) params.set("cursor", cursorValue);
-        if (statusFilter && statusFilter !== "全部") params.set("status", statusFilter);
+        if (statusFilter && statusFilter !== t("admin.panel.mantou.i063"))
+          params.set("status", statusFilter);
         const cacheKey = `cache:admin:mantou:withdraws:${params.toString()}`;
         const cached = readCache<{ items: MantouWithdrawRequest[]; nextCursor?: string | null }>(
           cacheKey,
@@ -85,7 +86,8 @@ export default function MantouWithdrawPage() {
           const params = new URLSearchParams();
           params.set("pageSize", String(pageSize));
           if (cursor) params.set("cursor", cursor);
-          if (statusFilter && statusFilter !== "全部") params.set("status", statusFilter);
+          if (statusFilter && statusFilter !== t("admin.panel.mantou.i064"))
+            params.set("status", statusFilter);
           writeCache(`cache:admin:mantou:withdraws:${params.toString()}`, {
             items: next,
             nextCursor,
