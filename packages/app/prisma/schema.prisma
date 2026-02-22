@@ -545,3 +545,184 @@ model CustomerTag {
   @@index([userAddress, active])
   @@index([reportedBy])
 }
+
+// ============================================================
+// Growth OS — 全域流量管理系统
+// ============================================================
+
+// 统一用户画像（不管从哪个渠道来）
+model GrowthContact {
+  id              String   @id @default(cuid())
+  userAddress     String?  @unique // 关联平台账号（注册后绑定）
+  phone           String?
+  wechat          String?
+  platformIds     Json?    // { douyin: "xxx", xiaohongshu: "xxx", ... }
+  name            String?
+  avatar          String?
+  source          String?  // 首次来源渠道 code
+  lifecycle       String   @default("stranger") // stranger, visitor, lead, customer, promoter
+  score           Int      @default(0) // 线索评分
+  tags            String[] // 自定义标签
+  firstSeenAt     DateTime @default(now())
+  lastSeenAt      DateTime @default(now())
+  convertedAt     DateTime? // 首次下单时间
+  totalOrders     Int      @default(0)
+  totalSpent      Float    @default(0)
+  assignedTo      String?  // 分配给哪个运营
+  notes           String?
+  meta            Json?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  touchpoints     GrowthTouchpoint[]
+  followUps       GrowthFollowUp[]
+
+  @@index([lifecycle])
+  @@index([source])
+  @@index([assignedTo])
+  @@index([score])
+  @@index([lastSeenAt])
+}
+
+// 触点记录 — 每次用户接触
+model GrowthTouchpoint {
+  id          String   @id @default(cuid())
+  contactId   String
+  contact     GrowthContact @relation(fields: [contactId], references: [id])
+  channelCode String   // 渠道 code: douyin, kuaishou, bixin, xianyu, xiaohongshu, wechat, kook, organic, direct
+  campaignId  String?  // 关联活动
+  campaign    GrowthCampaign? @relation(fields: [campaignId], references: [id])
+  // UTM 五件套
+  utmSource   String?
+  utmMedium   String?
+  utmCampaign String?
+  utmContent  String?
+  utmTerm     String?
+  // 触点详情
+  touchType   String   @default("visit") // visit, click, register, order, referral, return
+  landingPage String?
+  referrer    String?
+  ip          String?
+  userAgent   String?
+  deviceType  String?  // mobile, desktop, tablet
+  // 归因
+  weight      Float    @default(1.0) // 多触点归因权重
+  orderId     String?  // 如果是 order 类型
+  orderAmount Float?
+  meta        Json?
+  createdAt   DateTime @default(now())
+
+  @@index([contactId, createdAt])
+  @@index([channelCode, createdAt])
+  @@index([campaignId])
+  @@index([touchType])
+}
+
+// 渠道配置
+model GrowthChannel {
+  id          String   @id @default(cuid())
+  code        String   @unique // douyin, kuaishou, bixin, xianyu, xiaohongshu, wechat, kook, organic
+  name        String   // 显示名
+  icon        String?  // emoji or icon name
+  color       String?  // hex color for charts
+  active      Boolean  @default(true)
+  monthlyBudget Float? // 月预算
+  notes       String?
+  meta        Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  campaigns   GrowthCampaign[]
+}
+
+// 投放活动/计划
+model GrowthCampaign {
+  id          String   @id @default(cuid())
+  channelId   String
+  channel     GrowthChannel @relation(fields: [channelId], references: [id])
+  name        String
+  description String?
+  status      String   @default("draft") // draft, active, paused, completed
+  budget      Float?   // 预算
+  spent       Float    @default(0) // 已花费
+  targetKpi   String?  // 目标 KPI 描述
+  // 时间
+  startsAt    DateTime?
+  endsAt      DateTime?
+  // 素材
+  assets      GrowthAsset[]
+  // 追踪
+  utmCampaign String?  // 统一 UTM campaign 值
+  landingPage String?  // 专属落地页
+  // 统计（定期聚合更新）
+  impressions Int      @default(0)
+  clicks      Int      @default(0)
+  leads       Int      @default(0)
+  orders      Int      @default(0)
+  revenue     Float    @default(0)
+  meta        Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  touchpoints GrowthTouchpoint[]
+
+  @@index([channelId, status])
+  @@index([status])
+}
+
+// 素材管理
+model GrowthAsset {
+  id          String   @id @default(cuid())
+  campaignId  String
+  campaign    GrowthCampaign @relation(fields: [campaignId], references: [id])
+  type        String   // image, video, text, link, qrcode
+  title       String?
+  url         String?  // 素材 URL 或推广链接
+  shortCode   String?  @unique // 短链 code
+  content     String?  // 文案内容
+  thumbnail   String?
+  // 追踪
+  clicks      Int      @default(0)
+  leads       Int      @default(0)
+  orders      Int      @default(0)
+  meta        Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([campaignId])
+  @@index([shortCode])
+}
+
+// 跟进记录
+model GrowthFollowUp {
+  id          String   @id @default(cuid())
+  contactId   String
+  contact     GrowthContact @relation(fields: [contactId], references: [id])
+  action      String   // call, wechat, sms, note, status_change
+  content     String?
+  result      String?  // interested, not_interested, no_answer, converted, follow_later
+  nextFollowAt DateTime?
+  operatorId  String   // 操作人
+  createdAt   DateTime @default(now())
+
+  @@index([contactId, createdAt])
+  @@index([operatorId])
+  @@index([nextFollowAt])
+}
+
+// 自动化规则
+model GrowthAutomation {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  active      Boolean  @default(true)
+  // 触发条件 JSON: { event: "visit", channel: "douyin", count: ">3" }
+  trigger     Json
+  // 动作 JSON: { action: "assign", to: "ops_01" } or { action: "tag", value: "high_intent" }
+  action      Json
+  priority    Int      @default(0)
+  executedCount Int    @default(0)
+  lastExecutedAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
