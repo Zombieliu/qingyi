@@ -5,7 +5,7 @@ import { ArrowLeft, Star, ThumbsUp } from "lucide-react";
 import { StateBlock } from "@/app/components/state-block";
 import { formatShortDateTime } from "@/lib/shared/date-utils";
 import { useParams } from "next/navigation";
-import { t } from "@/lib/i18n/i18n-client";
+import { t } from "@/lib/i18n/t";
 
 type ReviewData = {
   player: { id: string; name: string; role?: string; status: string };

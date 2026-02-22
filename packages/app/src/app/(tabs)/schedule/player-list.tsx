@@ -1,5 +1,5 @@
 "use client";
-import { t } from "@/lib/i18n/i18n-client";
+import { t } from "@/lib/i18n/t";
 import { Loader2 } from "lucide-react";
 import { StateBlock } from "@/app/components/state-block";
 import type { PublicPlayer } from "./schedule-data";

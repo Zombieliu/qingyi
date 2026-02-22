@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { listPlayersPublic, listPublicAnnouncements } from "@/lib/admin/admin-store";
 import HomeContent from "./home-content";
-import { t } from "@/lib/i18n/i18n-client";
+import { t } from "@/lib/i18n/t";
 
 export const dynamic = "force-dynamic";
 

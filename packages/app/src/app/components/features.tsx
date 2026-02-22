@@ -1,5 +1,5 @@
 import { Clock3, Headphones, Map, Shield, Smartphone, Trophy } from "lucide-react";
-import { t } from "@/lib/i18n/i18n-client";
+import { t } from "@/lib/i18n/t";
 
 const features = [
   {

@@ -1,7 +1,5 @@
 "use client";
 
-import { isFeatureEnabled } from "./feature-flags";
-
 type WebVitalMetric = {
   name: string;
   value: number;
@@ -14,7 +12,8 @@ const VITALS_ENDPOINT = "/api/vitals";
 
 /** Report Web Vitals to analytics endpoint */
 export function reportWebVitals(metric: WebVitalMetric) {
-  if (!isFeatureEnabled("web_vitals")) return;
+  // Read env directly to avoid importing server-only feature-flags
+  if (process.env.NEXT_PUBLIC_FF_WEB_VITALS === "0") return;
 
   const body = {
     name: metric.name,

@@ -1,5 +1,5 @@
 "use client";
-import { t } from "@/lib/i18n/i18n-client";
+import { t } from "@/lib/i18n/t";
 import { Loader2 } from "lucide-react";
 import type { ChainOrder } from "@/lib/chain/qy-chain";
 import { StateBlock } from "@/app/components/state-block";

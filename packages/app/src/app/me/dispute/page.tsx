@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { fetchWithUserAuth } from "@/lib/auth/user-auth-client";
 import { getCurrentAddress } from "@/lib/chain/qy-chain-lite";
-import { t } from "@/lib/i18n/i18n-client";
+import { t } from "@/lib/i18n/t";
 
 const REASONS = [
   { value: "service_quality", label: t("me.dispute.i223") },

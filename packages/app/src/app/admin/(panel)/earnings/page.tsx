@@ -1,5 +1,5 @@
 "use client";
-import { t } from "@/lib/i18n/i18n-client";
+import { t } from "@/lib/i18n/t";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { readCache, writeCache } from "@/lib/shared/client-cache";

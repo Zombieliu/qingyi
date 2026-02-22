@@ -1,5 +1,5 @@
 "use client";
-import { t } from "@/lib/i18n/i18n-client";
+import { t } from "@/lib/i18n/t";
 import { getChainDebugInfo } from "@/lib/chain/qy-chain";
 
 interface DebugModalProps {

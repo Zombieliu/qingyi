@@ -3,7 +3,7 @@
 import type { LocalOrder } from "@/lib/services/order-store";
 import type { ChainOrder } from "@/lib/chain/qy-chain";
 import type { Mode } from "./schedule-data";
-import { t } from "@/lib/i18n/i18n-client";
+import { t } from "@/lib/i18n/t";
 import { StateBlock } from "@/app/components/state-block";
 
 type CompanionProfile = { gameName?: string; gameId?: string } | null;

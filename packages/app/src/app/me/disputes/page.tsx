@@ -6,7 +6,7 @@ import { ArrowLeft, AlertTriangle, CheckCircle, XCircle, Clock } from "lucide-re
 import { fetchWithUserAuth } from "@/lib/auth/user-auth-client";
 import { getCurrentAddress } from "@/lib/chain/qy-chain-lite";
 import type { DisputeRecord } from "@/lib/services/dispute-service";
-import { t } from "@/lib/i18n/i18n-client";
+import { t } from "@/lib/i18n/t";
 
 const STATUS_MAP: Record<string, { label: string; color: string; icon: typeof Clock }> = {
   pending: { label: t("me.disputes.i130"), color: "#f59e0b", icon: Clock },

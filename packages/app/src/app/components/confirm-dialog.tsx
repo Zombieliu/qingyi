@@ -1,4 +1,4 @@
-import { t } from "@/lib/i18n/i18n-client";
+import { t } from "@/lib/i18n/t";
 import type { ReactNode } from "react";
 import { Loader2 } from "lucide-react";
 

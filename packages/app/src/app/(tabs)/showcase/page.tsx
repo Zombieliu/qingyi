@@ -1,5 +1,5 @@
 "use client";
-import { t } from "@/lib/i18n/i18n-client";
+import { t } from "@/lib/i18n/t";
 import { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { type LocalOrder } from "@/lib/services/order-store";

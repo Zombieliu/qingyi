@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { t } from "@/lib/i18n/i18n-client";
+import { t } from "@/lib/i18n/t";
 
 export const metadata: Metadata = {
   title: t("login.layout.i128"),

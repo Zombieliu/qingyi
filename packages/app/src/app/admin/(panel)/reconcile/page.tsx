@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { RefreshCw, AlertTriangle, CheckCircle, Wrench } from "lucide-react";
-import { t } from "@/lib/i18n/i18n-client";
+import { t } from "@/lib/i18n/t";
 
 type ReconcileItem = {
   orderId: string;

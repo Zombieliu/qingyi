@@ -1,4 +1,4 @@
-import { t } from "@/lib/i18n/i18n-client";
+import { t } from "@/lib/i18n/t";
 import { LobbyCard } from "./lobby-card";
 
 const lobbies = [

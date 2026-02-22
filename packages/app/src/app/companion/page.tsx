@@ -15,7 +15,7 @@ import { getCurrentAddress } from "@/lib/chain/qy-chain-lite";
 import { fetchWithUserAuth } from "@/lib/auth/user-auth-client";
 import { StateBlock } from "@/app/components/state-block";
 import { formatShortDateTime } from "@/lib/shared/date-utils";
-import { t } from "@/lib/i18n/i18n-client";
+import { t } from "@/lib/i18n/t";
 
 type CompanionStats = {
   player: { id: string; name: string; status: string; role?: string } | null;

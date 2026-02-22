@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { getCurrentAddress } from "@/lib/chain/qy-chain-lite";
 import { fetchWithUserAuth } from "@/lib/auth/user-auth-client";
 import { readCache, writeCache } from "@/lib/shared/client-cache";
-import { t } from "@/lib/i18n/i18n-client";
+import { t } from "@/lib/i18n/t";
 
 type LevelProgress = {
   points: number;

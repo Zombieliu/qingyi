@@ -1,5 +1,5 @@
 "use client";
-import { t } from "@/lib/i18n/i18n-client";
+import { t } from "@/lib/i18n/t";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import PasskeyWallet, { PASSKEY_STORAGE_KEY } from "./passkey-wallet";
 

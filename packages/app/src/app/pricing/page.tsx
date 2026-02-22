@@ -1,6 +1,6 @@
 import TrackedLink from "@/app/components/tracked-link";
 import { createTranslator, getMessages, getServerLocale } from "@/lib/i18n/i18n";
-import { t } from "@/lib/i18n/i18n-client";
+import { t } from "@/lib/i18n/t";
 
 export const metadata = {
   title: t("pricing.i117"),

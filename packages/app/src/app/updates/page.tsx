@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { listPublicAnnouncements } from "@/lib/admin/admin-store";
-import { t } from "@/lib/i18n/i18n-client";
+import { t } from "@/lib/i18n/t";
 
 export const dynamic = "force-dynamic";
 

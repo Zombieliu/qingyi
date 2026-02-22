@@ -1,5 +1,5 @@
 "use client";
-import { t } from "@/lib/i18n/i18n-client";
+import { t } from "@/lib/i18n/t";
 import { useEffect, useMemo, useState } from "react";
 import { KeyRound } from "lucide-react";
 import {

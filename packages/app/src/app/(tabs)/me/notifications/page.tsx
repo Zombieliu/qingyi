@@ -7,7 +7,7 @@ import { fetchWithUserAuth } from "@/lib/auth/user-auth-client";
 import { StateBlock } from "@/app/components/state-block";
 import { formatShortDateTime } from "@/lib/shared/date-utils";
 import type { Notification } from "@/app/components/use-notifications";
-import { t } from "@/lib/i18n/i18n-client";
+import { t } from "@/lib/i18n/t";
 
 const TYPE_ICONS: Record<string, typeof Bell> = {
   order_status: Package,

@@ -1,7 +1,5 @@
 "use client";
 
-import { isFeatureEnabled } from "@/lib/feature-flags";
-
 const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || "";
 
 function urlBase64ToUint8Array(base64String: string): Uint8Array {
@@ -29,7 +27,8 @@ export function getPushPermission(): NotificationPermission | "unsupported" {
 
 /** Request push notification permission and subscribe */
 export async function subscribeToPush(userAddress: string): Promise<boolean> {
-  if (!isFeatureEnabled("push_notifications")) return false;
+  // Read env directly to avoid importing server-only feature-flags
+  if (process.env.NEXT_PUBLIC_FF_PUSH_NOTIFICATIONS === "0") return false;
   if (!isPushSupported()) return false;
   if (!VAPID_PUBLIC_KEY) {
     console.warn("[Push] VAPID public key not configured");

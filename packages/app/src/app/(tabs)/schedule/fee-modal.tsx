@@ -1,5 +1,5 @@
 "use client";
-import { t } from "@/lib/i18n/i18n-client";
+import { t } from "@/lib/i18n/t";
 import { Loader2, CheckCircle2 } from "lucide-react";
 import { FIRST_ORDER_DISCOUNT } from "./schedule-data";
 import type { PublicPlayer } from "./schedule-data";

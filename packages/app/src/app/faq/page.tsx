@@ -1,74 +1,33 @@
 import TrackedLink from "@/app/components/tracked-link";
 import { createTranslator, getMessages, getServerLocale } from "@/lib/i18n/i18n";
-import { t } from "@/lib/i18n/i18n-client";
 
-export const metadata = {
-  title: t("faq.i103"),
-  description: t("faq.i104"),
-  alternates: { canonical: "/faq" },
-};
+export async function generateMetadata() {
+  const locale = await getServerLocale();
+  const t = createTranslator(getMessages(locale));
+  return {
+    title: t("faq.i103"),
+    description: t("faq.i104"),
+    alternates: { canonical: "/faq" },
+  };
+}
 
 export const revalidate = 600;
 
-const faqs = {
-  zh: [
-    {
-      q: t("faq.i105"),
-      a: t("faq.i106"),
-    },
-    {
-      q: t("faq.i107"),
-      a: t("faq.i108"),
-    },
-    {
-      q: t("faq.i109"),
-      a: t("faq.i110"),
-    },
-    {
-      q: t("faq.i111"),
-      a: t("faq.i112"),
-    },
-    {
-      q: t("faq.i113"),
-      a: t("faq.i114"),
-    },
-    {
-      q: t("faq.i115"),
-      a: t("faq.i116"),
-    },
-  ],
-  en: [
-    {
-      q: "How do I start accepting orders?",
-      a: "Log in with Passkey, enter the lobby, choose an available order, and complete the deposit step.",
-    },
-    {
-      q: "What is the deposit for?",
-      a: "Deposits secure fulfillment and service quality. They are settled or refunded after completion.",
-    },
-    {
-      q: "Can I accept my own order?",
-      a: "No. The system prevents the same address from accepting its own order.",
-    },
-    {
-      q: "What order statuses exist?",
-      a: "Common statuses include: pending, confirmed, in progress, completed, cancelled.",
-    },
-    {
-      q: "What if I fail to accept or time out?",
-      a: "Check your network and account status, or contact admin/support if needed.",
-    },
-    {
-      q: "How do I use the first-order discount?",
-      a: "Spend ¥99 and save ¥10 automatically at checkout. No extra action required.",
-    },
-  ],
-};
+function buildFaqs(t: (key: string) => string) {
+  return [
+    { q: t("faq.i105"), a: t("faq.i106") },
+    { q: t("faq.i107"), a: t("faq.i108") },
+    { q: t("faq.i109"), a: t("faq.i110") },
+    { q: t("faq.i111"), a: t("faq.i112") },
+    { q: t("faq.i113"), a: t("faq.i114") },
+    { q: t("faq.i115"), a: t("faq.i116") },
+  ];
+}
 
 export default async function FaqPage() {
   const locale = await getServerLocale();
   const t = createTranslator(getMessages(locale));
-  const list = faqs[locale] || faqs.zh;
+  const list = buildFaqs(t);
 
   const jsonLd = {
     "@context": "https://schema.org",
