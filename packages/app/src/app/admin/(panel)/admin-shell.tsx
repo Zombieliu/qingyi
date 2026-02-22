@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import type { ElementType } from "react";
 import {
+  Activity,
   LayoutGrid,
   ClipboardList,
   Users,
@@ -100,6 +101,7 @@ type NavItem = { href: string; label: string; icon: ElementType; minRole: AdminR
 
 const navItems: NavItem[] = [
   { href: "/admin", label: t("ui.admin-shell.693"), icon: LayoutGrid, minRole: "viewer" },
+  { href: "/admin/dashboard", label: "数据大屏", icon: Activity, minRole: "viewer" },
   { href: "/admin/orders", label: t("ui.admin-shell.666"), icon: ClipboardList, minRole: "viewer" },
   { href: "/admin/support", label: t("ui.admin-shell.572"), icon: Headset, minRole: "ops" },
   { href: "/admin/coupons", label: "优惠卡券", icon: TicketPercent, minRole: "ops" },
@@ -127,7 +129,7 @@ const navItems: NavItem[] = [
 ];
 
 const navSections: Array<{ label: string; items: string[] }> = [
-  { label: t("ui.admin-shell.633"), items: ["/admin"] },
+  { label: t("ui.admin-shell.633"), items: ["/admin", "/admin/dashboard"] },
   {
     label: t("ui.admin-shell.692"),
     items: [
@@ -172,6 +174,7 @@ const subtitles: Record<string, string> = {
   "/admin/referral": "邀请返利配置与记录管理",
   "/admin/redeem": "卡密生成与兑换记录",
   "/admin/analytics": t("ui.admin-shell.673"),
+  "/admin/dashboard": "实时运营数据、趋势分析与转化漏斗",
   "/admin/revenue": "营收趋势、商品分析与陪练绩效",
   "/admin/earnings": "陪练完单与平台撮合费汇总",
   "/admin/ledger": t("ui.admin-shell.535"),
