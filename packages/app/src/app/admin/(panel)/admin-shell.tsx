@@ -26,6 +26,7 @@ import {
   BarChart3,
   Gift,
   Scale,
+  Rocket,
 } from "lucide-react";
 import { t, useI18n } from "@/lib/i18n/i18n-client";
 import AutoTranslate from "@/app/components/auto-translate";
@@ -188,6 +189,12 @@ const navItems: NavItem[] = [
     icon: KeyRound,
     minRole: "admin",
   },
+  {
+    href: "/growth",
+    label: "Growth OS",
+    icon: Rocket,
+    minRole: "ops",
+  },
 ];
 
 const navSections: Array<{ label: string; items: string[] }> = [
@@ -219,7 +226,7 @@ const navSections: Array<{ label: string; items: string[] }> = [
       "/admin/payments",
     ],
   },
-  { label: t("ui.admin-shell.642"), items: ["/admin/tokens", "/admin/audit"] },
+  { label: t("ui.admin-shell.642"), items: ["/admin/tokens", "/admin/audit", "/growth"] },
 ];
 
 const navLookup = new Map(navItems.map((item) => [item.href, item]));
