@@ -25,7 +25,7 @@ import {
   BarChart3,
   Gift,
 } from "lucide-react";
-import { useI18n, t } from "@/lib/i18n/i18n-client";
+import { useI18n } from "@/lib/i18n/i18n-client";
 import AutoTranslate from "@/app/components/auto-translate";
 import SwControl from "@/app/components/sw-control";
 import { PageTransition, Stagger, StaggerItem } from "@/components/ui/motion";
@@ -110,6 +110,7 @@ const navItems: NavItem[] = [
   { href: "/admin/announcements", label: "公告资讯", icon: Megaphone, minRole: "viewer" },
   { href: "/admin/referral", label: "邀请返利", icon: Gift, minRole: "ops" },
   { href: "/admin/analytics", label: "增长数据", icon: TrendingUp, minRole: "admin" },
+  { href: "/admin/revenue", label: "营收绩效", icon: BarChart3, minRole: "admin" },
   { href: "/admin/earnings", label: "完单收益", icon: BarChart3, minRole: "finance" },
   { href: "/admin/ledger", label: "记账中心", icon: Wallet, minRole: "finance" },
   { href: "/admin/mantou", label: "馒头提现", icon: Wallet, minRole: "finance" },
@@ -135,6 +136,7 @@ const navSections: Array<{ label: string; items: string[] }> = [
       "/admin/announcements",
       "/admin/referral",
       "/admin/analytics",
+      "/admin/revenue",
     ],
   },
   {
@@ -165,6 +167,7 @@ const subtitles: Record<string, string> = {
   "/admin/referral": "邀请返利配置与记录管理",
   "/admin/redeem": "卡密生成与兑换记录",
   "/admin/analytics": "访问与转化漏斗监控",
+  "/admin/revenue": "营收趋势、商品分析与陪练绩效",
   "/admin/earnings": "陪练完单与平台撮合费汇总",
   "/admin/ledger": "充值记账与凭证管理",
   "/admin/mantou": "陪练馒头提现审核",
