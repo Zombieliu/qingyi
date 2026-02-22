@@ -26,6 +26,7 @@ import { z } from "zod";
 import { parseBodyRaw } from "@/lib/shared/api-validation";
 import { env } from "@/lib/env";
 import { trackOrderCreated, trackWebhookFailed } from "@/lib/business-events";
+import { publishOrderEvent } from "@/lib/realtime";
 const PUBLIC_ORDER_CACHE_TTL_MS = 5000;
 const PUBLIC_ORDER_CACHE_CONTROL = "private, max-age=5, stale-while-revalidate=10";
 
@@ -334,6 +335,16 @@ export async function POST(req: Request) {
     }
 
     trackOrderCreated(orderId, payload.chainDigest ? "chain" : "app", amount);
+
+    // Publish realtime event
+    if (userAddress) {
+      void publishOrderEvent(userAddress, {
+        type: "status_change",
+        orderId,
+        stage: "待处理",
+        timestamp: Date.now(),
+      });
+    }
 
     // 新订单可能影响公共订单池，清除缓存
     invalidateCacheByPrefix("public-orders:");

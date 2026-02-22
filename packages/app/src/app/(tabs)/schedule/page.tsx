@@ -1,7 +1,7 @@
 "use client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Clock3, ShieldCheck, QrCode, Loader2, CheckCircle2 } from "lucide-react";
+import { Clock3, QrCode, Loader2, CheckCircle2 } from "lucide-react";
 import { type LocalOrder } from "@/lib/services/order-store";
 import {
   createOrder,
@@ -16,6 +16,7 @@ import { fetchWithUserAuth } from "@/lib/auth/user-auth-client";
 import { DIAMOND_RATE } from "@/lib/shared/constants";
 import { getLocalChainStatus, mergeChainStatus } from "@/lib/chain/chain-status";
 import { useBackoffPoll } from "@/app/components/use-backoff-poll";
+import { useOrderEvents } from "@/app/components/use-order-events";
 import {
   type ChainOrder,
   cancelOrderOnChain,
@@ -160,9 +161,19 @@ export default function Schedule() {
 
   useBackoffPoll({
     enabled: true,
-    baseMs: 20_000,
-    maxMs: 120_000,
+    baseMs: 60_000,
+    maxMs: 180_000,
     onPoll: async () => refreshOrders(userAddress || getCurrentAddress(), true),
+  });
+
+  // SSE: real-time order status push (supplements polling)
+  useOrderEvents({
+    address: userAddress || "",
+    enabled: Boolean(userAddress),
+    onEvent: () => {
+      // On any order event, refresh immediately
+      refreshOrders(userAddress || getCurrentAddress(), true);
+    },
   });
 
   useEffect(() => {

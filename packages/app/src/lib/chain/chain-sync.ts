@@ -8,6 +8,7 @@ import { addOrder, getOrderById, updateOrder, processReferralReward } from "../a
 import type { AdminOrder } from "../admin/admin-types";
 import { isValidSuiAddress, normalizeSuiAddress } from "@mysten/sui/utils";
 import { findChainOrderCached, clearCache, getCacheStats } from "./chain-order-cache";
+import { publishOrderEvent } from "../realtime";
 import { getChainEventCursor, updateChainEventCursor } from "./chain-event-cursor";
 import { env } from "@/lib/env";
 import {
@@ -119,6 +120,21 @@ export async function upsertChainOrder(chain: ChainOrder) {
       } catch {
         /* non-critical */
       }
+    }
+    // Publish realtime event for SSE
+    if (updated && statusFields.stage !== existing.stage) {
+      void publishOrderEvent(chain.user, {
+        type:
+          statusFields.stage === "已完成"
+            ? "completed"
+            : statusFields.stage === "已取消"
+              ? "cancelled"
+              : "status_change",
+        orderId,
+        status: statusFields.paymentStatus,
+        stage: statusFields.stage,
+        timestamp: Date.now(),
+      });
     }
     return updated;
   }
