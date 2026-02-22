@@ -175,3 +175,22 @@ export async function getDispute(orderId: string): Promise<DisputeRecord | null>
   const meta = (order.meta as Record<string, unknown>) || {};
   return (meta.dispute as DisputeRecord) || null;
 }
+
+/** List all disputes for a user */
+export async function listUserDisputes(userAddress: string): Promise<DisputeRecord[]> {
+  const orders = await prisma.adminOrder.findMany({
+    where: {
+      userAddress,
+      stage: { in: ["争议中", "已退款"] },
+    },
+    orderBy: { updatedAt: "desc" },
+    take: 50,
+  });
+
+  return orders
+    .map((o) => {
+      const meta = (o.meta as Record<string, unknown>) || {};
+      return meta.dispute as DisputeRecord | undefined;
+    })
+    .filter((d): d is DisputeRecord => !!d);
+}

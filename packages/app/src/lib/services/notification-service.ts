@@ -40,6 +40,18 @@ export async function createNotification(params: {
     timestamp: Date.now(),
   }).catch(() => {});
 
+  // Push via Web Push (non-blocking, best-effort)
+  import("@/lib/services/push-service")
+    .then(({ sendPushNotification }) =>
+      sendPushNotification(userAddress, {
+        title,
+        body,
+        url: orderId ? `/me/orders/${orderId}` : "/me/notifications",
+        icon: "/icons/icon-192x192.png",
+      })
+    )
+    .catch(() => {});
+
   return notification;
 }
 

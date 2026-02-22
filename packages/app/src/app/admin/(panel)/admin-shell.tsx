@@ -25,6 +25,7 @@ import {
   TrendingUp,
   BarChart3,
   Gift,
+  Scale,
 } from "lucide-react";
 import { t, useI18n } from "@/lib/i18n/i18n-client";
 import AutoTranslate from "@/app/components/auto-translate";
@@ -124,6 +125,7 @@ const navItems: NavItem[] = [
   { href: "/admin/invoices", label: "发票申请", icon: FileCheck, minRole: "finance" },
   { href: "/admin/chain", label: "订单对账", icon: Link2, minRole: "finance" },
   { href: "/admin/payments", label: "支付事件", icon: CreditCard, minRole: "finance" },
+  { href: "/admin/reconcile", label: "支付对账", icon: Scale, minRole: "finance" },
   { href: "/admin/audit", label: "审计日志", icon: FileText, minRole: "admin" },
   { href: "/admin/tokens", label: "密钥管理", icon: KeyRound, minRole: "admin" },
 ];

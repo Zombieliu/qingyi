@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireUserAuth } from "@/lib/auth/user-auth";
-import { createDispute, getDispute } from "@/lib/services/dispute-service";
+import { createDispute, getDispute, listUserDisputes } from "@/lib/services/dispute-service";
 import { parseBody } from "@/lib/shared/api-validation";
 import { z } from "zod";
 
@@ -38,10 +38,14 @@ export async function GET(req: Request) {
 
   const { searchParams } = new URL(req.url);
   const orderId = searchParams.get("orderId");
-  if (!orderId) return NextResponse.json({ error: "orderId required" }, { status: 400 });
 
-  const dispute = await getDispute(orderId);
-  if (!dispute) return NextResponse.json({ error: "not found" }, { status: 404 });
+  // If orderId provided, return single dispute; otherwise list all
+  if (orderId) {
+    const dispute = await getDispute(orderId);
+    if (!dispute) return NextResponse.json({ error: "not found" }, { status: 404 });
+    return NextResponse.json(dispute);
+  }
 
-  return NextResponse.json(dispute);
+  const disputes = await listUserDisputes(auth.address);
+  return NextResponse.json({ disputes });
 }
