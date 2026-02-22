@@ -27,6 +27,7 @@ export default function ScheduleError({
             onClick={reset}
             className="dl-tab-btn primary"
             style={{ padding: "10px 14px", cursor: "pointer" }}
+            aria-label={info.action || "重试"}
           >
             {info.action || "重试"}
           </button>

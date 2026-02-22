@@ -54,6 +54,7 @@ import {
   shortDigest,
   Step,
 } from "./schedule-data";
+import { NotifyingView } from "./notifying-view";
 
 export default function Schedule() {
   const [checked, setChecked] = useState<Record<string, boolean>>(() => ({}));
@@ -1073,35 +1074,7 @@ export default function Schedule() {
   }
 
   if (mode === "notifying" && currentOrder) {
-    return (
-      <div className="ride-shell">
-        <div className="ride-tip" style={{ marginTop: 0 }}>
-          正在通知陪练，需陪练支付押金后才能接单
-        </div>
-        <div className="ride-stepper">
-          <Step
-            label={`托管费 ¥${escrowFeeDisplay.toFixed(2)} 已收`}
-            done={!!currentOrder.serviceFeePaid}
-          />
-          <Step label="陪练支付押金" done={!!currentOrder.depositPaid} />
-          <Step label="派单匹配" done={!!currentOrder.driver} />
-        </div>
-        <div className="ride-notify-illu" />
-        <div className="dl-card" style={{ padding: 16 }}>
-          <div className="text-sm font-semibold text-gray-900 mb-2">已选服务</div>
-          <div className="flex justify-between text-sm">
-            <span>{currentOrder.item}</span>
-            <span className="text-amber-600 font-bold">¥{currentOrder.amount}</span>
-          </div>
-          <div className="text-xs text-gray-500 mt-2">
-            {new Date(currentOrder.time).toLocaleString()}
-          </div>
-          <div className="text-xs text-gray-500 mt-3">
-            押金未付前不会进入服务阶段，费用已由钻石托管。
-          </div>
-        </div>
-      </div>
-    );
+    return <NotifyingView currentOrder={currentOrder} escrowFeeDisplay={escrowFeeDisplay} />;
   }
 
   const callOrder = async () => {

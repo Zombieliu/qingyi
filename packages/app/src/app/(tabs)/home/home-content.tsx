@@ -243,6 +243,8 @@ export default function HomeContent({
                 key={cat}
                 className={`${styles["lc-filter-tab"]} ${category === cat ? styles["is-active"] : ""}`}
                 onClick={() => setCategory(cat)}
+                aria-pressed={category === cat}
+                aria-label={`筛选分类：${cat}`}
               >
                 {cat}
               </button>
@@ -255,6 +257,7 @@ export default function HomeContent({
                 prev === "default" ? "asc" : prev === "asc" ? "desc" : "default"
               )
             }
+            aria-label={`价格排序：${sortPrice === "asc" ? "升序" : sortPrice === "desc" ? "降序" : "默认"}`}
           >
             价格{sortPrice === "asc" ? "↑" : sortPrice === "desc" ? "↓" : ""}
           </button>

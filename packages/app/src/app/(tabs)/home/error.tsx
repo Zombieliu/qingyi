@@ -26,6 +26,7 @@ export default function HomeError({
             onClick={reset}
             className="dl-tab-btn primary"
             style={{ padding: "10px 14px", cursor: "pointer" }}
+            aria-label="重试加载"
           >
             重试
           </button>

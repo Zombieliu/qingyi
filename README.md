@@ -94,7 +94,57 @@ Optional env:
 - `ORDER_RETENTION_DAYS` – delete orders older than N days (default 180)
 
 ## Structure
-- `packages/app` – Next.js frontend (moved from previous root)
-- future packages: `contracts/`, `api/`, `mobile/` can be added under `packages/`.
+- `packages/app` – Next.js frontend + API routes
+- `contracts/` – SUI Move smart contracts (deployment config)
+- `tests/` – Playwright E2E tests
 
-> After the move, regenerate lockfile with `npm install` at the repo root (npm workspaces). The old lockfile was moved to `packages/app/package-lock.json` for reference.
+## Architecture
+
+```
+┌─────────────────────────────────────────────────┐
+│                   Client (PWA)                   │
+│  home ─ schedule ─ wallet ─ me ─ news ─ admin   │
+│         EventSource (SSE) ◄── /api/events        │
+└──────────────┬──────────────────────────────────┘
+               │ fetch / SSE
+┌──────────────▼──────────────────────────────────┐
+│              Next.js API Routes                  │
+│  /api/orders    /api/auth     /api/cron          │
+│  /api/admin/*   /api/events   /api/health        │
+│  /api/pay       /api/chain/*  /api/ledger        │
+├──────────────────────────────────────────────────┤
+│  Middleware: CSP + Rate Limit + CSRF + IP Gate   │
+└──────┬───────────┬───────────┬──────────────────┘
+       │           │           │
+  ┌────▼────┐ ┌────▼────┐ ┌───▼────┐
+  │ Prisma  │ │ Upstash │ │  SUI   │
+  │ Postgres│ │  Redis  │ │  Chain │
+  └─────────┘ └─────────┘ └────────┘
+```
+
+### Key modules
+- `lib/chain/` – SUI blockchain integration (orders, sync, sponsor, error classification)
+- `lib/admin/` – Admin store split into 15 domain modules with barrel re-export
+- `lib/auth/` – Passkey wallet + session auth
+- `lib/realtime.ts` – Redis-based SSE event channel
+- `lib/business-events.ts` – Structured logging + Sentry breadcrumbs
+- `lib/cron-auth.ts` – Unified cron endpoint authentication
+- `middleware.ts` – Security headers, CSP, rate limiting, CSRF, admin IP allowlist
+
+### Testing
+```bash
+pnpm --filter app test              # Unit tests (vitest)
+pnpm exec playwright test           # E2E tests
+pnpm --filter app run analyze       # Bundle analysis
+```
+
+### Admin APIs
+- `GET /api/admin/revenue?days=30` – Revenue report (daily trend, by-item, by-source)
+- `GET /api/admin/performance?days=30` – Companion performance metrics
+- `GET /api/admin/analytics?days=7` – Growth event analytics + funnel
+- `GET /api/admin/orders/export?format=csv` – Order data export
+- `GET /api/health` – Health check (DB, uptime, version)
+
+### Cron jobs (Vercel)
+- `/api/cron/chain-sync` – Every 5 minutes
+- `/api/cron/cleanup` – Daily at 3am (purge old events + expired sessions)
