@@ -7,6 +7,7 @@ import type { AdminPlayer, PlayerStatus } from "@/lib/admin/admin-types";
 import { PLAYER_STATUS_OPTIONS } from "@/lib/admin/admin-types";
 import { readCache, writeCache } from "@/lib/shared/client-cache";
 import { StateBlock } from "@/app/components/state-block";
+import { PlayerRow } from "./player-row";
 import { isValidSuiAddress, normalizeSuiAddress } from "@mysten/sui/utils";
 import { roleRank, useAdminSession } from "../admin-session";
 
@@ -485,268 +486,26 @@ export default function PlayersPage() {
                 </tr>
               </thead>
               <tbody>
-                {players.map((player) => {
-                  const addressState = parseAddress(player.address || "").state;
-                  return (
-                    <tr key={player.id}>
-                      <td data-label={t("admin.players.021")}>
-                        <input
-                          type="checkbox"
-                          checked={selectedIds.includes(player.id)}
-                          onChange={() => toggleSelect(player.id)}
-                          disabled={!canEdit}
-                        />
-                      </td>
-                      <td data-label={t("admin.players.022")}>
-                        <input
-                          className="admin-input admin-text-strong"
-                          value={player.name}
-                          readOnly={!canEdit}
-                          onChange={(event) =>
-                            setPlayers((prev) =>
-                              prev.map((p) =>
-                                p.id === player.id ? { ...p, name: event.target.value } : p
-                              )
-                            )
-                          }
-                          onBlur={(event) => {
-                            if (!canEdit) return;
-                            const nextName = event.target.value.trim();
-                            if (!nextName) {
-                              alert("form.name_required");
-                              loadPlayers();
-                              return;
-                            }
-                            updatePlayer(player.id, { name: nextName });
-                          }}
-                        />
-                      </td>
-                      <td data-label={t("admin.players.023")}>
-                        <input
-                          className="admin-input"
-                          value={player.role || ""}
-                          readOnly={!canEdit}
-                          onChange={(event) =>
-                            setPlayers((prev) =>
-                              prev.map((p) =>
-                                p.id === player.id ? { ...p, role: event.target.value } : p
-                              )
-                            )
-                          }
-                          onBlur={(event) => {
-                            if (!canEdit) return;
-                            updatePlayer(player.id, { role: event.target.value });
-                          }}
-                        />
-                      </td>
-                      <td data-label={t("admin.players.024")}>
-                        <input
-                          className="admin-input"
-                          value={player.contact || ""}
-                          placeholder={t("admin.players.025")}
-                          readOnly={!canEdit}
-                          onChange={(event) =>
-                            setPlayers((prev) =>
-                              prev.map((p) =>
-                                p.id === player.id ? { ...p, contact: event.target.value } : p
-                              )
-                            )
-                          }
-                          onBlur={(event) => {
-                            if (!canEdit) return;
-                            updatePlayer(player.id, { contact: event.target.value });
-                          }}
-                        />
-                      </td>
-                      <td data-label={t("admin.players.026")}>
-                        {addressState === "invalid" && (
-                          <span className="admin-badge warm" style={{ marginBottom: 6 }}>
-                            格式错误
-                          </span>
-                        )}
-                        {addressState === "missing" && (
-                          <span className="admin-badge warm" style={{ marginBottom: 6 }}>
-                            未绑定
-                          </span>
-                        )}
-                        <input
-                          className="admin-input"
-                          value={player.address || ""}
-                          readOnly={!canEdit}
-                          onChange={(event) =>
-                            setPlayers((prev) =>
-                              prev.map((p) =>
-                                p.id === player.id ? { ...p, address: event.target.value } : p
-                              )
-                            )
-                          }
-                          onBlur={(event) => {
-                            if (!canEdit) return;
-                            const parsed = parseAddress(event.target.value);
-                            if (parsed.state === "invalid") {
-                              alert("diamond.invalid_address");
-                              return;
-                            }
-                            const nextAddress = parsed.state === "missing" ? "" : parsed.normalized;
-                            setPlayers((prev) =>
-                              prev.map((p) =>
-                                p.id === player.id ? { ...p, address: nextAddress } : p
-                              )
-                            );
-                            updatePlayer(player.id, { address: nextAddress });
-                          }}
-                        />
-                      </td>
-                      <td data-label={t("admin.players.027")}>
-                        <input
-                          className="admin-input"
-                          value={player.depositBase ?? ""}
-                          readOnly={!canEdit}
-                          onChange={(event) =>
-                            setPlayers((prev) =>
-                              prev.map((p) =>
-                                p.id === player.id
-                                  ? { ...p, depositBase: Number(event.target.value) || 0 }
-                                  : p
-                              )
-                            )
-                          }
-                          onBlur={(event) => {
-                            if (!canEdit) return;
-                            updatePlayer(player.id, {
-                              depositBase: Number(event.target.value) || 0,
-                            });
-                          }}
-                        />
-                      </td>
-                      <td data-label={t("admin.players.028")}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                          <input
-                            className="admin-input"
-                            value={player.depositLocked ?? ""}
-                            readOnly={!canEdit}
-                            onChange={(event) =>
-                              setPlayers((prev) =>
-                                prev.map((p) =>
-                                  p.id === player.id
-                                    ? { ...p, depositLocked: Number(event.target.value) || 0 }
-                                    : p
-                                )
-                              )
-                            }
-                            onBlur={(event) => {
-                              if (!canEdit) return;
-                              updatePlayer(player.id, {
-                                depositLocked: Number(event.target.value) || 0,
-                              });
-                            }}
-                          />
-                          <button
-                            className="admin-btn ghost"
-                            type="button"
-                            style={{ padding: "6px 10px", fontSize: 12 }}
-                            disabled={player.depositBase === undefined || !canEdit}
-                            onClick={() => {
-                              if (!canEdit) return;
-                              const nextLocked = player.depositBase ?? 0;
-                              setPlayers((prev) =>
-                                prev.map((p) =>
-                                  p.id === player.id ? { ...p, depositLocked: nextLocked } : p
-                                )
-                              );
-                              updatePlayer(player.id, { depositLocked: nextLocked });
-                            }}
-                          >
-                            同基础
-                          </button>
-                        </div>
-                      </td>
-                      <td data-label={t("admin.players.029")}>
-                        <input
-                          className="admin-input"
-                          value={player.creditMultiplier ?? 1}
-                          readOnly={!canEdit}
-                          onChange={(event) =>
-                            setPlayers((prev) =>
-                              prev.map((p) =>
-                                p.id === player.id
-                                  ? { ...p, creditMultiplier: Number(event.target.value) || 1 }
-                                  : p
-                              )
-                            )
-                          }
-                          onBlur={(event) => {
-                            if (!canEdit) return;
-                            updatePlayer(player.id, {
-                              creditMultiplier: Number(event.target.value) || 1,
-                            });
-                          }}
-                        />
-                      </td>
-                      <td data-label={t("admin.players.030")}>{player.creditLimit ?? 0}</td>
-                      <td data-label={t("admin.players.031")}>{player.usedCredit ?? 0}</td>
-                      <td data-label={t("admin.players.032")}>{player.availableCredit ?? 0}</td>
-                      <td data-label={t("admin.players.033")}>
-                        <select
-                          className="admin-select"
-                          value={player.status}
-                          disabled={!canEdit}
-                          onChange={(event) => {
-                            if (!canEdit) return;
-                            const nextStatus = event.target.value as PlayerStatus;
-                            setPlayers((prev) =>
-                              prev.map((p) =>
-                                p.id === player.id ? { ...p, status: nextStatus } : p
-                              )
-                            );
-                            updatePlayer(player.id, { status: nextStatus });
-                          }}
-                        >
-                          {PLAYER_STATUS_OPTIONS.map((status) => (
-                            <option key={status} value={status}>
-                              {status}
-                            </option>
-                          ))}
-                        </select>
-                      </td>
-                      <td data-label={t("admin.players.034")}>
-                        <input
-                          className="admin-input"
-                          value={player.notes || ""}
-                          readOnly={!canEdit}
-                          onChange={(event) =>
-                            setPlayers((prev) =>
-                              prev.map((p) =>
-                                p.id === player.id ? { ...p, notes: event.target.value } : p
-                              )
-                            )
-                          }
-                          onBlur={(event) => {
-                            if (!canEdit) return;
-                            updatePlayer(player.id, { notes: event.target.value });
-                          }}
-                        />
-                      </td>
-                      <td data-label={t("admin.players.035")}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                          <span className="admin-badge neutral">
-                            {saving[player.id] ? t("ui.players.524") : t("admin.players.036")}
-                          </span>
-                          {canEdit ? (
-                            <button
-                              className="admin-btn ghost"
-                              onClick={() => removePlayer(player.id)}
-                              disabled={saving[player.id]}
-                            >
-                              <Trash2 size={14} style={{ marginRight: 4 }} />
-                              删除
-                            </button>
-                          ) : null}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
+                {players.map((player) => (
+                  <PlayerRow
+                    key={player.id}
+                    player={player}
+                    canEdit={canEdit}
+                    saving={Boolean(saving[player.id])}
+                    selected={selectedIds.includes(player.id)}
+                    addressState={parseAddress(player.address || "").state}
+                    onToggleSelect={() => toggleSelect(player.id)}
+                    onUpdate={updatePlayer}
+                    onRemove={removePlayer}
+                    onSetField={(id, field, value) =>
+                      setPlayers((prev) =>
+                        prev.map((p) => (p.id === id ? { ...p, [field]: value } : p))
+                      )
+                    }
+                    parseAddress={parseAddress}
+                    loadPlayers={loadPlayers}
+                  />
+                ))}
               </tbody>
             </table>
           </div>
