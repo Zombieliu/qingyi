@@ -1,5 +1,14 @@
 import "server-only";
+import crypto from "crypto";
 import { env } from "@/lib/env";
+
+/**
+ * Timing-safe string comparison to prevent timing attacks.
+ */
+function safeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  return crypto.timingSafeEqual(Buffer.from(a), Buffer.from(b));
+}
 
 /**
  * Verify cron request authorization.
@@ -17,17 +26,14 @@ export function isAuthorizedCron(req: Request): boolean {
 
   const secret = env.CRON_SECRET;
   if (!secret) {
-    // In production, require a secret
     if (process.env.NODE_ENV === "production") return false;
-    // In dev, allow without secret for convenience
     return true;
   }
 
-  // Check header first (preferred), then query param (legacy)
   const headerToken = req.headers.get("x-cron-secret") || "";
-  if (headerToken && headerToken === secret) return true;
+  if (headerToken && safeEqual(headerToken, secret)) return true;
 
   const url = new URL(req.url);
   const queryToken = url.searchParams.get("token") || "";
-  return queryToken === secret;
+  return queryToken ? safeEqual(queryToken, secret) : false;
 }

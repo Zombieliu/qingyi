@@ -19,7 +19,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ challenge: body.d.challenge });
     }
 
-    // Verify token if configured
+    // Verify token — required in production
+    if (!KOOK_VERIFY_TOKEN && process.env.NODE_ENV === "production") {
+      return NextResponse.json({ error: "KOOK_VERIFY_TOKEN not configured" }, { status: 503 });
+    }
     if (KOOK_VERIFY_TOKEN && body.d?.verify_token !== KOOK_VERIFY_TOKEN) {
       return NextResponse.json({ error: "invalid token" }, { status: 401 });
     }

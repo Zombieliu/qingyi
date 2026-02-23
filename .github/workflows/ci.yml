@@ -44,6 +44,42 @@ jobs:
       - name: Run unit tests
         run: pnpm --filter app exec vitest run --reporter=verbose
 
+  integration-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: qingyi
+          POSTGRES_PASSWORD: qingyi
+          POSTGRES_DB: qingyi
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Push schema to test DB
+        run: pnpm --filter app exec prisma db push --skip-generate
+        env:
+          DATABASE_URL: postgresql://qingyi:qingyi@localhost:5432/qingyi?schema=public
+      - name: Run integration tests
+        run: pnpm --filter app exec vitest run --reporter=verbose "integration"
+        env:
+          DATABASE_URL: postgresql://qingyi:qingyi@localhost:5432/qingyi?schema=public
+
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -63,3 +99,31 @@ jobs:
         env:
           NEXT_TELEMETRY_DISABLED: "1"
           SKIP_ENV_VALIDATION: "1"
+
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: [build]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Install Playwright browsers
+        run: pnpm --filter app exec playwright install --with-deps chromium
+      - name: Run E2E tests
+        run: pnpm --filter app exec playwright test --project=chromium
+        env:
+          SKIP_ENV_VALIDATION: "1"
+          NEXT_TELEMETRY_DISABLED: "1"
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: packages/app/playwright-report/
+          retention-days: 7
