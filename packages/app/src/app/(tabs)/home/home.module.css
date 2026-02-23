@@ -634,3 +634,211 @@
   min-width: 52px;
   text-align: center;
 }
+
+/* Package card inner layout */
+.lc-package-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+}
+.lc-package-title {
+  font-size: 14px;
+  font-weight: 800;
+  color: #1e293b;
+}
+.lc-package-pill {
+  flex: none;
+  font-size: 10px;
+  padding: 2px 8px;
+  border-radius: 8px;
+  background: rgba(14, 165, 233, 0.08);
+  color: #0369a1;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.lc-package-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.lc-package-btn {
+  display: block;
+  text-align: center;
+  padding: 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #075985;
+  background: linear-gradient(135deg, rgba(14, 165, 233, 0.1) 0%, rgba(34, 197, 94, 0.08) 100%);
+  border: 1px solid rgba(14, 165, 233, 0.2);
+  transition:
+    transform var(--motion-fast) var(--motion-ease),
+    box-shadow var(--motion-fast) var(--motion-ease);
+}
+.lc-package-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 16px rgba(14, 165, 233, 0.15);
+}
+
+/* PLACEHOLDER_PLAYER */
+
+/* Player cards */
+.lc-player-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+.lc-player-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 16px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+  transition:
+    transform var(--motion-base) var(--motion-ease),
+    box-shadow var(--motion-base) var(--motion-ease);
+}
+.lc-player-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 16px 30px rgba(15, 23, 42, 0.12);
+}
+.lc-player-avatar {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #e0e7ff 0%, #dbeafe 100%);
+  color: #4338ca;
+  font-size: 13px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.lc-player-body {
+  flex: 1;
+  min-width: 0;
+}
+.lc-player-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: #0f172a;
+}
+.lc-player-role {
+  font-size: 11px;
+  color: #64748b;
+  margin-top: 1px;
+}
+.lc-player-actions {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.lc-player-status {
+  font-size: 11px;
+  color: #166534;
+  background: rgba(22, 163, 74, 0.1);
+  border-radius: 8px;
+  padding: 2px 8px;
+  font-weight: 700;
+}
+.lc-player-btn {
+  padding: 6px 10px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #ffffff;
+  background: #0ea5e9;
+  transition:
+    transform var(--motion-fast) var(--motion-ease),
+    box-shadow var(--motion-fast) var(--motion-ease);
+}
+.lc-player-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 16px rgba(14, 165, 233, 0.25);
+}
+
+/* PLACEHOLDER_ASSURANCE */
+
+/* Assurance grid */
+.lc-assurance-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+.lc-assurance-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 8px;
+  padding: 14px 8px;
+  border-radius: 16px;
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+}
+
+/* News extras */
+.lc-news-title {
+  flex: 1;
+  font-size: 13px;
+  color: #0f172a;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lc-news-arrow {
+  flex: none;
+  color: #94a3b8;
+}
+
+/* Footer guide cards */
+.lc-footer-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.lc-footer-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px;
+  border-radius: 16px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+  transition:
+    transform var(--motion-base) var(--motion-ease),
+    box-shadow var(--motion-base) var(--motion-ease);
+}
+.lc-footer-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 16px 30px rgba(15, 23, 42, 0.12);
+}
+.lc-footer-icon {
+  flex: none;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  background: rgba(99, 102, 241, 0.08);
+  color: #6366f1;
+}
+.lc-footer-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #0f172a;
+}
+.lc-footer-desc {
+  font-size: 11px;
+  color: #64748b;
+  margin-top: 1px;
+}

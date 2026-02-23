@@ -31,7 +31,12 @@ export default function PasskeyGate({ children }: { children: React.ReactNode })
     let active = true;
     const check = async () => {
       try {
-        const res = await fetch("/api/auth/session");
+        let res = await fetch("/api/auth/session");
+        // If session expired but cookie exists, try silent refresh
+        if (!res.ok) {
+          const refreshRes = await fetch("/api/auth/session?refresh=1");
+          if (refreshRes.ok) res = refreshRes;
+        }
         if (!active) return;
         setSessionOk(res.ok);
       } catch {
