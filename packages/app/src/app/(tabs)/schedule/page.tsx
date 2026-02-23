@@ -156,19 +156,19 @@ export default function Schedule() {
     return () => window.removeEventListener("passkey-updated", sync);
   }, [refreshOrders]);
 
-  useBackoffPoll({
-    enabled: true,
-    baseMs: 60_000,
-    maxMs: 180_000,
-    onPoll: async () => refreshOrders(userAddress || getCurrentAddress(), true),
-  });
-
-  useOrderEvents({
+  const { connected: sseConnected } = useOrderEvents({
     address: userAddress || "",
     enabled: Boolean(userAddress),
     onEvent: () => {
       refreshOrders(userAddress || getCurrentAddress(), true);
     },
+  });
+
+  useBackoffPoll({
+    enabled: !sseConnected,
+    baseMs: 60_000,
+    maxMs: 180_000,
+    onPoll: async () => refreshOrders(userAddress || getCurrentAddress(), true),
   });
 
   useEffect(() => {
