@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import { useAutoToast } from "@/app/components/use-auto-toast";
 import {
   type ChainOrder,
   fetchChainOrders,
@@ -18,7 +19,7 @@ export function useChainState() {
   const [chainOrders, setChainOrders] = useState<ChainOrder[]>([]);
   const [chainLoading, setChainLoading] = useState(false);
   const [chainError, setChainError] = useState<string | null>(null);
-  const [chainToast, setChainToast] = useState<string | null>(null);
+  const [chainToast, setChainToast] = useAutoToast(3000);
   const [chainAction, setChainAction] = useState<string | null>(null);
   const [chainAddress, setChainAddress] = useState("");
   const [chainUpdatedAt, setChainUpdatedAt] = useState<number | null>(null);

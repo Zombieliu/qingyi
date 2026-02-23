@@ -42,8 +42,10 @@ export async function GET(req: Request) {
   const maxPayments = env.ADMIN_PAYMENT_EVENT_LIMIT;
   const retentionDays = env.ORDER_RETENTION_DAYS;
 
-  const deletedAudit = await prune(prisma.adminAuditLog, maxAudit);
-  const deletedPayments = await prune(prisma.adminPaymentEvent, maxPayments);
+  const [deletedAudit, deletedPayments] = await Promise.all([
+    prune(prisma.adminAuditLog, maxAudit),
+    prune(prisma.adminPaymentEvent, maxPayments),
+  ]);
   let deletedOrders = 0;
   if (Number.isFinite(retentionDays) && retentionDays > 0) {
     const cutoff = new Date(Date.now() - retentionDays * 24 * 60 * 60 * 1000);

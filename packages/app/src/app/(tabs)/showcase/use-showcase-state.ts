@@ -12,6 +12,7 @@ import {
   patchOrder,
   syncChainOrder,
 } from "@/lib/services/order-service";
+import { useAutoToast } from "@/app/components/use-auto-toast";
 import {
   type ChainOrder,
   claimOrderOnChain,
@@ -59,7 +60,7 @@ export function useShowcaseState() {
   const [chainOrders, setChainOrders] = useState<ChainOrder[]>([]);
   const [chainLoading, setChainLoading] = useState(false);
   const [chainError, setChainError] = useState<string | null>(null);
-  const [chainToast, setChainToast] = useState<string | null>(null);
+  const [chainToast, setChainToast] = useAutoToast(3000);
   const [confirmAction, setConfirmAction] = useState<{
     title: string;
     description: string;
@@ -284,9 +285,8 @@ export function useShowcaseState() {
 
   // --- Chain actions ---
 
-  const showToast = (msg: string, duration = 3000) => {
-    setChainToast(msg);
-    setTimeout(() => setChainToast(null), duration);
+  const showToast = (msg: string, duration?: number) => {
+    setChainToast(msg, duration);
   };
 
   const openConfirm = (payload: {
@@ -339,7 +339,6 @@ export function useShowcaseState() {
       return false;
     } finally {
       setChainAction(null);
-      setTimeout(() => setChainToast(null), 3000);
     }
   };
 
@@ -555,7 +554,6 @@ export function useShowcaseState() {
     } catch (error) {
       setChainToast(formatErrorMessage(error, t("showcase.017")));
     } finally {
-      setTimeout(() => setChainToast(null), 3000);
     }
   };
 
@@ -634,7 +632,6 @@ export function useShowcaseState() {
         document.body.removeChild(input);
       }
     } finally {
-      setTimeout(() => setChainToast(null), 3000);
       setTimeout(() => setCopiedOrderId(null), 2000);
     }
   };

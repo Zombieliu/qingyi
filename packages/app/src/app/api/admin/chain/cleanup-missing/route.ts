@@ -10,8 +10,7 @@ export async function POST(req: Request) {
   if (!auth.ok) return auth.response;
 
   try {
-    const chainOrders = await fetchChainOrdersAdmin();
-    const localOrders = await listOrders();
+    const [chainOrders, localOrders] = await Promise.all([fetchChainOrdersAdmin(), listOrders()]);
     const { ids, missing } = computeMissingChainCleanup({
       chainOrders,
       localOrders,

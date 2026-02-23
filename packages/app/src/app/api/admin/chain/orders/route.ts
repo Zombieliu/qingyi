@@ -15,8 +15,10 @@ function readLocalChainStatus(order: LocalOrder) {
 export async function GET(req: Request) {
   const auth = await requireAdmin(req, { role: "finance" });
   if (!auth.ok) return auth.response;
-  const chainOrders = await fetchChainOrdersAdmin();
-  const localOrders = await listChainOrdersForAdmin();
+  const [chainOrders, localOrders] = await Promise.all([
+    fetchChainOrdersAdmin(),
+    listChainOrdersForAdmin(),
+  ]);
   const autoCancel = getAutoCancelConfig();
 
   const chainById = new Map(chainOrders.map((order) => [order.orderId, order]));

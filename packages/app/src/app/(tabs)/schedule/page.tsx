@@ -17,6 +17,7 @@ import { DIAMOND_RATE } from "@/lib/shared/constants";
 import { getLocalChainStatus, mergeChainStatus } from "@/lib/chain/chain-status";
 import { useBackoffPoll } from "@/app/components/use-backoff-poll";
 import { useOrderEvents } from "@/app/components/use-order-events";
+import { useAutoToast } from "@/app/components/use-auto-toast";
 import { useChainState } from "./use-chain-state";
 import {
   type ChainOrder,
@@ -61,7 +62,7 @@ export default function Schedule() {
   const [active, setActive] = useState(t("schedule.001"));
   const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const [infoOpen, setInfoOpen] = useState<string | null>(null);
-  const [toast, setToast] = useState<string | null>(null);
+  const [toast, setToast] = useAutoToast(3000);
   const [orders, setOrders] = useState<LocalOrder[]>([]);
   const [mode, setMode] = useState<Mode>("select");
   const [feeOpen, setFeeOpen] = useState(false);
@@ -463,7 +464,6 @@ export default function Schedule() {
           : chainCurrentOrder?.status;
       if (typeof effectiveStatus === "number" && effectiveStatus >= 2) {
         setToast("order.deposit_locked_no_cancel");
-        setTimeout(() => setToast(null), 3000);
         return;
       }
       const ok = await runChainAction(
@@ -518,7 +518,6 @@ export default function Schedule() {
       await confirmAction.action();
     } catch (error) {
       setChainToast(classifyChainError(error).title + "：" + classifyChainError(error).message);
-      setTimeout(() => setChainToast(null), 3000);
     } finally {
       setConfirmBusy(false);
       setConfirmAction(null);
@@ -532,7 +531,6 @@ export default function Schedule() {
       await promptAction.action(promptValue.trim());
     } catch (error) {
       setChainToast(classifyChainError(error).title + "：" + classifyChainError(error).message);
-      setTimeout(() => setChainToast(null), 3000);
     } finally {
       setPromptBusy(false);
       setPromptAction(null);
@@ -569,7 +567,6 @@ export default function Schedule() {
       return false;
     } finally {
       setChainAction(null);
-      setTimeout(() => setChainToast(null), 3000);
     }
   };
 
@@ -664,7 +661,6 @@ export default function Schedule() {
   const callOrder = async () => {
     if (!feeChecked) {
       setToast("form.confirm_escrow_fee");
-      setTimeout(() => setToast(null), 2000);
       return;
     }
     if (!locked.items.length) {
@@ -802,7 +798,6 @@ export default function Schedule() {
       });
       setToast(message);
     } finally {
-      setTimeout(() => setToast(null), 3000);
       setCalling(false);
     }
   };
