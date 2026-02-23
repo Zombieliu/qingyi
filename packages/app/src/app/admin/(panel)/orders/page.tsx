@@ -9,6 +9,7 @@ import { ORDER_STAGE_OPTIONS } from "@/lib/admin/admin-types";
 import { readCache, writeCache } from "@/lib/shared/client-cache";
 import { formatShortDateTime } from "@/lib/shared/date-utils";
 import { StateBlock } from "@/app/components/state-block";
+import { OrderRow } from "./order-row";
 import { roleRank, useAdminSession } from "../admin-session";
 
 export default function OrdersPage() {
@@ -508,184 +509,24 @@ export default function OrdersPage() {
                 </tr>
               </thead>
               <tbody>
-                {orders.map((order) => {
-                  const assignedKey = (order.assignedTo || "").trim();
-                  const matchedPlayer = assignedKey ? playerLookup.get(assignedKey) : undefined;
-                  const selectValue = matchedPlayer ? matchedPlayer.id : assignedKey;
-                  const available = matchedPlayer?.availableCredit ?? 0;
-                  const used = matchedPlayer?.usedCredit ?? 0;
-                  const limit = matchedPlayer?.creditLimit ?? 0;
-                  const insufficient = matchedPlayer ? order.amount > available : false;
-                  const isChainOrder =
-                    Boolean(order.chainDigest) ||
-                    (order.chainStatus !== undefined && order.chainStatus !== null);
-
-                  return (
-                    <tr key={order.id}>
-                      <td data-label={t("admin.orders.011")}>
-                        <input
-                          type="checkbox"
-                          checked={selectedIds.includes(order.id)}
-                          onChange={() => toggleSelect(order.id)}
-                          disabled={!canEdit}
-                        />
-                      </td>
-                      <td data-label={t("admin.orders.012")}>
-                        <div className="admin-text-strong">{order.user}</div>
-                        <div className="admin-meta">{order.item}</div>
-                        <div className="admin-meta-faint">{order.id}</div>
-                        {isChainOrder ? (
-                          <div style={{ marginTop: 6 }}>
-                            <span className="admin-badge warm">{t("ui.orders.419")}</span>
-                          </div>
-                        ) : null}
-                        <div className="admin-meta-faint">
-                          {formatShortDateTime(order.createdAt)}
-                        </div>
-                      </td>
-                      <td data-label={t("admin.orders.013")}>
-                        <div className="admin-text-strong">
-                          {order.currency === "CNY" ? "¥" : order.currency} {order.amount}
-                        </div>
-                      </td>
-                      <td data-label={t("admin.orders.014")}>
-                        {isChainOrder || !canEdit ? (
-                          <input
-                            className="admin-input"
-                            readOnly
-                            value={order.paymentStatus || ""}
-                            title={isChainOrder ? t("ui.orders.665") : t("admin.orders.015")}
-                          />
-                        ) : (
-                          <input
-                            className="admin-input"
-                            value={order.paymentStatus || ""}
-                            onChange={(event) =>
-                              setOrders((prev) =>
-                                prev.map((item) =>
-                                  item.id === order.id
-                                    ? { ...item, paymentStatus: event.target.value }
-                                    : item
-                                )
-                              )
-                            }
-                            onBlur={(event) =>
-                              updateOrder(order.id, { paymentStatus: event.target.value })
-                            }
-                          />
-                        )}
-                      </td>
-                      <td data-label={t("admin.orders.016")}>
-                        <select
-                          className="admin-select"
-                          value={order.stage}
-                          aria-label={t("admin.orders.017")}
-                          disabled={isChainOrder || !canEdit}
-                          title={
-                            isChainOrder
-                              ? t("ui.orders.669")
-                              : !canEdit
-                                ? t("admin.panel.orders.i073")
-                                : ""
-                          }
-                          onChange={(event) => {
-                            if (isChainOrder || !canEdit) return;
-                            const nextStage = event.target.value as OrderStage;
-                            setOrders((prev) =>
-                              prev.map((item) =>
-                                item.id === order.id ? { ...item, stage: nextStage } : item
-                              )
-                            );
-                            updateOrder(order.id, { stage: nextStage });
-                          }}
-                        >
-                          {ORDER_STAGE_OPTIONS.map((stage) => (
-                            <option key={stage} value={stage}>
-                              {stage}
-                            </option>
-                          ))}
-                        </select>
-                      </td>
-                      <td data-label={t("admin.orders.018")}>
-                        <div style={{ display: "grid", gap: 6 }}>
-                          <select
-                            className="admin-select"
-                            value={selectValue}
-                            aria-label={t("admin.orders.019")}
-                            disabled={!canEdit}
-                            onChange={(event) => {
-                              if (!canEdit) return;
-                              const nextValue = event.target.value;
-                              const selectedPlayer = players.find(
-                                (player) => player.id === nextValue
-                              );
-                              const assignedTo = selectedPlayer ? selectedPlayer.name : nextValue;
-                              setOrders((prev) =>
-                                prev.map((item) =>
-                                  item.id === order.id ? { ...item, assignedTo } : item
-                                )
-                              );
-                              updateOrder(order.id, { assignedTo });
-                            }}
-                          >
-                            <option value="">{t("ui.orders.420")}</option>
-                            {assignedKey && !matchedPlayer ? (
-                              <option value={assignedKey}>当前：{assignedKey}</option>
-                            ) : null}
-                            {players.map((player) => (
-                              <option key={player.id} value={player.id}>
-                                {player.name}
-                                {player.status !== t("admin.panel.orders.i074")
-                                  ? `（${player.status}）`
-                                  : ""}
-                              </option>
-                            ))}
-                          </select>
-                          <div
-                            className={`admin-meta-faint${insufficient ? " admin-text-danger" : ""}`}
-                          >
-                            {playersLoading
-                              ? t("admin.orders.020")
-                              : matchedPlayer
-                                ? `可用 ${available} 元 / 占用 ${used} 元 / 总额度 ${limit} 元`
-                                : t("ui.orders.627")}
-                            {insufficient ? t("ui.orders.709") : ""}
-                          </div>
-                        </div>
-                      </td>
-                      <td data-label={t("admin.orders.021")}>
-                        <input
-                          className="admin-input"
-                          placeholder={t("admin.orders.022")}
-                          value={order.note || ""}
-                          readOnly={!canEdit}
-                          onChange={(event) => {
-                            if (!canEdit) return;
-                            setOrders((prev) =>
-                              prev.map((item) =>
-                                item.id === order.id ? { ...item, note: event.target.value } : item
-                              )
-                            );
-                          }}
-                          onBlur={(event) => {
-                            if (!canEdit) return;
-                            updateOrder(order.id, { note: event.target.value });
-                          }}
-                        />
-                      </td>
-                      <td data-label={t("admin.orders.023")}>
-                        <span className="admin-badge neutral">
-                          {saving[order.id] ? t("ui.orders.529") : t("admin.orders.024")}
-                        </span>
-                      </td>
-                      <td data-label={t("admin.orders.025")}>
-                        <Link className="admin-btn ghost" href={`/admin/orders/${order.id}`}>
-                          查看
-                        </Link>
-                      </td>
-                    </tr>
-                  );
-                })}
+                {orders.map((order) => (
+                  <OrderRow
+                    key={order.id}
+                    order={order}
+                    canEdit={canEdit}
+                    saving={Boolean(saving[order.id])}
+                    selected={selectedIds.includes(order.id)}
+                    players={players}
+                    playersLoading={playersLoading}
+                    onToggleSelect={() => toggleSelect(order.id)}
+                    onUpdate={updateOrder}
+                    onSetField={(id, field, value) =>
+                      setOrders((prev) =>
+                        prev.map((item) => (item.id === id ? { ...item, [field]: value } : item))
+                      )
+                    }
+                  />
+                ))}
               </tbody>
             </table>
           </div>
