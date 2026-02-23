@@ -29,6 +29,7 @@ vi.mock("@/lib/db", () => ({
 
 vi.mock("@/lib/business-events", () => ({
   trackEvent: vi.fn(),
+  logBusinessEvent: vi.fn(),
 }));
 
 import {

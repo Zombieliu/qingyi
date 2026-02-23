@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { logBusinessEvent } from "@/lib/business-events";
 
 /**
  * 用户成长体系 — 基于现有 VIP 积分自动升级
@@ -78,7 +79,7 @@ export async function addPointsAndUpgrade(params: {
     },
   });
 
-  console.log("[growth]", "points.earned", {
+  logBusinessEvent("growth.points_earned", {
     userAddress,
     points: actualPoints,
     basePoints: points,
@@ -137,7 +138,7 @@ async function checkAndUpgrade(memberId: string, currentPoints: number) {
     },
   });
 
-  console.log("[growth]", "member.auto_upgraded", {
+  logBusinessEvent("growth.auto_upgraded", {
     memberId,
     newTierId: qualifiedTier.id,
     newTierName: qualifiedTier.name,

@@ -58,6 +58,16 @@ function emit(evt: BusinessEvent) {
   }
 }
 
+// --- 通用日志接口 ---
+
+export function logBusinessEvent(
+  event: string,
+  data?: Record<string, unknown>,
+  severity: EventSeverity = "info"
+) {
+  emit({ event, severity, data });
+}
+
 // --- 具体业务事件 ---
 
 export function trackOrderCreated(orderId: string, source: string, amount: number) {
