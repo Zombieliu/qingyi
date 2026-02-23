@@ -4,6 +4,8 @@ import { t } from "@/lib/i18n/t";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Copy, Loader2, RefreshCw } from "lucide-react";
 import { StateBlock } from "@/app/components/state-block";
+import { RedeemCodesTable } from "./redeem-codes-table";
+import { RedeemRecordsTable } from "./redeem-records-table";
 import { formatFullDateTime } from "@/lib/shared/date-utils";
 import type { AdminRedeemBatch, AdminRedeemCode, AdminRedeemRecord } from "@/lib/admin/admin-types";
 
@@ -561,188 +563,30 @@ export default function RedeemAdminPage() {
         </div>
       )}
 
-      <div className="admin-card">
-        <div className="admin-card-header">
-          <div>
-            <h3>{t("ui.redeem.294")}</h3>
-            <p>{t("ui.redeem.295")}</p>
-          </div>
-        </div>
+      <RedeemCodesTable
+        codes={codes}
+        loading={loading}
+        query={query}
+        statusFilter={statusFilter}
+        patchingId={patchingId}
+        statusLabels={statusLabels}
+        rewardLabels={rewardLabels}
+        setQuery={setQuery}
+        setStatusFilter={setStatusFilter}
+        loadCodes={loadCodes}
+        patchStatus={patchStatus}
+        formatCode={formatCode}
+        formatTime={formatTime}
+      />
 
-        <div className="admin-card-actions" style={{ marginTop: 12 }}>
-          <input
-            className="admin-input"
-            style={{ maxWidth: 240 }}
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder={t("admin.redeem.024")}
-          />
-          <select
-            className="admin-select"
-            value={statusFilter}
-            onChange={(event) => setStatusFilter(event.target.value)}
-          >
-            <option value="all">{t("ui.redeem.296")}</option>
-            <option value="active">{t("ui.redeem.297")}</option>
-            <option value="disabled">{t("ui.redeem.298")}</option>
-            <option value="exhausted">{t("ui.redeem.299")}</option>
-            <option value="expired">{t("ui.redeem.300")}</option>
-          </select>
-          <button className="admin-btn ghost" onClick={loadCodes}>
-            刷新
-          </button>
-        </div>
-
-        {loading ? (
-          <StateBlock tone="loading" size="compact" title={t("admin.redeem.025")} />
-        ) : codes.length === 0 ? (
-          <StateBlock tone="empty" size="compact" title={t("admin.redeem.026")} />
-        ) : (
-          <div className="admin-table-wrap">
-            <table className="admin-table">
-              <thead>
-                <tr>
-                  <th>{t("ui.redeem.301")}</th>
-                  <th>{t("ui.redeem.302")}</th>
-                  <th>{t("ui.redeem.303")}</th>
-                  <th>{t("ui.redeem.304")}</th>
-                  <th>{t("ui.redeem.305")}</th>
-                  <th>{t("ui.redeem.306")}</th>
-                  <th>{t("ui.redeem.307")}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {codes.map((code) => {
-                  const rewardType = code.rewardType || code.batch?.rewardType || "custom";
-                  const payload = (code.rewardPayload || code.batch?.rewardPayload || {}) as Record<
-                    string,
-                    unknown
-                  >;
-                  const summary = (() => {
-                    if (rewardType === "mantou" || rewardType === "diamond") {
-                      const amount = payload.amount;
-                      return typeof amount === "number" || typeof amount === "string"
-                        ? `${amount}`
-                        : "-";
-                    }
-                    if (rewardType === "vip") {
-                      const days = payload.days;
-                      const value =
-                        typeof days === "number" || typeof days === "string" ? `${days}` : "-";
-                      return `${value} 天`;
-                    }
-                    if (rewardType === "coupon") {
-                      const couponId = payload.couponId;
-                      const couponCode = payload.couponCode;
-                      if (typeof couponId === "string" && couponId) return couponId;
-                      if (typeof couponCode === "string" && couponCode) return couponCode;
-                      return "-";
-                    }
-                    const message = payload.message;
-                    return typeof message === "string" && message ? message : "-";
-                  })();
-                  return (
-                    <tr key={code.id}>
-                      <td>{formatCode(code.code)}</td>
-                      <td>
-                        <div className="admin-text-strong">{code.batch?.title || "-"}</div>
-                        <div className="admin-meta-faint">
-                          {code.batch?.id || code.batchId || "-"}
-                        </div>
-                      </td>
-                      <td>{statusLabels[code.status] || code.status}</td>
-                      <td>
-                        {code.usedCount}/{code.maxRedeem}
-                      </td>
-                      <td>
-                        {rewardLabels[rewardType] || rewardType} · {summary}
-                      </td>
-                      <td>
-                        {code.startsAt ? formatTime(code.startsAt) : t("admin.redeem.027")} ~{" "}
-                        {code.expiresAt ? formatTime(code.expiresAt) : t("admin.redeem.028")}
-                      </td>
-                      <td>
-                        {code.status === "active" ? (
-                          <button
-                            className="admin-btn ghost"
-                            disabled={patchingId === code.id}
-                            onClick={() => patchStatus(code.id, "disabled")}
-                          >
-                            {patchingId === code.id ? (
-                              <>
-                                <Loader2 size={14} className="spin" /> 处理中...
-                              </>
-                            ) : (
-                              "停用"
-                            )}
-                          </button>
-                        ) : code.status === "disabled" ? (
-                          <button
-                            className="admin-btn ghost"
-                            disabled={patchingId === code.id}
-                            onClick={() => patchStatus(code.id, "active")}
-                          >
-                            {patchingId === code.id ? (
-                              <>
-                                <Loader2 size={14} className="spin" /> 处理中...
-                              </>
-                            ) : (
-                              "启用"
-                            )}
-                          </button>
-                        ) : (
-                          <span className="admin-meta">-</span>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-
-      <div className="admin-card">
-        <div className="admin-card-header">
-          <div>
-            <h3>{t("ui.redeem.308")}</h3>
-            <p>{t("ui.redeem.309")}</p>
-          </div>
-        </div>
-        {recordsLoading ? (
-          <StateBlock tone="loading" size="compact" title={t("admin.redeem.029")} />
-        ) : records.length === 0 ? (
-          <StateBlock tone="empty" size="compact" title={t("admin.redeem.030")} />
-        ) : (
-          <div className="admin-table-wrap">
-            <table className="admin-table">
-              <thead>
-                <tr>
-                  <th>{t("ui.redeem.310")}</th>
-                  <th>{t("ui.redeem.311")}</th>
-                  <th>{t("ui.redeem.312")}</th>
-                  <th>{t("ui.redeem.313")}</th>
-                  <th>{t("ui.redeem.314")}</th>
-                  <th>{t("ui.redeem.315")}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {records.map((record) => (
-                  <tr key={record.id}>
-                    <td>{formatTime(record.createdAt)}</td>
-                    <td>{record.userAddress}</td>
-                    <td>{record.code ? formatCode(record.code) : record.codeId}</td>
-                    <td>{record.batchTitle || record.batchId || "-"}</td>
-                    <td>{rewardLabels[record.rewardType] || record.rewardType}</td>
-                    <td>{statusLabels[record.status] || record.status}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+      <RedeemRecordsTable
+        records={records}
+        recordsLoading={recordsLoading}
+        statusLabels={statusLabels}
+        rewardLabels={rewardLabels}
+        formatCode={formatCode}
+        formatTime={formatTime}
+      />
     </div>
   );
 }
