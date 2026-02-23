@@ -68,6 +68,27 @@ export async function getUserSessionFromToken(token: string) {
   return session;
 }
 
+/** Like getUserSessionFromToken but allows recently-expired sessions (within grace period). */
+export async function getUserSessionFromTokenAllowExpired(token: string) {
+  if (!token) return null;
+  const sessionHash = hashToken(token);
+  const session = await getUserSessionByHash(sessionHash);
+  if (!session) return null;
+  const REFRESH_GRACE_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+  if (session.expiresAt + REFRESH_GRACE_MS < Date.now()) {
+    await removeUserSessionByHash(sessionHash);
+    return null;
+  }
+  return session;
+}
+
+/** Extend session expiry (sliding window). Returns the new expiresAt timestamp. */
+export async function renewUserSessionExpiry(tokenHash: string) {
+  const newExpiry = Date.now() + USER_SESSION_TTL_HOURS * 60 * 60 * 1000;
+  await updateUserSessionByHash(tokenHash, { expiresAt: newExpiry, lastSeenAt: Date.now() });
+  return newExpiry;
+}
+
 export async function createUserSession(params: {
   address: string;
   ip?: string;

@@ -23,12 +23,6 @@ import { useI18n, t } from "@/lib/i18n/i18n-client";
 import { ensureUserSession } from "@/lib/auth/user-auth-client";
 
 const toBase64 = (bytes: Uint8Array) => btoa(String.fromCharCode(...Array.from(bytes)));
-const fromBase64 = (b64: string) =>
-  new Uint8Array(
-    atob(b64)
-      .split("")
-      .map((c) => c.charCodeAt(0))
-  );
 
 function isMissingCredential(error: unknown) {
   const err = error as Error & { name?: string };
@@ -142,9 +136,8 @@ export default function PasskeyLoginButton() {
       setOverlay(true);
       setToast(null);
       trackEvent("login_click", { method: "passkey", stage });
-      const provider = new BrowserPasskeyProvider(t("comp.passkey_login_button.001"), providerOpts);
-      const keypair = new PasskeyKeypair(fromBase64(target.publicKey), provider);
-      await keypair.signPersonalMessage(new TextEncoder().encode("login-check"));
+      // No test sign needed — ensureUserSession in persist() handles
+      // passkey verification as part of session creation (single prompt)
       await persist(target, t("passkey.success.login"));
     } catch (e) {
       const message = isMissingCredential(e)

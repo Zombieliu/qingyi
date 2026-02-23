@@ -6,6 +6,8 @@ import {
   clearUserSessionCookie,
   revokeUserSession,
   getUserSessionFromCookies,
+  getUserSessionFromTokenAllowExpired,
+  renewUserSessionExpiry,
   requireUserSignature,
   setUserSessionCookie,
 } from "@/lib/auth/user-auth";
@@ -62,16 +64,44 @@ export async function POST(req: Request) {
 }
 
 export async function GET() {
+  const cookieStore = await cookies();
+  const token = cookieStore.get("user_session")?.value || "";
   const session = await getUserSessionFromCookies();
   if (!session) {
     return NextResponse.json({ ok: false }, { status: 401 });
   }
-  return NextResponse.json({
+  const res = NextResponse.json({
     ok: true,
     address: session.address,
     expiresAt: session.expiresAt,
     lastSeenAt: session.lastSeenAt ?? null,
   });
+  // Sliding window: renew session if past halfway of TTL
+  const ttlMs = env.USER_SESSION_TTL_HOURS * 60 * 60 * 1000;
+  const remaining = session.expiresAt - Date.now();
+  if (token && remaining < ttlMs / 2) {
+    const newExpiry = await renewUserSessionExpiry(session.tokenHash);
+    setUserSessionCookie(res, token, newExpiry);
+  }
+  return res;
+}
+
+/** Refresh session using existing cookie — no passkey signature required. */
+export async function PATCH() {
+  const cookieStore = await cookies();
+  const token = cookieStore.get("user_session")?.value || "";
+  const session = await getUserSessionFromTokenAllowExpired(token);
+  if (!session) {
+    return NextResponse.json({ error: "session_missing" }, { status: 401 });
+  }
+  const newExpiry = await renewUserSessionExpiry(session.tokenHash);
+  const res = NextResponse.json({
+    ok: true,
+    address: session.address,
+    expiresAt: newExpiry,
+  });
+  setUserSessionCookie(res, token, newExpiry);
+  return res;
 }
 
 export async function DELETE() {

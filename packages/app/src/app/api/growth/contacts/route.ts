@@ -8,6 +8,8 @@ import {
   scoreContact,
   updateContactLifecycle,
 } from "@/lib/services/growth-os-service";
+import { contactActionSchema } from "@/lib/services/growth-validation";
+import { recordAudit } from "@/lib/admin/admin-audit";
 
 /** GET /api/growth/contacts?lifecycle=lead&search=xxx&limit=50&offset=0 */
 export async function GET(req: NextRequest) {
@@ -20,7 +22,7 @@ export async function GET(req: NextRequest) {
     source: sp.get("source") || undefined,
     assignedTo: sp.get("assignedTo") || undefined,
     search: sp.get("search") || undefined,
-    limit: Number(sp.get("limit")) || 50,
+    limit: Math.min(Number(sp.get("limit")) || 50, 100),
     offset: Number(sp.get("offset")) || 0,
   });
 
@@ -33,30 +35,42 @@ export async function POST(req: NextRequest) {
   if ("status" in auth) return auth;
 
   const body = await req.json();
-  const { action } = body;
+  const parsed = contactActionSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: "Validation failed", details: parsed.error.flatten() },
+      { status: 400 }
+    );
+  }
 
-  if (action === "create") {
-    const contact = await findOrCreateContact(body);
+  const data = parsed.data;
+
+  if (data.action === "create") {
+    const contact = await findOrCreateContact(data);
+    await recordAudit({ action: "growth.contact.create", target: contact.id, detail: data });
     return NextResponse.json(contact, { status: 201 });
   }
 
-  if (action === "assign" && body.contactId && body.assignedTo) {
-    const updated = await assignContact(body.contactId, body.assignedTo);
+  if (data.action === "assign") {
+    const updated = await assignContact(data.contactId, data.assignedTo);
+    await recordAudit({ action: "growth.contact.assign", target: data.contactId, detail: data });
     return NextResponse.json(updated);
   }
 
-  if (action === "tag" && body.contactId && body.tags) {
-    const updated = await tagContact(body.contactId, body.tags);
+  if (data.action === "tag") {
+    const updated = await tagContact(data.contactId, data.tags);
+    await recordAudit({ action: "growth.contact.tag", target: data.contactId, detail: data });
     return NextResponse.json(updated);
   }
 
-  if (action === "score" && body.contactId && body.score !== undefined) {
-    const updated = await scoreContact(body.contactId, body.score);
+  if (data.action === "score") {
+    const updated = await scoreContact(data.contactId, data.score);
     return NextResponse.json(updated);
   }
 
-  if (action === "lifecycle" && body.contactId && body.lifecycle) {
-    const updated = await updateContactLifecycle(body.contactId, body.lifecycle);
+  if (data.action === "lifecycle") {
+    const updated = await updateContactLifecycle(data.contactId, data.lifecycle);
+    await recordAudit({ action: "growth.contact.lifecycle", target: data.contactId, detail: data });
     return NextResponse.json(updated);
   }
 

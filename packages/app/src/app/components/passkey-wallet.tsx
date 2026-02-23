@@ -144,14 +144,6 @@ function isMissingCredential(error: unknown) {
   );
 }
 
-async function bootstrapSession(address: string) {
-  try {
-    await ensureUserSession(address);
-  } catch {
-    // ignore session bootstrap errors
-  }
-}
-
 export default function PasskeyWallet() {
   const [wallet, setWallet] = useState<StoredWallet | null>(null);
   const [wallets, setWallets] = useState<StoredWallet[]>([]);
@@ -203,12 +195,13 @@ export default function PasskeyWallet() {
     return () => controller.abort();
   }, []);
 
-  const persist = async (stored: StoredWallet, toast: string) => {
+  const persist = (stored: StoredWallet, toast: string) => {
     const next = saveStoredWallet(stored);
     if (next) {
       setWallet(next);
       setWallets(loadWalletList());
-      await bootstrapSession(next.address);
+      // Session will be created lazily on first authenticated API call
+      // via fetchWithUserAuth's 401 retry logic — no extra passkey prompt needed
     }
     setMsg(toast);
     setTimeout(() => setMsg(null), 3000);
@@ -225,7 +218,7 @@ export default function PasskeyWallet() {
       const publicKey = keypair.getPublicKey();
       const address = publicKey.toSuiAddress();
       const stored: StoredWallet = { address, publicKey: toBase64(publicKey.toRawBytes()) };
-      await persist(stored, t("comp.passkey_wallet.001"));
+      persist(stored, t("comp.passkey_wallet.001"));
     } catch (e) {
       setError((e as Error).message || t("components.passkey_wallet.i165"));
     } finally {
@@ -243,11 +236,11 @@ export default function PasskeyWallet() {
       setBusy(true);
       setError(null);
       setMsg(null);
-      const provider = new BrowserPasskeyProvider(RP_NAME, providerOpts);
-      const keypair = new PasskeyKeypair(fromBase64(nextWallet.publicKey), provider);
-      const testMsg = new TextEncoder().encode("login-check");
-      await keypair.signPersonalMessage(testMsg);
-      await persist(nextWallet, t("comp.passkey_wallet.003"));
+      // Save wallet first so signAuthIntent can read it from localStorage
+      persist(nextWallet, t("comp.passkey_wallet.003"));
+      // Single passkey prompt: ensureUserSession tries cookie refresh first,
+      // falls back to passkey-signed creation only if no session exists
+      await ensureUserSession(nextWallet.address);
     } catch (e) {
       if (isMissingCredential(e)) {
         setError(t("comp.passkey_wallet.004"));
@@ -275,7 +268,7 @@ export default function PasskeyWallet() {
         address: pk.toSuiAddress(),
         publicKey: toBase64(pk.toRawBytes()),
       };
-      await persist(stored, t("comp.passkey_wallet.005"));
+      persist(stored, t("comp.passkey_wallet.005"));
     } catch (e) {
       setError((e as Error).message || t("components.passkey_wallet.i167"));
     } finally {

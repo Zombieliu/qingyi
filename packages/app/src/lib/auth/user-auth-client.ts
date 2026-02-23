@@ -35,6 +35,11 @@ export async function ensureUserSession(address: string) {
   }
   if (sessionPromise) return sessionPromise;
   sessionPromise = (async () => {
+    // Try cookie-based refresh first (no passkey prompt)
+    const refreshRes = await fetch("/api/auth/session", { method: "PATCH" });
+    if (refreshRes.ok) return;
+
+    // Fall back to passkey-signed session creation
     const body = JSON.stringify({ address });
     const { headers } = await buildAuthHeaders("user:session:create", body, address);
     const res = await fetch("/api/auth/session", {
