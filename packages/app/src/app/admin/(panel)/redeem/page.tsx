@@ -2,7 +2,7 @@
 import { t } from "@/lib/i18n/t";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Copy, RefreshCw } from "lucide-react";
+import { Copy, Loader2, RefreshCw } from "lucide-react";
 import { StateBlock } from "@/app/components/state-block";
 import { formatFullDateTime } from "@/lib/shared/date-utils";
 import type { AdminRedeemBatch, AdminRedeemCode, AdminRedeemRecord } from "@/lib/admin/admin-types";
@@ -45,6 +45,8 @@ export default function RedeemAdminPage() {
   const [recordsLoading, setRecordsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [createdCodes, setCreatedCodes] = useState<RedeemCodeView[]>([]);
+  const [submitting, setSubmitting] = useState(false);
+  const [patchingId, setPatchingId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [form, setForm] = useState({
@@ -178,6 +180,7 @@ export default function RedeemAdminPage() {
       codeLength: Number(form.codeLength) || 10,
     };
 
+    setSubmitting(true);
     try {
       const res = await fetch("/api/admin/redeem/codes", {
         method: "POST",
@@ -195,10 +198,13 @@ export default function RedeemAdminPage() {
       setForm((prev) => ({ ...prev, title: "", description: "", codesText: "" }));
     } catch {
       setError(t("admin.redeem.006"));
+    } finally {
+      setSubmitting(false);
     }
   };
 
   const patchStatus = async (codeId: string, status: string) => {
+    setPatchingId(codeId);
     try {
       const res = await fetch(`/api/admin/redeem/codes/${codeId}`, {
         method: "PATCH",
@@ -212,6 +218,8 @@ export default function RedeemAdminPage() {
       await loadCodes();
     } catch {
       setError(t("admin.redeem.008"));
+    } finally {
+      setPatchingId(null);
     }
   };
 
@@ -467,8 +475,14 @@ export default function RedeemAdminPage() {
           </label>
 
           <div className="admin-card-actions">
-            <button className="admin-btn" onClick={createBatch}>
-              生成卡密
+            <button className="admin-btn" onClick={createBatch} disabled={submitting}>
+              {submitting ? (
+                <>
+                  <Loader2 size={14} className="spin" /> 生成中...
+                </>
+              ) : (
+                "生成卡密"
+              )}
             </button>
             {createdHint && <span className="admin-helper">{createdHint}</span>}
           </div>
@@ -651,16 +665,30 @@ export default function RedeemAdminPage() {
                         {code.status === "active" ? (
                           <button
                             className="admin-btn ghost"
+                            disabled={patchingId === code.id}
                             onClick={() => patchStatus(code.id, "disabled")}
                           >
-                            停用
+                            {patchingId === code.id ? (
+                              <>
+                                <Loader2 size={14} className="spin" /> 处理中...
+                              </>
+                            ) : (
+                              "停用"
+                            )}
                           </button>
                         ) : code.status === "disabled" ? (
                           <button
                             className="admin-btn ghost"
+                            disabled={patchingId === code.id}
                             onClick={() => patchStatus(code.id, "active")}
                           >
-                            启用
+                            {patchingId === code.id ? (
+                              <>
+                                <Loader2 size={14} className="spin" /> 处理中...
+                              </>
+                            ) : (
+                              "启用"
+                            )}
                           </button>
                         ) : (
                           <span className="admin-meta">-</span>

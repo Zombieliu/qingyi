@@ -2,7 +2,7 @@
 import { t } from "@/lib/i18n/t";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { PlusCircle, RefreshCw, Search } from "lucide-react";
+import { Loader2, PlusCircle, RefreshCw, Search } from "lucide-react";
 import type { AdminCoupon, CouponStatus } from "@/lib/admin/admin-types";
 import { COUPON_STATUS_OPTIONS } from "@/lib/admin/admin-types";
 import { readCache, writeCache } from "@/lib/shared/client-cache";
@@ -25,6 +25,7 @@ export default function CouponsPage() {
   const [cursor, setCursor] = useState<string | null>(null);
   const [prevCursors, setPrevCursors] = useState<Array<string | null>>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
   const pageSize = 20;
   const cacheTtlMs = 60_000;
 
@@ -94,43 +95,48 @@ export default function CouponsPage() {
 
   const createCoupon = async () => {
     if (!form.title.trim()) return;
-    const res = await fetch("/api/admin/coupons", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        title: form.title.trim(),
-        code: form.code.trim(),
-        discount: form.discount ? Number(form.discount) : undefined,
-        minSpend: form.minSpend ? Number(form.minSpend) : undefined,
-        status: form.status,
-        startsAt: form.startsAt || undefined,
-        expiresAt: form.expiresAt || undefined,
-        description: form.description.trim(),
-      }),
-    });
-    if (res.ok) {
-      const data = await res.json();
-      setCoupons((prev) => {
-        const next = [data, ...prev];
-        const params = new URLSearchParams();
-        params.set("pageSize", String(pageSize));
-        if (cursor) params.set("cursor", cursor);
-        if (statusFilter && statusFilter !== t("admin.panel.coupons.i035"))
-          params.set("status", statusFilter);
-        if (query.trim()) params.set("q", query.trim());
-        writeCache(`cache:admin:coupons:${params.toString()}`, { items: next, nextCursor });
-        return next;
+    setSubmitting(true);
+    try {
+      const res = await fetch("/api/admin/coupons", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: form.title.trim(),
+          code: form.code.trim(),
+          discount: form.discount ? Number(form.discount) : undefined,
+          minSpend: form.minSpend ? Number(form.minSpend) : undefined,
+          status: form.status,
+          startsAt: form.startsAt || undefined,
+          expiresAt: form.expiresAt || undefined,
+          description: form.description.trim(),
+        }),
       });
-      setForm({
-        title: "",
-        code: "",
-        discount: "",
-        minSpend: "",
-        status: "可用",
-        startsAt: "",
-        expiresAt: "",
-        description: "",
-      });
+      if (res.ok) {
+        const data = await res.json();
+        setCoupons((prev) => {
+          const next = [data, ...prev];
+          const params = new URLSearchParams();
+          params.set("pageSize", String(pageSize));
+          if (cursor) params.set("cursor", cursor);
+          if (statusFilter && statusFilter !== t("admin.panel.coupons.i035"))
+            params.set("status", statusFilter);
+          if (query.trim()) params.set("q", query.trim());
+          writeCache(`cache:admin:coupons:${params.toString()}`, { items: next, nextCursor });
+          return next;
+        });
+        setForm({
+          title: "",
+          code: "",
+          discount: "",
+          minSpend: "",
+          status: "可用",
+          startsAt: "",
+          expiresAt: "",
+          description: "",
+        });
+      }
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -279,9 +285,22 @@ export default function CouponsPage() {
             />
           </label>
         </div>
-        <button className="admin-btn primary" onClick={createCoupon} style={{ marginTop: 14 }}>
-          <PlusCircle size={16} style={{ marginRight: 6 }} />
-          新建优惠券
+        <button
+          className="admin-btn primary"
+          onClick={createCoupon}
+          disabled={submitting}
+          style={{ marginTop: 14 }}
+        >
+          {submitting ? (
+            <>
+              <Loader2 size={14} className="spin" /> 创建中...
+            </>
+          ) : (
+            <>
+              <PlusCircle size={16} style={{ marginRight: 6 }} />
+              新建优惠券
+            </>
+          )}
         </button>
       </div>
 

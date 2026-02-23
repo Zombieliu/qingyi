@@ -2,7 +2,7 @@
 import { t } from "@/lib/i18n/t";
 
 import { useEffect, useMemo, useState } from "react";
-import { PlusCircle, Trash2 } from "lucide-react";
+import { Loader2, PlusCircle, Trash2 } from "lucide-react";
 import type { AdminPlayer, PlayerStatus } from "@/lib/admin/admin-types";
 import { PLAYER_STATUS_OPTIONS } from "@/lib/admin/admin-types";
 import { readCache, writeCache } from "@/lib/shared/client-cache";
@@ -18,6 +18,7 @@ export default function PlayersPage() {
   const [saving, setSaving] = useState<Record<string, boolean>>({});
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [formHint, setFormHint] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({
     name: "",
     role: "",
@@ -120,39 +121,44 @@ export default function PlayersPage() {
       );
       return;
     }
-    const res = await fetch("/api/admin/players", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name: form.name.trim(),
-        role: form.role.trim(),
-        contact: contactValue,
-        address: addressParsed.normalized,
-        depositBase: form.depositBase ? Number(form.depositBase) : undefined,
-        depositLocked: form.depositLocked ? Number(form.depositLocked) : undefined,
-        creditMultiplier: form.creditMultiplier ? Number(form.creditMultiplier) : undefined,
-        status: form.status,
-        notes: form.notes.trim(),
-      }),
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      setFormHint(formatAddressError(data?.error));
-      return;
+    setSubmitting(true);
+    try {
+      const res = await fetch("/api/admin/players", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: form.name.trim(),
+          role: form.role.trim(),
+          contact: contactValue,
+          address: addressParsed.normalized,
+          depositBase: form.depositBase ? Number(form.depositBase) : undefined,
+          depositLocked: form.depositLocked ? Number(form.depositLocked) : undefined,
+          creditMultiplier: form.creditMultiplier ? Number(form.creditMultiplier) : undefined,
+          status: form.status,
+          notes: form.notes.trim(),
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setFormHint(formatAddressError(data?.error));
+        return;
+      }
+      await loadPlayers();
+      setFormHint(null);
+      setForm({
+        name: "",
+        role: "",
+        contact: "",
+        address: "",
+        depositBase: "",
+        depositLocked: "",
+        creditMultiplier: "1",
+        status: "可接单",
+        notes: "",
+      });
+    } finally {
+      setSubmitting(false);
     }
-    await loadPlayers();
-    setFormHint(null);
-    setForm({
-      name: "",
-      role: "",
-      contact: "",
-      address: "",
-      depositBase: "",
-      depositLocked: "",
-      creditMultiplier: "1",
-      status: "可接单",
-      notes: "",
-    });
   };
 
   const updatePlayer = async (playerId: string, patch: Partial<AdminPlayer>) => {
@@ -372,9 +378,22 @@ export default function PlayersPage() {
                 />
               </label>
             </div>
-            <button className="admin-btn primary" onClick={createPlayer} style={{ marginTop: 14 }}>
-              <PlusCircle size={16} style={{ marginRight: 6 }} />
-              添加陪练
+            <button
+              className="admin-btn primary"
+              onClick={createPlayer}
+              disabled={submitting}
+              style={{ marginTop: 14 }}
+            >
+              {submitting ? (
+                <>
+                  <Loader2 size={14} className="spin" /> 添加中...
+                </>
+              ) : (
+                <>
+                  <PlusCircle size={16} style={{ marginRight: 6 }} />
+                  添加陪练
+                </>
+              )}
             </button>
             {formHint && (
               <div style={{ marginTop: 12 }}>

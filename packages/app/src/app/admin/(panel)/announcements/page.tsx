@@ -2,7 +2,7 @@
 import { t } from "@/lib/i18n/t";
 
 import { useEffect, useState } from "react";
-import { Megaphone, Pencil, PlusCircle, Trash2, Archive } from "lucide-react";
+import { Loader2, Megaphone, Pencil, PlusCircle, Trash2, Archive } from "lucide-react";
 import type { AdminAnnouncement, AnnouncementStatus } from "@/lib/admin/admin-types";
 import { ANNOUNCEMENT_STATUS_OPTIONS } from "@/lib/admin/admin-types";
 import { readCache, writeCache } from "@/lib/shared/client-cache";
@@ -16,6 +16,7 @@ export default function AnnouncementsPage() {
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({
     title: "",
     tag: t("admin.panel.announcements.i148"),
@@ -57,42 +58,47 @@ export default function AnnouncementsPage() {
   const submitForm = async () => {
     if (!canEdit) return;
     if (!form.title.trim()) return;
-    const payload = {
-      title: form.title.trim(),
-      tag: form.tag.trim() || t("admin.panel.announcements.i149"),
-      content: form.content.trim(),
-      status: form.status,
-    };
-    if (editingId) {
-      const res = await fetch(`/api/admin/announcements/${editingId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setAnnouncements((prev) => {
-          const next = prev.map((item) => (item.id === editingId ? data : item));
-          writeCache("cache:admin:announcements", next);
-          return next;
+    setSubmitting(true);
+    try {
+      const payload = {
+        title: form.title.trim(),
+        tag: form.tag.trim() || t("admin.panel.announcements.i149"),
+        content: form.content.trim(),
+        status: form.status,
+      };
+      if (editingId) {
+        const res = await fetch(`/api/admin/announcements/${editingId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
         });
-        resetForm();
-      }
-    } else {
-      const res = await fetch("/api/admin/announcements", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setAnnouncements((prev) => {
-          const next = [data, ...prev];
-          writeCache("cache:admin:announcements", next);
-          return next;
+        if (res.ok) {
+          const data = await res.json();
+          setAnnouncements((prev) => {
+            const next = prev.map((item) => (item.id === editingId ? data : item));
+            writeCache("cache:admin:announcements", next);
+            return next;
+          });
+          resetForm();
+        }
+      } else {
+        const res = await fetch("/api/admin/announcements", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
         });
-        resetForm();
+        if (res.ok) {
+          const data = await res.json();
+          setAnnouncements((prev) => {
+            const next = [data, ...prev];
+            writeCache("cache:admin:announcements", next);
+            return next;
+          });
+          resetForm();
+        }
       }
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -231,9 +237,17 @@ export default function AnnouncementsPage() {
               </label>
             </div>
             <div className="admin-card-actions" style={{ marginTop: 14 }}>
-              <button className="admin-btn primary" onClick={submitForm}>
-                <PlusCircle size={16} style={{ marginRight: 6 }} />
-                {editingId ? t("ui.announcements.532") : t("admin.announcements.006")}
+              <button className="admin-btn primary" onClick={submitForm} disabled={submitting}>
+                {submitting ? (
+                  <>
+                    <Loader2 size={14} className="spin" /> 处理中...
+                  </>
+                ) : (
+                  <>
+                    <PlusCircle size={16} style={{ marginRight: 6 }} />
+                    {editingId ? t("ui.announcements.532") : t("admin.announcements.006")}
+                  </>
+                )}
               </button>
               {editingId ? (
                 <button className="admin-btn ghost" onClick={resetForm}>

@@ -2,7 +2,7 @@
 import { t } from "@/lib/i18n/t";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { RefreshCw, Search } from "lucide-react";
+import { ChevronDown, Loader2, RefreshCw, Search } from "lucide-react";
 import Link from "next/link";
 import type { AdminOrder, AdminPlayer, OrderStage } from "@/lib/admin/admin-types";
 import { ORDER_STAGE_OPTIONS } from "@/lib/admin/admin-types";
@@ -29,6 +29,16 @@ export default function OrdersPage() {
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [cleaningE2e, setCleaningE2e] = useState(false);
   const [cleanResult, setCleanResult] = useState<string | null>(null);
+  const [manualOpen, setManualOpen] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [manualForm, setManualForm] = useState({
+    user: "",
+    item: "",
+    amount: "",
+    assignedTo: "",
+    note: "",
+  });
   const pageSize = 20;
   const cacheTtlMs = 60_000;
 
@@ -174,17 +184,56 @@ export default function OrdersPage() {
     if (!canEdit) return;
     if (selectedIds.length === 0) return;
     if (!confirm(`确定要删除选中的 ${selectedIds.length} 条订单吗？`)) return;
-    const res = await fetch("/api/admin/orders/bulk-delete", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ids: selectedIds }),
-    });
-    if (res.ok) {
-      setSelectedIds([]);
-      await loadOrders(cursor, page);
-    } else {
-      const data = await res.json().catch(() => ({}));
-      alert(data?.error || t("admin.panel.orders.i070"));
+    setBulkDeleting(true);
+    try {
+      const res = await fetch("/api/admin/orders/bulk-delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: selectedIds }),
+      });
+      if (res.ok) {
+        setSelectedIds([]);
+        await loadOrders(cursor, page);
+      } else {
+        const data = await res.json().catch(() => ({}));
+        alert(data?.error || t("admin.panel.orders.i070"));
+      }
+    } finally {
+      setBulkDeleting(false);
+    }
+  };
+
+  const createManualOrder = async () => {
+    if (!canEdit) return;
+    if (!manualForm.user.trim() || !manualForm.item.trim() || !manualForm.amount.trim()) return;
+    setSubmitting(true);
+    try {
+      const res = await fetch("/api/admin/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          user: manualForm.user.trim(),
+          item: manualForm.item.trim(),
+          amount: Number(manualForm.amount),
+          currency: "CNY",
+          stage: "待处理",
+          assignedTo: manualForm.assignedTo || undefined,
+          note: manualForm.note.trim() || undefined,
+          source: "manual",
+        }),
+      });
+      if (res.ok) {
+        setManualForm({ user: "", item: "", amount: "", assignedTo: "", note: "" });
+        setManualOpen(false);
+        setPrevCursors([]);
+        setCursor(null);
+        setPage(1);
+      } else {
+        const data = await res.json().catch(() => ({}));
+        alert(data?.error || "创建订单失败");
+      }
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -233,6 +282,99 @@ export default function OrdersPage() {
 
   return (
     <div className="admin-section">
+      {canEdit && (
+        <div className="admin-card">
+          <div
+            className="admin-card-header"
+            style={{ cursor: "pointer" }}
+            onClick={() => setManualOpen((v) => !v)}
+          >
+            <div>
+              <h3>人工下单</h3>
+              <p>手动为用户创建订单</p>
+            </div>
+            <ChevronDown
+              size={18}
+              style={{
+                transition: "transform .2s",
+                transform: manualOpen ? "rotate(180deg)" : undefined,
+              }}
+            />
+          </div>
+          {manualOpen && (
+            <>
+              <div className="admin-form">
+                <label className="admin-field">
+                  用户名
+                  <input
+                    className="admin-input"
+                    placeholder="输入用户名"
+                    value={manualForm.user}
+                    onChange={(e) => setManualForm((p) => ({ ...p, user: e.target.value }))}
+                  />
+                </label>
+                <label className="admin-field">
+                  套餐/项目
+                  <input
+                    className="admin-input"
+                    placeholder="如：王者荣耀陪玩 3局"
+                    value={manualForm.item}
+                    onChange={(e) => setManualForm((p) => ({ ...p, item: e.target.value }))}
+                  />
+                </label>
+                <label className="admin-field">
+                  金额 (CNY)
+                  <input
+                    className="admin-input"
+                    placeholder="0"
+                    value={manualForm.amount}
+                    onChange={(e) => setManualForm((p) => ({ ...p, amount: e.target.value }))}
+                  />
+                </label>
+                <label className="admin-field">
+                  分配陪练
+                  <select
+                    className="admin-select"
+                    value={manualForm.assignedTo}
+                    onChange={(e) => setManualForm((p) => ({ ...p, assignedTo: e.target.value }))}
+                  >
+                    <option value="">不分配</option>
+                    {players.map((player) => (
+                      <option key={player.id} value={player.name}>
+                        {player.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="admin-field" style={{ gridColumn: "1 / -1" }}>
+                  备注
+                  <input
+                    className="admin-input"
+                    placeholder="可选备注"
+                    value={manualForm.note}
+                    onChange={(e) => setManualForm((p) => ({ ...p, note: e.target.value }))}
+                  />
+                </label>
+              </div>
+              <div className="admin-card-actions" style={{ marginTop: 14 }}>
+                <button
+                  className="admin-btn primary"
+                  onClick={createManualOrder}
+                  disabled={submitting}
+                >
+                  {submitting ? (
+                    <>
+                      <Loader2 size={14} className="spin" /> 创建中...
+                    </>
+                  ) : (
+                    "创建订单"
+                  )}
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
       <div className="admin-card">
         <div className="admin-card-header">
           <div>
@@ -277,10 +419,16 @@ export default function OrdersPage() {
           {canEdit ? (
             <button
               className="admin-btn ghost"
-              disabled={selectedIds.length === 0}
+              disabled={selectedIds.length === 0 || bulkDeleting}
               onClick={bulkDelete}
             >
-              删除选中{selectedIds.length > 0 ? `（${selectedIds.length}）` : ""}
+              {bulkDeleting ? (
+                <>
+                  <Loader2 size={14} className="spin" /> 删除中...
+                </>
+              ) : (
+                <>删除选中{selectedIds.length > 0 ? `（${selectedIds.length}）` : ""}</>
+              )}
             </button>
           ) : null}
           {canEdit ? (

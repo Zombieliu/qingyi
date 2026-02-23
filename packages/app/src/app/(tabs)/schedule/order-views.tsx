@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+import { Loader2 } from "lucide-react";
 import type { LocalOrder } from "@/lib/services/order-store";
 import type { ChainOrder } from "@/lib/chain/qy-chain";
 import type { Mode } from "./schedule-data";
@@ -95,6 +97,7 @@ export function AwaitUserPayView({
   const companionProfile = getCompanionProfile(currentOrder);
   const paymentMode = (currentOrder.meta as { paymentMode?: string } | undefined)?.paymentMode;
   const isEscrow = paymentMode === "diamond_escrow";
+  const [entering, setEntering] = useState(false);
 
   return (
     <div className="ride-shell">
@@ -134,17 +137,29 @@ export function AwaitUserPayView({
           </button>
           <button
             className="dl-tab-btn primary"
+            disabled={entering}
             onClick={async () => {
-              await patchOrder(currentOrder.id, {
-                playerPaid: true,
-                status: t("ui.order-views.701"),
-                userAddress: getCurrentAddress(),
-              });
-              await refreshOrders();
-              setMode("enroute");
+              setEntering(true);
+              try {
+                await patchOrder(currentOrder.id, {
+                  playerPaid: true,
+                  status: t("ui.order-views.701"),
+                  userAddress: getCurrentAddress(),
+                });
+                await refreshOrders();
+                setMode("enroute");
+              } finally {
+                setEntering(false);
+              }
             }}
           >
-            进入服务
+            {entering ? (
+              <>
+                <Loader2 size={14} className="spin" /> 处理中...
+              </>
+            ) : (
+              "进入服务"
+            )}
           </button>
         </div>
       </div>
