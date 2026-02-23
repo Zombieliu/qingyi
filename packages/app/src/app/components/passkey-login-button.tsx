@@ -19,7 +19,7 @@ import {
   shortAddress,
 } from "./passkey-wallet";
 import { trackEvent } from "@/lib/services/analytics";
-import { useI18n, t } from "@/lib/i18n/i18n-client";
+import { useI18n } from "@/lib/i18n/i18n-client";
 import { ensureUserSession } from "@/lib/auth/user-auth-client";
 
 const toBase64 = (bytes: Uint8Array) => btoa(String.fromCharCode(...Array.from(bytes)));

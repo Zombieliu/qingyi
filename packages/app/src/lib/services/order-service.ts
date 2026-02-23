@@ -45,8 +45,8 @@ export function normalizeOrder(order: ServerOrder): LocalOrder {
   const meta = (order.meta || {}) as Record<string, unknown>;
   const chainMeta = meta.chain as { status?: number } | undefined;
 
-  // Determine effective chain status from all sources
-  const chainStatus = order.chainStatus ?? chainMeta?.status ?? undefined;
+  // Chain status available via: order.chainStatus ?? chainMeta?.status
+  // Used by deriveMode() and chain-status.ts for status resolution
 
   // Status resolution:
   // - Prefer server-computed displayStatus (single source of truth)

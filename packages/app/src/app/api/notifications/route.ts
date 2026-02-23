@@ -70,7 +70,7 @@ export async function PATCH(req: Request) {
   }
 
   if (body.id) {
-    const result = await markAsRead(body.id, auth.address);
+    const result = await markAsRead(body.id);
     if (!result) {
       return NextResponse.json({ error: "not_found" }, { status: 404 });
     }

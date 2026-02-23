@@ -28,14 +28,7 @@ export {
   getStoredWallet,
   PASSKEY_STORAGE_KEY,
 } from "./qy-chain-lite";
-import {
-  getCurrentAddress,
-  isChainOrdersEnabled,
-  isVisualTestMode,
-  getStoredWallet,
-  PASSKEY_STORAGE_KEY,
-  type StoredWallet,
-} from "./qy-chain-lite";
+import { isChainOrdersEnabled, isVisualTestMode, getStoredWallet } from "./qy-chain-lite";
 
 export type ChainOrder = {
   orderId: string;

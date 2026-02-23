@@ -101,7 +101,7 @@ export async function getUnreadCount(userAddress: string) {
 /**
  * 标记单条已读
  */
-export async function markAsRead(id: string, _userAddress: string) {
+export async function markAsRead(id: string) {
   try {
     return await prisma.notification.update({
       where: { id },

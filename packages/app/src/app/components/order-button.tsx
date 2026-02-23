@@ -12,7 +12,6 @@ import { trackEvent } from "@/lib/services/analytics";
 import { classifyChainError } from "@/lib/chain/chain-error";
 import { Button } from "@/components/ui/button";
 import { StateBlock } from "@/app/components/state-block";
-import { formatErrorMessage } from "@/lib/shared/error-utils";
 import { GAME_PROFILE_KEY } from "@/lib/shared/constants";
 
 interface Props {

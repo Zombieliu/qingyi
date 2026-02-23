@@ -27,7 +27,7 @@ const nextConfig: NextConfig = {
     root: repoRoot,
   },
   typescript: {
-    ignoreBuildErrors: isVercel,
+    ignoreBuildErrors: false,
   },
   outputFileTracingIncludes: {
     "/**/*": ["node_modules/next/dist/compiled/source-map/**"],

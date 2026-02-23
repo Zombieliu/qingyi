@@ -432,59 +432,6 @@ export async function POST(req: Request) {
   return NextResponse.json({ orderId, sent: true, error: null });
 }
 
-function buildMarkdown({
-  user,
-  item,
-  amount,
-  currency,
-  status,
-  orderId,
-  note,
-  mentionTag,
-  requestedPlayer,
-  fallbackAll,
-  fallbackReason,
-}: {
-  user: string;
-  item: string;
-  amount: number;
-  currency: string;
-  status: string;
-  orderId: string;
-  note?: string;
-  mentionTag?: string;
-  requestedPlayer?: string;
-  fallbackAll?: boolean;
-  fallbackReason?: "missing_id" | "missing_contact";
-}) {
-  const priceLine = currency === "CNY" ? `¥${amount}` : `${amount} ${currency}`;
-  const now = formatFullDateTime(Date.now());
-
-  const noteLine = note ? `> 备注：${note}\n` : "";
-  const mentionLine = mentionTag ? `${mentionTag}\n` : "";
-  const fallbackNote = fallbackAll
-    ? fallbackReason === "missing_id"
-      ? "（无法定位陪练，已@全部）"
-      : "（未配置企微ID，已@全部）"
-    : "";
-  const playerLine = requestedPlayer ? `> 指定陪练：${requestedPlayer}${fallbackNote}\n` : "";
-
-  return [
-    mentionLine,
-    `🛒 <font color="info">新订单</font>`,
-    `> 用户：${user}`,
-    `> 商品：${item}`,
-    `> 金额：${priceLine}`,
-    `> 状态：${status}`,
-    playerLine,
-    noteLine,
-    `> 时间：${now}`,
-    `> 订单号：${orderId}`,
-  ]
-    .filter(Boolean)
-    .join("\n");
-}
-
 function buildText({
   user,
   item,

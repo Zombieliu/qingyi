@@ -151,7 +151,7 @@ export default function Me() {
       window.removeEventListener("storage", handleStorage);
       window.removeEventListener("passkey-updated", handlePasskey);
     };
-  }, [profileKey]);
+  }, [profileKey, refreshBalance, refreshMantou]);
 
   if (showSettings) {
     return <SettingsPanel onBack={closeSettings} onLogout={logout} />;

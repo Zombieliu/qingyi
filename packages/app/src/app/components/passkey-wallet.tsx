@@ -25,12 +25,6 @@ export type StoredWallet = {
 };
 
 const toBase64 = (bytes: Uint8Array) => btoa(String.fromCharCode(...Array.from(bytes)));
-const fromBase64 = (b64: string) =>
-  new Uint8Array(
-    atob(b64)
-      .split("")
-      .map((c) => c.charCodeAt(0))
-  );
 
 export function shortAddress(address: string) {
   if (!address) return "";

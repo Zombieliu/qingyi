@@ -1,7 +1,7 @@
 /**
  * @vitest-environment jsdom
  */
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // Must set env before import
 vi.stubEnv("NEXT_PUBLIC_CHAIN_ORDERS", "0");

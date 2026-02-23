@@ -366,7 +366,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
     return () => {
       window.fetch = originalFetch;
     };
-  }, []);
+  }, [t]);
 
   const handleLogout = async () => {
     await fetch("/api/admin/logout", { method: "POST" });

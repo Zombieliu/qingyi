@@ -1,7 +1,7 @@
 "use client";
 import { ChevronLeft, Moon, Globe2, BookOpen, MessageSquare } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useI18n, t } from "@/lib/i18n/i18n-client";
+import { useI18n } from "@/lib/i18n/i18n-client";
 import { useEffect, useState } from "react";
 import { applySeniorMode, SENIOR_MODE_STORAGE_KEY } from "@/app/components/senior-mode";
 import { SENIOR_MODE_COOKIE_KEY, setCookie, getCookie } from "@/lib/shared/cookie-utils";

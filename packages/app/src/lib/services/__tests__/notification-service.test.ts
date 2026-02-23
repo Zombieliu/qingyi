@@ -119,14 +119,14 @@ describe("getUnreadCount", () => {
 describe("markAsRead", () => {
   it("marks a notification as read", async () => {
     mockUpdate.mockResolvedValue({ id: "NTF-1", read: true });
-    const result = await markAsRead("NTF-1", "0xabc");
+    const result = await markAsRead("NTF-1");
     expect(result).not.toBeNull();
     expect(mockUpdate).toHaveBeenCalledWith(expect.objectContaining({ where: { id: "NTF-1" } }));
   });
 
   it("returns null on error", async () => {
     mockUpdate.mockRejectedValue(new Error("not found"));
-    const result = await markAsRead("NTF-999", "0xabc");
+    const result = await markAsRead("NTF-999");
     expect(result).toBeNull();
   });
 });
