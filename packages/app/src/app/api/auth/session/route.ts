@@ -5,7 +5,7 @@ import {
   createUserSession,
   clearUserSessionCookie,
   revokeUserSession,
-  getUserSessionFromCookies,
+  getUserSessionFromToken,
   getUserSessionFromTokenAllowExpired,
   renewUserSessionExpiry,
   requireUserSignature,
@@ -69,25 +69,28 @@ export async function GET(req: Request) {
   const url = new URL(req.url);
   const isRefresh = url.searchParams.get("refresh") === "1";
 
+  // Refresh mode: renew recently-expired sessions (within 30-day grace)
   if (isRefresh) {
-    // Refresh mode: allow renewing recently-expired sessions (within 30-day grace)
-    // No passkey signature needed — cookie-based only
     const session = await getUserSessionFromTokenAllowExpired(token);
     if (!session) {
       return NextResponse.json({ error: "session_missing" }, { status: 401 });
     }
-    const newExpiry = await renewUserSessionExpiry(session.tokenHash);
-    const res = NextResponse.json({
-      ok: true,
-      address: session.address,
-      expiresAt: newExpiry,
-    });
-    setUserSessionCookie(res, token, newExpiry);
-    return res;
+    try {
+      const newExpiry = await renewUserSessionExpiry(session.tokenHash);
+      const res = NextResponse.json({
+        ok: true,
+        address: session.address,
+        expiresAt: newExpiry,
+      });
+      setUserSessionCookie(res, token, newExpiry);
+      return res;
+    } catch {
+      return NextResponse.json({ error: "refresh_failed" }, { status: 500 });
+    }
   }
 
-  // Normal session check
-  const session = await getUserSessionFromCookies();
+  // Normal session check — use getUserSessionFromToken directly (single cookies() call)
+  const session = await getUserSessionFromToken(token);
   if (!session) {
     return NextResponse.json({ ok: false }, { status: 401 });
   }
@@ -98,11 +101,15 @@ export async function GET(req: Request) {
     lastSeenAt: session.lastSeenAt ?? null,
   });
   // Sliding window: renew session if past halfway of TTL
-  const ttlMs = env.USER_SESSION_TTL_HOURS * 60 * 60 * 1000;
-  const remaining = session.expiresAt - Date.now();
-  if (token && remaining < ttlMs / 2) {
-    const newExpiry = await renewUserSessionExpiry(session.tokenHash);
-    setUserSessionCookie(res, token, newExpiry);
+  try {
+    const ttlMs = env.USER_SESSION_TTL_HOURS * 60 * 60 * 1000;
+    const remaining = session.expiresAt - Date.now();
+    if (token && remaining < ttlMs / 2) {
+      const newExpiry = await renewUserSessionExpiry(session.tokenHash);
+      setUserSessionCookie(res, token, newExpiry);
+    }
+  } catch {
+    // ignore renewal errors — session response is still valid
   }
   return res;
 }
