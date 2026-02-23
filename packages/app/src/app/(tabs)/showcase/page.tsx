@@ -4,6 +4,14 @@ import { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { type LocalOrder } from "@/lib/services/order-store";
 import {
+  chainStatusLabel as statusLabel,
+  formatChainAmount as formatAmount,
+  formatChainTime as formatTime,
+  formatRemaining,
+  shortAddr,
+  shortDigest,
+} from "./showcase-utils";
+import {
   deleteOrder,
   fetchOrderDetail,
   fetchOrdersWithMeta,
@@ -603,51 +611,6 @@ export default function Showcase() {
     await refreshOrders();
   };
 
-  const statusLabel = (status: number) => {
-    switch (status) {
-      case 0:
-        return t("showcase.006");
-      case 1:
-        return t("showcase.007");
-      case 2:
-        return t("showcase.008");
-      case 3:
-        return t("showcase.009");
-      case 4:
-        return t("showcase.010");
-      case 5:
-        return t("showcase.011");
-      case 6:
-        return t("showcase.012");
-      default:
-        return `未知状态(${status})`;
-    }
-  };
-
-  const formatAmount = (value: string) => {
-    const num = Number(value);
-    if (!Number.isFinite(num)) return value;
-    return (num / 100).toFixed(2);
-  };
-
-  const formatTime = (value: string) => {
-    const num = Number(value);
-    if (!Number.isFinite(num) || num <= 0) return "-";
-    return new Date(num).toLocaleString();
-  };
-
-  const formatRemaining = (value: string) => {
-    const num = Number(value);
-    if (!Number.isFinite(num) || num <= 0) return "-";
-    const diff = num - Date.now();
-    if (diff <= 0) return t("ui.showcase.576");
-    const mins = Math.ceil(diff / 60000);
-    if (mins < 60) return `${mins} 分钟`;
-    const hours = Math.floor(mins / 60);
-    const remain = mins % 60;
-    return remain ? `${hours} 小时 ${remain} 分钟` : `${hours} 小时`;
-  };
-
   const disputeOrderId = disputeOpen?.orderId || "";
   const disputeEvidence = disputeOpen?.evidence || "";
   const disputeOrder = useMemo(
@@ -739,15 +702,6 @@ export default function Showcase() {
     }
   };
 
-  const shortAddr = (addr: string) => {
-    if (!addr) return "-";
-    return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
-  };
-  const shortDigest = (digest?: string | null) => {
-    if (!digest) return "";
-    if (digest.length <= 12) return digest;
-    return `${digest.slice(0, 6)}...${digest.slice(-4)}`;
-  };
   const renderActionLabel = (key: string, label: string) => {
     if (chainAction !== key) return label;
     return (
