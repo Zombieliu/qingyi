@@ -1,31 +1,39 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
+import { parseBody } from "@/lib/shared/api-validation";
 import { savePushSubscription, removePushSubscription } from "@/lib/services/push-service";
 
+const subscribeSchema = z.object({
+  userAddress: z.string().min(1),
+  subscription: z.object({
+    endpoint: z.string().url(),
+    keys: z.object({
+      p256dh: z.string().min(1),
+      auth: z.string().min(1),
+    }),
+  }),
+});
+
+const unsubscribeSchema = z.object({
+  endpoint: z.string().url(),
+});
+
 export async function POST(req: Request) {
-  try {
-    const { userAddress, subscription } = await req.json();
-    if (!userAddress || !subscription?.endpoint || !subscription?.keys) {
-      return NextResponse.json({ error: "missing fields" }, { status: 400 });
-    }
+  const parsed = await parseBody(req, subscribeSchema);
+  if (!parsed.success) return parsed.response;
+  const { userAddress, subscription } = parsed.data;
 
-    await savePushSubscription(userAddress, {
-      endpoint: subscription.endpoint,
-      keys: subscription.keys,
-    });
+  await savePushSubscription(userAddress, {
+    endpoint: subscription.endpoint,
+    keys: subscription.keys,
+  });
 
-    return NextResponse.json({ ok: true });
-  } catch {
-    return NextResponse.json({ error: "invalid request" }, { status: 400 });
-  }
+  return NextResponse.json({ ok: true });
 }
 
 export async function DELETE(req: Request) {
-  try {
-    const { endpoint } = await req.json();
-    if (!endpoint) return NextResponse.json({ error: "endpoint required" }, { status: 400 });
-    await removePushSubscription(endpoint);
-    return NextResponse.json({ ok: true });
-  } catch {
-    return NextResponse.json({ error: "invalid request" }, { status: 400 });
-  }
+  const parsed = await parseBody(req, unsubscribeSchema);
+  if (!parsed.success) return parsed.response;
+  await removePushSubscription(parsed.data.endpoint);
+  return NextResponse.json({ ok: true });
 }

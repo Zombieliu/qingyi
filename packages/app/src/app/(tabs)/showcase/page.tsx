@@ -6,9 +6,6 @@ import { type LocalOrder } from "@/lib/services/order-store";
 import {
   chainStatusLabel as statusLabel,
   formatChainAmount as formatAmount,
-  formatChainTime as formatTime,
-  formatRemaining,
-  shortAddr,
   shortDigest,
 } from "./showcase-utils";
 import {
@@ -20,7 +17,7 @@ import {
   patchOrder,
   syncChainOrder,
 } from "@/lib/services/order-service";
-import { Activity, Clock3, Car, MapPin, Loader2 } from "lucide-react";
+import { Activity, Loader2 } from "lucide-react";
 import {
   type ChainOrder,
   claimOrderOnChain,
@@ -39,13 +36,16 @@ import {
   getDefaultCompanionAddress,
 } from "@/lib/chain/qy-chain";
 import { useBackoffPoll } from "@/app/components/use-backoff-poll";
-import { MotionCard } from "@/components/ui/motion";
 import { StateBlock } from "@/app/components/state-block";
 import { ConfirmDialog } from "@/app/components/confirm-dialog";
 import { extractErrorMessage, formatErrorMessage } from "@/lib/shared/error-utils";
 import { useGuardianStatus } from "@/app/components/guardian-role";
 import { GAME_PROFILE_KEY } from "@/lib/shared/constants";
 import { getLocalChainStatus, mergeChainStatus } from "@/lib/chain/chain-status";
+import { ChainOrderCard } from "./chain-order-card";
+import { AcceptedOrderCard } from "./accepted-order-card";
+import { PublicOrderCard } from "./public-order-card";
+import { DisputeModal } from "./dispute-modal";
 
 export default function Showcase() {
   const router = useRouter();
@@ -908,8 +908,8 @@ export default function Showcase() {
           ) : (
             <div className="space-y-3 motion-stack">
               {visibleChainOrders.map((o) => {
-                const isUser = chainAddress && o.user === chainAddress;
-                const isCompanion = chainAddress && o.companion === chainAddress;
+                const isUser = Boolean(chainAddress && o.user === chainAddress);
+                const isCompanion = Boolean(chainAddress && o.companion === chainAddress);
                 const now = Date.now();
                 const deadline = resolveDisputeDeadline(o);
                 const effectiveStatus = resolveChainStatus(o);
@@ -919,285 +919,159 @@ export default function Showcase() {
                 const canFinalize =
                   effectiveStatus === 3 && (isUser ? true : hasDeadline && !inDisputeWindow);
                 const meta = orderMetaById.get(o.orderId) || null;
-                const gameProfile = (meta?.gameProfile || null) as {
-                  gameName?: string;
-                  gameId?: string;
-                } | null;
                 const companionEndedAt = (meta as { companionEndedAt?: number | string } | null)
                   ?.companionEndedAt;
                 const companionEnded = Boolean(companionEndedAt);
                 const metaLoading = Boolean(orderMetaLoading[o.orderId]);
                 return (
-                  <MotionCard
+                  <ChainOrderCard
                     key={`chain-${o.orderId}`}
-                    className="dl-card"
-                    style={{ padding: 14 }}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="text-sm font-semibold text-gray-900">订单 #{o.orderId}</div>
-                      <div className="text-sm font-bold text-amber-600">
-                        ¥{formatAmount(o.serviceFee)}
-                      </div>
-                    </div>
-                    <div className="mt-2 text-xs text-gray-500">
-                      用户 {shortAddr(o.user)} · 陪玩 {shortAddr(o.companion)}
-                    </div>
-                    {isCompanion && effectiveStatus >= 2 && (
-                      <div className="mt-2 flex items-center justify-between gap-2 text-xs text-emerald-700">
-                        <span>
-                          {gameProfile?.gameName && gameProfile?.gameId
-                            ? `游戏名 ${gameProfile.gameName} · ID ${gameProfile.gameId}`
-                            : t("ui.showcase.635")}
-                        </span>
-                        <div className="flex items-center gap-2">
-                          {gameProfile?.gameName && gameProfile?.gameId ? (
-                            <>
-                              {copiedOrderId === o.orderId && (
-                                <span className="text-[11px] text-emerald-600" aria-live="polite">
-                                  已复制
-                                </span>
-                              )}
-                              <button
-                                type="button"
-                                className="dl-tab-btn"
-                                style={{
-                                  padding: "4px 10px",
-                                  borderColor: "#34d399",
-                                  background: "#ecfdf5",
-                                  color: "#059669",
-                                }}
-                                onClick={() => copyGameProfile(o.orderId, gameProfile)}
-                              >
-                                复制
-                              </button>
-                            </>
-                          ) : (
-                            <button
-                              type="button"
-                              className="dl-tab-btn"
-                              style={{
-                                padding: "4px 10px",
-                                borderColor: "#fde68a",
-                                background: "#fffbeb",
-                                color: "#b45309",
-                              }}
-                              onClick={() => hydrateOrderMeta(o.orderId, { toastOnError: true })}
-                              disabled={metaLoading}
-                            >
-                              {metaLoading ? t("ui.showcase.551") : t("showcase.030")}
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                    <div className="mt-2 text-xs text-gray-500">
-                      状态：{statusLabel(effectiveStatus)} · 押金 ¥{formatAmount(o.deposit)}
-                    </div>
-                    <div className="mt-2 text-xs text-gray-500">
-                      创建时间：{formatTime(o.createdAt)} · 争议截止：
-                      {formatTime(String(deadline || 0))}
-                    </div>
-                    {effectiveStatus === 3 && (
-                      <div className="mt-1 text-xs text-amber-700">
-                        争议剩余：{formatRemaining(String(deadline || 0))}
-                      </div>
-                    )}
-                    <div className="mt-3 flex gap-2 flex-wrap">
-                      {isUser && effectiveStatus === 0 && (
-                        <button
-                          className="dl-tab-btn"
-                          style={{ padding: "8px 10px" }}
-                          disabled={chainAction === `pay-${o.orderId}`}
-                          onClick={() =>
-                            runChainAction(
-                              `pay-${o.orderId}`,
-                              () => payServiceFeeOnChain(o.orderId),
-                              t("ui.showcase.614"),
-                              o.orderId
-                            )
+                    order={o}
+                    chainAddress={chainAddress}
+                    effectiveStatus={effectiveStatus}
+                    deadline={deadline}
+                    meta={meta}
+                    metaLoading={metaLoading}
+                    copiedOrderId={copiedOrderId}
+                    chainAction={chainAction}
+                    isUser={isUser}
+                    isCompanion={isCompanion}
+                    companionEnded={companionEnded}
+                    canDispute={canDispute}
+                    canFinalize={canFinalize}
+                    inDisputeWindow={inDisputeWindow}
+                    onAcceptDeposit={() => {
+                      openConfirm({
+                        title: t("tabs.showcase.i067"),
+                        description: t("tabs.showcase.i068"),
+                        confirmLabel: t("tabs.showcase.i069"),
+                        action: async () => {
+                          if (!orderMetaById.get(o.orderId)?.gameProfile) {
+                            await hydrateOrderMeta(o.orderId);
                           }
-                        >
-                          {renderActionLabel(`pay-${o.orderId}`, t("showcase.031"))}
-                        </button>
-                      )}
-                      {isUser && (effectiveStatus === 0 || effectiveStatus === 1) && (
-                        <button
-                          className="dl-tab-btn"
-                          style={{ padding: "8px 10px" }}
-                          disabled={chainAction === `cancel-${o.orderId}`}
-                          onClick={() =>
-                            runChainAction(
-                              `cancel-${o.orderId}`,
-                              () => cancelOrderOnChain(o.orderId),
-                              t("ui.showcase.655"),
-                              o.orderId
-                            )
-                          }
-                        >
-                          {renderActionLabel(`cancel-${o.orderId}`, t("showcase.032"))}
-                        </button>
-                      )}
-                      {isCompanion && effectiveStatus === 1 && (
-                        <button
-                          className="dl-tab-btn"
-                          style={{ padding: "8px 10px" }}
-                          disabled={chainAction === `deposit-${o.orderId}`}
-                          onClick={async () => {
-                            openConfirm({
-                              title: t("tabs.showcase.i067"),
-                              description: t("tabs.showcase.i068"),
-                              confirmLabel: t("tabs.showcase.i069"),
-                              action: async () => {
-                                if (!orderMetaById.get(o.orderId)?.gameProfile) {
-                                  await hydrateOrderMeta(o.orderId);
-                                }
-                                const ok = await runChainAction(
-                                  `deposit-${o.orderId}`,
-                                  () => lockDepositOnChain(o.orderId),
-                                  t("tabs.showcase.i131"),
-                                  o.orderId
-                                );
-                                if (!ok) return;
-                                try {
-                                  const companionProfile = chainAddress
-                                    ? loadGameProfile(chainAddress)
-                                    : null;
-                                  const profilePayload =
-                                    companionProfile &&
-                                    (companionProfile.gameName || companionProfile.gameId)
-                                      ? {
-                                          gameName: companionProfile.gameName,
-                                          gameId: companionProfile.gameId,
-                                          updatedAt: companionProfile.updatedAt,
-                                        }
-                                      : null;
-                                  if (chainAddress) {
-                                    await patchOrder(o.orderId, {
-                                      companionAddress: chainAddress,
-                                      depositPaid: true,
-                                      meta: {
-                                        companionProfile: profilePayload,
-                                      },
-                                    });
-                                    await refreshMyOrders(true);
-                                    setPendingScrollToAccepted(true);
+                          const ok = await runChainAction(
+                            `deposit-${o.orderId}`,
+                            () => lockDepositOnChain(o.orderId),
+                            t("tabs.showcase.i131"),
+                            o.orderId
+                          );
+                          if (!ok) return;
+                          try {
+                            const companionProfile = chainAddress
+                              ? loadGameProfile(chainAddress)
+                              : null;
+                            const profilePayload =
+                              companionProfile &&
+                              (companionProfile.gameName || companionProfile.gameId)
+                                ? {
+                                    gameName: companionProfile.gameName,
+                                    gameId: companionProfile.gameId,
+                                    updatedAt: companionProfile.updatedAt,
                                   }
-                                } catch (error) {
-                                  setChainToast(formatErrorMessage(error, t("showcase.033")));
-                                }
-                                await hydrateOrderMeta(o.orderId, { toastOnError: true });
-                                try {
-                                  const creditBody = JSON.stringify({
-                                    orderId: o.orderId,
-                                    address: chainAddress,
-                                  });
-                                  const auth = await signAuthIntent(
-                                    `mantou:credit:${o.orderId}`,
-                                    creditBody
-                                  );
-                                  const res = await fetch("/api/mantou/credit", {
-                                    method: "POST",
-                                    headers: {
-                                      "Content-Type": "application/json",
-                                      "x-auth-address": auth.address,
-                                      "x-auth-signature": auth.signature,
-                                      "x-auth-timestamp": String(auth.timestamp),
-                                      "x-auth-nonce": auth.nonce,
-                                      "x-auth-body-sha256": auth.bodyHash,
-                                    },
-                                    body: creditBody,
-                                  });
-                                  const data = await res.json().catch(() => ({}));
-                                  if (res.ok) {
-                                    if (!data?.duplicated) {
-                                      setChainToast("diamond.auto_converted");
-                                    }
-                                  } else {
-                                    setChainToast(data?.error || t("tabs.showcase.i132"));
-                                  }
-                                } catch (error) {
-                                  setChainToast(formatErrorMessage(error, t("showcase.034")));
-                                } finally {
-                                  setTimeout(() => setChainToast(null), 3000);
-                                }
-                              },
-                            });
-                          }}
-                        >
-                          {renderActionLabel(`deposit-${o.orderId}`, t("showcase.035"))}
-                        </button>
-                      )}
-                      {isCompanion && effectiveStatus === 2 && (
-                        <button
-                          className="dl-tab-btn"
-                          style={{ padding: "8px 10px" }}
-                          disabled={companionEnded}
-                          onClick={() => confirmEndService(o.orderId)}
-                        >
-                          {companionEnded ? t("tabs.showcase.i133") : t("showcase.036")}
-                        </button>
-                      )}
-                      {isUser && effectiveStatus === 2 && (
-                        <button
-                          className="dl-tab-btn"
-                          style={{ padding: "8px 10px" }}
-                          disabled={chainAction === `complete-${o.orderId}`}
-                          onClick={() => {
-                            confirmMarkCompleted(o.orderId);
-                          }}
-                        >
-                          {renderActionLabel(`complete-${o.orderId}`, t("showcase.037"))}
-                        </button>
-                      )}
-                      {(isUser || isCompanion) && canDispute && (
-                        <button
-                          className="dl-tab-btn"
-                          style={{ padding: "8px 10px" }}
-                          disabled={chainAction === `dispute-${o.orderId}`}
-                          onClick={() => setDisputeOpen({ orderId: o.orderId, evidence: "" })}
-                        >
-                          {renderActionLabel(`dispute-${o.orderId}`, t("showcase.038"))}
-                        </button>
-                      )}
-                      {(isUser || isCompanion) && canFinalize && (
-                        <button
-                          className="dl-tab-btn"
-                          style={{ padding: "8px 10px" }}
-                          disabled={chainAction === `finalize-${o.orderId}`}
-                          onClick={() => {
-                            if (isUser && inDisputeWindow) {
-                              const deadlineText =
-                                hasDeadline && deadline ? new Date(deadline).toLocaleString() : "";
-                              openConfirm({
-                                title: t("tabs.showcase.i070"),
-                                description: deadlineText
-                                  ? `争议截止：${deadlineText}`
-                                  : t("tabs.showcase.i134"),
-                                confirmLabel: t("tabs.showcase.i071"),
-                                action: async () => {
-                                  await runChainAction(
-                                    `finalize-${o.orderId}`,
-                                    () => finalizeNoDisputeOnChain(o.orderId),
-                                    t("ui.showcase.662"),
-                                    o.orderId
-                                  );
+                                : null;
+                            if (chainAddress) {
+                              await patchOrder(o.orderId, {
+                                companionAddress: chainAddress,
+                                depositPaid: true,
+                                meta: {
+                                  companionProfile: profilePayload,
                                 },
                               });
-                              return;
+                              await refreshMyOrders(true);
+                              setPendingScrollToAccepted(true);
                             }
-                            runChainAction(
+                          } catch (error) {
+                            setChainToast(formatErrorMessage(error, t("showcase.033")));
+                          }
+                          await hydrateOrderMeta(o.orderId, { toastOnError: true });
+                          try {
+                            const creditBody = JSON.stringify({
+                              orderId: o.orderId,
+                              address: chainAddress,
+                            });
+                            const auth = await signAuthIntent(
+                              `mantou:credit:${o.orderId}`,
+                              creditBody
+                            );
+                            const res = await fetch("/api/mantou/credit", {
+                              method: "POST",
+                              headers: {
+                                "Content-Type": "application/json",
+                                "x-auth-address": auth.address,
+                                "x-auth-signature": auth.signature,
+                                "x-auth-timestamp": String(auth.timestamp),
+                                "x-auth-nonce": auth.nonce,
+                                "x-auth-body-sha256": auth.bodyHash,
+                              },
+                              body: creditBody,
+                            });
+                            const data = await res.json().catch(() => ({}));
+                            if (res.ok) {
+                              if (!data?.duplicated) {
+                                setChainToast("diamond.auto_converted");
+                              }
+                            } else {
+                              setChainToast(data?.error || t("tabs.showcase.i132"));
+                            }
+                          } catch (error) {
+                            setChainToast(formatErrorMessage(error, t("showcase.034")));
+                          } finally {
+                            setTimeout(() => setChainToast(null), 3000);
+                          }
+                        },
+                      });
+                    }}
+                    onEndService={() => confirmEndService(o.orderId)}
+                    onMarkCompleted={() => confirmMarkCompleted(o.orderId)}
+                    onPay={() =>
+                      runChainAction(
+                        `pay-${o.orderId}`,
+                        () => payServiceFeeOnChain(o.orderId),
+                        t("ui.showcase.614"),
+                        o.orderId
+                      )
+                    }
+                    onCancel={() =>
+                      runChainAction(
+                        `cancel-${o.orderId}`,
+                        () => cancelOrderOnChain(o.orderId),
+                        t("ui.showcase.655"),
+                        o.orderId
+                      )
+                    }
+                    onDispute={() => setDisputeOpen({ orderId: o.orderId, evidence: "" })}
+                    onFinalize={() => {
+                      if (isUser && inDisputeWindow) {
+                        const deadlineText =
+                          hasDeadline && deadline ? new Date(deadline).toLocaleString() : "";
+                        openConfirm({
+                          title: t("tabs.showcase.i070"),
+                          description: deadlineText
+                            ? `争议截止：${deadlineText}`
+                            : t("tabs.showcase.i134"),
+                          confirmLabel: t("tabs.showcase.i071"),
+                          action: async () => {
+                            await runChainAction(
                               `finalize-${o.orderId}`,
                               () => finalizeNoDisputeOnChain(o.orderId),
-                              t("ui.showcase.663"),
+                              t("ui.showcase.662"),
                               o.orderId
                             );
-                          }}
-                        >
-                          {renderActionLabel(`finalize-${o.orderId}`, t("showcase.039"))}
-                        </button>
-                      )}
-                    </div>
-                  </MotionCard>
+                          },
+                        });
+                        return;
+                      }
+                      runChainAction(
+                        `finalize-${o.orderId}`,
+                        () => finalizeNoDisputeOnChain(o.orderId),
+                        t("ui.showcase.663"),
+                        o.orderId
+                      );
+                    }}
+                    onCopyGameProfile={(profile) => copyGameProfile(o.orderId, profile)}
+                    onHydrateMeta={() => hydrateOrderMeta(o.orderId, { toastOnError: true })}
+                    renderActionLabel={renderActionLabel}
+                  />
                 );
               })}
             </div>
@@ -1212,47 +1086,16 @@ export default function Showcase() {
             {myOrdersLoading && <div className="mt-1 text-amber-600">{t("ui.showcase.163")}</div>}
           </div>
           {myAcceptedOrders.map((order) => {
-            const gameProfile = (order.meta?.gameProfile || null) as {
-              gameName?: string;
-              gameId?: string;
-            } | null;
             const companionEndedAt = (
               order.meta as { companionEndedAt?: number | string } | undefined
             )?.companionEndedAt;
-            const companionEnded = Boolean(companionEndedAt);
             return (
-              <MotionCard key={`accepted-${order.id}`} className="dl-card" style={{ padding: 14 }}>
-                <div className="flex items-center justify-between">
-                  <div className="text-sm font-semibold text-gray-900">{order.item}</div>
-                  <div className="text-sm font-bold text-amber-600">¥{order.amount}</div>
-                </div>
-                <div className="mt-2 text-xs text-gray-500">
-                  状态：{order.status} · 订单号：{order.id}
-                </div>
-                {order.userAddress ? (
-                  <div className="mt-2 text-xs text-gray-500">
-                    用户地址：{shortAddr(order.userAddress)}
-                  </div>
-                ) : null}
-                <div className="mt-2 text-xs text-gray-500">
-                  {new Date(order.time).toLocaleString()}
-                </div>
-                {gameProfile?.gameName || gameProfile?.gameId ? (
-                  <div className="mt-2 text-xs text-emerald-700">
-                    游戏名 {gameProfile?.gameName || "-"} · ID {gameProfile?.gameId || "-"}
-                  </div>
-                ) : null}
-                <div className="mt-3 flex gap-2 flex-wrap">
-                  <button
-                    className="dl-tab-btn"
-                    style={{ padding: "6px 10px" }}
-                    disabled={companionEnded}
-                    onClick={() => markCompanionServiceEnded(order.id, false)}
-                  >
-                    {companionEnded ? t("tabs.showcase.i135") : t("showcase.040")}
-                  </button>
-                </div>
-              </MotionCard>
+              <AcceptedOrderCard
+                key={`accepted-${order.id}`}
+                order={order}
+                companionEnded={Boolean(companionEndedAt)}
+                onEndService={(id) => markCompanionServiceEnded(id, false)}
+              />
             );
           })}
         </div>
@@ -1271,150 +1114,16 @@ export default function Showcase() {
         />
       ) : (
         <div className="space-y-3 motion-stack">
-          {visibleOrders.map((o, idx) =>
-            o.driver ? (
-              <MotionCard
-                key={`${o.id}-${idx}`}
-                className="dl-card"
-                style={{ padding: 14, borderColor: "#fed7aa", background: "#fff7ed" }}
-              >
-                {(() => {
-                  const profile = (o.meta?.gameProfile || null) as {
-                    gameName?: string;
-                    gameId?: string;
-                  } | null;
-                  const hasProfile = Boolean(profile?.gameName || profile?.gameId);
-                  return (
-                    <>
-                      <div className="flex items-center gap-2 text-amber-600 text-sm font-semibold">
-                        <Car size={16} />
-                        陪练已接单
-                      </div>
-                      {hasProfile ? (
-                        <div className="mt-2 text-sm text-gray-900">
-                          <div className="font-bold">{t("ui.showcase.164")}</div>
-                          <div className="text-xs text-gray-500">
-                            游戏名 {profile?.gameName || "-"} · ID {profile?.gameId || "-"}
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="mt-2 flex items-center gap-6 text-sm text-gray-900">
-                          <div>
-                            <div className="font-bold">{o.driver.name}</div>
-                            <div className="text-xs text-gray-500">{o.driver.car}</div>
-                          </div>
-                          <div className="text-right text-sm">
-                            <div className="font-semibold text-emerald-600">{o.driver.eta}</div>
-                            {o.driver.price && (
-                              <div className="text-xs text-gray-500">
-                                一口价 {o.driver.price} 钻石
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      )}
-                      <div className="mt-2 text-xs text-gray-500 flex items-center gap-2">
-                        <MapPin size={14} />
-                        服务信息
-                      </div>
-                      <div className="mt-2 text-xs">
-                        <span className="text-emerald-600 font-semibold mr-2">
-                          {t("ui.showcase.165")}
-                        </span>
-                        {o.playerPaid ? (
-                          <span className="text-emerald-700 font-semibold">
-                            {t("ui.showcase.166")}
-                          </span>
-                        ) : (
-                          <span className="text-red-500 font-semibold">{t("ui.showcase.167")}</span>
-                        )}
-                      </div>
-                      <div className="mt-3 flex items-center gap-10 text-sm">
-                        <div>
-                          <div className="text-gray-900">{o.item}</div>
-                          <div className="text-xs text-gray-500">订单号：{o.id}</div>
-                        </div>
-                        <div className="text-xs text-gray-500">
-                          {new Date(o.time).toLocaleString()}
-                        </div>
-                      </div>
-                      <div className="mt-3 flex gap-2">
-                        <button
-                          className="dl-tab-btn"
-                          style={{ padding: "8px 10px" }}
-                          onClick={() => cancel(o.id)}
-                        >
-                          取消订单
-                        </button>
-                        <button
-                          className="dl-tab-btn"
-                          style={{ padding: "8px 10px" }}
-                          onClick={() => complete(o.id)}
-                        >
-                          完成
-                        </button>
-                        <button className="dl-tab-btn accent" style={{ padding: "8px 10px" }}>
-                          联系陪练
-                        </button>
-                      </div>
-                    </>
-                  );
-                })()}
-              </MotionCard>
-            ) : (
-              <MotionCard key={`${o.id}-${idx}`} className="dl-card" style={{ padding: 14 }}>
-                <div className="flex items-center justify-between">
-                  <div className="text-sm font-semibold text-gray-900">{o.item}</div>
-                  <div className="text-sm font-bold text-amber-600">¥{o.amount}</div>
-                </div>
-                <div className="mt-2 text-xs text-gray-500 flex items-center gap-2">
-                  <Clock3 size={14} />
-                  <span>{new Date(o.time).toLocaleString()}</span>
-                  <span className="text-amber-600 font-semibold">{t("ui.showcase.168")}</span>
-                </div>
-                <div className="mt-2 text-xs text-gray-500">
-                  状态：{o.status} · 撮合费
-                  {typeof o.serviceFee === "number"
-                    ? ` ¥${o.serviceFee.toFixed(2)}`
-                    : t("showcase.043")}
-                </div>
-                {o.userAddress && o.userAddress === chainAddress ? (
-                  <div className="mt-2 text-xs text-rose-500">{t("ui.showcase.169")}</div>
-                ) : (
-                  <div className="mt-2 text-xs text-orange-600">{t("ui.showcase.170")}</div>
-                )}
-                <div className="mt-3 flex gap-2">
-                  <button
-                    className="dl-tab-btn"
-                    style={{ padding: "8px 10px" }}
-                    onClick={() =>
-                      confirmDepositAccept(
-                        o.id,
-                        typeof o.deposit === "number"
-                          ? `¥${formatAmount(String(o.deposit))}`
-                          : undefined
-                      )
-                    }
-                    disabled={Boolean(o.userAddress && o.userAddress === chainAddress)}
-                    title={
-                      o.userAddress && o.userAddress === chainAddress
-                        ? t("showcase.044")
-                        : undefined
-                    }
-                  >
-                    付押金并接单
-                  </button>
-                  <button
-                    className="dl-tab-btn"
-                    style={{ padding: "8px 10px" }}
-                    onClick={() => cancel(o.id)}
-                  >
-                    取消
-                  </button>
-                </div>
-              </MotionCard>
-            )
-          )}
+          {visibleOrders.map((o, idx) => (
+            <PublicOrderCard
+              key={`${o.id}-${idx}`}
+              order={o}
+              chainAddress={chainAddress}
+              onCancel={cancel}
+              onComplete={complete}
+              onConfirmDepositAccept={confirmDepositAccept}
+            />
+          ))}
         </div>
       )}
       <div className="mt-4 flex justify-center" ref={loadMoreRef}>
@@ -1441,59 +1150,24 @@ export default function Showcase() {
         </button>
       </div>
       {disputeOpen && (
-        <div
-          className="ride-modal-mask"
-          role="dialog"
-          aria-modal="true"
-          aria-label={t("showcase.046")}
-        >
-          <div className="ride-modal">
-            <div className="ride-modal-head">
-              <div>
-                <div className="ride-modal-title">{t("ui.showcase.172")}</div>
-                <div className="ride-modal-sub">{t("ui.showcase.173")}</div>
-              </div>
-              <div className="ride-modal-amount">#{disputeOpen.orderId}</div>
-            </div>
-            <div className="ride-modal-body">
-              <textarea
-                className="dl-textarea"
-                placeholder={t("showcase.047")}
-                value={disputeEvidence}
-                onChange={(e) =>
-                  setDisputeOpen({ orderId: disputeOpen.orderId, evidence: e.target.value })
-                }
-              />
-              {disputeOrder?.disputeDeadline ? (
-                <div className="text-xs text-gray-500">
-                  争议截止：{formatTime(String(disputeDeadline || 0))}（剩余{" "}
-                  {formatRemaining(String(disputeDeadline || 0))}）
-                </div>
-              ) : null}
-            </div>
-            <div className="ride-modal-actions">
-              <button className="dl-tab-btn" onClick={() => setDisputeOpen(null)}>
-                取消
-              </button>
-              <button
-                className="dl-tab-btn primary"
-                onClick={() => {
-                  const orderId = disputeOpen.orderId;
-                  const evidence = disputeOpen.evidence.trim();
-                  setDisputeOpen(null);
-                  runChainAction(
-                    `dispute-${orderId}`,
-                    () => raiseDisputeOnChain(orderId, evidence),
-                    t("ui.showcase.580"),
-                    orderId
-                  );
-                }}
-              >
-                提交争议
-              </button>
-            </div>
-          </div>
-        </div>
+        <DisputeModal
+          disputeOpen={disputeOpen}
+          disputeOrder={disputeOrder}
+          disputeDeadline={disputeDeadline}
+          onClose={() => setDisputeOpen(null)}
+          onSubmit={(orderId, evidence) => {
+            setDisputeOpen(null);
+            runChainAction(
+              `dispute-${orderId}`,
+              () => raiseDisputeOnChain(orderId, evidence),
+              t("ui.showcase.580"),
+              orderId
+            );
+          }}
+          onChangeEvidence={(evidence) =>
+            setDisputeOpen({ orderId: disputeOpen.orderId, evidence })
+          }
+        />
       )}
       {debugOpen && (
         <div

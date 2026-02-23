@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
+import { parseBody } from "@/lib/shared/api-validation";
 import {
   getCustomerTags,
   addCustomerTag,
@@ -17,6 +19,21 @@ const VALID_TAGS: CustomerTagType[] = [
   "vip_treat",
   "other",
 ];
+
+const addTagSchema = z.object({
+  userAddress: z.string().min(1),
+  tag: z.enum([
+    "difficult",
+    "slow_pay",
+    "rude",
+    "no_show",
+    "frequent_dispute",
+    "vip_treat",
+    "other",
+  ]),
+  note: z.string().optional(),
+  severity: z.number().int().min(1).max(5).optional(),
+});
 
 /** GET /api/admin/customer-tags — list tagged customers or get tags for one */
 export async function GET(req: NextRequest) {
@@ -41,15 +58,9 @@ export async function POST(req: NextRequest) {
   const auth = await requireAdmin(req, { role: "ops" });
   if ("status" in auth) return auth;
 
-  const body = await req.json();
-  const { userAddress, tag, note, severity } = body;
-
-  if (!userAddress || !tag) {
-    return NextResponse.json({ error: "userAddress and tag required" }, { status: 400 });
-  }
-  if (!VALID_TAGS.includes(tag)) {
-    return NextResponse.json({ error: "Invalid tag" }, { status: 400 });
-  }
+  const parsed = await parseBody(req, addTagSchema);
+  if (!parsed.success) return parsed.response;
+  const { userAddress, tag, note, severity } = parsed.data;
 
   const created = await addCustomerTag({
     userAddress,
