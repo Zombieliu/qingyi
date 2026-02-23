@@ -1,36 +1,56 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { Redis } from "@upstash/redis";
 
 /**
- * Lightweight middleware for cross-cutting concerns:
+ * Middleware for cross-cutting concerns:
  * 1. Security headers (including CSP)
  * 2. Admin IP allowlist (early reject)
- * 3. Global API rate limiting (IP-based, in-memory for Edge Runtime)
+ * 3. Global API rate limiting (Redis-backed, with in-memory fallback)
+ * 4. CSRF origin validation
  */
 
 const ADMIN_IP_ALLOWLIST = (process.env.ADMIN_IP_ALLOWLIST || "").trim();
 
-// --- IP-based rate limiting (Edge-compatible, no Redis) ---
-// Two tiers: read (GET) and write (POST/PUT/PATCH/DELETE)
+// --- Redis-backed rate limiting (Edge-compatible) ---
 const API_READ_LIMIT = 120; // per minute
 const API_WRITE_LIMIT = 30; // per minute
-const WINDOW_MS = 60_000;
+const WINDOW_SECONDS = 60;
 
+const redis =
+  process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN
+    ? new Redis({
+        url: process.env.UPSTASH_REDIS_REST_URL,
+        token: process.env.UPSTASH_REDIS_REST_TOKEN,
+      })
+    : null;
+
+// In-memory fallback (for dev or when Redis is unavailable)
 type Bucket = { count: number; resetAt: number };
-const readBuckets = new Map<string, Bucket>();
-const writeBuckets = new Map<string, Bucket>();
+const memBuckets = new Map<string, Bucket>();
 
-function checkRateLimit(buckets: Map<string, Bucket>, key: string, limit: number): boolean {
+async function checkRateLimit(key: string, limit: number): Promise<boolean> {
+  if (redis) {
+    try {
+      const count = await redis.incr(key);
+      if (count === 1) {
+        await redis.expire(key, WINDOW_SECONDS);
+      }
+      return count <= limit;
+    } catch {
+      // Redis failure — fall through to memory
+    }
+  }
   const now = Date.now();
-  const existing = buckets.get(key);
+  const windowMs = WINDOW_SECONDS * 1000;
+  const existing = memBuckets.get(key);
   if (!existing || existing.resetAt <= now) {
-    buckets.set(key, { count: 1, resetAt: now + WINDOW_MS });
+    memBuckets.set(key, { count: 1, resetAt: now + windowMs });
     return true;
   }
   existing.count += 1;
-  // Prune stale entries periodically (every ~100 checks)
   if (existing.count % 100 === 0) {
-    for (const [k, v] of buckets) {
-      if (v.resetAt <= now) buckets.delete(k);
+    for (const [k, v] of memBuckets) {
+      if (v.resetAt <= now) memBuckets.delete(k);
     }
   }
   return existing.count <= limit;
@@ -86,10 +106,9 @@ function safeOrigin(referer: string | null): string | null {
   }
 }
 
-// CSP directives — permissive enough for Next.js + SUI + Sentry
 const CSP_DIRECTIVES = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.sentry.io",
+  "script-src 'self' 'unsafe-inline' https://*.sentry.io",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https://placehold.co",
   "font-src 'self' data:",
@@ -99,7 +118,7 @@ const CSP_DIRECTIVES = [
   "form-action 'self'",
 ].join("; ");
 
-export function middleware(req: NextRequest) {
+export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
   const ip = getClientIp(req);
 
@@ -111,35 +130,31 @@ export function middleware(req: NextRequest) {
   }
 
   // Global API rate limiting
-  if (pathname.startsWith("/api/")) {
-    // Skip webhook endpoints (called by payment providers, verified by signature)
-    if (!pathname.includes("/webhook")) {
-      const isWrite = req.method !== "GET" && req.method !== "HEAD" && req.method !== "OPTIONS";
-      const buckets = isWrite ? writeBuckets : readBuckets;
-      const limit = isWrite ? API_WRITE_LIMIT : API_READ_LIMIT;
-      if (!checkRateLimit(buckets, ip, limit)) {
-        return NextResponse.json(
-          { error: "rate_limited", message: "请求过于频繁，请稍后再试" },
-          { status: 429, headers: { "Retry-After": "60" } }
-        );
-      }
+  if (pathname.startsWith("/api/") && !pathname.includes("/webhook")) {
+    const isWrite = req.method !== "GET" && req.method !== "HEAD" && req.method !== "OPTIONS";
+    const prefix = isWrite ? "rl:w:" : "rl:r:";
+    const limit = isWrite ? API_WRITE_LIMIT : API_READ_LIMIT;
+    if (!(await checkRateLimit(`${prefix}${ip}`, limit))) {
+      return NextResponse.json(
+        { error: "rate_limited", message: "请求过于频繁，请稍后再试" },
+        { status: 429, headers: { "Retry-After": "60" } }
+      );
+    }
 
-      // CSRF: block cross-origin writes (browsers always send Origin on cross-origin POST)
-      // Skip: webhooks (signature-verified), cron (secret-verified), admin-token requests
-      if (isWrite && !pathname.includes("/cron/")) {
-        const hasAdminToken = req.headers.has("x-admin-token");
-        const hasCronHeader = req.headers.has("x-vercel-cron") || req.headers.has("x-cron-secret");
-        if (!hasAdminToken && !hasCronHeader) {
-          const origin = req.headers.get("origin");
-          const referer = req.headers.get("referer");
-          if (origin || referer) {
-            const requestOrigin = origin || safeOrigin(referer);
-            if (requestOrigin && !isAllowedOrigin(requestOrigin)) {
-              return NextResponse.json(
-                { error: "forbidden", message: "Cross-origin request blocked" },
-                { status: 403 }
-              );
-            }
+    // CSRF: block cross-origin writes
+    if (isWrite && !pathname.includes("/cron/")) {
+      const hasAdminToken = req.headers.has("x-admin-token");
+      const hasCronHeader = req.headers.has("x-vercel-cron") || req.headers.has("x-cron-secret");
+      if (!hasAdminToken && !hasCronHeader) {
+        const origin = req.headers.get("origin");
+        const referer = req.headers.get("referer");
+        if (origin || referer) {
+          const requestOrigin = origin || safeOrigin(referer);
+          if (requestOrigin && !isAllowedOrigin(requestOrigin)) {
+            return NextResponse.json(
+              { error: "forbidden", message: "Cross-origin request blocked" },
+              { status: 403 }
+            );
           }
         }
       }
@@ -158,8 +173,5 @@ export function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: [
-    // Match all routes except static files and _next internals
-    "/((?!_next/static|_next/image|favicon.ico|sw.js|manifest.json|icons/).*)",
-  ],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|sw.js|manifest.json|icons/).*)"],
 };

@@ -21,6 +21,7 @@ const isVercel = process.env.VERCEL === "1";
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  output: process.env.DOCKER_BUILD === "1" ? "standalone" : undefined,
   transpilePackages: ["contracts"],
   outputFileTracingRoot: repoRoot,
   turbopack: {

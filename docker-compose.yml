@@ -10,6 +10,29 @@ services:
       - "5432:5432"
     volumes:
       - qingyi_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U qingyi"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  app:
+    build:
+      context: .
+      dockerfile: packages/app/Dockerfile
+      args:
+        DOCKER_BUILD: "1"
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    env_file:
+      - packages/app/.env
+    environment:
+      DATABASE_URL: postgresql://qingyi:qingyi@postgres:5432/qingyi?schema=public
+      NODE_ENV: production
+    depends_on:
+      postgres:
+        condition: service_healthy
 
 volumes:
   qingyi_pgdata:
