@@ -1,12 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Loader2 } from "lucide-react";
 import type { LocalOrder } from "@/lib/services/order-store";
 import type { ChainOrder } from "@/lib/chain/qy-chain";
+import { fetchChainOrderById } from "@/lib/chain/qy-chain";
 import type { Mode } from "./schedule-data";
 import { t } from "@/lib/i18n/t";
 import { StateBlock } from "@/app/components/state-block";
+
+const KOOK_INVITE_URL = process.env.NEXT_PUBLIC_KOOK_INVITE_URL || "";
 
 type CompanionProfile = { gameName?: string; gameId?: string } | null;
 
@@ -115,7 +118,14 @@ export function AwaitUserPayView({
           <button className="dl-tab-btn" onClick={cancelOrder}>
             取消订单
           </button>
-          <button className="dl-tab-btn accent">{t("ui.order-views.033")}</button>
+          <button
+            className="dl-tab-btn accent"
+            onClick={() => {
+              if (KOOK_INVITE_URL) window.open(KOOK_INVITE_URL, "_blank");
+            }}
+          >
+            联系客服
+          </button>
         </div>
         {chainStatusHint && (
           <div className="text-xs text-gray-500 mt-2 text-right">{chainStatusHint}</div>
@@ -311,7 +321,14 @@ export function EnrouteView({
               )}
             </button>
           )}
-          <button className="dl-tab-btn accent">{t("ui.order-views.039")}</button>
+          <button
+            className="dl-tab-btn accent"
+            onClick={() => {
+              if (KOOK_INVITE_URL) window.open(KOOK_INVITE_URL, "_blank");
+            }}
+          >
+            联系客服
+          </button>
         </div>
         <div className="text-xs text-gray-500 mt-2">订单：{currentOrder.item}</div>
       </div>
@@ -377,9 +394,26 @@ export function PendingSettlementView({
 }: PendingSettlementProps) {
   const companionProfile = getCompanionProfile(currentOrder);
   const isChainOrder = isChainLocalOrder(currentOrder);
-  const chainOrder = chainOrders.find((o) => o.orderId === currentOrder.id) || null;
+  const chainOrderFromList = chainOrders.find((o) => o.orderId === currentOrder.id) || null;
+
+  // Long-term fix: if chain order not found in event scan (truncation),
+  // fetch it precisely by orderId via devInspect
+  const [fallbackChainOrder, setFallbackChainOrder] = useState<ChainOrder | null>(null);
+  useEffect(() => {
+    if (isChainOrder && !chainOrderFromList) {
+      fetchChainOrderById(currentOrder.id).then((o) => {
+        if (o) setFallbackChainOrder(o);
+      });
+    }
+  }, [isChainOrder, chainOrderFromList, currentOrder.id]);
+
+  const chainOrder = chainOrderFromList || fallbackChainOrder;
   const effectiveStatus = mergeChainStatus(localChainStatus, chainOrder?.status);
-  const canSettle = isChainOrder ? effectiveStatus === 3 : true;
+  // Short-term fix: if we're already in PendingSettlementView (backend says "待结算")
+  // but chainOrder wasn't found in event scan (truncation), trust the backend stage.
+  const canSettle = isChainOrder
+    ? effectiveStatus === 3 || (!chainOrder && effectiveStatus === undefined)
+    : true;
   const [settling, setSettling] = useState(false);
   const localDeadline = (
     currentOrder.meta as { chain?: { disputeDeadline?: number | string } } | undefined
@@ -510,7 +544,14 @@ export function PendingSettlementView({
               renderActionLabel(`finalize-${currentOrder.id}`, t("schedule.014"))
             )}
           </button>
-          <button className="dl-tab-btn accent">{t("ui.order-views.042")}</button>
+          <button
+            className="dl-tab-btn accent"
+            onClick={() => {
+              if (KOOK_INVITE_URL) window.open(KOOK_INVITE_URL, "_blank");
+            }}
+          >
+            联系客服
+          </button>
         </div>
         {disputeDeadline && (
           <div className="text-xs text-gray-500 mt-2 text-right">

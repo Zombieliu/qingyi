@@ -633,3 +633,102 @@ export async function fetchChainOrders(): Promise<ChainOrder[]> {
     inFlightFetch = null;
   }
 }
+
+/**
+ * Fetch a single chain order by orderId using devInspectTransactionBlock.
+ * Precise on-chain read — no event scanning, no truncation.
+ * Returns null if the order doesn't exist on chain or RPC fails.
+ */
+export async function fetchChainOrderById(orderId: string): Promise<ChainOrder | null> {
+  if (isVisualTestMode()) return null;
+  ensurePackageId();
+  ensureOrderId(orderId);
+
+  const client = new SuiClient({ url: getRpcUrl() });
+  const dubhePackageId = await getDubhePackageId(client);
+  const dappHubId = String(DAPP_HUB_ID || "");
+  if (!dappHubId || dappHubId === "0x0") return null;
+
+  const resourceAccount = `${strip0x(PACKAGE_ID)}::dapp_key::DappKey`;
+
+  const fields = [
+    { fn: "get_user", decode: "address" },
+    { fn: "get_companion", decode: "address" },
+    { fn: "get_rule_set_id", decode: "u64" },
+    { fn: "get_service_fee", decode: "u64" },
+    { fn: "get_deposit", decode: "u64" },
+    { fn: "get_platform_fee_bps", decode: "u64" },
+    { fn: "get_status", decode: "u8" },
+    { fn: "get_created_at", decode: "u64" },
+    { fn: "get_finish_at", decode: "u64" },
+    { fn: "get_dispute_deadline", decode: "u64" },
+    { fn: "get_vault_service", decode: "u64" },
+    { fn: "get_vault_deposit", decode: "u64" },
+    { fn: "get_evidence_hash", decode: "vecU8" },
+    { fn: "get_dispute_status", decode: "u8" },
+    { fn: "get_resolved_by", decode: "address" },
+    { fn: "get_resolved_at", decode: "u64" },
+  ] as const;
+
+  try {
+    const tx = new Transaction();
+    for (const f of fields) {
+      tx.moveCall({
+        target: `${dubhePackageId}::order::${f.fn}`,
+        arguments: [tx.object(dappHubId), tx.pure.string(resourceAccount), tx.pure.u64(orderId)],
+      });
+    }
+
+    const result = await client.devInspectTransactionBlock({
+      transactionBlock: tx,
+      sender: normalizeSuiAddress("0x0"),
+    });
+
+    if (result.effects?.status?.status !== "success") return null;
+    const results = result.results;
+    if (!results || results.length !== fields.length) return null;
+
+    function extractBytes(idx: number): number[] {
+      const ret = results![idx]?.returnValues?.[0]?.[0];
+      return Array.isArray(ret) ? ret : [];
+    }
+
+    const decoders: Record<string, (bytes: number[]) => string | number> = {
+      address: (b) => decodeAddress(b),
+      u64: (b) => decodeU64(b),
+      u8: (b) => decodeU8(b),
+      vecU8: (b) => {
+        try {
+          const raw = bcs.vector(bcs.u8()).parse(Uint8Array.from(b)) as number[];
+          return `0x${toHex(Uint8Array.from(raw))}`;
+        } catch {
+          return "0x";
+        }
+      },
+    };
+
+    const vals = fields.map((f, i) => decoders[f.decode](extractBytes(i)));
+
+    return {
+      orderId,
+      user: vals[0] as string,
+      companion: vals[1] as string,
+      ruleSetId: vals[2] as string,
+      serviceFee: vals[3] as string,
+      deposit: vals[4] as string,
+      platformFeeBps: vals[5] as string,
+      status: vals[6] as number,
+      createdAt: vals[7] as string,
+      finishAt: vals[8] as string,
+      disputeDeadline: vals[9] as string,
+      vaultService: vals[10] as string,
+      vaultDeposit: vals[11] as string,
+      evidenceHash: vals[12] as string,
+      disputeStatus: vals[13] as number,
+      resolvedBy: vals[14] as string,
+      resolvedAt: vals[15] as string,
+    };
+  } catch {
+    return null;
+  }
+}

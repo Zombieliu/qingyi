@@ -24,6 +24,7 @@ import {
   createChainOrderId,
   createOrderOnChain,
   fetchChainOrders,
+  fetchChainOrderById,
   finalizeNoDisputeOnChain,
   getCurrentAddress,
   isChainOrdersEnabled,
@@ -280,6 +281,9 @@ export default function Schedule() {
       }
       throw new Error(errorMsg);
     }
+    // Long-term fix: precise on-chain query as final fallback
+    const precise = await fetchChainOrderById(orderId);
+    if (precise) return precise;
     throw new Error("链上订单未找到，可能索引延迟较大，请稍后重试");
   };
 
