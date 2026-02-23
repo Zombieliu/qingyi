@@ -171,6 +171,7 @@ export function AwaitUserPayView({
 // ─── Enroute ────────────────────────────────────────────────
 
 export type EnrouteViewProps = OrderViewProps & {
+  chainAction: string | null;
   chainOrders: ChainOrder[];
   localChainStatus: number | undefined;
   setToast: (msg: string) => void;
@@ -198,6 +199,7 @@ export function EnrouteView({
   toast,
   cancelOrder,
   renderActionLabel,
+  chainAction,
   chainOrders,
   localChainStatus,
   setToast,
@@ -217,6 +219,7 @@ export function EnrouteView({
   const companionEndedAt = (currentOrder.meta as { companionEndedAt?: number | string } | undefined)
     ?.companionEndedAt;
   const canConfirmCompletion = Boolean(companionEndedAt);
+  const [completing, setCompleting] = useState(false);
 
   return (
     <div className="ride-shell">
@@ -243,13 +246,18 @@ export function EnrouteView({
           statusSub={t("ui.order-views.037")}
         />
         <div className="ride-driver-actions">
-          <button className="dl-tab-btn" onClick={cancelOrder}>
+          <button
+            className="dl-tab-btn"
+            disabled={chainAction === `cancel-${currentOrder.id}`}
+            onClick={cancelOrder}
+          >
             {renderActionLabel(`cancel-${currentOrder.id}`, t("schedule.008"))}
           </button>
           <button className="dl-tab-btn">{t("ui.order-views.038")}</button>
           {canConfirmCompletion && (
             <button
               className="dl-tab-btn"
+              disabled={completing || chainAction === `complete-${currentOrder.id}`}
               onClick={async () => {
                 const isChainOrder = isChainLocalOrder(currentOrder);
                 if (isChainOrder) {
@@ -281,15 +289,26 @@ export function EnrouteView({
                   );
                   return;
                 }
-                await patchOrder(currentOrder.id, {
-                  status: t("tabs.schedule.order_views.i045"),
-                  userAddress: getCurrentAddress(),
-                });
-                await refreshOrders();
-                setMode("pending-settlement");
+                setCompleting(true);
+                try {
+                  await patchOrder(currentOrder.id, {
+                    status: t("tabs.schedule.order_views.i045"),
+                    userAddress: getCurrentAddress(),
+                  });
+                  await refreshOrders();
+                  setMode("pending-settlement");
+                } finally {
+                  setCompleting(false);
+                }
               }}
             >
-              {renderActionLabel(`complete-${currentOrder.id}`, t("schedule.009"))}
+              {completing ? (
+                <>
+                  <Loader2 size={14} className="spin" /> 处理中...
+                </>
+              ) : (
+                renderActionLabel(`complete-${currentOrder.id}`, t("schedule.009"))
+              )}
             </button>
           )}
           <button className="dl-tab-btn accent">{t("ui.order-views.039")}</button>
@@ -304,9 +323,15 @@ export function EnrouteView({
 // ─── PendingSettlement ──────────────────────────────────────
 
 export type PendingSettlementProps = OrderViewProps & {
+  chainAction: string | null;
   chainOrders: ChainOrder[];
   localChainStatus: number | undefined;
   setToast: (msg: string) => void;
+  patchOrder: (id: string, data: Record<string, unknown>) => Promise<void>;
+  refreshOrders: (addr?: string, force?: boolean) => Promise<boolean>;
+  setMode: (mode: Mode) => void;
+  getCurrentAddress: () => string | undefined;
+  isChainLocalOrder: (order: LocalOrder) => boolean;
   runChainAction: (
     key: string,
     fn: () => Promise<{ digest: string }>,
@@ -334,9 +359,15 @@ export function PendingSettlementView({
   currentOrder,
   toast,
   renderActionLabel,
+  chainAction,
   chainOrders,
   localChainStatus,
   setToast,
+  patchOrder,
+  refreshOrders,
+  setMode,
+  getCurrentAddress,
+  isChainLocalOrder,
   runChainAction,
   mergeChainStatus,
   openPrompt,
@@ -345,9 +376,11 @@ export function PendingSettlementView({
   finalizeNoDisputeOnChain,
 }: PendingSettlementProps) {
   const companionProfile = getCompanionProfile(currentOrder);
+  const isChainOrder = isChainLocalOrder(currentOrder);
   const chainOrder = chainOrders.find((o) => o.orderId === currentOrder.id) || null;
   const effectiveStatus = mergeChainStatus(localChainStatus, chainOrder?.status);
-  const canSettle = effectiveStatus === 3;
+  const canSettle = isChainOrder ? effectiveStatus === 3 : true;
+  const [settling, setSettling] = useState(false);
   const localDeadline = (
     currentOrder.meta as { chain?: { disputeDeadline?: number | string } } | undefined
   )?.chain?.disputeDeadline;
@@ -356,7 +389,7 @@ export function PendingSettlementView({
       ? Number(localDeadline)
       : Number(localDeadline ?? chainOrder?.disputeDeadline ?? 0);
   const disputeDeadline = Number.isFinite(deadlineRaw) && deadlineRaw > 0 ? deadlineRaw : null;
-  // eslint-disable-next-line react-hooks/purity -- deadline check needs current time
+
   const now = Date.now();
   const inDisputeWindow = disputeDeadline ? now <= disputeDeadline : false;
   const canDispute = Boolean(canSettle && inDisputeWindow);
@@ -388,6 +421,7 @@ export function PendingSettlementView({
         <div className="ride-driver-actions">
           <button
             className="dl-tab-btn"
+            disabled={chainAction === `dispute-${currentOrder.id}`}
             onClick={() => {
               if (!canDispute) {
                 if (!disputeDeadline) {
@@ -418,9 +452,25 @@ export function PendingSettlementView({
           </button>
           <button
             className="dl-tab-btn primary"
-            onClick={() => {
+            disabled={settling || chainAction === `finalize-${currentOrder.id}`}
+            onClick={async () => {
               if (!canFinalize) {
                 setToast("dispute.cannot_settle");
+                return;
+              }
+              // 非链上订单：直接 patchOrder 完成结算
+              if (!isChainOrder) {
+                setSettling(true);
+                try {
+                  await patchOrder(currentOrder.id, {
+                    status: "已完成",
+                    userAddress: getCurrentAddress(),
+                  });
+                  await refreshOrders();
+                  setMode("select");
+                } finally {
+                  setSettling(false);
+                }
                 return;
               }
               if (inDisputeWindow) {
@@ -452,7 +502,13 @@ export function PendingSettlementView({
               );
             }}
           >
-            {renderActionLabel(`finalize-${currentOrder.id}`, t("schedule.014"))}
+            {settling ? (
+              <>
+                <Loader2 size={14} className="spin" /> 结算中...
+              </>
+            ) : (
+              renderActionLabel(`finalize-${currentOrder.id}`, t("schedule.014"))
+            )}
           </button>
           <button className="dl-tab-btn accent">{t("ui.order-views.042")}</button>
         </div>

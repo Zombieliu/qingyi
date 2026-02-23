@@ -177,7 +177,7 @@ export default function DashboardPage() {
     return (
       <div className="p-6 text-center">
         <div className="text-rose-500 mb-2">{error}</div>
-        <button className="admin-btn" onClick={fetchData}>
+        <button className="admin-btn" onClick={fetchData} disabled={loading}>
           重试
         </button>
       </div>

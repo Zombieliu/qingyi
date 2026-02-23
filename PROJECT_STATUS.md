@@ -1,6 +1,6 @@
 # 情谊电竞 (Qingyi Esports) — 项目状态总览
 
-> 更新时间: 2026-02-23 (第四次更新)
+> 更新时间: 2026-02-23 (第五次更新)
 > 项目: 三角洲行动 电竞陪玩平台
 > 技术栈: Next.js 16 + React 19 + Sui 区块链 + Stripe 支付 + PostgreSQL + Taro 小程序
 
@@ -10,18 +10,17 @@
 
 | 指标 | 数值 |
 |------|------|
-| 源码文件 | 325 个 (.ts/.tsx) |
-| 代码行数 | ~49,500 行 |
-| 页面 | 54 个 |
-| API 路由 | 116 个 |
-| Prisma 模型 | 30 个 |
-| 数据库迁移 | 14 次 |
-| i18n 翻译键 | 2,034 个 (中/英双语, 100% 覆盖) |
-| 单元测试 | 288 个 (20 个测试文件) |
-| 集成测试 | 18 个 |
+| 源码文件 | 374 个 (.ts/.tsx) |
+| 代码行数 | ~53,256 行 |
+| 页面 | 63 个 |
+| API 路由 | 126 个 |
+| Prisma 模型 | 38 个 |
+| 数据库迁移 | 16 次 |
+| i18n 翻译键 | 2,193 个 (zh) / 2,087 个 (en) |
+| 单元/集成测试 | ~333 个 (27 个测试文件) |
 | E2E 测试 | 2 个 spec 文件 (Playwright) |
-| 测试覆盖率 | 95.0% statements / 96.5% lines / 94.0% functions |
-| Lib 模块 | 85 个文件 |
+| Lib 模块 | 115 个文件 |
+| 小程序文件 | 54 个 (.ts/.tsx), 17 个页面 |
 
 ---
 
@@ -90,6 +89,7 @@ qingyi/
 | 无障碍模式 | ✅ | 长辈模式 (大字体) |
 | 数据分析 | ✅ | 客户端埋点、UTM 归因、会话追踪 |
 | FAQ / 定价 | ✅ | 常见问题解答、服务定价展示 |
+| 客户标签 | ✅ | 内部标签系统，标记问题客户 |
 
 ### 陪练端
 
@@ -143,6 +143,8 @@ qingyi/
 | 争议管理 | ✅ | /admin/disputes 争议列表 + 处理 |
 | Feature Flags | ✅ | Redis 运行时切换 + 环境变量 + 默认值，60s 缓存 |
 | Kook 配置 | ✅ | /admin/kook 查看/配置 Kook Bot |
+| 客户标签 | ✅ | /admin 内部标签管理，标记问题客户 |
+| Growth OS 集成 | ✅ | 内嵌流量管理：联系人、渠道、活动、触点追踪、自动化规则 |
 
 ### 支付 & 对账
 
@@ -261,7 +263,7 @@ qingyi/
 
 ---
 
-## 六、数据库模型 (30 个)
+## 六、数据库模型 (38 个)
 
 ```
 AdminOrder              # 订单
@@ -294,6 +296,14 @@ OrderReview             # 订单评价
 RedeemBatch             # 兑换码批次
 RedeemCode              # 兑换码
 RedeemRecord            # 兑换记录
+CustomerTag             # 客户标签
+GrowthContact           # Growth OS 联系人
+GrowthTouchpoint        # Growth OS 触点
+GrowthChannel           # Growth OS 渠道
+GrowthCampaign          # Growth OS 活动
+GrowthAsset             # Growth OS 素材
+GrowthFollowUp          # Growth OS 跟进
+GrowthAutomation        # Growth OS 自动化规则
 ```
 
 ---
@@ -355,23 +365,28 @@ lib/
 ## 九、Git 状态
 
 - 分支: `main`
-- 最新提交: `6d10983` — feat: complete i18n migration, perf optimization, monitoring alerts
-- 288 单元测试 + 18 集成测试, 全部通过
+- 最新提交: `09c90e7` — update
+- ~333 单元/集成测试, 27 个测试文件
 - TypeScript 编译: 0 errors
 
 ### 近期提交历史
 
 ```
+09c90e7 update (2026-02-23 19:01)
+a1012af update (2026-02-23 18:28)
+23a576b feat: Growth OS — tests, contact detail, automation API, i18n, admin nav
+a9f386a feat: Growth OS — multi-channel traffic management system
+fa5d11a feat: customer tag system — internal labels for problematic customers
+c3c09be fix: production build — resolve server/client i18n boundary
 6d10983 feat: complete i18n migration, perf optimization, monitoring alerts
 d7f1918 feat: complete en.json English translation (1964 keys, 0 Chinese remaining)
 2ac607e feat: Kook bot integration + admin i18n + en.json translation (300 keys)
 5c842d4 feat: dispute list, reconcile UI, DB feature flags, push persistence, vitals storage
-52f8cfe feat: i18n migration — 247 strings across 38 user-facing pages
 ```
 
 ---
 
-## 十、迁移历史 (14 次)
+## 十、迁移历史 (16 次)
 
 ```
 20260201_00_init_admin_store
@@ -388,23 +403,24 @@ d7f1918 feat: complete en.json English translation (1964 keys, 0 Chinese remaini
 20260220_00_referral_system
 20260220_01_redeem_codes
 20260222_00_composite_indexes
+20260223_00_customer_tags
+20260223_01_growth_os
 ```
 
 ---
 
 ## 十一、项目评估
 
-### 完成度: ⭐⭐⭐⭐⭐ (95%)
+### 完成度: ⭐⭐⭐⭐⭐ (96%)
 
-核心业务功能全部完成，包括完整的用户下单流程、区块链集成、管理后台、支付对账、通知推送、国际化。剩余 5% 主要是部署上线配置和联调。
+核心业务功能全部完成，包括完整的用户下单流程、区块链集成、管理后台、支付对账、通知推送、国际化。新增客户标签系统和 Growth OS 流量管理集成（联系人、渠道、活动、触点追踪、自动化规则）。剩余 4% 主要是部署上线配置和联调。
 
 ### 代码质量: ⭐⭐⭐⭐½
 
-- 测试覆盖率 95%+，288 个单元测试 + 18 个集成测试
+- ~333 个测试，27 个测试文件
 - TypeScript 严格模式，0 编译错误
 - 统一的错误处理 (api-response helper)
 - 结构化日志 (business-events + Sentry breadcrumbs)
-- 代码无 TODO/FIXME
 
 ### 安全性: ⭐⭐⭐⭐½
 

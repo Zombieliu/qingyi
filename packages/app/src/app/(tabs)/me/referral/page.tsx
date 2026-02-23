@@ -230,6 +230,7 @@ export default function ReferralPage() {
               key={t.key}
               type="button"
               className={`lc-tab-btn ${boardType === t.key ? "is-active" : ""}`}
+              disabled={boardLoading}
               onClick={() => handleBoardType(t.key)}
             >
               {t.label}
@@ -242,6 +243,7 @@ export default function ReferralPage() {
               key={p.key}
               type="button"
               className={`lc-tab-btn ${boardPeriod === p.key ? "is-active" : ""}`}
+              disabled={boardLoading}
               onClick={() => handleBoardPeriod(p.key)}
             >
               {p.label}

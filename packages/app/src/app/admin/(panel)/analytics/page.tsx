@@ -144,7 +144,7 @@ export default function AnalyticsPage() {
                 近{range}天
               </button>
             ))}
-            <button className="admin-btn ghost" onClick={() => load(days)}>
+            <button className="admin-btn ghost" onClick={() => load(days)} disabled={loading}>
               <RefreshCw size={16} style={{ marginRight: 6 }} />
               刷新
             </button>

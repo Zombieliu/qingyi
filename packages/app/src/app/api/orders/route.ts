@@ -309,6 +309,10 @@ export async function POST(req: Request) {
   }
 
   try {
+    // 从 meta 中提取用户选择的陪练，映射到 assignedTo
+    const requestedPlayerName =
+      typeof meta?.requestedPlayerName === "string" ? meta.requestedPlayerName.trim() : "";
+
     await addOrder({
       id: orderId,
       user,
@@ -321,6 +325,7 @@ export async function POST(req: Request) {
       stage: (payload.stage as "待处理" | "已确认" | "进行中" | "已完成" | "已取消") || "待处理",
       displayStatus: payload.paymentStatus || status || "待处理",
       note,
+      assignedTo: requestedPlayerName || undefined,
       source: "app",
       chainDigest: payload.chainDigest,
       chainStatus: payload.chainStatus,
@@ -366,22 +371,6 @@ export async function POST(req: Request) {
           typeof meta?.requestedPlayerName === "string" ? meta.requestedPlayerName.trim() : "";
         const resolved = await resolveWecomMention(meta);
         const requestedName = resolved.playerName || requestedNameRaw || "";
-        const markdown = buildMarkdown({
-          user,
-          item,
-          amount,
-          currency,
-          status,
-          orderId,
-          note,
-          mentionTag:
-            resolved.mention.type === "all" || resolved.mention.type === "user"
-              ? resolved.mention.tag
-              : "",
-          requestedPlayer: requestedName,
-          fallbackAll: resolved.fallbackAll,
-          fallbackReason: resolved.fallbackReason,
-        });
         const text = buildText({
           user,
           item,
@@ -394,7 +383,8 @@ export async function POST(req: Request) {
           fallbackAll: resolved.fallbackAll,
           fallbackReason: resolved.fallbackReason,
         });
-        const body =
+        // 企微群机器人只有 text 类型支持 @ 提及，markdown 不支持
+        const body: Record<string, unknown> =
           resolved.mention.type === "mobile"
             ? {
                 msgtype: "text",
@@ -403,10 +393,23 @@ export async function POST(req: Request) {
                   mentioned_mobile_list: [resolved.mention.mobile],
                 },
               }
-            : {
-                msgtype: "markdown",
-                markdown: { content: markdown },
-              };
+            : resolved.mention.type === "user"
+              ? {
+                  msgtype: "text",
+                  text: {
+                    content: text,
+                    mentioned_list: [resolved.mention.tag.replace(/<@|>/g, "")],
+                  },
+                }
+              : resolved.mention.type === "all"
+                ? {
+                    msgtype: "text",
+                    text: {
+                      content: text,
+                      mentioned_list: ["@all"],
+                    },
+                  }
+                : { msgtype: "text", text: { content: text } };
         const res = await fetch(`${webhook}`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },

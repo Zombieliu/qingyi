@@ -839,6 +839,7 @@ export default function Schedule() {
         toast={toast}
         cancelOrder={cancelOrder}
         renderActionLabel={renderActionLabel}
+        chainAction={chainAction}
         chainOrders={chainOrders}
         localChainStatus={localChainStatus}
         setToast={setToast}
@@ -865,9 +866,15 @@ export default function Schedule() {
         toast={toast}
         cancelOrder={cancelOrder}
         renderActionLabel={renderActionLabel}
+        chainAction={chainAction}
         chainOrders={chainOrders}
         localChainStatus={localChainStatus}
         setToast={setToast}
+        patchOrder={patchOrder}
+        refreshOrders={refreshOrders}
+        setMode={setMode}
+        getCurrentAddress={getCurrentAddress}
+        isChainLocalOrder={isChainLocalOrder}
         runChainAction={runChainAction}
         mergeChainStatus={mergeChainStatus}
         openPrompt={openPrompt}

@@ -49,8 +49,8 @@ const grid = [
 export default function Me() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { balance } = useBalance();
-  const { balance: mantouBalance } = useMantouBalance();
+  const { balance, refresh: refreshBalance } = useBalance();
+  const { balance: mantouBalance, refresh: refreshMantou } = useMantouBalance();
   const { count: unreadCount } = useUnreadCount();
   const [walletAddress, setWalletAddress] = useState(() => {
     if (typeof window === "undefined") return "";
@@ -128,6 +128,9 @@ export default function Me() {
 
     loadWallet();
     loadProfile();
+    // 每次进入"我的"页面时强制刷新余额，确保充值后立即可见
+    refreshBalance({ force: true });
+    refreshMantou({ force: true });
 
     const handleStorage = (event: StorageEvent) => {
       if (event.key === PASSKEY_STORAGE_KEY) {

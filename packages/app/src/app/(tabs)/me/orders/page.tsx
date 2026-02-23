@@ -80,7 +80,12 @@ export default function OrderCenterPage() {
           <span className="dl-chip">{t("ui.orders.116")}</span>
         </div>
         <div className="dl-actions">
-          <button onClick={load} className="dl-icon-circle" aria-label={t("me.orders.002")}>
+          <button
+            onClick={load}
+            className="dl-icon-circle"
+            aria-label={t("me.orders.002")}
+            disabled={loading}
+          >
             <RefreshCw size={16} />
           </button>
         </div>
