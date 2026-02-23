@@ -63,9 +63,30 @@ export async function POST(req: Request) {
   return res;
 }
 
-export async function GET() {
+export async function GET(req: Request) {
   const cookieStore = await cookies();
   const token = cookieStore.get("user_session")?.value || "";
+  const url = new URL(req.url);
+  const isRefresh = url.searchParams.get("refresh") === "1";
+
+  if (isRefresh) {
+    // Refresh mode: allow renewing recently-expired sessions (within 30-day grace)
+    // No passkey signature needed — cookie-based only
+    const session = await getUserSessionFromTokenAllowExpired(token);
+    if (!session) {
+      return NextResponse.json({ error: "session_missing" }, { status: 401 });
+    }
+    const newExpiry = await renewUserSessionExpiry(session.tokenHash);
+    const res = NextResponse.json({
+      ok: true,
+      address: session.address,
+      expiresAt: newExpiry,
+    });
+    setUserSessionCookie(res, token, newExpiry);
+    return res;
+  }
+
+  // Normal session check
   const session = await getUserSessionFromCookies();
   if (!session) {
     return NextResponse.json({ ok: false }, { status: 401 });
@@ -83,24 +104,6 @@ export async function GET() {
     const newExpiry = await renewUserSessionExpiry(session.tokenHash);
     setUserSessionCookie(res, token, newExpiry);
   }
-  return res;
-}
-
-/** Refresh session using existing cookie — no passkey signature required. */
-export async function PATCH() {
-  const cookieStore = await cookies();
-  const token = cookieStore.get("user_session")?.value || "";
-  const session = await getUserSessionFromTokenAllowExpired(token);
-  if (!session) {
-    return NextResponse.json({ error: "session_missing" }, { status: 401 });
-  }
-  const newExpiry = await renewUserSessionExpiry(session.tokenHash);
-  const res = NextResponse.json({
-    ok: true,
-    address: session.address,
-    expiresAt: newExpiry,
-  });
-  setUserSessionCookie(res, token, newExpiry);
   return res;
 }
 

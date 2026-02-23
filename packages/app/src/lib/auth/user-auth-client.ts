@@ -36,7 +36,7 @@ export async function ensureUserSession(address: string) {
   if (sessionPromise) return sessionPromise;
   sessionPromise = (async () => {
     // Try cookie-based refresh first (no passkey prompt)
-    const refreshRes = await fetch("/api/auth/session", { method: "PATCH" });
+    const refreshRes = await fetch("/api/auth/session?refresh=1");
     if (refreshRes.ok) return;
 
     // Fall back to passkey-signed session creation
