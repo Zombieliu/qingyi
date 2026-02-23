@@ -2,7 +2,6 @@
 import { t } from "@/lib/i18n/t";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Clock3, QrCode } from "lucide-react";
 import { type LocalOrder } from "@/lib/services/order-store";
 import {
   createOrder,
@@ -55,7 +54,7 @@ import { AwaitUserPayView, EnrouteView, PendingSettlementView } from "./order-vi
 import { ChainStatusPanel } from "./chain-status-panel";
 import { FeeModal } from "./fee-modal";
 import { DebugModal } from "./debug-modal";
-import { PlayerList } from "./player-list";
+import { ScheduleSelectView } from "./schedule-select-view";
 
 export default function Schedule() {
   const [checked, setChecked] = useState<Record<string, boolean>>(() => ({}));
@@ -959,146 +958,35 @@ export default function Schedule() {
         onClose={() => setPromptAction(null)}
       />
 
-      <div className="ride-tip" style={{ marginTop: 0 }}>
-        本单含多种特惠计价，点击查看详情
-      </div>
-
-      <div className="ride-content">
-        <div className="ride-side">
-          <button
-            className={`ride-side-tab ${active === PLAYER_SECTION_TITLE ? "is-active" : ""}`}
-            onClick={() => {
-              setActive(PLAYER_SECTION_TITLE);
-              sectionRefs.current[PLAYER_SECTION_TITLE]?.scrollIntoView({
-                behavior: "smooth",
-                block: "start",
-              });
-            }}
-          >
-            可接陪练
-          </button>
-          {sections.map((s) => (
-            <button
-              key={s.title}
-              className={`ride-side-tab ${active === s.title ? "is-active" : ""}`}
-              onClick={() => {
-                setActive(s.title);
-                sectionRefs.current[s.title]?.scrollIntoView({
-                  behavior: "smooth",
-                  block: "start",
-                });
-              }}
-            >
-              {s.title}
-            </button>
-          ))}
-        </div>
-
-        <div className="ride-main">
-          <div className="ride-sections motion-stack">
-            <div
-              ref={(el) => {
-                sectionRefs.current[PLAYER_SECTION_TITLE] = el;
-              }}
-              className="ride-block"
-            >
-              <PlayerList
-                players={players}
-                playersLoading={playersLoading}
-                playersError={playersError}
-                selectedPlayerId={selectedPlayerId}
-                prefillHint={prefillHint}
-                onSelectPlayer={(id) => {
-                  setSelectedPlayerId(id);
-                  setPrefillHint(null);
-                }}
-                onRefresh={loadPlayers}
-              />
-            </div>
-            {sections.map((section) => (
-              <div
-                key={section.title}
-                ref={(el) => {
-                  sectionRefs.current[section.title] = el;
-                }}
-                className={`ride-block ${section.highlight ? "is-highlight" : ""}`}
-              >
-                <div className="ride-block-title">
-                  <span>{section.title}</span>
-                  {section.badge && <span className="ride-badge">{section.badge}</span>}
-                </div>
-                <div className="ride-items">
-                  {section.items.map((item) => (
-                    <div key={item.name} className="ride-row">
-                      <div className="ride-row-main">
-                        <div className="ride-row-title">
-                          {item.name}
-                          {item.tag && <span className="ride-tag">{item.tag}</span>}
-                        </div>
-                        <div className="ride-row-desc">{item.desc}</div>
-                        <div className="ride-row-eta">
-                          <Clock3 size={14} />
-                          <span>{item.eta}</span>
-                        </div>
-                      </div>
-                      <div className="ride-row-side">
-                        <div className="ride-row-price">
-                          <span className={item.bold ? "bold" : ""}>{item.price}</span>
-                          {item.old && <span className="ride-old">{item.old}</span>}
-                        </div>
-                        {item.info && (
-                          <div className="ride-info">
-                            <button
-                              type="button"
-                              className="ride-info-dot"
-                              onClick={() =>
-                                setInfoOpen((prev) => (prev === item.name ? null : item.name))
-                              }
-                              onMouseEnter={() => setInfoOpen(item.name)}
-                              onMouseLeave={() => setInfoOpen(null)}
-                              aria-label={item.info}
-                            >
-                              !
-                            </button>
-                            {infoOpen === item.name && (
-                              <div className="ride-tooltip">{item.info}</div>
-                            )}
-                          </div>
-                        )}
-                        <label className="ride-checkbox">
-                          <input
-                            type="checkbox"
-                            checked={!!checked[item.name]}
-                            onChange={() => toggle(item.name)}
-                          />
-                          <span className="ride-checkbox-box" />
-                        </label>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      <footer className="ride-footer">
-        <div className="ride-footer-left">
-          <div className="ride-range">
-            预估价 {pickedPrice ? pickedDiamonds.toFixed(0) : "40-90"} 钻石
-          </div>
-          <div className="ride-extra">{t("ui.schedule.043")}</div>
-          {firstOrderEligible && (
-            <div className="ride-discount-tag">{FIRST_ORDER_DISCOUNT.label}</div>
-          )}
-        </div>
-        <button className="ride-call" onClick={submit}>
-          <QrCode size={16} style={{ marginRight: 6 }} />
-          先托管再呼叫
-        </button>
-      </footer>
-      {toast && <div className="ride-toast">{toast}</div>}
+      <ScheduleSelectView
+        checked={checked}
+        active={active}
+        infoOpen={infoOpen}
+        toast={toast}
+        pickedPrice={pickedPrice}
+        pickedDiamonds={pickedDiamonds}
+        firstOrderEligible={firstOrderEligible}
+        players={players}
+        playersLoading={playersLoading}
+        playersError={playersError}
+        selectedPlayerId={selectedPlayerId}
+        prefillHint={prefillHint}
+        onSectionRef={(key, el) => {
+          sectionRefs.current[key] = el;
+        }}
+        onToggle={toggle}
+        onSetActive={setActive}
+        onSetInfoOpen={setInfoOpen}
+        onSelectPlayer={(id) => {
+          setSelectedPlayerId(id);
+          setPrefillHint(null);
+        }}
+        onRefreshPlayers={loadPlayers}
+        onSubmit={submit}
+        onScrollToSection={(key) => {
+          sectionRefs.current[key]?.scrollIntoView({ behavior: "smooth", block: "start" });
+        }}
+      />
     </div>
   );
 }
