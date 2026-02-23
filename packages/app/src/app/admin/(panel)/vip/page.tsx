@@ -19,6 +19,9 @@ import {
 import { readCache, writeCache } from "@/lib/shared/client-cache";
 import { formatShortDateTime, formatDateISO } from "@/lib/shared/date-utils";
 import { StateBlock } from "@/app/components/state-block";
+import { VipTiersTable } from "./vip-tiers-table";
+import { VipRequestsTable } from "./vip-requests-table";
+import { VipMembersTable } from "./vip-members-table";
 
 function toDateInput(ts?: number | null) {
   if (!ts) return "";
@@ -441,406 +444,37 @@ export default function VipAdminPage() {
         </div>
       </div>
 
-      <div className="admin-card">
-        <div className="admin-card-header">
-          <h3>{t("ui.vip.208")}</h3>
-          <div className="admin-card-actions">
-            <span className="admin-pill">共 {tiers.length} 条</span>
-          </div>
-        </div>
-        {tiers.length === 0 ? (
-          <StateBlock
-            tone="empty"
-            size="compact"
-            title={t("admin.vip.007")}
-            description={t("admin.vip.008")}
-          />
-        ) : (
-          <div className="admin-table-wrap">
-            <table className="admin-table">
-              <thead>
-                <tr>
-                  <th>{t("ui.vip.209")}</th>
-                  <th>{t("ui.vip.210")}</th>
-                  <th>{t("ui.vip.211")}</th>
-                  <th>{t("ui.vip.212")}</th>
-                  <th>{t("ui.vip.213")}</th>
-                  <th>{t("ui.vip.214")}</th>
-                  <th>{t("ui.vip.215")}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {tiers.map((tier) => (
-                  <tr key={tier.id}>
-                    <td data-label={t("admin.vip.009")}>
-                      <div className="admin-text-strong">{tier.name}</div>
-                      <div className="admin-meta">Lv.{tier.level}</div>
-                    </td>
-                    <td data-label={t("admin.vip.010")}>
-                      <input
-                        className="admin-input"
-                        value={tier.price ?? ""}
-                        onChange={(event) =>
-                          setTiers((prev) =>
-                            prev.map((item) =>
-                              item.id === tier.id
-                                ? {
-                                    ...item,
-                                    price: event.target.value
-                                      ? Number(event.target.value)
-                                      : undefined,
-                                  }
-                                : item
-                            )
-                          )
-                        }
-                        onBlur={(event) =>
-                          updateTier(tier.id, {
-                            price: event.target.value ? Number(event.target.value) : null,
-                          })
-                        }
-                      />
-                    </td>
-                    <td data-label={t("admin.vip.011")}>
-                      <input
-                        className="admin-input"
-                        value={tier.durationDays ?? ""}
-                        onChange={(event) =>
-                          setTiers((prev) =>
-                            prev.map((item) =>
-                              item.id === tier.id
-                                ? {
-                                    ...item,
-                                    durationDays: event.target.value
-                                      ? Number(event.target.value)
-                                      : undefined,
-                                  }
-                                : item
-                            )
-                          )
-                        }
-                        onBlur={(event) =>
-                          updateTier(tier.id, {
-                            durationDays: event.target.value ? Number(event.target.value) : null,
-                          })
-                        }
-                      />
-                    </td>
-                    <td data-label={t("admin.vip.012")}>
-                      <input
-                        className="admin-input"
-                        value={tier.minPoints ?? ""}
-                        onChange={(event) =>
-                          setTiers((prev) =>
-                            prev.map((item) =>
-                              item.id === tier.id
-                                ? {
-                                    ...item,
-                                    minPoints: event.target.value
-                                      ? Number(event.target.value)
-                                      : undefined,
-                                  }
-                                : item
-                            )
-                          )
-                        }
-                        onBlur={(event) =>
-                          updateTier(tier.id, {
-                            minPoints: event.target.value ? Number(event.target.value) : null,
-                          })
-                        }
-                      />
-                    </td>
-                    <td data-label={t("admin.vip.013")}>
-                      <select
-                        className="admin-select"
-                        value={tier.status}
-                        onChange={(event) => {
-                          const nextStatus = event.target.value as MembershipTierStatus;
-                          setTiers((prev) =>
-                            prev.map((item) =>
-                              item.id === tier.id ? { ...item, status: nextStatus } : item
-                            )
-                          );
-                          updateTier(tier.id, { status: nextStatus });
-                        }}
-                      >
-                        {MEMBERSHIP_TIER_STATUS_OPTIONS.map((status) => (
-                          <option key={status} value={status}>
-                            {status}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
-                    <td data-label={t("admin.vip.014")}>
-                      <textarea
-                        className="admin-textarea"
-                        value={perksDraft[tier.id] ?? ""}
-                        onChange={(event) =>
-                          setPerksDraft((prev) => ({ ...prev, [tier.id]: event.target.value }))
-                        }
-                        onBlur={(event) =>
-                          updateTier(tier.id, { perks: parsePerks(event.target.value) })
-                        }
-                      />
-                    </td>
-                    <td data-label={t("admin.vip.015")}>
-                      <span className="admin-badge neutral">
-                        {saving[tier.id] ? t("ui.vip.520") : t("admin.vip.016")}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-        <div className="admin-pagination">
-          <button className="admin-btn ghost" disabled={prevCursors.length === 0} onClick={goPrev}>
-            上一页
-          </button>
-          <div className="admin-meta">第 {page} 页</div>
-          <button className="admin-btn ghost" disabled={!nextCursor} onClick={goNext}>
-            下一页
-          </button>
-        </div>
-      </div>
+      <VipTiersTable
+        tiers={tiers}
+        perksDraft={perksDraft}
+        saving={saving}
+        page={page}
+        nextCursor={nextCursor}
+        prevCursors={prevCursors}
+        totalActive={totalActive}
+        setTiers={setTiers}
+        setPerksDraft={setPerksDraft}
+        updateTier={updateTier}
+        goNext={goNext}
+        goPrev={goPrev}
+        parsePerks={parsePerks}
+      />
 
-      <div className="admin-card">
-        <div className="admin-card-header">
-          <h3>{t("ui.vip.216")}</h3>
-          <div className="admin-card-actions">
-            <span className="admin-pill">本页 {requests.length} 条</span>
-            {cacheHint ? <span className="admin-pill">{cacheHint}</span> : null}
-          </div>
-        </div>
-        {loading ? (
-          <StateBlock
-            tone="loading"
-            size="compact"
-            title={t("admin.vip.018")}
-            description={t("admin.vip.017")}
-          />
-        ) : requests.length === 0 ? (
-          <StateBlock
-            tone="empty"
-            size="compact"
-            title={t("admin.vip.019")}
-            description={t("admin.vip.020")}
-          />
-        ) : (
-          <div className="admin-table-wrap">
-            <table className="admin-table">
-              <thead>
-                <tr>
-                  <th>{t("ui.vip.217")}</th>
-                  <th>{t("ui.vip.218")}</th>
-                  <th>{t("ui.vip.219")}</th>
-                  <th>{t("ui.vip.220")}</th>
-                  <th>{t("ui.vip.221")}</th>
-                  <th>{t("ui.vip.222")}</th>
-                  <th>{t("ui.vip.223")}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {requests.map((req) => (
-                  <tr key={req.id}>
-                    <td data-label={t("admin.vip.021")}>
-                      <div className="admin-text-strong">{req.userName || t("ui.vip.671")}</div>
-                      <div className="admin-meta">{req.userAddress || "-"}</div>
-                      <div className="admin-meta-faint">{req.id}</div>
-                    </td>
-                    <td data-label={t("admin.vip.022")}>{req.tierName || "-"}</td>
-                    <td data-label={t("admin.vip.023")} className="admin-meta">
-                      {req.contact || "-"}
-                    </td>
-                    <td data-label={t("admin.vip.024")}>
-                      <select
-                        className="admin-select"
-                        value={req.status}
-                        onChange={(event) => {
-                          const nextStatus = event.target.value as MembershipRequestStatus;
-                          setRequests((prev) =>
-                            prev.map((item) =>
-                              item.id === req.id ? { ...item, status: nextStatus } : item
-                            )
-                          );
-                          updateRequest(req.id, { status: nextStatus });
-                        }}
-                      >
-                        {MEMBERSHIP_REQUEST_STATUS_OPTIONS.map((status) => (
-                          <option key={status} value={status}>
-                            {status}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
-                    <td data-label={t("admin.vip.025")}>
-                      <input
-                        className="admin-input"
-                        placeholder={t("admin.vip.026")}
-                        value={req.note || ""}
-                        onChange={(event) =>
-                          setRequests((prev) =>
-                            prev.map((item) =>
-                              item.id === req.id ? { ...item, note: event.target.value } : item
-                            )
-                          )
-                        }
-                        onBlur={(event) => updateRequest(req.id, { note: event.target.value })}
-                      />
-                    </td>
-                    <td data-label={t("admin.vip.027")}>{formatShortDateTime(req.createdAt)}</td>
-                    <td data-label={t("admin.vip.028")}>
-                      <span className="admin-badge neutral">
-                        {saving[req.id] ? t("ui.vip.521") : t("admin.vip.029")}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+      <VipRequestsTable
+        requests={requests}
+        loading={loading}
+        saving={saving}
+        cacheHint={cacheHint}
+        setRequests={setRequests}
+        updateRequest={updateRequest}
+      />
 
-      <div className="admin-card">
-        <div className="admin-card-header">
-          <h3>{t("ui.vip.224")}</h3>
-          <div className="admin-card-actions">
-            <span className="admin-pill">共 {members.length} 条</span>
-          </div>
-        </div>
-        {members.length === 0 ? (
-          <StateBlock
-            tone="empty"
-            size="compact"
-            title={t("admin.vip.030")}
-            description={t("admin.vip.031")}
-          />
-        ) : (
-          <div className="admin-table-wrap">
-            <table className="admin-table">
-              <thead>
-                <tr>
-                  <th>{t("ui.vip.225")}</th>
-                  <th>{t("ui.vip.226")}</th>
-                  <th>{t("ui.vip.227")}</th>
-                  <th>{t("ui.vip.228")}</th>
-                  <th>{t("ui.vip.229")}</th>
-                  <th>{t("ui.vip.230")}</th>
-                  <th>{t("ui.vip.231")}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {members.map((member) => (
-                  <tr key={member.id}>
-                    <td data-label={t("admin.vip.032")}>
-                      <div className="admin-text-strong">{member.userName || "-"}</div>
-                      <div className="admin-meta">{member.userAddress || "-"}</div>
-                    </td>
-                    <td data-label={t("admin.vip.033")}>{member.tierName || "-"}</td>
-                    <td data-label={t("admin.vip.034")}>
-                      <input
-                        className="admin-input"
-                        value={member.points ?? ""}
-                        onChange={(event) =>
-                          setMembers((prev) =>
-                            prev.map((item) =>
-                              item.id === member.id
-                                ? {
-                                    ...item,
-                                    points: event.target.value
-                                      ? Number(event.target.value)
-                                      : undefined,
-                                  }
-                                : item
-                            )
-                          )
-                        }
-                        onBlur={(event) =>
-                          updateMember(member.id, {
-                            points: event.target.value ? Number(event.target.value) : null,
-                          })
-                        }
-                      />
-                    </td>
-                    <td data-label={t("admin.vip.035")}>
-                      <input
-                        className="admin-input"
-                        type="date"
-                        value={toDateInput(member.expiresAt)}
-                        onChange={(event) =>
-                          setMembers((prev) =>
-                            prev.map((item) =>
-                              item.id === member.id
-                                ? {
-                                    ...item,
-                                    expiresAt: event.target.value
-                                      ? new Date(event.target.value).getTime()
-                                      : undefined,
-                                  }
-                                : item
-                            )
-                          )
-                        }
-                        onBlur={(event) =>
-                          updateMember(member.id, {
-                            expiresAt: event.target.value
-                              ? new Date(event.target.value).getTime()
-                              : null,
-                          })
-                        }
-                      />
-                    </td>
-                    <td data-label={t("admin.vip.036")}>
-                      <select
-                        className="admin-select"
-                        value={member.status}
-                        onChange={(event) => {
-                          const nextStatus = event.target.value as MemberStatus;
-                          setMembers((prev) =>
-                            prev.map((item) =>
-                              item.id === member.id ? { ...item, status: nextStatus } : item
-                            )
-                          );
-                          updateMember(member.id, { status: nextStatus });
-                        }}
-                      >
-                        {MEMBER_STATUS_OPTIONS.map((status) => (
-                          <option key={status} value={status}>
-                            {status}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
-                    <td data-label={t("admin.vip.037")}>
-                      <input
-                        className="admin-input"
-                        placeholder={t("admin.vip.038")}
-                        value={member.note || ""}
-                        onChange={(event) =>
-                          setMembers((prev) =>
-                            prev.map((item) =>
-                              item.id === member.id ? { ...item, note: event.target.value } : item
-                            )
-                          )
-                        }
-                        onBlur={(event) => updateMember(member.id, { note: event.target.value })}
-                      />
-                    </td>
-                    <td data-label={t("admin.vip.039")}>
-                      <span className="admin-badge neutral">
-                        {saving[member.id] ? t("ui.vip.522") : t("admin.vip.040")}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+      <VipMembersTable
+        members={members}
+        saving={saving}
+        setMembers={setMembers}
+        updateMember={updateMember}
+      />
     </div>
   );
 }
