@@ -143,6 +143,13 @@ qingyi/
 4. 改动点收敛到单一服务层
 5. 补测试或写回归步骤
 
+## 9) 拆分专题指南
+
+- `docs/FRONTEND_GUIDE.md`：前端页面/组件/样式与常见改动
+- `docs/BACKEND_GUIDE.md`：API/服务层/权限/缓存与数据访问
+- `docs/CHAIN_GUIDE.md`：合约与链上流程
+- `docs/MP_GUIDE.md`：Taro 小程序改动方式
+
 ---
 
 如需更细粒度的模块说明，可继续追加到 `docs/` 下分主题文档。
