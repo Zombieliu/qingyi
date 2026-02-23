@@ -102,6 +102,7 @@ export async function removeSessionByHash(tokenHash: string) {
 export async function listAccessTokens() {
   const rows = await prisma.adminAccessToken.findMany({
     orderBy: { createdAt: "desc" },
+    take: 100,
   });
   return rows.map(mapAccessToken);
 }

@@ -39,8 +39,8 @@ function normalizePlayerAddress(address: string) {
   return (address || "").trim();
 }
 
-export async function listPlayers() {
-  const rows = await prisma.adminPlayer.findMany({ orderBy: { createdAt: "desc" } });
+export async function listPlayers(limit = 500) {
+  const rows = await prisma.adminPlayer.findMany({ orderBy: { createdAt: "desc" }, take: limit });
   const players = rows.map(mapPlayer);
   const activeOrders = await prisma.adminOrder.groupBy({
     by: ["assignedTo"],

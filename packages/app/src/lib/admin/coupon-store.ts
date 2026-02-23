@@ -108,6 +108,7 @@ export async function listActiveCoupons() {
       ],
     },
     orderBy: { createdAt: "desc" },
+    take: 200,
   });
   return rows.map(mapCoupon);
 }

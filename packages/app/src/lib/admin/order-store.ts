@@ -61,8 +61,11 @@ function mapOrder(row: {
   };
 }
 
-export async function listOrders() {
-  const rows = await prisma.adminOrder.findMany({ orderBy: { createdAt: "desc" } });
+export async function listOrders(limit = 1000) {
+  const rows = await prisma.adminOrder.findMany({
+    orderBy: { createdAt: "desc" },
+    take: limit,
+  });
   return rows.map(mapOrder);
 }
 
@@ -70,9 +73,11 @@ const CHAIN_ORDER_WHERE: Prisma.AdminOrderWhereInput = {
   OR: [{ chainDigest: { not: null } }, { chainStatus: { not: null } }, { source: "chain" }],
 };
 
-export async function listChainOrdersForAdmin() {
+export async function listChainOrdersForAdmin(limit = 500) {
   const rows = await prisma.adminOrder.findMany({
     where: CHAIN_ORDER_WHERE,
+    orderBy: { createdAt: "desc" },
+    take: limit,
     select: {
       id: true,
       chainStatus: true,
@@ -90,9 +95,11 @@ export async function listChainOrdersForAdmin() {
   }));
 }
 
-export async function listChainOrdersForAutoFinalize() {
+export async function listChainOrdersForAutoFinalize(limit = 500) {
   const rows = await prisma.adminOrder.findMany({
     where: CHAIN_ORDER_WHERE,
+    orderBy: { createdAt: "desc" },
+    take: limit,
     select: {
       id: true,
       chainStatus: true,
@@ -110,9 +117,11 @@ export async function listChainOrdersForAutoFinalize() {
   }));
 }
 
-export async function listChainOrdersForCleanup() {
+export async function listChainOrdersForCleanup(limit = 1000) {
   const rows = await prisma.adminOrder.findMany({
     where: { source: "chain" },
+    orderBy: { createdAt: "desc" },
+    take: limit,
     select: {
       id: true,
       source: true,

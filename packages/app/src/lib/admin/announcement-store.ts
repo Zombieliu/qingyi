@@ -23,7 +23,10 @@ function mapAnnouncement(row: {
 }
 
 export async function listAnnouncements() {
-  const rows = await prisma.adminAnnouncement.findMany({ orderBy: { createdAt: "desc" } });
+  const rows = await prisma.adminAnnouncement.findMany({
+    orderBy: { createdAt: "desc" },
+    take: 200,
+  });
   return rows.map(mapAnnouncement);
 }
 
