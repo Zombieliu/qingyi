@@ -7,12 +7,7 @@ import type { AdminCoupon, CouponStatus } from "@/lib/admin/admin-types";
 import { COUPON_STATUS_OPTIONS } from "@/lib/admin/admin-types";
 import { readCache, writeCache } from "@/lib/shared/client-cache";
 import { StateBlock } from "@/app/components/state-block";
-import { formatDateISO } from "@/lib/shared/date-utils";
-
-function toDateInput(ts?: number | null) {
-  if (!ts) return "";
-  return formatDateISO(ts);
-}
+import { CouponRow } from "./coupon-row";
 
 export default function CouponsPage() {
   const [coupons, setCoupons] = useState<AdminCoupon[]>([]);
@@ -389,149 +384,15 @@ export default function CouponsPage() {
               </thead>
               <tbody>
                 {coupons.map((coupon) => (
-                  <tr key={coupon.id}>
-                    <td data-label={t("admin.coupons.014")}>
-                      <div className="admin-text-strong">{coupon.title}</div>
-                      <div className="admin-meta">{coupon.code || "-"}</div>
-                    </td>
-                    <td data-label={t("admin.coupons.015")}>
-                      <input
-                        className="admin-input"
-                        value={coupon.discount ?? ""}
-                        onChange={(event) => {
-                          const value = event.target.value;
-                          const next = value ? Number(value) : undefined;
-                          setCoupons((prev) =>
-                            prev.map((item) =>
-                              item.id === coupon.id ? { ...item, discount: next } : item
-                            )
-                          );
-                        }}
-                        onBlur={(event) =>
-                          updateCoupon(coupon.id, {
-                            discount: event.target.value ? Number(event.target.value) : null,
-                          })
-                        }
-                      />
-                    </td>
-                    <td data-label={t("admin.coupons.016")}>
-                      <input
-                        className="admin-input"
-                        value={coupon.minSpend ?? ""}
-                        onChange={(event) => {
-                          const value = event.target.value;
-                          const next = value ? Number(value) : undefined;
-                          setCoupons((prev) =>
-                            prev.map((item) =>
-                              item.id === coupon.id ? { ...item, minSpend: next } : item
-                            )
-                          );
-                        }}
-                        onBlur={(event) =>
-                          updateCoupon(coupon.id, {
-                            minSpend: event.target.value ? Number(event.target.value) : null,
-                          })
-                        }
-                      />
-                    </td>
-                    <td data-label={t("admin.coupons.017")}>
-                      <select
-                        className="admin-select"
-                        value={coupon.status}
-                        onChange={(event) => {
-                          const nextStatus = event.target.value as CouponStatus;
-                          setCoupons((prev) =>
-                            prev.map((item) =>
-                              item.id === coupon.id ? { ...item, status: nextStatus } : item
-                            )
-                          );
-                          updateCoupon(coupon.id, { status: nextStatus });
-                        }}
-                      >
-                        {COUPON_STATUS_OPTIONS.map((status) => (
-                          <option key={status} value={status}>
-                            {status}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
-                    <td data-label={t("admin.coupons.018")}>
-                      <input
-                        className="admin-input"
-                        type="date"
-                        value={toDateInput(coupon.startsAt)}
-                        onChange={(event) => {
-                          const value = event.target.value;
-                          setCoupons((prev) =>
-                            prev.map((item) =>
-                              item.id === coupon.id
-                                ? {
-                                    ...item,
-                                    startsAt: value ? new Date(value).getTime() : undefined,
-                                  }
-                                : item
-                            )
-                          );
-                        }}
-                        onBlur={(event) =>
-                          updateCoupon(coupon.id, {
-                            startsAt: event.target.value
-                              ? new Date(event.target.value).getTime()
-                              : null,
-                          })
-                        }
-                      />
-                      <input
-                        className="admin-input"
-                        type="date"
-                        value={toDateInput(coupon.expiresAt)}
-                        onChange={(event) => {
-                          const value = event.target.value;
-                          setCoupons((prev) =>
-                            prev.map((item) =>
-                              item.id === coupon.id
-                                ? {
-                                    ...item,
-                                    expiresAt: value ? new Date(value).getTime() : undefined,
-                                  }
-                                : item
-                            )
-                          );
-                        }}
-                        onBlur={(event) =>
-                          updateCoupon(coupon.id, {
-                            expiresAt: event.target.value
-                              ? new Date(event.target.value).getTime()
-                              : null,
-                          })
-                        }
-                        style={{ marginTop: 6 }}
-                      />
-                    </td>
-                    <td data-label={t("admin.coupons.019")}>
-                      <input
-                        className="admin-input"
-                        value={coupon.description || ""}
-                        onChange={(event) =>
-                          setCoupons((prev) =>
-                            prev.map((item) =>
-                              item.id === coupon.id
-                                ? { ...item, description: event.target.value }
-                                : item
-                            )
-                          )
-                        }
-                        onBlur={(event) =>
-                          updateCoupon(coupon.id, { description: event.target.value })
-                        }
-                      />
-                    </td>
-                    <td data-label={t("admin.coupons.020")}>
-                      <span className="admin-badge neutral">
-                        {saving[coupon.id] ? t("ui.coupons.525") : t("admin.coupons.021")}
-                      </span>
-                    </td>
-                  </tr>
+                  <CouponRow
+                    key={coupon.id}
+                    coupon={coupon}
+                    saving={!!saving[coupon.id]}
+                    onLocalChange={(id, patch) =>
+                      setCoupons((prev) => prev.map((c) => (c.id === id ? { ...c, ...patch } : c)))
+                    }
+                    onUpdate={updateCoupon}
+                  />
                 ))}
               </tbody>
             </table>

@@ -14,8 +14,9 @@ import {
 import { getCurrentAddress } from "@/lib/chain/qy-chain-lite";
 import { fetchWithUserAuth } from "@/lib/auth/user-auth-client";
 import { StateBlock } from "@/app/components/state-block";
-import { formatShortDateTime } from "@/lib/shared/date-utils";
 import { t } from "@/lib/i18n/t";
+import { CustomerTagModal } from "./customer-tag-modal";
+import { CompanionOrderList } from "./companion-order-list";
 
 type CompanionStats = {
   player: { id: string; name: string; status: string; role?: string } | null;
@@ -39,15 +40,6 @@ type CompanionOrder = {
   note?: string;
 };
 
-const STAGE_COLORS: Record<string, string> = {
-  已支付: "bg-blue-50 text-blue-600",
-  进行中: "bg-amber-50 text-amber-600",
-  待结算: "bg-purple-50 text-purple-600",
-  已完成: "bg-emerald-50 text-emerald-600",
-  已取消: "bg-gray-100 text-gray-500",
-  已退款: "bg-red-50 text-red-500",
-};
-
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
   可接单: { label: t("companion.i100"), color: "text-emerald-600" },
   忙碌: { label: t("companion.i101"), color: "text-amber-600" },
@@ -55,10 +47,9 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
 };
 
 export default function CompanionPage() {
-  const [address] = useState(() => {
-    if (typeof window === "undefined") return "";
-    return getCurrentAddress() || "";
-  });
+  const [address] = useState(() =>
+    typeof window === "undefined" ? "" : getCurrentAddress() || ""
+  );
   const [stats, setStats] = useState<CompanionStats | null>(null);
   const [orders, setOrders] = useState<CompanionOrder[]>([]);
   const [orderTab, setOrderTab] = useState<"active" | "completed">("active");
@@ -69,41 +60,8 @@ export default function CompanionPage() {
   const [scheduleSlots, setScheduleSlots] = useState<{ day: number; start: string; end: string }[]>(
     []
   );
-  // Customer tag state
   const [tagTarget, setTagTarget] = useState<{ orderId: string; userAddress: string } | null>(null);
-  const [tagForm, setTagForm] = useState({ tag: "difficult", note: "", severity: 1 });
-  const [tagSubmitting, setTagSubmitting] = useState(false);
   const [showSchedule, setShowSchedule] = useState(false);
-
-  const submitTag = async () => {
-    if (!tagTarget) return;
-    setTagSubmitting(true);
-    try {
-      const res = await fetch("/api/companion/customer-tags", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userAddress: tagTarget.userAddress,
-          tag: tagForm.tag,
-          note: tagForm.note || undefined,
-          severity: tagForm.severity,
-          reportedBy: address,
-        }),
-      });
-      if (res.ok) {
-        setToast("标记已提交");
-        setTagTarget(null);
-        setTagForm({ tag: "difficult", note: "", severity: 1 });
-      } else {
-        setToast("提交失败");
-      }
-    } catch {
-      setToast("网络错误");
-    } finally {
-      setTagSubmitting(false);
-      setTimeout(() => setToast(null), 2000);
-    }
-  };
 
   const fetchStats = useCallback(async () => {
     if (!address) return;
@@ -118,7 +76,7 @@ export default function CompanionPage() {
         setScheduleSlots(data.slots || []);
       }
     } catch {
-      // ignore
+      /* ignore */
     } finally {
       setLoading(false);
     }
@@ -138,7 +96,7 @@ export default function CompanionPage() {
         setOrders(data.orders || []);
       }
     } catch {
-      // ignore
+      /* ignore */
     } finally {
       setOrdersLoading(false);
     }
@@ -237,7 +195,6 @@ export default function CompanionPage() {
         </section>
       ) : (
         <>
-          {/* Profile card */}
           <section className="dl-card" style={{ padding: 16 }}>
             <div className="flex items-center justify-between">
               <div>
@@ -256,7 +213,6 @@ export default function CompanionPage() {
             )}
           </section>
 
-          {/* Stats cards */}
           <div className="grid grid-cols-2 gap-3" style={{ marginTop: 12 }}>
             <div className="dl-card" style={{ padding: 12 }}>
               <div className="flex items-center gap-2 text-xs text-gray-500">
@@ -290,73 +246,14 @@ export default function CompanionPage() {
             </div>
           </div>
 
-          {/* Orders */}
-          <section className="dl-card" style={{ padding: 16, marginTop: 12, marginBottom: 24 }}>
-            <div className="flex items-center gap-3 mb-3">
-              <button
-                className={`lc-tab-btn ${orderTab === "active" ? "is-active" : ""}`}
-                onClick={() => setOrderTab("active")}
-              >
-                进行中
-              </button>
-              <button
-                className={`lc-tab-btn ${orderTab === "completed" ? "is-active" : ""}`}
-                onClick={() => setOrderTab("completed")}
-              >
-                已完成
-              </button>
-            </div>
+          <CompanionOrderList
+            orders={orders}
+            orderTab={orderTab}
+            ordersLoading={ordersLoading}
+            onTabChange={setOrderTab}
+            onTagUser={(orderId, userAddress) => setTagTarget({ orderId, userAddress })}
+          />
 
-            {ordersLoading ? (
-              <StateBlock tone="loading" size="compact" title={t("companion.i193")} />
-            ) : orders.length === 0 ? (
-              <StateBlock
-                tone="empty"
-                size="compact"
-                title={orderTab === "active" ? t("companion.i194") : t("companion.i195")}
-              />
-            ) : (
-              <div className="grid gap-2">
-                {orders.map((order) => (
-                  <div key={order.id} className="rounded-xl border border-slate-100 p-3">
-                    <div className="flex items-center justify-between">
-                      <div className="text-sm font-medium text-gray-900">{order.item}</div>
-                      <span
-                        className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${STAGE_COLORS[order.stage] || "bg-gray-100 text-gray-500"}`}
-                      >
-                        {order.stage}
-                      </span>
-                    </div>
-                    <div className="mt-1 flex items-center justify-between text-xs text-gray-500">
-                      <span>用户: {order.user || t("companion.i196")}</span>
-                      <span className="font-semibold text-gray-900">¥{order.amount}</span>
-                    </div>
-                    <div className="mt-1 flex items-center justify-between text-[10px] text-gray-400">
-                      <span>{formatShortDateTime(order.createdAt)}</span>
-                      {order.serviceFee ? <span>服务费 ¥{order.serviceFee}</span> : null}
-                    </div>
-                    {order.note && (
-                      <div className="mt-1 text-[10px] text-gray-400 truncate">
-                        备注: {order.note}
-                      </div>
-                    )}
-                    {order.userAddress && (
-                      <button
-                        className="mt-1.5 text-[10px] text-orange-500 hover:text-orange-700"
-                        onClick={() =>
-                          setTagTarget({ orderId: order.id, userAddress: order.userAddress! })
-                        }
-                      >
-                        🏷️ 标记老板
-                      </button>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </section>
-
-          {/* Schedule */}
           <ScheduleSection
             address={address}
             slots={scheduleSlots}
@@ -366,74 +263,22 @@ export default function CompanionPage() {
             setToast={setToast}
           />
 
-          {/* Customer Tag Modal */}
           {tagTarget && (
-            <div
-              className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
-              onClick={() => setTagTarget(null)}
-            >
-              <div
-                className="bg-white rounded-2xl p-5 w-[90vw] max-w-sm shadow-xl"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <div className="text-sm font-semibold mb-3">🏷️ 标记老板</div>
-                <div className="text-[10px] text-gray-400 mb-3">仅陪练和运营可见，老板看不到</div>
-                <label className="block text-xs text-gray-600 mb-1">标签类型</label>
-                <select
-                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm mb-2"
-                  value={tagForm.tag}
-                  onChange={(e) => setTagForm((f) => ({ ...f, tag: e.target.value }))}
-                >
-                  <option value="difficult">⚠️ 事多/难伺候</option>
-                  <option value="slow_pay">⏳ 拖延付款</option>
-                  <option value="rude">😤 态度差</option>
-                  <option value="no_show">👻 放鸽子/不上线</option>
-                  <option value="frequent_dispute">⚖️ 频繁争议</option>
-                  <option value="vip_treat">👑 VIP 优待</option>
-                  <option value="other">📌 其他</option>
-                </select>
-                <label className="block text-xs text-gray-600 mb-1">严重程度</label>
-                <select
-                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm mb-2"
-                  value={tagForm.severity}
-                  onChange={(e) => setTagForm((f) => ({ ...f, severity: Number(e.target.value) }))}
-                >
-                  <option value={1}>💡 提醒</option>
-                  <option value={2}>⚠️ 警告</option>
-                  <option value={3}>🚨 高危</option>
-                </select>
-                <label className="block text-xs text-gray-600 mb-1">备注（选填）</label>
-                <input
-                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm mb-3"
-                  placeholder="具体情况说明..."
-                  value={tagForm.note}
-                  onChange={(e) => setTagForm((f) => ({ ...f, note: e.target.value }))}
-                />
-                <div className="flex gap-2">
-                  <button
-                    className="flex-1 rounded-lg bg-gray-100 py-2 text-sm text-gray-600"
-                    onClick={() => setTagTarget(null)}
-                  >
-                    取消
-                  </button>
-                  <button
-                    className="flex-1 rounded-lg bg-orange-500 py-2 text-sm text-white font-medium disabled:opacity-50"
-                    onClick={submitTag}
-                    disabled={tagSubmitting}
-                  >
-                    {tagSubmitting ? "提交中..." : "提交标记"}
-                  </button>
-                </div>
-              </div>
-            </div>
+            <CustomerTagModal
+              tagTarget={tagTarget}
+              address={address}
+              onClose={() => setTagTarget(null)}
+              onSuccess={() => {
+                setToast("标记已提交");
+                setTimeout(() => setToast(null), 2000);
+              }}
+            />
           )}
         </>
       )}
     </div>
   );
 }
-
-// ─── Schedule sub-component ───
 
 const DAY_LABELS = [
   t("companion.i197"),
@@ -461,19 +306,10 @@ function ScheduleSection({
   setToast: (v: string | null) => void;
 }) {
   const [saving, setSaving] = useState(false);
-
-  const addSlot = (day: number) => {
-    setSlots([...slots, { day, start: "09:00", end: "22:00" }]);
-  };
-
-  const removeSlot = (idx: number) => {
-    setSlots(slots.filter((_, i) => i !== idx));
-  };
-
-  const updateSlot = (idx: number, field: "start" | "end", value: string) => {
+  const addSlot = (day: number) => setSlots([...slots, { day, start: "09:00", end: "22:00" }]);
+  const removeSlot = (idx: number) => setSlots(slots.filter((_, i) => i !== idx));
+  const updateSlot = (idx: number, field: "start" | "end", value: string) =>
     setSlots(slots.map((s, i) => (i === idx ? { ...s, [field]: value } : s)));
-  };
-
   const save = async () => {
     setSaving(true);
     try {
@@ -486,11 +322,7 @@ function ScheduleSection({
         },
         address
       );
-      if (res.ok) {
-        setToast("排班已保存");
-      } else {
-        setToast("保存失败");
-      }
+      setToast(res.ok ? "排班已保存" : "保存失败");
     } catch {
       setToast("保存失败");
     } finally {
@@ -498,7 +330,6 @@ function ScheduleSection({
       setTimeout(() => setToast(null), 2000);
     }
   };
-
   return (
     <section className="dl-card" style={{ padding: 16, marginTop: 12, marginBottom: 24 }}>
       <button
@@ -511,7 +342,6 @@ function ScheduleSection({
           {slots.length > 0 ? `${slots.length} 个时段` : t("companion.i204")}
         </span>
       </button>
-
       {show && (
         <div className="mt-3">
           {DAY_LABELS.map((label, day) => {

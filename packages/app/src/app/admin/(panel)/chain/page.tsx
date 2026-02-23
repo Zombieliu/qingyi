@@ -1,12 +1,11 @@
 "use client";
 import { t } from "@/lib/i18n/t";
-
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { RefreshCw } from "lucide-react";
 import { readCache, writeCache } from "@/lib/shared/client-cache";
-import * as chainOrderUtils from "@/lib/chain/chain-order-utils";
 import { StateBlock } from "@/app/components/state-block";
 import { ConfirmDialog } from "@/app/components/confirm-dialog";
+import { ChainOrdersTable, DisputedOrdersCard } from "./chain-components";
 
 type ChainOrder = {
   orderId: string;
@@ -75,12 +74,12 @@ export default function ChainPage() {
       const nextChain = Array.isArray(data?.chainOrders) ? data.chainOrders : [];
       const nextMissingLocal = Array.isArray(data?.missingLocal) ? data.missingLocal : [];
       const nextMissingChain = Array.isArray(data?.missingChain) ? data.missingChain : [];
-      const nextAutoCancelHours =
-        typeof data?.autoCancel?.hours === "number" ? data.autoCancel.hours : null;
       setChainOrders(nextChain);
       setMissingLocal(nextMissingLocal);
       setMissingChain(nextMissingChain);
-      setAutoCancelHours(nextAutoCancelHours);
+      setAutoCancelHours(
+        typeof data?.autoCancel?.hours === "number" ? data.autoCancel.hours : null
+      );
       writeCache(cacheKey, {
         chainOrders: nextChain,
         missingLocal: nextMissingLocal,
@@ -97,39 +96,6 @@ export default function ChainPage() {
     loadData();
   }, []);
 
-  const statusLabel = (status: number) => {
-    switch (status) {
-      case 0:
-        return t("admin.chain.002");
-      case 1:
-        return t("admin.chain.003");
-      case 2:
-        return t("admin.chain.004");
-      case 3:
-        return t("admin.chain.005");
-      case 4:
-        return t("admin.chain.006");
-      case 5:
-        return t("admin.chain.007");
-      case 6:
-        return t("admin.chain.008");
-      default:
-        return `未知(${status})`;
-    }
-  };
-
-  const statusBadgeClass = (status: number) => {
-    if (status === 4) return "admin-badge warm";
-    if (status === 6) return "admin-badge neutral";
-    return "admin-badge";
-  };
-
-  const formatAmount = (value: string) => {
-    const num = Number(value);
-    if (!Number.isFinite(num)) return value;
-    return (num / 100).toFixed(2);
-  };
-
   const resolveStatus = useCallback((order: ChainOrder) => {
     if (typeof order.effectiveStatus === "number") return order.effectiveStatus;
     if (typeof order.localStatus === "number") return Math.max(order.localStatus, order.status);
@@ -137,7 +103,7 @@ export default function ChainPage() {
   }, []);
 
   const disputedOrders = useMemo(
-    () => chainOrders.filter((order) => resolveStatus(order) === 4),
+    () => chainOrders.filter((o) => resolveStatus(o) === 4),
     [chainOrders, resolveStatus]
   );
 
@@ -155,11 +121,8 @@ export default function ChainPage() {
         }),
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        setError(data?.error || t("admin.panel.chain.i025"));
-      } else {
-        await loadData();
-      }
+      if (!res.ok) setError(data?.error || t("admin.panel.chain.i025"));
+      else await loadData();
     } finally {
       setAction(null);
     }
@@ -170,10 +133,7 @@ export default function ChainPage() {
     description?: string;
     confirmLabel?: string;
     action: () => Promise<void>;
-  }) => {
-    setConfirmAction(payload);
-  };
-
+  }) => setConfirmAction(payload);
   const runConfirmAction = async () => {
     if (!confirmAction) return;
     setConfirmBusy(true);
@@ -185,7 +145,7 @@ export default function ChainPage() {
     }
   };
 
-  const forceCancel = async (orderId: string) => {
+  const forceCancel = (orderId: string) => {
     openConfirm({
       title: t("admin.panel.chain.i150"),
       description: t("admin.panel.chain.i151"),
@@ -199,11 +159,8 @@ export default function ChainPage() {
             body: JSON.stringify({ orderId }),
           });
           const data = await res.json().catch(() => ({}));
-          if (!res.ok) {
-            setError(data?.error || t("admin.panel.chain.i026"));
-          } else {
-            await loadData();
-          }
+          if (!res.ok) setError(data?.error || t("admin.panel.chain.i026"));
+          else await loadData();
         } finally {
           setCancelingOrderId(null);
         }
@@ -211,7 +168,7 @@ export default function ChainPage() {
     });
   };
 
-  const runAutoCancel = async () => {
+  const runAutoCancel = () => {
     openConfirm({
       title: t("admin.panel.chain.i153"),
       description: t("admin.panel.chain.i154"),
@@ -273,7 +230,7 @@ export default function ChainPage() {
     }
   };
 
-  const cleanupMissingChain = async () => {
+  const cleanupMissingChain = () => {
     if (missingChain.length === 0) return;
     openConfirm({
       title: t("admin.panel.chain.i156"),
@@ -298,10 +255,10 @@ export default function ChainPage() {
     });
   };
 
-  const autoCancelMs = useMemo(() => {
-    if (!autoCancelHours || autoCancelHours <= 0) return null;
-    return autoCancelHours * 60 * 60 * 1000;
-  }, [autoCancelHours]);
+  const autoCancelMs = useMemo(
+    () => (autoCancelHours && autoCancelHours > 0 ? autoCancelHours * 3600000 : null),
+    [autoCancelHours]
+  );
   const autoCancelDisabled = autoCancelHours === null || autoCancelHours <= 0;
 
   return (
@@ -322,14 +279,14 @@ export default function ChainPage() {
                 style={{ width: 140 }}
                 placeholder={t("admin.chain.009")}
                 value={manualOrderId}
-                onChange={(event) => setManualOrderId(event.target.value)}
+                onChange={(e) => setManualOrderId(e.target.value)}
               />
               <input
                 className="admin-input"
                 style={{ width: 220 }}
                 placeholder={t("admin.chain.010")}
                 value={manualDigest}
-                onChange={(event) => setManualDigest(event.target.value)}
+                onChange={(e) => setManualDigest(e.target.value)}
               />
               <button className="admin-btn ghost" onClick={runManualSync} disabled={manualSyncing}>
                 {manualSyncing ? t("admin.panel.chain.i030") : t("admin.chain.011")}
@@ -365,198 +322,26 @@ export default function ChainPage() {
         ) : null}
       </div>
 
-      <div className="admin-card">
-        <div className="admin-card-header">
-          <h3>{t("ui.chain.320")}</h3>
-          <div className="admin-card-actions">
-            <span className="admin-pill">共 {disputedOrders.length} 条</span>
-          </div>
-        </div>
-        {loading ? (
-          <StateBlock
-            tone="loading"
-            size="compact"
-            title={t("admin.chain.014")}
-            description={t("admin.chain.013")}
-          />
-        ) : disputedOrders.length === 0 ? (
-          <StateBlock
-            tone="empty"
-            size="compact"
-            title={t("admin.chain.015")}
-            description={t("admin.chain.016")}
-          />
-        ) : (
-          <div className="admin-stack">
-            {disputedOrders.map((order) => (
-              <div key={order.orderId} className="admin-card admin-card--subtle">
-                <div
-                  className="admin-card-header"
-                  style={{ alignItems: "flex-start", flexWrap: "wrap" }}
-                >
-                  <div>
-                    <div className="admin-text-strong">订单 #{order.orderId}</div>
-                    <div className="admin-meta">
-                      用户 {order.user.slice(0, 6)}...{order.user.slice(-4)} · 陪玩{" "}
-                      {order.companion.slice(0, 6)}...{order.companion.slice(-4)}
-                    </div>
-                    <div className="admin-meta" style={{ marginTop: 6 }}>
-                      撮合费 ¥{formatAmount(order.serviceFee)} · 押金 ¥{formatAmount(order.deposit)}
-                    </div>
-                  </div>
-                  <div
-                    className="admin-card-actions"
-                    style={{ flexDirection: "column", alignItems: "stretch" }}
-                  >
-                    <div style={{ display: "flex", gap: 8 }}>
-                      <input
-                        className="admin-input"
-                        style={{ width: 90 }}
-                        placeholder={t("admin.chain.017")}
-                        value={bps[order.orderId]?.service || ""}
-                        onChange={(event) =>
-                          setBps((prev) => ({
-                            ...prev,
-                            [order.orderId]: {
-                              ...prev[order.orderId],
-                              service: event.target.value,
-                            },
-                          }))
-                        }
-                      />
-                      <input
-                        className="admin-input"
-                        style={{ width: 90 }}
-                        placeholder={t("admin.chain.018")}
-                        value={bps[order.orderId]?.deposit || ""}
-                        onChange={(event) =>
-                          setBps((prev) => ({
-                            ...prev,
-                            [order.orderId]: {
-                              ...prev[order.orderId],
-                              deposit: event.target.value,
-                            },
-                          }))
-                        }
-                      />
-                    </div>
-                    <button
-                      className="admin-btn primary"
-                      style={{ marginTop: 8 }}
-                      disabled={action === order.orderId}
-                      onClick={() => resolveDispute(order.orderId)}
-                    >
-                      {action === order.orderId ? t("ui.chain.651") : t("admin.chain.019")}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+      <DisputedOrdersCard
+        disputedOrders={disputedOrders}
+        loading={loading}
+        action={action}
+        bps={bps}
+        onBpsChange={(id, field, val) =>
+          setBps((prev) => ({ ...prev, [id]: { ...prev[id], [field]: val } }))
+        }
+        onResolve={resolveDispute}
+      />
 
-      <div className="admin-card">
-        <div className="admin-card-header">
-          <h3>{t("ui.chain.321")}</h3>
-          <div className="admin-card-actions">
-            <span className="admin-pill">共 {chainOrders.length} 条</span>
-          </div>
-        </div>
-        {loading ? (
-          <StateBlock
-            tone="loading"
-            size="compact"
-            title={t("admin.chain.021")}
-            description={t("admin.chain.020")}
-          />
-        ) : chainOrders.length === 0 ? (
-          <StateBlock
-            tone="empty"
-            size="compact"
-            title={t("admin.chain.023")}
-            description={t("admin.chain.022")}
-          />
-        ) : (
-          <div className="admin-table-wrap">
-            <table className="admin-table">
-              <thead>
-                <tr>
-                  <th>{t("ui.chain.322")}</th>
-                  <th>{t("ui.chain.323")}</th>
-                  <th>{t("ui.chain.324")}</th>
-                  <th>{t("ui.chain.325")}</th>
-                  <th>{t("ui.chain.326")}</th>
-                  <th>{t("ui.chain.327")}</th>
-                  <th>{t("ui.chain.328")}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {chainOrders.map((order) => {
-                  const createdAt = Number(order.createdAt);
-                  const effectiveStatus = resolveStatus(order);
-                  const canCancel = chainOrderUtils.isChainOrderCancelable(effectiveStatus);
-                  const isExpired =
-                    autoCancelMs !== null &&
-                    chainOrderUtils.isChainOrderAutoCancelable(
-                      { ...order, status: effectiveStatus },
-                      Date.now(),
-                      autoCancelMs
-                    );
-                  return (
-                    <tr key={order.orderId}>
-                      <td data-label={t("admin.chain.024")}>{order.orderId}</td>
-                      <td data-label={t("admin.chain.025")}>
-                        <span className={statusBadgeClass(effectiveStatus)}>
-                          {statusLabel(effectiveStatus)}
-                        </span>
-                        {typeof order.localStatus === "number" &&
-                        order.localStatus > order.status ? (
-                          <span className="admin-badge warm" style={{ marginLeft: 8 }}>
-                            本地较新
-                          </span>
-                        ) : null}
-                        {isExpired ? (
-                          <span className="admin-badge warm" style={{ marginLeft: 8 }}>
-                            超期
-                          </span>
-                        ) : null}
-                      </td>
-                      <td data-label={t("admin.chain.026")}>¥{formatAmount(order.serviceFee)}</td>
-                      <td data-label={t("admin.chain.027")}>¥{formatAmount(order.deposit)}</td>
-                      <td data-label={t("admin.chain.028")}>
-                        {Number.isFinite(createdAt) && createdAt > 0
-                          ? new Date(createdAt).toLocaleString()
-                          : "-"}
-                      </td>
-                      <td data-label={t("admin.chain.029")}>
-                        {Number(order.disputeDeadline) > 0
-                          ? new Date(Number(order.disputeDeadline)).toLocaleString()
-                          : "-"}
-                      </td>
-                      <td data-label={t("admin.chain.030")}>
-                        {canCancel ? (
-                          <button
-                            className="admin-btn ghost"
-                            onClick={() => forceCancel(order.orderId)}
-                            disabled={cancelingOrderId === order.orderId}
-                          >
-                            {cancelingOrderId === order.orderId
-                              ? t("admin.panel.chain.i032")
-                              : t("admin.chain.031")}
-                          </button>
-                        ) : (
-                          <span className="admin-text-muted">{t("ui.chain.329")}</span>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+      <ChainOrdersTable
+        chainOrders={chainOrders}
+        loading={loading}
+        autoCancelMs={autoCancelMs}
+        cancelingOrderId={cancelingOrderId}
+        now={Date.now()}
+        resolveStatus={resolveStatus}
+        onForceCancel={forceCancel}
+      />
 
       <div className="admin-card">
         <div className="admin-card-header">
