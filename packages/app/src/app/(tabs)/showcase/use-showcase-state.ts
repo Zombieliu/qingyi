@@ -448,7 +448,7 @@ export function useShowcaseState() {
   const accept = async (id: string) => {
     const address = getCurrentAddress();
     if (!address) {
-      showToast("auth.login_before_accept");
+      showToast(t("auth.login_before_accept"));
       return;
     }
     const localOrder = orders.find((order) => order.id === id);
@@ -475,16 +475,16 @@ export function useShowcaseState() {
         }
       }
       if (!chainOrder) {
-        showToast("chain.order_not_found");
+        showToast(t("chain.order_not_found"));
         return;
       }
       const effectiveStatus = resolveChainStatus(chainOrder);
       if (effectiveStatus === 0) {
-        showToast("order.no_escrow_fee");
+        showToast(t("order.no_escrow_fee"));
         return;
       }
       if (effectiveStatus >= 2) {
-        showToast("order.deposit_locked_taken");
+        showToast(t("order.deposit_locked_taken"));
         return;
       }
       if (chainOrder.companion !== address) {
@@ -532,13 +532,13 @@ export function useShowcaseState() {
     await refreshOrders(true);
     await refreshMyOrders(true);
     setPendingScrollToAccepted(true);
-    showToast("order.accepted_moved");
+    showToast(t("order.accepted_moved"));
   };
 
   const markCompanionServiceEnded = async (orderId: string, isChain: boolean) => {
     const address = getCurrentAddress();
     if (!address) {
-      showToast("auth.login_before_end");
+      showToast(t("auth.login_before_end"));
       return;
     }
     const endedAt = Date.now();
@@ -567,7 +567,7 @@ export function useShowcaseState() {
       const chainOrder = chainOrders.find((order) => order.orderId === id) || null;
       const effectiveStatus = chainOrder ? resolveChainStatus(chainOrder) : undefined;
       if (typeof effectiveStatus === "number" && effectiveStatus >= 2) {
-        showToast("order.deposit_locked_no_cancel");
+        showToast(t("order.deposit_locked_no_cancel"));
         return;
       }
       await runChainAction(`cancel-${id}`, () => cancelOrderOnChain(id), t("ui.showcase.657"), id);
@@ -615,7 +615,7 @@ export function useShowcaseState() {
     if (!text) return;
     try {
       await navigator.clipboard.writeText(text);
-      showToast("clipboard.game_id_copied");
+      showToast(t("clipboard.game_id_copied"));
       setCopiedOrderId(orderId);
     } catch {
       const input = document.createElement("textarea");
@@ -627,10 +627,10 @@ export function useShowcaseState() {
       input.select();
       try {
         document.execCommand("copy");
-        showToast("clipboard.game_id_copied");
+        showToast(t("clipboard.game_id_copied"));
         setCopiedOrderId(orderId);
       } catch {
-        showToast("clipboard.copy_failed_manual");
+        showToast(t("clipboard.copy_failed_manual"));
       } finally {
         document.body.removeChild(input);
       }

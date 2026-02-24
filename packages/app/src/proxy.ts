@@ -123,6 +123,11 @@ const CSP_DIRECTIVES = [
 export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
   const ip = getClientIp(req);
+  const requestId =
+    req.headers.get("x-request-id") ||
+    (globalThis.crypto?.randomUUID
+      ? globalThis.crypto.randomUUID()
+      : `${Date.now()}-${Math.random()}`);
 
   // Admin IP allowlist
   if (pathname.startsWith("/api/admin") || pathname.startsWith("/admin")) {
@@ -166,6 +171,7 @@ export async function proxy(req: NextRequest) {
   const res = NextResponse.next();
 
   // Security headers
+  res.headers.set("X-Request-Id", requestId);
   res.headers.set("X-Content-Type-Options", "nosniff");
   res.headers.set("X-Frame-Options", "DENY");
   res.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");

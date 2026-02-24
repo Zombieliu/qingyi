@@ -18,6 +18,7 @@ import {
   trackCronFailed,
   trackPaymentEvent,
   trackLedgerCredit,
+  logBusinessEvent,
 } from "../business-events";
 
 let logSpy: ReturnType<typeof vi.spyOn>;
@@ -138,5 +139,33 @@ describe("business-events", () => {
     expect(((entry.data as Record<string, unknown>).userAddress as string).endsWith("...")).toBe(
       true
     );
+  });
+
+  it("logBusinessEvent emits with default info severity", () => {
+    logBusinessEvent("custom.event", { key: "value" });
+    const entry = lastFromSpy(logSpy);
+    expect(entry.event).toBe("custom.event");
+    expect(entry.severity).toBe("info");
+    expect((entry.data as Record<string, unknown>).key).toBe("value");
+  });
+
+  it("logBusinessEvent emits with custom severity", () => {
+    logBusinessEvent("custom.warning", { detail: "test" }, "warning");
+    const entry = lastFromSpy(warnSpy);
+    expect(entry.event).toBe("custom.warning");
+    expect(entry.severity).toBe("warning");
+  });
+
+  it("logBusinessEvent emits with error severity", () => {
+    logBusinessEvent("custom.error", { detail: "test" }, "error");
+    const entry = lastFromSpy(errorSpy);
+    expect(entry.event).toBe("custom.error");
+    expect(entry.severity).toBe("error");
+  });
+
+  it("logBusinessEvent emits with no data", () => {
+    logBusinessEvent("custom.simple");
+    const entry = lastFromSpy(logSpy);
+    expect(entry.event).toBe("custom.simple");
   });
 });

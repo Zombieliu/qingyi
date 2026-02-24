@@ -463,7 +463,7 @@ export default function Schedule() {
           ? (chainCurrentStatus ?? chainCurrentOrder.status)
           : chainCurrentOrder?.status;
       if (typeof effectiveStatus === "number" && effectiveStatus >= 2) {
-        setToast("order.deposit_locked_no_cancel");
+        setToast(t("order.deposit_locked_no_cancel"));
         return;
       }
       const ok = await runChainAction(
@@ -622,12 +622,12 @@ export default function Schedule() {
     if (!balanceReady) return;
     const addr = getCurrentAddress();
     if (!addr) {
-      setToast("auth.login_for_diamond");
+      setToast(t("auth.login_for_diamond"));
       return;
     }
     if (!hasEnoughDiamonds && !redirectRef.current) {
       redirectRef.current = true;
-      setToast("diamond.insufficient_redirecting");
+      setToast(t("diamond.insufficient_redirecting"));
       setTimeout(() => {
         window.location.href = "/wallet";
       }, 1200);
@@ -636,7 +636,7 @@ export default function Schedule() {
 
   const submit = () => {
     if (pickedNames.length === 0) {
-      setToast("form.select_service");
+      setToast(t("form.select_service"));
       return;
     }
     const originalTotal = pickedPrice || Math.max(pickedNames.length * 10, 10);
@@ -660,11 +660,11 @@ export default function Schedule() {
 
   const callOrder = async () => {
     if (!feeChecked) {
-      setToast("form.confirm_escrow_fee");
+      setToast(t("form.confirm_escrow_fee"));
       return;
     }
     if (!locked.items.length) {
-      setToast("form.service_required");
+      setToast(t("form.service_required"));
       return;
     }
     setCalling(true);

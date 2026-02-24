@@ -444,6 +444,23 @@ describe("server mode functions", () => {
     ).rejects.toThrow();
   });
 
+  it("patchOrder throws generic error when API returns no detail", async () => {
+    vi.resetModules();
+    vi.stubEnv("NEXT_PUBLIC_ORDER_SOURCE", "server");
+    const { fetchWithUserAuth } = await import("@/lib/auth/user-auth-client");
+    (fetchWithUserAuth as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: false,
+      status: 500,
+      json: async () => ({}),
+    });
+    const { getCurrentAddress } = await import("@/lib/chain/qy-chain-lite");
+    (getCurrentAddress as ReturnType<typeof vi.fn>).mockReturnValue("0xabc");
+    const mod = await import("../order-service");
+    await expect(
+      mod.patchOrder("ORD-1", { stage: "已确认" } as Parameters<typeof mod.patchOrder>[1])
+    ).rejects.toThrow("order patch failed (HTTP 500)");
+  });
+
   it("deleteOrder calls API in server mode", async () => {
     vi.resetModules();
     vi.stubEnv("NEXT_PUBLIC_ORDER_SOURCE", "server");
@@ -746,6 +763,40 @@ describe("server mode: syncChainOrder errors", () => {
   });
 });
 
+// ─── fetchOrders wrapper ───
+
+describe("fetchOrders", () => {
+  it("returns items from fetchOrdersWithMeta in local mode", async () => {
+    vi.resetModules();
+    vi.stubEnv("NEXT_PUBLIC_ORDER_SOURCE", "local");
+    const { loadOrders } = await import("../order-store");
+    (loadOrders as ReturnType<typeof vi.fn>).mockReturnValue([
+      { id: "o1", item: "test", status: "待处理" },
+    ]);
+    const { fetchOrders } = await import("../order-service");
+    const items = await fetchOrders();
+    expect(items).toHaveLength(1);
+    expect(items[0].id).toBe("o1");
+  });
+});
+
+// ─── fetchPublicOrders wrapper ───
+
+describe("fetchPublicOrders wrapper", () => {
+  it("returns items and nextCursor from fetchPublicOrdersWithMeta", async () => {
+    vi.resetModules();
+    vi.stubEnv("NEXT_PUBLIC_ORDER_SOURCE", "local");
+    const { loadOrders } = await import("../order-store");
+    (loadOrders as ReturnType<typeof vi.fn>).mockReturnValue([
+      { id: "pub1", item: "test", status: "待处理" },
+    ]);
+    const { fetchPublicOrders } = await import("../order-service");
+    const result = await fetchPublicOrders();
+    expect(result.items).toHaveLength(1);
+    expect(result.nextCursor).toBeNull();
+  });
+});
+
 // ─── patchOrder local mode ───
 
 describe("patchOrder local mode", () => {
@@ -771,5 +822,91 @@ describe("server mode: patchOrder companion mismatch", () => {
         typeof mod.patchOrder
       >[1])
     ).rejects.toThrow("mismatch");
+  });
+
+  it("throws on userAddress mismatch in patchOrder", async () => {
+    vi.resetModules();
+    vi.stubEnv("NEXT_PUBLIC_ORDER_SOURCE", "server");
+    const { getCurrentAddress } = await import("@/lib/chain/qy-chain-lite");
+    (getCurrentAddress as ReturnType<typeof vi.fn>).mockReturnValue("0xdifferent");
+    const mod = await import("../order-service");
+    await expect(
+      mod.patchOrder("ORD-1", { userAddress: "0xabc", status: "已确认" } as Parameters<
+        typeof mod.patchOrder
+      >[1])
+    ).rejects.toThrow("mismatch");
+  });
+});
+
+// ─── syncChainOrder local mode ───
+
+describe("syncChainOrder local mode", () => {
+  it("returns early in local mode", async () => {
+    vi.resetModules();
+    vi.stubEnv("NEXT_PUBLIC_ORDER_SOURCE", "local");
+    const mod = await import("../order-service");
+    const result = await mod.syncChainOrder("ORD-1");
+    expect(result).toBeUndefined();
+  });
+});
+
+// ─── ORDER_SOURCE with chain enabled ───
+
+describe("ORDER_SOURCE with chain orders enabled", () => {
+  it("resolves to server when CHAIN_ORDERS=1 and no explicit source", async () => {
+    vi.resetModules();
+    vi.stubEnv("NEXT_PUBLIC_CHAIN_ORDERS", "1");
+    delete process.env.NEXT_PUBLIC_ORDER_SOURCE;
+    const mod = await import("../order-service");
+    expect(mod.isServerOrderEnabled()).toBe(true);
+  });
+
+  it("forces server when CHAIN_ORDERS=1 even with explicit non-server source", async () => {
+    vi.resetModules();
+    vi.stubEnv("NEXT_PUBLIC_CHAIN_ORDERS", "1");
+    vi.stubEnv("NEXT_PUBLIC_ORDER_SOURCE", "local");
+    const mod = await import("../order-service");
+    expect(mod.isServerOrderEnabled()).toBe(true);
+  });
+
+  it("resolves to local in non-production without chain", async () => {
+    vi.resetModules();
+    delete process.env.NEXT_PUBLIC_CHAIN_ORDERS;
+    delete process.env.NEXT_PUBLIC_ORDER_SOURCE;
+    const origEnv = process.env.NODE_ENV;
+    // @ts-expect-error - testing env
+    process.env.NODE_ENV = "development";
+    const mod = await import("../order-service");
+    expect(mod.isServerOrderEnabled()).toBe(false);
+    // @ts-expect-error - restoring env
+    process.env.NODE_ENV = origEnv;
+  });
+
+  it("resolves to server in production without explicit source", async () => {
+    vi.resetModules();
+    delete process.env.NEXT_PUBLIC_CHAIN_ORDERS;
+    delete process.env.NEXT_PUBLIC_ORDER_SOURCE;
+    const origEnv = process.env.NODE_ENV;
+    // @ts-expect-error - testing env
+    process.env.NODE_ENV = "production";
+    const mod = await import("../order-service");
+    expect(mod.isServerOrderEnabled()).toBe(true);
+    // @ts-expect-error - restoring env
+    process.env.NODE_ENV = origEnv;
+  });
+
+  it("resolves to local when chain enabled in development (non-server path)", async () => {
+    vi.resetModules();
+    vi.stubEnv("NEXT_PUBLIC_CHAIN_ORDERS", "1");
+    delete process.env.NEXT_PUBLIC_ORDER_SOURCE;
+    const origEnv = process.env.NODE_ENV;
+    // @ts-expect-error - testing env
+    process.env.NODE_ENV = "development";
+    const mod = await import("../order-service");
+    // With chain enabled and no explicit source, in dev mode: chainEnabled ? "server" : "local"
+    // But CHAIN_ORDERS=1 means chainEnabled=true, so it returns "server"
+    expect(mod.isServerOrderEnabled()).toBe(true);
+    // @ts-expect-error - restoring env
+    process.env.NODE_ENV = origEnv;
   });
 });

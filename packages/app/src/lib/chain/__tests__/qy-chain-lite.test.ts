@@ -96,3 +96,33 @@ describe("createChainOrderId", () => {
     expect(ids.size).toBeGreaterThan(1);
   });
 });
+
+describe("getStoredWallet server-side", () => {
+  it("throws when window is undefined", () => {
+    const origWindow = globalThis.window;
+    // @ts-expect-error - simulating server environment
+    delete globalThis.window;
+    expect(() => getStoredWallet()).toThrow("仅支持在浏览器端使用 Passkey");
+    globalThis.window = origWindow;
+  });
+});
+
+describe("isVisualTestMode env flag", () => {
+  it("returns true when NEXT_PUBLIC_VISUAL_TEST env is 1", async () => {
+    vi.resetModules();
+    vi.stubEnv("NEXT_PUBLIC_CHAIN_ORDERS", "0");
+    vi.stubEnv("NEXT_PUBLIC_VISUAL_TEST", "1");
+    const mod = await import("../qy-chain-lite");
+    expect(mod.isVisualTestMode()).toBe(true);
+  });
+});
+
+describe("isChainOrdersEnabled env flag", () => {
+  it("returns true when NEXT_PUBLIC_CHAIN_ORDERS env is 1", async () => {
+    vi.resetModules();
+    vi.stubEnv("NEXT_PUBLIC_CHAIN_ORDERS", "1");
+    vi.stubEnv("NEXT_PUBLIC_VISUAL_TEST", "0");
+    const mod = await import("../qy-chain-lite");
+    expect(mod.isChainOrdersEnabled()).toBe(true);
+  });
+});

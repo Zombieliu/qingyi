@@ -38,6 +38,21 @@ describe("isAuthorizedCron", () => {
     const req = makeRequest({});
     expect(isAuthorizedCron(req)).toBe(false);
   });
+
+  it("rejects wrong query token", () => {
+    const req = makeRequest({ url: "https://example.com/api/cron/test?token=wrong-token" });
+    expect(isAuthorizedCron(req)).toBe(false);
+  });
+
+  it("rejects empty query token", () => {
+    const req = makeRequest({ url: "https://example.com/api/cron/test?token=" });
+    expect(isAuthorizedCron(req)).toBe(false);
+  });
+
+  it("rejects non-1 vercel cron header", () => {
+    const req = makeRequest({ headers: { "x-vercel-cron": "0" } });
+    expect(isAuthorizedCron(req)).toBe(false);
+  });
 });
 
 describe("isAuthorizedCron (no secret)", () => {

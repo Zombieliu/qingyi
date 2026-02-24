@@ -100,6 +100,53 @@ describe("deriveOrderStatus", () => {
 // ─── mergeChainStatus edge cases ───
 import { mergeChainStatus } from "../chain-status";
 
+// ─── getLocalChainStatus ───
+import { getLocalChainStatus } from "../chain-status";
+
+describe("getLocalChainStatus", () => {
+  it("returns undefined for null order", () => {
+    expect(getLocalChainStatus(null)).toBeUndefined();
+  });
+
+  it("returns undefined for undefined order", () => {
+    expect(getLocalChainStatus(undefined)).toBeUndefined();
+  });
+
+  it("returns chainStatus when it is a number", () => {
+    expect(getLocalChainStatus({ chainStatus: 3 })).toBe(3);
+  });
+
+  it("returns chainStatus 0 (falsy but valid)", () => {
+    expect(getLocalChainStatus({ chainStatus: 0 })).toBe(0);
+  });
+
+  it("returns undefined when chainStatus is not a number", () => {
+    expect(getLocalChainStatus({ chainStatus: undefined })).toBeUndefined();
+  });
+
+  it("falls back to meta.chain.status when chainStatus is undefined", () => {
+    expect(getLocalChainStatus({ chainStatus: undefined, meta: { chain: { status: 4 } } })).toBe(4);
+  });
+
+  it("returns undefined when meta.chain.status is not a number", () => {
+    expect(
+      getLocalChainStatus({ chainStatus: undefined, meta: { chain: { status: "invalid" } } })
+    ).toBeUndefined();
+  });
+
+  it("returns undefined when meta.chain is undefined", () => {
+    expect(getLocalChainStatus({ chainStatus: undefined, meta: {} })).toBeUndefined();
+  });
+
+  it("returns undefined when meta is undefined", () => {
+    expect(getLocalChainStatus({ chainStatus: undefined, meta: undefined })).toBeUndefined();
+  });
+
+  it("prefers chainStatus over meta.chain.status", () => {
+    expect(getLocalChainStatus({ chainStatus: 2, meta: { chain: { status: 5 } } })).toBe(2);
+  });
+});
+
 describe("mergeChainStatus", () => {
   it("returns undefined when both undefined", () => {
     expect(mergeChainStatus(undefined, undefined)).toBeUndefined();

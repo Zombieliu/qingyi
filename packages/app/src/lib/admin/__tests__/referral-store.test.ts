@@ -201,6 +201,30 @@ describe("queryReferrals", () => {
     const result = await queryReferrals({ page: 1, pageSize: 10, q: "0xinviter" });
     expect(result.items).toHaveLength(1);
   });
+
+  it("ignores 全部 status filter", async () => {
+    mockCount.mockResolvedValue(10);
+    mockFindMany.mockResolvedValue([baseReferral]);
+
+    const result = await queryReferrals({ page: 1, pageSize: 10, status: "全部" });
+    expect(result.total).toBe(10);
+  });
+
+  it("clamps page to valid range", async () => {
+    mockCount.mockResolvedValue(5);
+    mockFindMany.mockResolvedValue([]);
+
+    const result = await queryReferrals({ page: 999, pageSize: 10 });
+    expect(result.page).toBe(1);
+  });
+
+  it("handles empty keyword (whitespace only)", async () => {
+    mockCount.mockResolvedValue(5);
+    mockFindMany.mockResolvedValue([]);
+
+    const result = await queryReferrals({ page: 1, pageSize: 10, q: "  " });
+    expect(result.total).toBe(5);
+  });
 });
 
 describe("getLeaderboard", () => {
@@ -232,6 +256,35 @@ describe("getLeaderboard", () => {
     const entries = await getLeaderboard("referral", "month", 10);
     expect(entries).toHaveLength(1);
     expect(entries[0].value).toBe(5);
+  });
+
+  it("returns cached leaderboard when available", async () => {
+    const { getCache } = await import("../../server-cache");
+    vi.mocked(getCache).mockReturnValueOnce({
+      value: [{ rank: 1, address: "0xcached", value: 999 }],
+      updatedAt: Date.now(),
+    });
+    const { getLeaderboard } = await import("../referral-store");
+    const entries = await getLeaderboard("spend", "all", 10);
+    expect(entries).toHaveLength(1);
+    expect(entries[0].address).toBe("0xcached");
+    expect(mockGroupBy).not.toHaveBeenCalled();
+  });
+
+  it("handles null userAddress in spend leaderboard", async () => {
+    mockGroupBy.mockResolvedValue([{ userAddress: null, _sum: { amount: 100 } }]);
+    const { getLeaderboard } = await import("../referral-store");
+    const entries = await getLeaderboard("spend", "all", 10);
+    expect(entries[0].address).toBe("");
+  });
+
+  it("handles null companionAddress in companion leaderboard", async () => {
+    mockGroupBy.mockResolvedValue([
+      { companionAddress: null, _count: { id: 5 }, _sum: { amount: 0 } },
+    ]);
+    const { getLeaderboard } = await import("../referral-store");
+    const entries = await getLeaderboard("companion", "all", 10);
+    expect(entries[0].address).toBe("");
   });
 });
 
@@ -296,5 +349,71 @@ describe("processReferralReward disabled", () => {
     const { processReferralReward } = await import("../referral-store");
     const result = await processReferralReward("ORD-1", "0xinvitee", 100);
     expect(result).toBeNull();
+  });
+});
+
+describe("processReferralReward zero rewards", () => {
+  it("returns null when both rewards are zero", async () => {
+    mockFindUnique
+      .mockResolvedValueOnce({ ...baseReferral, status: "pending" })
+      .mockResolvedValueOnce({
+        id: "default",
+        mode: "fixed",
+        fixedInviter: 0,
+        fixedInvitee: 0,
+        percentInviter: 0,
+        percentInvitee: 0,
+        enabled: true,
+        updatedAt: null,
+      });
+
+    const { processReferralReward } = await import("../referral-store");
+    const result = await processReferralReward("ORD-1", "0xinvitee", 100);
+    expect(result).toBeNull();
+  });
+});
+
+describe("processReferralReward only inviter reward", () => {
+  it("credits only inviter when invitee reward is 0", async () => {
+    mockFindUnique
+      .mockResolvedValueOnce({ ...baseReferral, status: "pending" })
+      .mockResolvedValueOnce({
+        id: "default",
+        mode: "fixed",
+        fixedInviter: 50,
+        fixedInvitee: 0,
+        percentInviter: 0.05,
+        percentInvitee: 0,
+        enabled: true,
+        updatedAt: null,
+      });
+    mockUpdate.mockResolvedValue({ ...baseReferral, status: "rewarded" });
+
+    const { processReferralReward } = await import("../referral-store");
+    const result = await processReferralReward("ORD-1", "0xinvitee", 100);
+    expect(result).not.toBeNull();
+    expect(result!.inviterReward).toBe(50);
+    expect(result!.inviteeReward).toBe(0);
+  });
+});
+
+describe("mapReferral optional fields", () => {
+  it("maps rewardedAt when present", async () => {
+    const rewardedReferral = {
+      ...baseReferral,
+      status: "rewarded",
+      rewardInviter: 50,
+      rewardInvitee: 30,
+      triggerOrderId: "ORD-1",
+      rewardedAt: new Date(),
+    };
+    mockFindUnique.mockResolvedValue(rewardedReferral);
+
+    const result = await getReferralByInvitee("0xinvitee");
+    expect(result).not.toBeNull();
+    expect(result!.rewardInviter).toBe(50);
+    expect(result!.rewardInvitee).toBe(30);
+    expect(result!.triggerOrderId).toBe("ORD-1");
+    expect(result!.rewardedAt).toBeDefined();
   });
 });

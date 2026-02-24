@@ -51,3 +51,44 @@ describe("apiOk", () => {
     expect(body.count).toBe(42);
   });
 });
+
+describe("apiError additional codes", () => {
+  it("returns 400 for invalid_address", async () => {
+    const res = apiError("invalid_address");
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toBe("invalid_address");
+  });
+
+  it("returns 403 for forbidden", async () => {
+    const res = apiError("forbidden");
+    expect(res.status).toBe(403);
+  });
+
+  it("returns 429 for locked", async () => {
+    const res = apiError("locked");
+    expect(res.status).toBe(429);
+  });
+
+  it("returns 500 for persist_failed", async () => {
+    const res = apiError("persist_failed");
+    expect(res.status).toBe(500);
+  });
+
+  it("returns 403 for ip_forbidden", async () => {
+    const res = apiError("ip_forbidden");
+    expect(res.status).toBe(403);
+  });
+
+  it("returns message when provided", async () => {
+    const res = apiError("forbidden", "IP blocked");
+    const body = await res.json();
+    expect(body.message).toBe("IP blocked");
+  });
+
+  it("omits message when not provided", async () => {
+    const res = apiError("forbidden");
+    const body = await res.json();
+    expect(body.message).toBeUndefined();
+  });
+});

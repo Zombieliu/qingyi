@@ -34,3 +34,25 @@ describe("formatRelativeTime", () => {
     expect(result).toContain("前");
   });
 });
+
+describe("Date input variants", () => {
+  const dateObj = new Date("2025-01-15T06:30:00Z");
+
+  it("formatShortDateTime accepts Date object", () => {
+    expect(formatShortDateTime(dateObj)).toBe("01/15 14:30");
+  });
+
+  it("formatFullDateTime accepts Date object", () => {
+    expect(formatFullDateTime(dateObj)).toBe("2025/01/15 14:30");
+  });
+
+  it("formatDateISO accepts Date object", () => {
+    expect(formatDateISO(dateObj)).toBe("2025-01-15");
+  });
+
+  it("formatRelativeTime accepts Date object", () => {
+    const result = formatRelativeTime(dateObj);
+    expect(typeof result).toBe("string");
+    expect(result).toContain("前");
+  });
+});

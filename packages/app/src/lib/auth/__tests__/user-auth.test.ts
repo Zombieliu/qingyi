@@ -431,3 +431,123 @@ describe("getUserSessionFromToken expired", () => {
     expect(mockSessionStore.removeUserSessionByHash).toHaveBeenCalled();
   });
 });
+
+describe("getUserSessionFromTokenAllowExpired", () => {
+  it("returns null for empty token", async () => {
+    const { getUserSessionFromTokenAllowExpired } = await import("../user-auth");
+    const result = await getUserSessionFromTokenAllowExpired("");
+    expect(result).toBeNull();
+  });
+
+  it("returns null when session not found", async () => {
+    mockSessionStore.getUserSessionByHash.mockResolvedValue(null);
+    const { getUserSessionFromTokenAllowExpired } = await import("../user-auth");
+    const result = await getUserSessionFromTokenAllowExpired("some-token");
+    expect(result).toBeNull();
+  });
+
+  it("returns session within grace period", async () => {
+    const session = {
+      tokenHash: "h",
+      address: VALID_ADDR,
+      expiresAt: Date.now() - 1000, // recently expired
+    };
+    mockSessionStore.getUserSessionByHash.mockResolvedValue(session);
+    const { getUserSessionFromTokenAllowExpired } = await import("../user-auth");
+    const result = await getUserSessionFromTokenAllowExpired("tok");
+    expect(result).toBe(session);
+  });
+
+  it("removes session and returns null when beyond grace period", async () => {
+    const session = {
+      tokenHash: "h",
+      address: VALID_ADDR,
+      expiresAt: Date.now() - 31 * 24 * 60 * 60 * 1000 - 1000, // beyond 30-day grace
+    };
+    mockSessionStore.getUserSessionByHash.mockResolvedValue(session);
+    mockSessionStore.removeUserSessionByHash.mockResolvedValue(true);
+    const { getUserSessionFromTokenAllowExpired } = await import("../user-auth");
+    const result = await getUserSessionFromTokenAllowExpired("tok");
+    expect(result).toBeNull();
+    expect(mockSessionStore.removeUserSessionByHash).toHaveBeenCalled();
+  });
+});
+
+describe("renewUserSessionExpiry", () => {
+  it("extends session expiry", async () => {
+    mockSessionStore.updateUserSessionByHash.mockResolvedValue(undefined);
+    const { renewUserSessionExpiry } = await import("../user-auth");
+    const newExpiry = await renewUserSessionExpiry("hash123");
+    expect(newExpiry).toBeGreaterThan(Date.now());
+    expect(mockSessionStore.updateUserSessionByHash).toHaveBeenCalledWith(
+      "hash123",
+      expect.objectContaining({ expiresAt: expect.any(Number), lastSeenAt: expect.any(Number) })
+    );
+  });
+});
+
+describe("getUserSessionFromCookies", () => {
+  it("returns null when no cookie", async () => {
+    mockCookieStore.get.mockReturnValue(undefined);
+    const { getUserSessionFromCookies } = await import("../user-auth");
+    const result = await getUserSessionFromCookies();
+    expect(result).toBeNull();
+  });
+
+  it("returns null when session not found", async () => {
+    mockCookieStore.get.mockReturnValue({ value: "some-token" });
+    mockSessionStore.getUserSessionByHash.mockResolvedValue(null);
+    const { getUserSessionFromCookies } = await import("../user-auth");
+    const result = await getUserSessionFromCookies();
+    expect(result).toBeNull();
+  });
+
+  it("removes expired session and returns null", async () => {
+    mockCookieStore.get.mockReturnValue({ value: "expired-token" });
+    mockSessionStore.getUserSessionByHash.mockResolvedValue({
+      tokenHash: "h",
+      address: VALID_ADDR,
+      expiresAt: Date.now() - 1000,
+    });
+    mockSessionStore.removeUserSessionByHash.mockResolvedValue(true);
+    const { getUserSessionFromCookies } = await import("../user-auth");
+    const result = await getUserSessionFromCookies();
+    expect(result).toBeNull();
+    expect(mockSessionStore.removeUserSessionByHash).toHaveBeenCalled();
+  });
+
+  it("returns valid session and updates lastSeenAt", async () => {
+    const session = { tokenHash: "h", address: VALID_ADDR, expiresAt: Date.now() + 100000 };
+    mockCookieStore.get.mockReturnValue({ value: "valid-token" });
+    mockSessionStore.getUserSessionByHash.mockResolvedValue(session);
+    mockSessionStore.updateUserSessionByHash.mockResolvedValue(undefined);
+    const { getUserSessionFromCookies } = await import("../user-auth");
+    const result = await getUserSessionFromCookies();
+    expect(result).toBe(session);
+    expect(mockSessionStore.updateUserSessionByHash).toHaveBeenCalled();
+  });
+});
+
+describe("ensureSameOrigin edge cases via requireUserAuth", () => {
+  it("skips origin check for GET requests with cookie session", async () => {
+    const session = { tokenHash: "h", address: VALID_ADDR, expiresAt: Date.now() + 100000 };
+    mockCookieStore.get.mockReturnValue({ value: "cookie-token" });
+    mockSessionStore.getUserSessionByHash.mockResolvedValue(session);
+    mockSessionStore.updateUserSessionByHash.mockResolvedValue(undefined);
+    const req = makeRequest({ origin: "https://evil.com", host: "example.com" }, "GET");
+    const result = await requireUserAuth(req, { intent: "test", address: VALID_ADDR });
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.authType).toBe("session");
+  });
+
+  it("handles malformed origin URL gracefully", async () => {
+    const session = { tokenHash: "h", address: VALID_ADDR, expiresAt: Date.now() + 100000 };
+    mockCookieStore.get.mockReturnValue({ value: "cookie-token" });
+    mockSessionStore.getUserSessionByHash.mockResolvedValue(session);
+    mockSessionStore.updateUserSessionByHash.mockResolvedValue(undefined);
+    const req = makeRequest({ origin: "not-a-url", host: "example.com" });
+    const result = await requireUserAuth(req, { intent: "test", address: VALID_ADDR });
+    // ensureSameOrigin returns false for malformed URL → origin_mismatch
+    expect(result.ok).toBe(false);
+  });
+});

@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // Mock env
 vi.mock("@/lib/env", () => ({
-  env: { NEXT_PUBLIC_QY_DEFAULT_COMPANION: "" },
+  env: { NEXT_PUBLIC_QY_DEFAULT_COMPANION: "0x" + "d".repeat(64) },
 }));
 
 // Mock admin-store
@@ -52,12 +52,25 @@ vi.mock("@mysten/sui/utils", () => ({
     typeof addr === "string" && addr.startsWith("0x") && addr.length === 66,
 }));
 
+// Mock realtime
+const mockPublishOrderEvent = vi.fn().mockResolvedValue(undefined);
+vi.mock("../../realtime", () => ({
+  publishOrderEvent: (...a: unknown[]) => mockPublishOrderEvent(...a),
+}));
+
+// Mock business-events
+vi.mock("@/lib/business-events", () => ({
+  trackChainSyncResult: vi.fn(),
+  trackChainSyncFailed: vi.fn(),
+}));
+
 import { upsertChainOrder, syncChainOrders } from "../chain-sync";
 import type { ChainOrder } from "../chain-admin";
 
 const USER_ADDR = "0x" + "a".repeat(64);
 const COMPANION_ADDR = "0x" + "b".repeat(64);
 const ZERO_ADDR = "0x" + "0".repeat(64);
+const DEFAULT_COMPANION = "0x" + "d".repeat(64);
 
 function makeChainOrder(overrides: Partial<ChainOrder> = {}): ChainOrder {
   return {
@@ -122,6 +135,15 @@ describe("upsertChainOrder", () => {
       await upsertChainOrder(chain);
       const arg = mockAddOrder.mock.calls[0][0];
       expect(arg.meta.publicPool).toBe(false);
+    });
+
+    it("treats default companion as null (publicPool=true)", async () => {
+      mockGetOrderById.mockResolvedValue(null);
+      mockAddOrder.mockImplementation((o: unknown) => o);
+      const chain = makeChainOrder({ companion: DEFAULT_COMPANION });
+      await upsertChainOrder(chain);
+      const arg = mockAddOrder.mock.calls[0][0];
+      expect(arg.meta.publicPool).toBe(true);
     });
   });
 
@@ -224,6 +246,106 @@ describe("upsertChainOrder", () => {
       const patchArg = mockUpdateOrder.mock.calls[0][1];
       expect(patchArg.companionAddress).toBeUndefined();
     });
+
+    it("preserves chain meta when existing chainStatus is higher than incoming", async () => {
+      const existing = {
+        id: "order-1",
+        amount: 150,
+        stage: "已完成",
+        chainStatus: 5,
+        meta: { chain: { status: 5, disputeDeadline: "9999" } },
+      };
+      mockGetOrderById.mockResolvedValue(existing);
+      mockUpdateOrder.mockImplementation((_id: string, patch: Record<string, unknown>) => ({
+        ...existing,
+        ...patch,
+      }));
+      // Incoming status 3 is lower than existing 5
+      const chain = makeChainOrder({ status: 3 });
+      await upsertChainOrder(chain);
+      const patchArg = mockUpdateOrder.mock.calls[0][1];
+      // Should preserve the higher status
+      expect(patchArg.meta.chain.status).toBe(5);
+    });
+
+    it("preserves chain meta with empty existingChainMeta when status is higher", async () => {
+      const existing = {
+        id: "order-1",
+        amount: 150,
+        stage: "已完成",
+        chainStatus: 5,
+        meta: {}, // no chain sub-object
+      };
+      mockGetOrderById.mockResolvedValue(existing);
+      mockUpdateOrder.mockImplementation((_id: string, patch: Record<string, unknown>) => ({
+        ...existing,
+        ...patch,
+      }));
+      const chain = makeChainOrder({ status: 3 });
+      await upsertChainOrder(chain);
+      const patchArg = mockUpdateOrder.mock.calls[0][1];
+      expect(patchArg.meta.chain.status).toBe(5);
+    });
+
+    it("updates companionAddress when not preserving companion", async () => {
+      const existing = {
+        id: "order-1",
+        amount: 150,
+        stage: "待处理",
+        companionAddress: undefined,
+        meta: {},
+      };
+      mockGetOrderById.mockResolvedValue(existing);
+      mockUpdateOrder.mockImplementation((_id: string, patch: Record<string, unknown>) => ({
+        ...existing,
+        ...patch,
+      }));
+      const chain = makeChainOrder({ companion: COMPANION_ADDR });
+      await upsertChainOrder(chain);
+      const patchArg = mockUpdateOrder.mock.calls[0][1];
+      expect(patchArg.companionAddress).toBe(COMPANION_ADDR);
+    });
+
+    it("publishes cancelled event when stage changes to 已取消", async () => {
+      const existing = {
+        id: "order-1",
+        amount: 150,
+        stage: "进行中",
+        chainStatus: 2,
+        meta: {},
+      };
+      mockGetOrderById.mockResolvedValue(existing);
+      mockUpdateOrder.mockImplementation((_id: string, patch: Record<string, unknown>) => ({
+        ...existing,
+        ...patch,
+        stage: patch.stage,
+      }));
+      const chain = makeChainOrder({ status: 6 }); // cancelled
+      await upsertChainOrder(chain);
+      const patchArg = mockUpdateOrder.mock.calls[0][1];
+      expect(patchArg.stage).toBe("已取消");
+    });
+
+    it("does not trigger referral reward when processReferralReward throws", async () => {
+      const existing = {
+        id: "order-1",
+        amount: 150,
+        stage: "进行中",
+        chainStatus: 3,
+        meta: {},
+      };
+      mockGetOrderById.mockResolvedValue(existing);
+      mockUpdateOrder.mockImplementation((_id: string, patch: Record<string, unknown>) => ({
+        ...existing,
+        ...patch,
+        stage: patch.stage,
+      }));
+      mockProcessReferralReward.mockRejectedValue(new Error("referral error"));
+      const chain = makeChainOrder({ status: 5 });
+      // Should not throw even though processReferralReward fails
+      await upsertChainOrder(chain);
+      expect(mockProcessReferralReward).toHaveBeenCalled();
+    });
   });
 
   describe("toCny conversion", () => {
@@ -307,6 +429,20 @@ describe("syncChainOrders", () => {
 
     await syncChainOrders();
     expect(mockUpdateChainEventCursor).not.toHaveBeenCalled();
+  });
+
+  it("updates cursor when eventSeq differs", async () => {
+    const cursor = { txDigest: "d0", eventSeq: "0" };
+    mockGetChainEventCursor.mockResolvedValue({ cursor });
+    mockFetchChainOrdersAdminWithCursor.mockResolvedValue({
+      orders: [],
+      latestCursor: { txDigest: "d0", eventSeq: "1" },
+      latestEventMs: 3000,
+    });
+    mockUpdateChainEventCursor.mockResolvedValue(undefined);
+
+    await syncChainOrders();
+    expect(mockUpdateChainEventCursor).toHaveBeenCalled();
   });
 
   it("handles empty result", async () => {

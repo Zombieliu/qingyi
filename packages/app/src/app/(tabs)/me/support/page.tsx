@@ -91,7 +91,7 @@ export default function SupportPage() {
 
   const submit = async () => {
     if (!form.message.trim()) {
-      setHint("form.description_required");
+      setHint(t("form.description_required"));
       return;
     }
     setSubmitting(true);
@@ -127,9 +127,9 @@ export default function SupportPage() {
       persistLocalRequests(updated);
       setForm((prev) => ({ ...prev, message: "" }));
       setScreenshots([]);
-      setHint("apply.support_ticket_submitted");
+      setHint(t("apply.support_ticket_submitted"));
     } catch {
-      setHint("error.network");
+      setHint(t("error.network"));
     } finally {
       setSubmitting(false);
     }

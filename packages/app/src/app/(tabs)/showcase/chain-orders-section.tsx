@@ -136,7 +136,7 @@ export function ChainOrdersSection(props: Props) {
           });
           const data = await res.json().catch(() => ({}));
           if (res.ok) {
-            if (!data?.duplicated) setChainToast("diamond.auto_converted");
+            if (!data?.duplicated) setChainToast(t("diamond.auto_converted"));
           } else {
             setChainToast(data?.error || t("tabs.showcase.i132"));
           }

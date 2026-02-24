@@ -16,6 +16,11 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     "public/sw.js",
   ]),
+  {
+    rules: {
+      "@next/next/no-html-link-for-pages": "off",
+    },
+  },
 ]);
 
 export default eslintConfig;

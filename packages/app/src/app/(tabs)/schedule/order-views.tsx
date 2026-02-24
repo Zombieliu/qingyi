@@ -282,7 +282,7 @@ export function EnrouteView({
                   }
                   const effectiveStatus = mergeChainStatus(localChainStatus, chainOrder?.status);
                   if (effectiveStatus === undefined) {
-                    setToast("chain.order_not_synced");
+                    setToast(t("chain.order_not_synced"));
                     return;
                   }
                   if (effectiveStatus !== 2) {
@@ -459,11 +459,11 @@ export function PendingSettlementView({
             onClick={() => {
               if (!canDispute) {
                 if (!disputeDeadline) {
-                  setToast("chain.dispute_deadline_not_synced");
+                  setToast(t("chain.dispute_deadline_not_synced"));
                 } else if (!inDisputeWindow) {
-                  setToast("dispute.period_ended");
+                  setToast(t("dispute.period_ended"));
                 } else {
-                  setToast("dispute.invalid_status");
+                  setToast(t("dispute.invalid_status"));
                 }
                 return;
               }
@@ -489,7 +489,7 @@ export function PendingSettlementView({
             disabled={settling || chainAction === `finalize-${currentOrder.id}`}
             onClick={async () => {
               if (!canFinalize) {
-                setToast("dispute.cannot_settle");
+                setToast(t("dispute.cannot_settle"));
                 return;
               }
               // 非链上订单：直接 patchOrder 完成结算
