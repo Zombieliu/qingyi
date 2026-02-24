@@ -11,7 +11,7 @@ import { blake2b } from "@noble/hashes/blake2b";
 import { bytesToHex } from "@noble/hashes/utils";
 import { secp256r1 } from "@noble/curves/p256";
 import { PasskeyPublicKey } from "@mysten/sui/keypairs/passkey";
-import { fetchChainOrders } from "../packages/app/src/lib/qy-chain";
+import { fetchChainOrders } from "../packages/app/src/lib/chain/qy-chain";
 
 const MIN_GAS = BigInt(process.env.E2E_MIN_GAS || "50000000"); // default 0.05 SUI
 const PASSKEY_CREATE_TIMEOUT_MS = Number(process.env.E2E_PASSKEY_TIMEOUT_MS || "15000");

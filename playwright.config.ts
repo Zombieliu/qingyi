@@ -202,7 +202,7 @@ export default defineConfig({
     video: process.env.PW_VIDEO === "1" ? "on" : "retain-on-failure",
   },
   webServer: {
-    command: `npm run dev --workspace app -- --hostname ${webHost} --port 3000`,
+    command: `pnpm -C packages/app exec next dev --hostname ${webHost} --port 3000 --webpack`,
     url: baseURL,
     env: {
       ...envFromFile,

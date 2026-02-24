@@ -41,23 +41,70 @@ const chainReady = Boolean(
 async function login(page: any, tokenOverride?: string) {
   const tokenToUse = tokenOverride ?? adminToken;
   await page.goto("/admin/login");
-  await page.getByPlaceholder("请输入 ADMIN_DASH_TOKEN").fill(tokenToUse);
+  const origin = new URL(page.url()).origin;
+
+  try {
+    const res = await page.request.post("/api/admin/login", {
+      data: { token: tokenToUse },
+      headers: { "Content-Type": "application/json" },
+    });
+    if (res.ok()) {
+      const setCookie = res.headers()["set-cookie"] || "";
+      const match = setCookie.match(/admin_session=([^;]+)/);
+      if (match) {
+        await page.context().addCookies([
+          { name: "admin_session", value: match[1], url: origin },
+        ]);
+        await page.goto("/admin");
+        if (!page.url().includes("/admin/login")) return;
+      }
+    }
+  } catch {
+    // Fall back to legacy/sessionless login flow
+  }
+
+  await page.context().addCookies([
+    { name: "admin_token", value: tokenToUse, url: origin },
+  ]);
+  await page.goto("/admin");
+  if (!page.url().includes("/admin/login")) return;
+
+  await page.getByLabel("后台密钥").fill(tokenToUse);
   const submit = page.getByRole("button", { name: "进入后台" });
   for (let attempt = 0; attempt < 2; attempt += 1) {
-    const responsePromise = page.waitForResponse(
-      (res: any) => res.url().includes("/api/admin/login") && res.request().method() === "POST"
-    );
+    const responsePromise = page
+      .waitForResponse(
+        (res: any) => res.url().includes("/api/admin/login") && res.request().method() === "POST",
+        { timeout: 12_000 }
+      )
+      .then((res: any) => ({ kind: "response", res }))
+      .catch(() => ({ kind: "response-timeout" }));
+    const navPromise = page
+      .waitForURL(/\/admin$/, { timeout: 12_000 })
+      .then(() => ({ kind: "nav" }))
+      .catch(() => ({ kind: "nav-timeout" }));
     await submit.click();
-    const res = await responsePromise;
-    if (res.ok()) {
+    const result = await Promise.race([responsePromise, navPromise]);
+    if (result.kind === "nav") {
       return;
     }
-    const status = res.status();
-    if (attempt === 0 && (status === 429 || status >= 500)) {
-      await page.waitForTimeout(500);
-      continue;
+    if (result.kind === "response" && result.res.ok()) {
+      await page.waitForURL(/\/admin$/, { timeout: 10_000 });
+      return;
     }
-    throw new Error(`Admin login failed with status ${status}`);
+    if (result.kind === "response") {
+      const status = result.res.status();
+      if (attempt === 0 && (status === 429 || status >= 500)) {
+        await page.waitForTimeout(500);
+        continue;
+      }
+      throw new Error(`Admin login failed with status ${status}`);
+    }
+  }
+
+  const errorBadge = page.locator(".admin-badge", { hasText: "密钥" });
+  if (await errorBadge.isVisible().catch(() => false)) {
+    throw new Error(`Admin login failed: ${await errorBadge.textContent()}`);
   }
   await page.waitForURL(/\/admin$/, { timeout: 10_000 });
 }

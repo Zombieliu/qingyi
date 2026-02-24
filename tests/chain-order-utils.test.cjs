@@ -1,6 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const chainOrderUtils = require("../packages/app/src/lib/chain-order-utils.js");
+const chainOrderUtils = require("../packages/app/src/lib/chain/chain-order-utils.js");
 const {
   CHAIN_ORDER_STATUS,
   isChainOrderCancelable,
