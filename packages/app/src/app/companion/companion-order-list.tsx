@@ -14,6 +14,7 @@ type CompanionOrder = {
   createdAt: number;
   updatedAt: number | null;
   note?: string;
+  meta?: Record<string, unknown> | null;
 };
 
 const STAGE_COLORS: Record<string, string> = {
@@ -84,6 +85,17 @@ export function CompanionOrderList({
                 <span>{formatShortDateTime(order.createdAt)}</span>
                 {order.serviceFee ? <span>服务费 ¥{order.serviceFee}</span> : null}
               </div>
+              {(() => {
+                const profile = (order.meta?.companionProfile ||
+                  order.meta?.gameProfile ||
+                  null) as { gameName?: string; gameId?: string } | null;
+                if (!profile?.gameName && !profile?.gameId) return null;
+                return (
+                  <div className="mt-1 text-[10px] text-emerald-700">
+                    陪练信息：游戏名 {profile?.gameName || "-"} · ID {profile?.gameId || "-"}
+                  </div>
+                );
+              })()}
               {order.note && (
                 <div className="mt-1 text-[10px] text-gray-400 truncate">备注: {order.note}</div>
               )}

@@ -48,6 +48,7 @@ export async function GET(req: Request) {
         createdAt: true,
         updatedAt: true,
         note: true,
+        meta: true,
       },
     }),
   ]);
