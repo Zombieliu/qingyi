@@ -30,7 +30,10 @@ export async function POST(req: Request) {
     payload;
 
   if (!stripe) {
-    return NextResponse.json({ error: "STRIPE_SECRET_KEY not set" }, { status: 503 });
+    return NextResponse.json(
+      { error: "stripe_unavailable", message: "STRIPE_SECRET_KEY not set" },
+      { status: 503 }
+    );
   }
   const normalizedAddress = normalizeSuiAddress(userAddress);
   if (!isValidSuiAddress(normalizedAddress)) {

@@ -14,6 +14,9 @@ const ORDER_SOURCE = (() => {
     }
     return explicit;
   }
+  if (process.env.NODE_ENV === "production") {
+    return "server";
+  }
   return chainEnabled ? "server" : "local";
 })();
 

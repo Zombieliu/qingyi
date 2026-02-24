@@ -4,7 +4,7 @@ import { recordGrowthEvent } from "@/lib/analytics-store";
 import { rateLimit } from "@/lib/rate-limit";
 import { getClientIp } from "@/lib/shared/api-utils";
 import { env } from "@/lib/env";
-import { parseBody } from "@/lib/shared/api-validation";
+import { parseBodyRaw } from "@/lib/shared/api-validation";
 
 const trackSchema = z.object({
   event: z.string().trim().min(1).max(64),
@@ -24,9 +24,19 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "rate_limited" }, { status: 429 });
   }
 
-  const parsed = await parseBody(req, trackSchema);
+  const parsed = await parseBodyRaw(req, trackSchema);
   if (!parsed.success) return parsed.response;
-  const payload = parsed.data;
+  const { data: payload, rawBody } = parsed;
+
+  if (payload.userAddress) {
+    const { requireUserAuth } = await import("@/lib/auth/user-auth");
+    const auth = await requireUserAuth(req, {
+      intent: "track:event",
+      address: payload.userAddress,
+      body: rawBody,
+    });
+    if (!auth.ok) return auth.response;
+  }
 
   try {
     await recordGrowthEvent({

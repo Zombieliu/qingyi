@@ -129,9 +129,14 @@ export async function GET(req: Request) {
   const user = (searchParams.get("user") || "").trim();
   const q = (searchParams.get("q") || "").trim();
 
-  if (!isPublicPool && !userAddress && !user && !q) {
-    const admin = await requireAdmin(req, { role: "viewer", requireOrigin: false });
-    if (!admin.ok) return admin.response;
+  if (!isPublicPool) {
+    if (userAddress) {
+      const auth = await requireUserAuth(req, { intent: "orders:read", address: userAddress });
+      if (!auth.ok) return auth.response;
+    } else {
+      const admin = await requireAdmin(req, { role: "viewer", requireOrigin: false });
+      if (!admin.ok) return admin.response;
+    }
   }
 
   if (isPublicPool) {
@@ -229,10 +234,6 @@ export async function GET(req: Request) {
     address: userAddress || undefined,
     q: user || q || undefined,
   });
-  if (userAddress) {
-    const auth = await requireUserAuth(req, { intent: "orders:read", address: userAddress });
-    if (!auth.ok) return auth.response;
-  }
   return NextResponse.json(result);
 }
 
