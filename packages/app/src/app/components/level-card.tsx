@@ -22,13 +22,14 @@ type LevelProgress = {
   }[];
 };
 
-const TIER_COLORS = [
-  "from-gray-400 to-gray-500",
-  "from-emerald-400 to-emerald-600",
-  "from-blue-400 to-blue-600",
-  "from-purple-400 to-purple-600",
-  "from-amber-400 to-amber-600",
-  "from-rose-400 to-rose-600",
+// Progress bar gradient per tier level
+const TIER_BAR_COLORS = [
+  "linear-gradient(90deg, #0ea5e9, #38bdf8)",
+  "linear-gradient(90deg, #10b981, #34d399)",
+  "linear-gradient(90deg, #3b82f6, #60a5fa)",
+  "linear-gradient(90deg, #8b5cf6, #a78bfa)",
+  "linear-gradient(90deg, #f59e0b, #fbbf24)",
+  "linear-gradient(90deg, #f43f5e, #fb7185)",
 ];
 
 export function LevelCard() {
@@ -105,71 +106,165 @@ export function LevelCard() {
   if (!data) return null;
 
   const { points, currentTier, nextTier, pointsToNext, progress } = data;
-  const colorIdx = currentTier ? Math.min(currentTier.level, TIER_COLORS.length - 1) : 0;
+  const colorIdx = currentTier ? Math.min(currentTier.level, TIER_BAR_COLORS.length - 1) : 0;
+  const barGradient = TIER_BAR_COLORS[colorIdx];
 
   return (
-    <div className="dl-card" style={{ marginBottom: 12, overflow: "hidden" }}>
-      {/* Header gradient */}
+    <div className="dl-card">
+      {/* Level + Points header */}
       <div
-        className={`bg-gradient-to-r ${TIER_COLORS[colorIdx]} px-4 py-3 text-white`}
-        style={{ margin: "-12px -12px 12px -12px" }}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          marginBottom: 14,
+        }}
       >
-        <div className="flex items-center justify-between">
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <span
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: 40,
+              height: 40,
+              borderRadius: "var(--radius-md)",
+              background: barGradient,
+              fontSize: 20,
+              boxShadow: "0 6px 14px rgba(14, 165, 233, 0.18)",
+            }}
+          >
+            {currentTier?.badge || "⭐"}
+          </span>
           <div>
-            <div className="text-xs opacity-80">我的等级</div>
-            <div className="text-lg font-bold">
-              {currentTier?.badge || "⭐"} {currentTier?.name || t("components.level_card.i158")}
+            <div
+              style={{
+                fontSize: "var(--text-lg)",
+                fontWeight: 700,
+                color: "var(--ink-strong)",
+                lineHeight: 1.2,
+              }}
+            >
+              {currentTier?.name || t("components.level_card.i158")}
+            </div>
+            <div style={{ fontSize: "var(--text-xs)", color: "var(--muted-2)", marginTop: 2 }}>
+              我的等级
             </div>
           </div>
-          <div className="text-right">
-            <div className="text-2xl font-bold">{points}</div>
-            <div className="text-xs opacity-80">积分</div>
+        </div>
+        <div style={{ textAlign: "right" }}>
+          <div style={{ fontSize: "var(--text-xl)", fontWeight: 700, color: "var(--ink-strong)" }}>
+            {points}
           </div>
+          <div style={{ fontSize: "var(--text-xs)", color: "var(--muted-2)" }}>积分</div>
         </div>
       </div>
 
       {/* Progress bar */}
       {nextTier && (
-        <div className="px-0 mb-3">
-          <div className="flex justify-between text-xs text-gray-500 mb-1">
+        <div style={{ marginBottom: 14 }}>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              fontSize: "var(--text-xs)",
+              color: "var(--muted)",
+              marginBottom: 6,
+            }}
+          >
             <span>{currentTier?.name || t("components.level_card.i159")}</span>
             <span>{nextTier.name}</span>
           </div>
-          <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+          <div
+            style={{
+              height: 6,
+              borderRadius: "var(--radius-pill)",
+              background: "var(--surface-2)",
+              overflow: "hidden",
+            }}
+          >
             <div
-              className={`h-full rounded-full bg-gradient-to-r ${TIER_COLORS[colorIdx]}`}
-              style={{ width: `${progress}%`, transition: "width 0.5s ease" }}
+              style={{
+                height: "100%",
+                borderRadius: "var(--radius-pill)",
+                background: barGradient,
+                width: `${progress}%`,
+                transition: "width 0.5s cubic-bezier(0.22, 1, 0.36, 1)",
+              }}
             />
           </div>
-          <div className="text-xs text-gray-400 mt-1 text-center">还差 {pointsToNext} 积分升级</div>
+          <div
+            style={{
+              fontSize: "var(--text-xs)",
+              color: "var(--muted-2)",
+              marginTop: 4,
+              textAlign: "center",
+            }}
+          >
+            还差 {pointsToNext} 积分升级
+          </div>
         </div>
       )}
 
       {/* Tier roadmap */}
       {data.allTiers.length > 0 && (
-        <div className="flex gap-1 mb-3 overflow-x-auto pb-1">
-          {data.allTiers.map((tier) => (
-            <div
-              key={tier.id}
-              className={`flex-shrink-0 px-2 py-1 rounded text-[10px] ${
-                tier.reached
-                  ? "bg-indigo-50 text-indigo-600 font-medium"
-                  : "bg-gray-50 text-gray-400"
-              }`}
-            >
-              {tier.badge || "⭐"} {tier.name}
-              {tier.minPoints ? <span className="ml-1 opacity-60">{tier.minPoints}</span> : null}
-            </div>
-          ))}
+        <div
+          style={{ display: "flex", gap: 6, marginBottom: 14, overflowX: "auto", paddingBottom: 2 }}
+        >
+          {data.allTiers.map((tier, i) => {
+            const reached = tier.reached;
+            const isCurrent = currentTier?.id === tier.id;
+            return (
+              <div
+                key={tier.id}
+                style={{
+                  flexShrink: 0,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 4,
+                  padding: "4px 10px",
+                  borderRadius: "var(--radius-pill)",
+                  fontSize: "var(--text-xs)",
+                  fontWeight: isCurrent ? 600 : 400,
+                  background: isCurrent
+                    ? "var(--chip-bg)"
+                    : reached
+                      ? "var(--surface-2)"
+                      : "var(--tag-bg)",
+                  color: isCurrent
+                    ? "var(--chip-text)"
+                    : reached
+                      ? "var(--muted)"
+                      : "var(--muted-2)",
+                  border: isCurrent ? "1px solid var(--chip-border)" : "1px solid transparent",
+                }}
+              >
+                <span style={{ fontSize: 13 }}>{tier.badge || "⭐"}</span>
+                {tier.name}
+              </div>
+            );
+          })}
         </div>
       )}
 
-      {/* Checkin button */}
-      <div className="flex items-center justify-between">
-        <div className="text-xs text-gray-400">每日签到 +10 · 下单 1元=1分 · 评价 +20</div>
+      {/* Checkin + rules */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          padding: "10px 12px",
+          borderRadius: "var(--radius-sm)",
+          background: "var(--surface-2)",
+          border: "1px solid var(--border-soft)",
+        }}
+      >
+        <div style={{ fontSize: "var(--text-xs)", color: "var(--muted)", lineHeight: 1.4 }}>
+          每日签到 +10 · 下单 1元=1分 · 评价 +20
+        </div>
         <button
-          className="dl-tab-btn"
-          style={{ padding: "4px 12px", fontSize: 12 }}
+          className="dl-tab-btn primary"
+          style={{ padding: "6px 16px", fontSize: "var(--text-sm)", flexShrink: 0, marginLeft: 10 }}
           onClick={handleCheckin}
           disabled={checkinLoading}
         >
@@ -177,7 +272,16 @@ export function LevelCard() {
         </button>
       </div>
       {checkinResult && (
-        <div className="text-xs text-emerald-500 mt-2 text-center">{checkinResult}</div>
+        <div
+          style={{
+            fontSize: "var(--text-xs)",
+            color: "var(--success)",
+            marginTop: 8,
+            textAlign: "center",
+          }}
+        >
+          {checkinResult}
+        </div>
       )}
     </div>
   );

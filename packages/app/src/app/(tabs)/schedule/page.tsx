@@ -694,7 +694,7 @@ export default function Schedule() {
         userAddress: getCurrentAddress(),
         item: locked.items.join("、"),
         amount: locked.total,
-        status: t("ui.schedule.596"),
+        status: selectedPlayer ? t("ui.showcase.168") : t("ui.schedule.596"),
         time: new Date().toISOString(),
         chainDigest: chainDigest || undefined,
         serviceFee: locked.service,

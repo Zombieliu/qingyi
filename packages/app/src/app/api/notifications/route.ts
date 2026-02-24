@@ -5,6 +5,7 @@ import {
   getUnreadCount,
   markAsRead,
   markAllAsRead,
+  deleteAllNotifications,
 } from "@/lib/services/notification-service";
 
 /**
@@ -78,4 +79,22 @@ export async function PATCH(req: Request) {
   }
 
   return NextResponse.json({ error: "id or all required" }, { status: 400 });
+}
+
+/**
+ * DELETE /api/notifications — clear all
+ * body: { address: "0x..." }
+ */
+export async function DELETE(req: Request) {
+  const body = (await req.json().catch(() => ({}))) as { address?: string };
+  const address = (body.address || "").trim();
+  if (!address) {
+    return NextResponse.json({ error: "address required" }, { status: 400 });
+  }
+
+  const auth = await requireUserAuth(req, { intent: "notifications:delete", address });
+  if (!auth.ok) return auth.response;
+
+  const count = await deleteAllNotifications(auth.address);
+  return NextResponse.json({ ok: true, deleted: count });
 }

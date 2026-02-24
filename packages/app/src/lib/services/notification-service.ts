@@ -121,6 +121,16 @@ export async function markAllAsRead(userAddress: string) {
   return result.count;
 }
 
+/**
+ * 清空用户全部通知
+ */
+export async function deleteAllNotifications(userAddress: string) {
+  const result = await prisma.notification.deleteMany({
+    where: { userAddress },
+  });
+  return result.count;
+}
+
 // ─── 便捷方法：业务场景通知 ───
 
 export function notifyOrderStatusChange(params: {

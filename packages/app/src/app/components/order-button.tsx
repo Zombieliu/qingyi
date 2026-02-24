@@ -50,6 +50,18 @@ export default function OrderButton({ user, item, amount, note }: Props) {
   } | null>(null);
 
   const submit = async () => {
+    const currentAddress = isChainOrdersEnabled() ? getCurrentAddress() : "";
+    const gameProfile = currentAddress ? loadGameProfile(currentAddress) : null;
+    if (!gameProfile?.gameName || !gameProfile?.gameId) {
+      const go = window.confirm(
+        "请先填写三角洲行动的游戏用户名和ID，否则无法下单。\n\n点击确定前往设置。"
+      );
+      if (go) {
+        window.location.href = "/me/game-settings";
+      }
+      return;
+    }
+
     try {
       setLoading(true);
       setStatus(null);
@@ -66,8 +78,6 @@ export default function OrderButton({ user, item, amount, note }: Props) {
         });
         chainDigest = chainResult.digest;
       }
-      const currentAddress = isChainOrdersEnabled() ? getCurrentAddress() : "";
-      const gameProfile = currentAddress ? loadGameProfile(currentAddress) : null;
       const result = await createOrder({
         id: chainOrderId || `${Date.now()}`,
         user,

@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
-import { ArrowLeft, Bell, CheckCheck, Package, Gift, TrendingUp, Info } from "lucide-react";
+import { ArrowLeft, Bell, CheckCheck, Trash2, Package, Gift, TrendingUp, Info } from "lucide-react";
 import { getCurrentAddress } from "@/lib/chain/qy-chain-lite";
 import { fetchWithUserAuth } from "@/lib/auth/user-auth-client";
 import { StateBlock } from "@/app/components/state-block";
@@ -33,6 +33,7 @@ export default function NotificationsPage() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [markingAll, setMarkingAll] = useState(false);
+  const [clearing, setClearing] = useState(false);
 
   const fetchNotifications = useCallback(async () => {
     if (!address) {
@@ -91,6 +92,24 @@ export default function NotificationsPage() {
 
   const hasUnread = notifications.some((n) => !n.read);
 
+  const clearAll = async () => {
+    if (!window.confirm("确定清空所有消息？")) return;
+    setClearing(true);
+    await fetchWithUserAuth(
+      "/api/notifications",
+      {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ address }),
+      },
+      address
+    ).catch(() => {});
+    setNotifications([]);
+    setTotalPages(1);
+    setPage(1);
+    setClearing(false);
+  };
+
   return (
     <div className="dl-main">
       <header className="dl-topbar">
@@ -101,6 +120,16 @@ export default function NotificationsPage() {
           <span className="dl-time-text">消息中心</span>
         </div>
         <div className="dl-actions">
+          {notifications.length > 0 && (
+            <button
+              className="dl-icon-circle"
+              onClick={clearAll}
+              disabled={clearing}
+              aria-label="清空所有消息"
+            >
+              <Trash2 size={16} />
+            </button>
+          )}
           {hasUnread && (
             <button
               className="dl-icon-circle"

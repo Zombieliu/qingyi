@@ -44,13 +44,13 @@ const nextConfig: NextConfig = {
 const pwaConfig = process.env.PWA_BUILD === "1" ? withSerwist(nextConfig) : nextConfig;
 const analyzed = analyzeBuild(pwaConfig);
 
-export default withSentryConfig(
-  analyzed,
-  {
-    silent: true,
-    org: process.env.SENTRY_ORG,
-    project: process.env.SENTRY_PROJECT,
-    authToken: process.env.SENTRY_AUTH_TOKEN,
-    hideSourceMaps: true,
-  }
-);
+export default withSentryConfig(analyzed, {
+  silent: true,
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+  hideSourceMaps: true,
+  sourcemaps: {
+    deleteSourcemapsAfterUpload: true,
+  },
+});

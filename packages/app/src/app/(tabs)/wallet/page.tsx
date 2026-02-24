@@ -267,23 +267,13 @@ export default function Wallet() {
                 onChange={(event) => {
                   setCustomTouched(true);
                   setCustomAmount(event.target.value);
-                }}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter" && customOption) {
-                    setSelected(customOption);
+                  const raw = Number(event.target.value);
+                  if (Number.isFinite(raw) && Number.isInteger(raw) && raw > 0) {
+                    const price = Number((Math.floor(raw) * unitPrice).toFixed(2));
+                    setSelected({ amount: Math.floor(raw), price });
                   }
                 }}
               />
-              <button
-                type="button"
-                className="dl-tab-btn pay-custom-btn"
-                disabled={!customOption}
-                onClick={() => {
-                  if (customOption) setSelected(customOption);
-                }}
-              >
-                使用
-              </button>
             </div>
             <div className="pay-option-price" style={{ marginTop: 6 }}>
               预计 ¥{customOption ? customOption.price.toFixed(2) : "--"}（1 钻石 ≈ ¥
