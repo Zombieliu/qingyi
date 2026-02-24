@@ -54,3 +54,12 @@
 - MP：
 - Ops：
 
+## 6) 协作必读清单
+
+- `docs/COLLAB_GUIDE.md`
+- `docs/FRONTEND_GUIDE.md`
+- `docs/BACKEND_GUIDE.md`
+- `docs/TEAM_WORKFLOW.md`
+- `docs/RELEASE_RUNBOOK.md`
+- `docs/RELEASE_CHECKLIST.md`
+
