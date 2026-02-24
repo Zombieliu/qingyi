@@ -25,19 +25,14 @@ function toPublicToken(token: AdminAccessToken) {
   };
 }
 
-async function resolveParams(context: {
-  params: { tokenId: string } | Promise<{ tokenId: string }>;
-}) {
-  return await Promise.resolve(context.params);
-}
+type RouteContext = {
+  params: Promise<{ tokenId: string }>;
+};
 
-export async function PATCH(
-  req: Request,
-  context: { params: { tokenId: string } | Promise<{ tokenId: string }> }
-) {
+export async function PATCH(req: Request, { params }: RouteContext) {
   const auth = await requireAdmin(req, { role: "admin" });
   if (!auth.ok) return auth.response;
-  const { tokenId } = await resolveParams(context);
+  const { tokenId } = await params;
 
   const parsed = await parseBody(req, patchSchema);
   if (!parsed.success) return parsed.response;
@@ -65,13 +60,10 @@ export async function PATCH(
   return NextResponse.json(toPublicToken(updated));
 }
 
-export async function DELETE(
-  req: Request,
-  context: { params: { tokenId: string } | Promise<{ tokenId: string }> }
-) {
+export async function DELETE(req: Request, { params }: RouteContext) {
   const auth = await requireAdmin(req, { role: "admin" });
   if (!auth.ok) return auth.response;
-  const { tokenId } = await resolveParams(context);
+  const { tokenId } = await params;
 
   const removed = await removeAccessToken(tokenId);
   if (!removed) {

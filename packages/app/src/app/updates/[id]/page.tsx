@@ -5,9 +5,14 @@ import { t } from "@/lib/i18n/t";
 
 export const dynamic = "force-dynamic";
 
-export async function generateMetadata({ params }: { params: { id: string } }) {
+type PageProps = {
+  params: Promise<{ id: string }>;
+};
+
+export async function generateMetadata({ params }: PageProps) {
+  const { id } = await params;
   const announcements = await listPublicAnnouncements();
-  const item = announcements.find((a) => a.id === params.id);
+  const item = announcements.find((a) => a.id === id);
   if (!item) {
     return { title: t("updates.id.i244"), robots: { index: false, follow: false } };
   }
@@ -26,9 +31,10 @@ export async function generateMetadata({ params }: { params: { id: string } }) {
   };
 }
 
-export default async function UpdateDetailPage({ params }: { params: { id: string } }) {
+export default async function UpdateDetailPage({ params }: PageProps) {
+  const { id } = await params;
   const announcements = await listPublicAnnouncements();
-  const item = announcements.find((a) => a.id === params.id);
+  const item = announcements.find((a) => a.id === id);
   if (!item) return notFound();
 
   const publishedTime = new Date(item.createdAt).toISOString();

@@ -120,7 +120,7 @@ const CSP_DIRECTIVES = [
   "form-action 'self'",
 ].join("; ");
 
-export async function middleware(req: NextRequest) {
+export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
   const ip = getClientIp(req);
 
