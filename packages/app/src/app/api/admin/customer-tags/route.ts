@@ -27,7 +27,7 @@ const addTagSchema = z.object({
 /** GET /api/admin/customer-tags — list tagged customers or get tags for one */
 export async function GET(req: NextRequest) {
   const auth = await requireAdmin(req, { role: "viewer" });
-  if ("status" in auth) return auth;
+  if (!auth.ok) return auth.response;
 
   const userAddress = req.nextUrl.searchParams.get("userAddress");
 
@@ -45,7 +45,7 @@ export async function GET(req: NextRequest) {
 /** POST /api/admin/customer-tags — add a tag (admin) */
 export async function POST(req: NextRequest) {
   const auth = await requireAdmin(req, { role: "ops" });
-  if ("status" in auth) return auth;
+  if (!auth.ok) return auth.response;
 
   const parsed = await parseBody(req, addTagSchema);
   if (!parsed.success) return parsed.response;
@@ -66,7 +66,7 @@ export async function POST(req: NextRequest) {
 /** DELETE /api/admin/customer-tags?id=xxx — deactivate a tag */
 export async function DELETE(req: NextRequest) {
   const auth = await requireAdmin(req, { role: "ops" });
-  if ("status" in auth) return auth;
+  if (!auth.ok) return auth.response;
 
   const id = req.nextUrl.searchParams.get("id");
   if (!id) return NextResponse.json({ error: "id required" }, { status: 400 });
