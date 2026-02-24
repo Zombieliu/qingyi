@@ -59,6 +59,40 @@ if (enablePrecaching) {
 }
 registerRuntimeCaching(...runtimeCaching);
 
+// Ensure offline fallback is cached.
+self.addEventListener("install", (event) => {
+  event.waitUntil(caches.open("pages-cache").then((cache) => cache.add("/offline.html")));
+});
+
+// Consume navigation preload and keep a cached fallback for HTML navigations.
+const navigationHandler = new NetworkFirst({
+  cacheName: "pages-cache",
+  networkTimeoutSeconds: 6,
+});
+
+self.addEventListener("fetch", (event) => {
+  if (event.request.mode !== "navigate") return;
+  event.respondWith(
+    (async () => {
+      try {
+        const preload = await event.preloadResponse;
+        if (preload) return preload;
+        return await navigationHandler.handle({ event, request: event.request });
+      } catch {
+        const cache = await caches.open("pages-cache");
+        const cached = await cache.match(event.request);
+        if (cached) return cached;
+        const offline = await caches.match("/offline.html");
+        if (offline) return offline;
+        return new Response("Offline", {
+          status: 503,
+          headers: { "Content-Type": "text/plain; charset=utf-8" },
+        });
+      }
+    })()
+  );
+});
+
 installSerwist({
   cleanupOutdatedCaches: true,
   navigationPreload: true,

@@ -113,6 +113,8 @@ const CSP_DIRECTIVES = [
   "img-src 'self' data: blob: https://placehold.co",
   "font-src 'self' data:",
   "connect-src 'self' https://*.sui.io https://*.sentry.io wss://*.sui.io https://*.upstash.io",
+  "worker-src 'self' blob:",
+  "child-src blob:",
   "frame-ancestors 'none'",
   "base-uri 'self'",
   "form-action 'self'",
