@@ -44,16 +44,10 @@ export function PublicOrderCard({
             </div>
           </div>
         ) : (
-          <div className="mt-2 flex items-center gap-6 text-sm text-gray-900">
-            <div>
-              <div className="font-bold">{order.driver.name}</div>
-              <div className="text-xs text-gray-500">{order.driver.car}</div>
-            </div>
-            <div className="text-right text-sm">
-              <div className="font-semibold text-emerald-600">{order.driver.eta}</div>
-              {order.driver.price && (
-                <div className="text-xs text-gray-500">一口价 {order.driver.price} 钻石</div>
-              )}
+          <div className="mt-2 text-sm text-gray-900">
+            <div className="font-bold">{t("ui.showcase.164")}</div>
+            <div className="text-xs text-gray-500">
+              游戏名 {profile?.gameName || "-"} · ID {profile?.gameId || "-"}
             </div>
           </div>
         )}
