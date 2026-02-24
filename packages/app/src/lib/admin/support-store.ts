@@ -16,6 +16,7 @@ function mapSupportTicket(row: {
   message: string;
   status: string;
   note: string | null;
+  reply: string | null;
   meta: Prisma.JsonValue | null;
   createdAt: Date;
   updatedAt: Date | null;
@@ -29,6 +30,7 @@ function mapSupportTicket(row: {
     message: row.message,
     status: row.status as AdminSupportTicket["status"],
     note: row.note || undefined,
+    reply: row.reply || undefined,
     meta: (row.meta as Record<string, unknown> | null) || undefined,
     createdAt: row.createdAt.getTime(),
     updatedAt: row.updatedAt ? row.updatedAt.getTime() : undefined,
@@ -131,6 +133,7 @@ export async function updateSupportTicket(ticketId: string, patch: Partial<Admin
       data: {
         status: patch.status,
         note: patch.note,
+        reply: patch.reply,
         meta: patch.meta ? (patch.meta as Prisma.InputJsonValue) : undefined,
         updatedAt: new Date(),
       },

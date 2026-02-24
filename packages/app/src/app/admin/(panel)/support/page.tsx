@@ -16,6 +16,7 @@ export default function SupportPage() {
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState(t("admin.support.001"));
   const [saving, setSaving] = useState<Record<string, boolean>>({});
+  const [replyDrafts, setReplyDrafts] = useState<Record<string, string>>({});
   const [page, setPage] = useState(1);
   const [cursor, setCursor] = useState<string | null>(null);
   const [prevCursors, setPrevCursors] = useState<Array<string | null>>([]);
@@ -200,8 +201,10 @@ export default function SupportPage() {
                   <th>{t("ui.support.372")}</th>
                   <th>{t("ui.support.373")}</th>
                   <th>{t("ui.support.374")}</th>
+                  <th>{t("ui.support.380")}</th>
                   <th>{t("ui.support.375")}</th>
                   <th>{t("ui.support.376")}</th>
+                  <th>{t("ui.support.379")}</th>
                   <th>{t("ui.support.377")}</th>
                   <th>{t("ui.support.378")}</th>
                 </tr>
@@ -221,6 +224,19 @@ export default function SupportPage() {
                     </td>
                     <td data-label={t("admin.support.011")}>
                       <div className="admin-meta">{ticket.message}</div>
+                    </td>
+                    <td data-label={t("admin.support.021")}>
+                      <div className="flex gap-1 flex-wrap">
+                        {(ticket.meta?.screenshots as string[] | undefined)?.map((src, i) => (
+                          <a key={i} href={src} target="_blank" rel="noopener noreferrer">
+                            <img
+                              src={src}
+                              alt=""
+                              className="w-10 h-10 rounded object-cover border border-slate-200"
+                            />
+                          </a>
+                        ))}
+                      </div>
                     </td>
                     <td data-label={t("admin.support.012")}>
                       <select
@@ -257,6 +273,38 @@ export default function SupportPage() {
                         }
                         onBlur={(event) => updateTicket(ticket.id, { note: event.target.value })}
                       />
+                    </td>
+                    <td data-label={t("admin.support.018")}>
+                      {ticket.reply ? (
+                        <div className="admin-meta">{ticket.reply}</div>
+                      ) : (
+                        <div className="flex gap-1">
+                          <input
+                            className="admin-input"
+                            style={{ minWidth: 120 }}
+                            placeholder={t("admin.support.019")}
+                            value={replyDrafts[ticket.id] || ""}
+                            onChange={(event) =>
+                              setReplyDrafts((prev) => ({
+                                ...prev,
+                                [ticket.id]: event.target.value,
+                              }))
+                            }
+                          />
+                          <button
+                            className="admin-btn ghost"
+                            disabled={!replyDrafts[ticket.id]?.trim()}
+                            onClick={() => {
+                              const text = replyDrafts[ticket.id]?.trim();
+                              if (!text) return;
+                              updateTicket(ticket.id, { reply: text });
+                              setReplyDrafts((prev) => ({ ...prev, [ticket.id]: "" }));
+                            }}
+                          >
+                            {t("admin.support.020")}
+                          </button>
+                        </div>
+                      )}
                     </td>
                     <td data-label={t("admin.support.015")}>
                       {formatShortDateTime(ticket.createdAt)}

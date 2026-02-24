@@ -14,6 +14,7 @@ const supportSchema = z.object({
   userAddress: z.string().optional(),
   contact: z.string().optional(),
   topic: z.string().optional(),
+  screenshots: z.array(z.string().max(700_000)).max(3).optional(),
 });
 
 export async function POST(req: Request) {
@@ -33,6 +34,7 @@ export async function POST(req: Request) {
     topic: body.topic || "其他",
     message: body.message,
     status: "待处理" as SupportStatus,
+    meta: body.screenshots?.length ? { screenshots: body.screenshots } : undefined,
     createdAt: Date.now(),
   };
 

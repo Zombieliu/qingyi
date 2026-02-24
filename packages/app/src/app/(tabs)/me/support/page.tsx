@@ -2,7 +2,7 @@
 import { t } from "@/lib/i18n/t";
 
 import Link from "next/link";
-import { ArrowLeft, Headset, MessageCircle, Send, Clock3 } from "lucide-react";
+import { ArrowLeft, Headset, MessageCircle, Send, Clock3, ImagePlus, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { PASSKEY_STORAGE_KEY } from "@/app/components/passkey-wallet";
 import { StateBlock } from "@/app/components/state-block";
@@ -16,6 +16,7 @@ type SupportRequest = {
   message: string;
   contact?: string;
   status: string;
+  reply?: string;
   createdAt: number;
 };
 
@@ -60,6 +61,8 @@ export default function SupportPage() {
   const [submitting, setSubmitting] = useState(false);
   const [hint, setHint] = useState<string | null>(null);
   const [requests, setRequests] = useState<SupportRequest[]>([]);
+  const [screenshots, setScreenshots] = useState<string[]>([]);
+  const [agreed, setAgreed] = useState(false);
 
   const walletAddress = useMemo(() => {
     if (typeof window === "undefined") return "";
@@ -72,8 +75,19 @@ export default function SupportPage() {
   }, []);
 
   useEffect(() => {
-    setRequests(loadLocalRequests());
-  }, []);
+    const local = loadLocalRequests();
+    setRequests(local);
+    if (walletAddress) {
+      fetch(`/api/support/my-tickets?address=${encodeURIComponent(walletAddress)}`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (Array.isArray(data?.items)) {
+            setRequests(data.items);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [walletAddress]);
 
   const submit = async () => {
     if (!form.message.trim()) {
@@ -92,6 +106,7 @@ export default function SupportPage() {
           topic: form.topic,
           message: form.message.trim(),
           userAddress: walletAddress,
+          screenshots: screenshots.length ? screenshots : undefined,
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -111,6 +126,7 @@ export default function SupportPage() {
       setRequests(updated);
       persistLocalRequests(updated);
       setForm((prev) => ({ ...prev, message: "" }));
+      setScreenshots([]);
       setHint("apply.support_ticket_submitted");
     } catch {
       setHint("error.network");
@@ -212,12 +228,71 @@ export default function SupportPage() {
               onChange={(event) => setForm((prev) => ({ ...prev, message: event.target.value }))}
             />
           </div>
+          <div className="grid gap-2">
+            <label className="text-xs text-slate-500">{t("me.support.010")}</label>
+            <div className="flex flex-wrap gap-2">
+              {screenshots.map((src, i) => (
+                <div
+                  key={i}
+                  className="relative w-20 h-20 rounded-xl overflow-hidden border border-slate-200"
+                >
+                  <img src={src} alt="" className="w-full h-full object-cover" />
+                  <button
+                    type="button"
+                    onClick={() => setScreenshots((prev) => prev.filter((_, idx) => idx !== i))}
+                    className="absolute top-0.5 right-0.5 bg-black/50 text-white rounded-full p-0.5"
+                  >
+                    <X size={12} />
+                  </button>
+                </div>
+              ))}
+              {screenshots.length < 3 && (
+                <label className="w-20 h-20 rounded-xl border-2 border-dashed border-slate-300 flex items-center justify-center cursor-pointer hover:border-slate-400">
+                  <ImagePlus size={20} className="text-slate-400" />
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(event) => {
+                      const file = event.target.files?.[0];
+                      if (!file) return;
+                      if (file.size > 500 * 1024) {
+                        setHint(t("me.support.011"));
+                        return;
+                      }
+                      const reader = new FileReader();
+                      reader.onload = () => {
+                        const base64 = reader.result as string;
+                        setScreenshots((prev) => [...prev, base64]);
+                      };
+                      reader.readAsDataURL(file);
+                      event.target.value = "";
+                    }}
+                  />
+                </label>
+              )}
+            </div>
+          </div>
         </div>
+        <label className="mt-3 flex items-center gap-2 text-xs text-slate-600 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={agreed}
+            onChange={(event) => setAgreed(event.target.checked)}
+            className="rounded border-slate-300"
+          />
+          <span>
+            {t("me.support.008")}
+            <a href="/terms" target="_blank" className="text-blue-600 underline">
+              {t("me.support.009")}
+            </a>
+          </span>
+        </label>
         <button
           type="button"
           onClick={submit}
-          disabled={submitting}
-          className="mt-4 w-full rounded-2xl bg-slate-900 text-white py-2 text-sm font-semibold flex items-center justify-center gap-2"
+          disabled={submitting || !agreed}
+          className="mt-4 w-full rounded-2xl bg-slate-900 text-white py-2 text-sm font-semibold flex items-center justify-center gap-2 disabled:opacity-50"
         >
           <Send size={16} />
           {submitting ? t("ui.support.606") : t("me.support.005")}
@@ -251,6 +326,14 @@ export default function SupportPage() {
                   <span className="text-xs text-emerald-600">{item.status}</span>
                 </div>
                 <div className="text-xs text-slate-500 mt-2">{item.message}</div>
+                {item.reply && (
+                  <div className="mt-2 rounded-xl bg-blue-50 px-3 py-2">
+                    <div className="text-[11px] text-blue-600 font-semibold">
+                      {t("me.support.013")}
+                    </div>
+                    <div className="text-xs text-blue-800 mt-1">{item.reply}</div>
+                  </div>
+                )}
                 <div className="text-[11px] text-slate-400 mt-2">
                   {formatFullDateTime(item.createdAt)}
                 </div>

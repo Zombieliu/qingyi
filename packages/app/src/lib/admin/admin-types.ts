@@ -164,6 +164,7 @@ export interface AdminSupportTicket {
   message: string;
   status: SupportStatus;
   note?: string;
+  reply?: string;
   meta?: Record<string, unknown>;
   createdAt: number;
   updatedAt?: number;

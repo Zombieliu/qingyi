@@ -3,6 +3,7 @@ import { requireAdmin } from "@/lib/admin/admin-auth";
 import { removeSupportTicket, updateSupportTicket } from "@/lib/admin/admin-store";
 import { recordAudit } from "@/lib/admin/admin-audit";
 import type { AdminSupportTicket } from "@/lib/admin/admin-types";
+import { createNotification } from "@/lib/services/notification-service";
 
 type RouteContext = { params: Promise<{ ticketId: string }> };
 
@@ -21,9 +22,20 @@ export async function PATCH(req: Request, { params }: RouteContext) {
   const updated = await updateSupportTicket(ticketId, {
     status: body.status,
     note: body.note,
+    reply: body.reply,
     meta: body.meta,
   });
   if (!updated) return NextResponse.json({ error: "not found" }, { status: 404 });
+
+  // 回复时给用户发通知
+  if (body.reply && updated.userAddress) {
+    createNotification({
+      userAddress: updated.userAddress,
+      type: "system",
+      title: "客服回复",
+      body: body.reply.length > 100 ? body.reply.slice(0, 100) + "…" : body.reply,
+    }).catch((e) => console.warn("[support] notification failed", e));
+  }
 
   await recordAudit(req, auth, "support.update", "support", ticketId, {
     status: updated.status,
