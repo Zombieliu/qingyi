@@ -3,6 +3,7 @@ import { t } from "@/lib/i18n/t";
 
 import { useEffect } from "react";
 import * as Sentry from "@sentry/nextjs";
+import Link from "next/link";
 
 export default function ErrorPage({
   error,
@@ -30,9 +31,9 @@ export default function ErrorPage({
           >
             重试
           </button>
-          <a href="/" className="dl-tab-btn" style={{ padding: "10px 14px" }}>
+          <Link href="/" className="dl-tab-btn" style={{ padding: "10px 14px" }}>
             返回首页
-          </a>
+          </Link>
         </div>
       </div>
     </div>
