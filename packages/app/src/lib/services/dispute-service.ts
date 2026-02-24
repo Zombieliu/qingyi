@@ -131,7 +131,8 @@ export async function resolveDispute(params: {
     ...dispute,
     status: statusMap[params.resolution],
     resolution: params.note,
-    refundAmount: params.resolution === "reject" ? 0 : (params.refundAmount ?? order.amount),
+    refundAmount:
+      params.resolution === "reject" ? 0 : (params.refundAmount ?? Number(order.amount)),
     reviewerRole: params.reviewerRole,
     resolvedAt: new Date(),
   };

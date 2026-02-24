@@ -40,7 +40,7 @@ function mapPayment(row: {
   provider: string;
   event: string;
   orderNo: string | null;
-  amount: number | null;
+  amount: Prisma.Decimal | number | null;
   status: string | null;
   verified: boolean;
   createdAt: Date;
@@ -51,7 +51,7 @@ function mapPayment(row: {
     provider: row.provider,
     event: row.event,
     orderNo: row.orderNo || undefined,
-    amount: row.amount ?? undefined,
+    amount: row.amount != null ? Number(row.amount) : undefined,
     status: row.status || undefined,
     verified: row.verified,
     createdAt: row.createdAt.getTime(),

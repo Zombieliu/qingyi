@@ -87,7 +87,7 @@ export async function GET(req: Request) {
     entry.total += 1;
     if (o.stage === "已完成") {
       entry.completed += 1;
-      entry.revenue += o.amount;
+      entry.revenue += Number(o.amount);
     } else if (o.stage === "已取消") {
       entry.cancelled += 1;
     }

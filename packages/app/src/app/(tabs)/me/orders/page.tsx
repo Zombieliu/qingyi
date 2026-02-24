@@ -154,12 +154,17 @@ export default function OrderCenterPage() {
                   <span>{formatTime(order.time)}</span>
                   <span className="font-semibold text-slate-900">¥{order.amount}</span>
                 </div>
-                {order.driver ? (
-                  <div className="mt-2 text-xs text-slate-500">
-                    陪练：{order.driver.name}
-                    {order.driver.tier ? ` · ${order.driver.tier}` : ""}
-                  </div>
-                ) : null}
+                {(() => {
+                  const profile = (order.meta?.companionProfile ||
+                    order.meta?.gameProfile ||
+                    null) as { gameName?: string; gameId?: string } | null;
+                  if (!profile?.gameName && !profile?.gameId) return null;
+                  return (
+                    <div className="mt-2 text-xs text-slate-500">
+                      陪练信息：游戏名 {profile?.gameName || "-"} · ID {profile?.gameId || "-"}
+                    </div>
+                  );
+                })()}
               </Link>
             ))}
           </div>

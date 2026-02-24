@@ -61,7 +61,9 @@ export function setCache<T>(key: string, value: T, ttlMs: number, etag?: string)
   // Write-through to Redis (fire-and-forget)
   if (redis) {
     const ttlSeconds = Math.max(1, Math.ceil(ttlMs / 1000));
-    redis.set(CACHE_PREFIX + key, entry, { ex: ttlSeconds }).catch(() => {});
+    redis
+      .set(CACHE_PREFIX + key, entry, { ex: ttlSeconds })
+      .catch((e) => console.warn("[cache] redis write-through failed", e));
   }
 
   return entry;

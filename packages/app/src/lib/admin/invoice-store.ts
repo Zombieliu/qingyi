@@ -14,7 +14,7 @@ function mapInvoiceRequest(row: {
   contact: string | null;
   email: string | null;
   orderId: string | null;
-  amount: number | null;
+  amount: Prisma.Decimal | number | null;
   title: string | null;
   taxId: string | null;
   address: string | null;
@@ -31,7 +31,7 @@ function mapInvoiceRequest(row: {
     contact: row.contact || undefined,
     email: row.email || undefined,
     orderId: row.orderId || undefined,
-    amount: row.amount ?? undefined,
+    amount: row.amount != null ? Number(row.amount) : undefined,
     title: row.title || undefined,
     taxId: row.taxId || undefined,
     address: row.address || undefined,

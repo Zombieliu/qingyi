@@ -51,9 +51,9 @@ export async function GET(req: Request) {
   // Summary
   const completed = orders.filter((o) => o.stage === "已完成");
   const cancelled = orders.filter((o) => o.stage === "已取消");
-  const totalRevenue = completed.reduce((sum, o) => sum + o.amount, 0);
-  const totalServiceFee = completed.reduce((sum, o) => sum + (o.serviceFee || 0), 0);
-  const cancelledAmount = cancelled.reduce((sum, o) => sum + o.amount, 0);
+  const totalRevenue = completed.reduce((sum, o) => sum + Number(o.amount), 0);
+  const totalServiceFee = completed.reduce((sum, o) => sum + Number(o.serviceFee || 0), 0);
+  const cancelledAmount = cancelled.reduce((sum, o) => sum + Number(o.amount), 0);
   const avgOrderValue = completed.length > 0 ? totalRevenue / completed.length : 0;
 
   // Daily trend
@@ -66,9 +66,9 @@ export async function GET(req: Request) {
     const key = formatDateISO(o.createdAt);
     const bucket = dailyMap.get(key);
     if (bucket) {
-      bucket.revenue += o.amount;
+      bucket.revenue += Number(o.amount);
       bucket.orders += 1;
-      bucket.serviceFee += o.serviceFee || 0;
+      bucket.serviceFee += Number(o.serviceFee || 0);
     }
   }
   const daily = Array.from(dailyMap.entries()).map(([date, d]) => ({
@@ -82,7 +82,7 @@ export async function GET(req: Request) {
   const itemMap = new Map<string, { revenue: number; count: number }>();
   for (const o of completed) {
     const entry = itemMap.get(o.item) || { revenue: 0, count: 0 };
-    entry.revenue += o.amount;
+    entry.revenue += Number(o.amount);
     entry.count += 1;
     itemMap.set(o.item, entry);
   }
@@ -95,7 +95,7 @@ export async function GET(req: Request) {
   for (const o of completed) {
     const src = o.source || "unknown";
     const entry = sourceMap.get(src) || { revenue: 0, count: 0 };
-    entry.revenue += o.amount;
+    entry.revenue += Number(o.amount);
     entry.count += 1;
     sourceMap.set(src, entry);
   }

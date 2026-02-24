@@ -94,12 +94,12 @@ export async function GET(req: Request) {
 
   // ─── Realtime (today) ───
   const todayCompleted = todayOrders.filter((o) => o.stage === "已完成");
-  const todayRevenue = todayCompleted.reduce((s, o) => s + o.amount, 0);
-  const todayServiceFee = todayCompleted.reduce((s, o) => s + (o.serviceFee || 0), 0);
+  const todayRevenue = todayCompleted.reduce((s, o) => s + Number(o.amount), 0);
+  const todayServiceFee = todayCompleted.reduce((s, o) => s + Number(o.serviceFee || 0), 0);
   const todayUsers = new Set(todayOrders.map((o) => o.userAddress).filter(Boolean)).size;
 
   const yesterdayCompleted = yesterdayOrders.filter((o) => o.stage === "已完成");
-  const yesterdayRevenue = yesterdayCompleted.reduce((s, o) => s + o.amount, 0);
+  const yesterdayRevenue = yesterdayCompleted.reduce((s, o) => s + Number(o.amount), 0);
 
   // ─── 7-day trends ───
   const dailyMap = new Map<string, { orders: number; revenue: number; users: Set<string> }>();
@@ -112,7 +112,7 @@ export async function GET(req: Request) {
     const bucket = dailyMap.get(key);
     if (bucket) {
       bucket.orders += 1;
-      if (o.stage === "已完成") bucket.revenue += o.amount;
+      if (o.stage === "已完成") bucket.revenue += Number(o.amount);
       if (o.userAddress) bucket.users.add(o.userAddress);
     }
   }
@@ -142,7 +142,7 @@ export async function GET(req: Request) {
     if (!o.assignedTo) continue;
     const entry = playerOrderMap.get(o.assignedTo) || { count: 0, revenue: 0 };
     entry.count += 1;
-    if (o.stage === "已完成") entry.revenue += o.amount;
+    if (o.stage === "已完成") entry.revenue += Number(o.amount);
     playerOrderMap.set(o.assignedTo, entry);
   }
   const playerLookup = new Map(allPlayers.map((p) => [p.id, p.name]));
@@ -180,10 +180,10 @@ export async function GET(req: Request) {
   // ─── Week-over-week comparison ───
   const thisWeekRevenue = weekOrders
     .filter((o) => o.stage === "已完成")
-    .reduce((s, o) => s + o.amount, 0);
+    .reduce((s, o) => s + Number(o.amount), 0);
   const prevWeekRevenue = prevWeekOrders
     .filter((o) => o.stage === "已完成")
-    .reduce((s, o) => s + o.amount, 0);
+    .reduce((s, o) => s + Number(o.amount), 0);
   const thisWeekOrders = weekOrders.length;
   const prevWeekOrderCount = prevWeekOrders.length;
 

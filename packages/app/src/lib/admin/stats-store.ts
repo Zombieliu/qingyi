@@ -22,7 +22,7 @@ export async function getAdminStats() {
     activePlayers,
     publishedAnnouncements,
     completedOrders: revenueAgg._count,
-    totalRevenue: Math.round((revenueAgg._sum.amount || 0) * 100) / 100,
-    totalServiceFee: Math.round((revenueAgg._sum.serviceFee || 0) * 100) / 100,
+    totalRevenue: Math.round((Number(revenueAgg._sum.amount) || 0) * 100) / 100,
+    totalServiceFee: Math.round((Number(revenueAgg._sum.serviceFee) || 0) * 100) / 100,
   };
 }

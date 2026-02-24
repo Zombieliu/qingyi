@@ -12,8 +12,8 @@ function mapCoupon(row: {
   title: string;
   code: string | null;
   description: string | null;
-  discount: number | null;
-  minSpend: number | null;
+  discount: Prisma.Decimal | number | null;
+  minSpend: Prisma.Decimal | number | null;
   status: string;
   startsAt: Date | null;
   expiresAt: Date | null;
@@ -25,8 +25,8 @@ function mapCoupon(row: {
     title: row.title,
     code: row.code || undefined,
     description: row.description || undefined,
-    discount: row.discount ?? undefined,
-    minSpend: row.minSpend ?? undefined,
+    discount: row.discount != null ? Number(row.discount) : undefined,
+    minSpend: row.minSpend != null ? Number(row.minSpend) : undefined,
     status: row.status as AdminCoupon["status"],
     startsAt: row.startsAt ? row.startsAt.getTime() : undefined,
     expiresAt: row.expiresAt ? row.expiresAt.getTime() : undefined,

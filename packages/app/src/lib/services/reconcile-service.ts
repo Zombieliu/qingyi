@@ -80,7 +80,11 @@ export async function reconcileOrders(params: {
     }
 
     // Rule 5: Amount mismatch between local and chain
-    if (chainMeta && typeof meta.chainAmount === "number" && meta.chainAmount !== order.amount) {
+    if (
+      chainMeta &&
+      typeof meta.chainAmount === "number" &&
+      meta.chainAmount !== Number(order.amount)
+    ) {
       mismatch = true;
       issue = `金额不一致: 本地=${order.amount}, 链上=${meta.chainAmount}`;
     }
@@ -107,7 +111,7 @@ export async function reconcileOrders(params: {
   if (report.mismatched > 0) {
     import("@/lib/services/alert-service")
       .then(({ alertOnReconcile }) => alertOnReconcile(report.mismatched, report.total))
-      .catch(() => {});
+      .catch((e) => console.warn("[reconcile] alert failed", e));
   }
 
   return report;

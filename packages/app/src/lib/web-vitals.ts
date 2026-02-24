@@ -33,7 +33,9 @@ export function reportWebVitals(metric: WebVitalMetric) {
       body: JSON.stringify(body),
       keepalive: true,
       headers: { "Content-Type": "application/json" },
-    }).catch(() => {});
+    }).catch(() => {
+      /* best-effort, non-critical */
+    });
   }
 }
 
@@ -54,6 +56,8 @@ export function reportSlowQuery(path: string, durationMs: number, extra?: Record
           extra: { path, durationMs, ...extra },
         });
       })
-      .catch(() => {});
+      .catch(() => {
+        /* Sentry not available */
+      });
   }
 }

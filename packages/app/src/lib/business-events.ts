@@ -52,7 +52,9 @@ function emit(evt: BusinessEvent) {
           });
         }
       })
-      .catch(() => {});
+      .catch(() => {
+        /* Sentry not configured */
+      });
   } catch {
     // Sentry not available, that's fine
   }

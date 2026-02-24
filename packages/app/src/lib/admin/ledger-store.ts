@@ -5,7 +5,7 @@ function mapLedgerRecord(row: {
   id: string;
   userAddress: string;
   diamondAmount: number;
-  amount: number | null;
+  amount: Prisma.Decimal | number | null;
   currency: string | null;
   channel: string | null;
   status: string;
@@ -21,7 +21,7 @@ function mapLedgerRecord(row: {
     id: row.id,
     userAddress: row.userAddress,
     diamondAmount: row.diamondAmount,
-    amount: row.amount ?? undefined,
+    amount: row.amount != null ? Number(row.amount) : undefined,
     currency: row.currency || undefined,
     channel: row.channel || undefined,
     status: row.status,

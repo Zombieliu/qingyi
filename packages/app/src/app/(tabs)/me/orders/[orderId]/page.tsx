@@ -276,15 +276,21 @@ export default function OrderDetailPage() {
                 </div>
               )}
             </div>
-            {order.driver && (
-              <div className="mt-3 pt-3 border-t border-slate-100 text-sm text-slate-600">
-                <div className="text-xs text-slate-400 mb-1">{t("ui.orderId.126")}</div>
-                <div>
-                  {order.driver.name}
-                  {order.driver.tier ? ` · ${order.driver.tier}` : ""}
+            {(() => {
+              const profile = (order.meta?.companionProfile || order.meta?.gameProfile || null) as {
+                gameName?: string;
+                gameId?: string;
+              } | null;
+              if (!profile?.gameName && !profile?.gameId) return null;
+              return (
+                <div className="mt-3 pt-3 border-t border-slate-100 text-sm text-slate-600">
+                  <div className="text-xs text-slate-400 mb-1">{t("ui.orderId.126")}</div>
+                  <div>
+                    陪练信息：游戏名 {profile?.gameName || "-"} · ID {profile?.gameId || "-"}
+                  </div>
                 </div>
-              </div>
-            )}
+              );
+            })()}
           </section>
 
           {/* Review Section */}

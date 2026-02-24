@@ -12,7 +12,7 @@ function mapMembershipTier(row: {
   name: string;
   level: number;
   badge: string | null;
-  price: number | null;
+  price: Prisma.Decimal | number | null;
   durationDays: number | null;
   minPoints: number | null;
   status: string;
@@ -25,7 +25,7 @@ function mapMembershipTier(row: {
     name: row.name,
     level: row.level,
     badge: row.badge || undefined,
-    price: row.price ?? undefined,
+    price: row.price != null ? Number(row.price) : undefined,
     durationDays: row.durationDays ?? undefined,
     minPoints: row.minPoints ?? undefined,
     status: row.status as AdminMembershipTier["status"],

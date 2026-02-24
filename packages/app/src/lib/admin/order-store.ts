@@ -15,7 +15,7 @@ function mapOrder(row: {
   userAddress: string | null;
   companionAddress: string | null;
   item: string;
-  amount: number;
+  amount: Prisma.Decimal | number;
   currency: string;
   paymentStatus: string;
   stage: string;
@@ -24,8 +24,8 @@ function mapOrder(row: {
   source: string | null;
   chainDigest: string | null;
   chainStatus: number | null;
-  serviceFee: number | null;
-  deposit: number | null;
+  serviceFee: Prisma.Decimal | number | null;
+  deposit: Prisma.Decimal | number | null;
   meta: Prisma.JsonValue | null;
   createdAt: Date;
   updatedAt: Date | null;
@@ -43,7 +43,7 @@ function mapOrder(row: {
     userAddress: row.userAddress || undefined,
     companionAddress: row.companionAddress || undefined,
     item: row.item,
-    amount: row.amount,
+    amount: Number(row.amount),
     currency: row.currency,
     paymentStatus: row.paymentStatus,
     stage: row.stage as AdminOrder["stage"],
@@ -53,8 +53,8 @@ function mapOrder(row: {
     source: row.source || undefined,
     chainDigest: row.chainDigest || undefined,
     chainStatus: row.chainStatus ?? undefined,
-    serviceFee: row.serviceFee ?? undefined,
-    deposit: row.deposit ?? undefined,
+    serviceFee: row.serviceFee != null ? Number(row.serviceFee) : undefined,
+    deposit: row.deposit != null ? Number(row.deposit) : undefined,
     meta: (row.meta as Record<string, unknown> | null) || undefined,
     createdAt: row.createdAt.getTime(),
     updatedAt: row.updatedAt ? row.updatedAt.getTime() : undefined,

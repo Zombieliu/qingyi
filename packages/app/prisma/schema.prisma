@@ -14,7 +14,7 @@ model AdminOrder {
   userAddress   String?
   companionAddress String?
   item          String
-  amount        Float
+  amount        Decimal @db.Decimal(12, 2)
   currency      String
   paymentStatus String
   stage         String
@@ -23,8 +23,8 @@ model AdminOrder {
   source        String?
   chainDigest   String?
   chainStatus   Int?
-  serviceFee    Float?
-  deposit       Float?
+  serviceFee    Decimal? @db.Decimal(12, 2)
+  deposit       Decimal? @db.Decimal(12, 2)
   meta          Json?
   createdAt     DateTime
   updatedAt     DateTime?
@@ -171,7 +171,7 @@ model AdminPaymentEvent {
   provider  String
   event     String
   orderNo   String?
-  amount    Float?
+  amount    Decimal? @db.Decimal(12, 2)
   status    String?
   verified  Boolean
   createdAt DateTime
@@ -185,7 +185,7 @@ model LedgerRecord {
   id            String   @id
   userAddress   String
   diamondAmount Int
-  amount        Float?
+  amount        Decimal? @db.Decimal(12, 2)
   currency      String?
   channel       String?
   status        String
@@ -242,8 +242,8 @@ model AdminCoupon {
   title       String
   code        String?
   description String?
-  discount    Float?
-  minSpend    Float?
+  discount    Decimal? @db.Decimal(12, 2)
+  minSpend    Decimal? @db.Decimal(12, 2)
   status      String
   startsAt    DateTime?
   expiresAt   DateTime?
@@ -294,7 +294,7 @@ model RedeemCode {
   updatedAt        DateTime?
   lastRedeemedAt   DateTime?
 
-  batch   RedeemBatch?  @relation(fields: [batchId], references: [id])
+  batch   RedeemBatch?  @relation(fields: [batchId], references: [id], onDelete: Cascade)
   records RedeemRecord[]
 
   @@index([batchId])
@@ -315,8 +315,8 @@ model RedeemRecord {
   userAgent   String?
   meta        Json?
 
-  code  RedeemCode  @relation(fields: [codeId], references: [id])
-  batch RedeemBatch? @relation(fields: [batchId], references: [id])
+  code  RedeemCode  @relation(fields: [codeId], references: [id], onDelete: Cascade)
+  batch RedeemBatch? @relation(fields: [batchId], references: [id], onDelete: Cascade)
 
   @@index([userAddress, createdAt])
   @@index([batchId])
@@ -330,7 +330,7 @@ model AdminInvoiceRequest {
   contact     String?
   email       String?
   orderId     String?
-  amount      Float?
+  amount      Decimal? @db.Decimal(12, 2)
   title       String?
   taxId       String?
   address     String?
@@ -369,7 +369,7 @@ model AdminMembershipTier {
   name         String
   level        Int
   badge        String?
-  price        Float?
+  price        Decimal? @db.Decimal(12, 2)
   durationDays Int?
   minPoints    Int?
   status       String
@@ -477,8 +477,8 @@ model ReferralConfig {
   mode            String    @default("fixed")
   fixedInviter    Int       @default(50)
   fixedInvitee    Int       @default(30)
-  percentInviter  Float     @default(0.05)
-  percentInvitee  Float     @default(0.03)
+  percentInviter  Decimal   @default(0.05) @db.Decimal(5, 4)
+  percentInvitee  Decimal   @default(0.03) @db.Decimal(5, 4)
   enabled         Boolean   @default(true)
   updatedAt       DateTime?
 }
@@ -516,8 +516,8 @@ model UserCoupon {
   userAddress String
   couponId    String
   couponTitle String
-  discount    Float?
-  minSpend    Float?
+  discount    Decimal? @db.Decimal(12, 2)
+  minSpend    Decimal? @db.Decimal(12, 2)
   status      String    @default("unused") // unused, used, expired
   usedOrderId String?
   usedAt      DateTime?

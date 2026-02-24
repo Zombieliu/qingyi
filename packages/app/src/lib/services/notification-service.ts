@@ -38,9 +38,7 @@ export async function createNotification(params: {
     notifType: type,
     orderId,
     timestamp: Date.now(),
-  }).catch(() => {});
-
-  // Push via Web Push (non-blocking, best-effort)
+  }).catch((e) => console.warn("[notify] SSE publish failed", e));
   import("@/lib/services/push-service")
     .then(({ sendPushNotification }) =>
       sendPushNotification(userAddress, {
@@ -50,7 +48,7 @@ export async function createNotification(params: {
         icon: "/icons/icon-192x192.png",
       })
     )
-    .catch(() => {});
+    .catch((e) => console.warn("[notify] web push failed", e));
 
   return notification;
 }
@@ -151,7 +149,7 @@ export function notifyOrderStatusChange(params: {
         });
       }
     })
-    .catch(() => {});
+    .catch((e) => console.warn("[notify] kook notification failed", e));
 
   return createNotification({
     userAddress: params.userAddress,

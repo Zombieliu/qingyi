@@ -40,8 +40,8 @@ function mapReferralConfig(row: {
   mode: string;
   fixedInviter: number;
   fixedInvitee: number;
-  percentInviter: number;
-  percentInvitee: number;
+  percentInviter: Prisma.Decimal | number;
+  percentInvitee: Prisma.Decimal | number;
   enabled: boolean;
   updatedAt: Date | null;
 }): ReferralConfig {
@@ -50,8 +50,8 @@ function mapReferralConfig(row: {
     mode: row.mode as ReferralConfig["mode"],
     fixedInviter: row.fixedInviter,
     fixedInvitee: row.fixedInvitee,
-    percentInviter: row.percentInviter,
-    percentInvitee: row.percentInvitee,
+    percentInviter: Number(row.percentInviter),
+    percentInvitee: Number(row.percentInvitee),
     enabled: row.enabled,
     updatedAt: row.updatedAt?.getTime(),
   };

@@ -8,7 +8,7 @@ import { parseBody } from "@/lib/shared/api-validation";
 const schema = z.object({ ids: z.array(z.string().min(1)).min(1) });
 
 export async function POST(req: Request) {
-  const auth = await requireAdmin(req, { role: "viewer" });
+  const auth = await requireAdmin(req, { role: "ops" });
   if (!auth.ok) return auth.response;
 
   const parsed = await parseBody(req, schema);
