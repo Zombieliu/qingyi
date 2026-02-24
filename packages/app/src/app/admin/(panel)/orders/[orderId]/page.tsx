@@ -196,6 +196,23 @@ export default function OrderDetailPage() {
             派单
             <input className="admin-input" readOnly value={order.assignedTo || ""} />
           </label>
+          {(() => {
+            const profile = (order.meta?.companionProfile || order.meta?.gameProfile || null) as {
+              gameName?: string;
+              gameId?: string;
+            } | null;
+            if (!profile?.gameName && !profile?.gameId) return null;
+            return (
+              <label className="admin-field">
+                陪练信息
+                <input
+                  className="admin-input"
+                  readOnly
+                  value={`游戏名 ${profile?.gameName || "-"} · ID ${profile?.gameId || "-"}`}
+                />
+              </label>
+            );
+          })()}
           <label className="admin-field">
             备注
             <input className="admin-input" readOnly value={order.note || ""} />
