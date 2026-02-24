@@ -632,7 +632,7 @@ export default function Schedule() {
         window.location.href = "/wallet";
       }, 1200);
     }
-  }, [feeOpen, balanceLoading, balanceReady, hasEnoughDiamonds]);
+  }, [feeOpen, balanceLoading, balanceReady, hasEnoughDiamonds, setToast]);
 
   const submit = () => {
     if (pickedNames.length === 0) {

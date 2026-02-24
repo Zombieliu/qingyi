@@ -9,7 +9,6 @@ import {
 } from "./showcase-utils";
 import { MotionCard } from "@/components/ui/motion";
 import { type ChainOrder } from "@/lib/chain/qy-chain";
-import { Loader2 } from "lucide-react";
 
 type Props = {
   order: ChainOrder;
@@ -25,7 +24,6 @@ type Props = {
   companionEnded: boolean;
   canDispute: boolean;
   canFinalize: boolean;
-  inDisputeWindow: boolean;
   onAcceptDeposit: () => void;
   onEndService: () => void;
   onMarkCompleted: () => void;
@@ -51,7 +49,6 @@ export function ChainOrderCard({
   companionEnded,
   canDispute,
   canFinalize,
-  inDisputeWindow: _inDisputeWindow,
   onAcceptDeposit,
   onEndService,
   onMarkCompleted,

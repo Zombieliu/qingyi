@@ -252,7 +252,6 @@ export function ChainOrdersSection(props: Props) {
                 companionEnded={companionEnded}
                 canDispute={canDispute}
                 canFinalize={canFinalize}
-                inDisputeWindow={inDisputeWindow}
                 onAcceptDeposit={() => handleAcceptDeposit(o)}
                 onEndService={() => confirmEndService(o.orderId)}
                 onMarkCompleted={() => confirmMarkCompleted(o.orderId)}

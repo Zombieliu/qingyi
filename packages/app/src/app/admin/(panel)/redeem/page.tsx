@@ -3,7 +3,6 @@ import { t } from "@/lib/i18n/t";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Copy, Loader2, RefreshCw } from "lucide-react";
-import { StateBlock } from "@/app/components/state-block";
 import { RedeemCodesTable } from "./redeem-codes-table";
 import { RedeemRecordsTable } from "./redeem-records-table";
 import { formatFullDateTime } from "@/lib/shared/date-utils";

@@ -285,9 +285,12 @@ export function useShowcaseState() {
 
   // --- Chain actions ---
 
-  const showToast = (msg: string, duration?: number) => {
-    setChainToast(msg, duration);
-  };
+  const showToast = useCallback(
+    (msg: string, duration?: number) => {
+      setChainToast(msg, duration);
+    },
+    [setChainToast]
+  );
 
   const openConfirm = (payload: {
     title: string;
@@ -426,7 +429,7 @@ export function useShowcaseState() {
         });
       }
     },
-    [orderMetaLoading]
+    [orderMetaLoading, showToast]
   );
 
   const orderMetaById = useMemo(() => {

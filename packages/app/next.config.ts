@@ -17,8 +17,6 @@ const withSerwist = withSerwistInit({
 
 const repoRoot = path.resolve(__dirname, "../..");
 
-const isVercel = process.env.VERCEL === "1";
-
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   output: process.env.DOCKER_BUILD === "1" ? "standalone" : undefined,

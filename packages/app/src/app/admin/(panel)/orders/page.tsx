@@ -1,13 +1,11 @@
 "use client";
 import { t } from "@/lib/i18n/t";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { ChevronDown, Loader2, RefreshCw, Search } from "lucide-react";
-import Link from "next/link";
-import type { AdminOrder, AdminPlayer, OrderStage } from "@/lib/admin/admin-types";
+import type { AdminOrder, AdminPlayer } from "@/lib/admin/admin-types";
 import { ORDER_STAGE_OPTIONS } from "@/lib/admin/admin-types";
 import { readCache, writeCache } from "@/lib/shared/client-cache";
-import { formatShortDateTime } from "@/lib/shared/date-utils";
 import { StateBlock } from "@/app/components/state-block";
 import { OrderRow } from "./order-row";
 import { roleRank, useAdminSession } from "../admin-session";
@@ -105,15 +103,6 @@ export default function OrdersPage() {
       setPlayersLoading(false);
     }
   }, [cacheTtlMs]);
-
-  const playerLookup = useMemo(() => {
-    const map = new Map<string, AdminPlayer>();
-    players.forEach((player) => {
-      map.set(player.id, player);
-      map.set(player.name, player);
-    });
-    return map;
-  }, [players]);
 
   useEffect(() => {
     const handle = setTimeout(() => {

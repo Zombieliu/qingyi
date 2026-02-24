@@ -6,19 +6,8 @@ import {
   addCustomerTag,
   removeCustomerTag,
   listTaggedCustomers,
-  type CustomerTagType,
 } from "@/lib/services/customer-tag-service";
 import { requireAdmin } from "@/lib/admin/admin-auth";
-
-const VALID_TAGS: CustomerTagType[] = [
-  "difficult",
-  "slow_pay",
-  "rude",
-  "no_show",
-  "frequent_dispute",
-  "vip_treat",
-  "other",
-];
 
 const addTagSchema = z.object({
   userAddress: z.string().min(1),
