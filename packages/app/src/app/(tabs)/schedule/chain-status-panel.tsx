@@ -271,7 +271,7 @@ function ChainOrderActions({
                         orderId: display.orderId,
                         evidence: value,
                         orderItem: `托管费 ¥${formatAmount(display.serviceFee)}`,
-                        orderAmount: display.serviceFee,
+                        orderAmount: Number(display.serviceFee),
                       });
                     }
                   },

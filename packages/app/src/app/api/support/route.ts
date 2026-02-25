@@ -17,7 +17,7 @@ const supportSchema = z.object({
   contact: z.string().optional(),
   topic: z.string().optional(),
   screenshots: z.array(z.string().max(700_000)).max(3).optional(),
-  meta: z.record(z.unknown()).optional(),
+  meta: z.record(z.string(), z.unknown()).optional(),
 });
 
 export const POST = withApiHandler(
