@@ -18,6 +18,7 @@ import {
   deriveOrderStatus,
 } from "./chain-status";
 import { trackChainSyncResult, trackChainSyncFailed } from "@/lib/business-events";
+import { AdminMessages } from "@/lib/shared/messages";
 
 // Re-export for backward compatibility
 export { mapStage, mapPaymentStatus };
@@ -148,11 +149,11 @@ export async function upsertChainOrder(chain: ChainOrder) {
     user: chain.user,
     userAddress: chain.user,
     companionAddress: companionAddress ?? undefined,
-    item: `链上订单 #${orderId}`,
+    item: AdminMessages.CHAIN_SYNC_ITEM(orderId),
     amount,
     currency: "CNY",
     ...statusFields,
-    note: "链上同步",
+    note: AdminMessages.CHAIN_SYNC_NOTE,
     source: "chain",
     serviceFee,
     deposit,

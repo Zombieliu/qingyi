@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { isFeatureEnabled } from "@/lib/feature-flags";
+import { CouponMessages } from "@/lib/shared/messages";
 
 /**
  * 优惠券服务 — 领取、使用、查询
@@ -9,7 +10,7 @@ import { isFeatureEnabled } from "@/lib/feature-flags";
  * 用户领取优惠券
  */
 export async function claimCoupon(userAddress: string, couponId: string) {
-  if (!isFeatureEnabled("coupon_system")) throw new Error("优惠券功能暂未开放");
+  if (!isFeatureEnabled("coupon_system")) throw new Error(CouponMessages.FEATURE_DISABLED);
   // Check coupon exists and is active
   const coupon = await prisma.adminCoupon.findUnique({ where: { id: couponId } });
   if (!coupon || coupon.status !== "上架") {

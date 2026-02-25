@@ -1,5 +1,6 @@
 import "server-only";
 import { prisma } from "@/lib/db";
+import { CustomerTagLabels } from "@/lib/shared/messages";
 
 export type CustomerTagType =
   | "difficult" // 事多/难伺候
@@ -11,13 +12,13 @@ export type CustomerTagType =
   | "other";
 
 export const TAG_LABELS: Record<CustomerTagType, string> = {
-  difficult: "事多/难伺候",
-  slow_pay: "拖延付款",
-  rude: "态度差/不礼貌",
-  no_show: "放鸽子/不上线",
-  frequent_dispute: "频繁发起争议",
-  vip_treat: "VIP 优待",
-  other: "其他",
+  difficult: CustomerTagLabels.difficult,
+  slow_pay: CustomerTagLabels.slow_pay,
+  rude: CustomerTagLabels.rude,
+  no_show: CustomerTagLabels.no_show,
+  frequent_dispute: CustomerTagLabels.frequent_dispute,
+  vip_treat: CustomerTagLabels.vip_treat,
+  other: CustomerTagLabels.other,
 };
 
 export const TAG_LABELS_EN: Record<CustomerTagType, string> = {

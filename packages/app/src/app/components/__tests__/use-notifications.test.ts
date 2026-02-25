@@ -40,7 +40,8 @@ describe("useUnreadCount", () => {
       expect(mockFetchWithUserAuth).toHaveBeenCalledWith(
         "/api/notifications?address=0xabc&countOnly=1",
         {},
-        "0xabc"
+        "0xabc",
+        { silent: true }
       );
     });
   });

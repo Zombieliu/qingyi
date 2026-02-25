@@ -1,18 +1,24 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const mocks = vi.hoisted(() => ({
-  requireAdmin: vi.fn(),
-  requireUserAuth: vi.fn(),
-  getOrderById: vi.fn(),
-  getReviewByOrderId: vi.fn(),
-  createReview: vi.fn(),
-  creditMantou: vi.fn(),
-  isValidSuiAddress: vi.fn(),
-  normalizeSuiAddress: vi.fn(),
-  parseBodyRaw: vi.fn(),
-  onReviewSubmitted: vi.fn(),
-  REVIEW_TAG_OPTIONS: ["技术好", "态度好", "有耐心", "配合默契", "准时上线"],
-}));
+const mocks = vi.hoisted(() => {
+  const mockPrisma = {
+    $transaction: vi.fn(async (fn: (tx: unknown) => Promise<unknown>) => fn(mockPrisma)),
+  };
+  return {
+    requireAdmin: vi.fn(),
+    requireUserAuth: vi.fn(),
+    getOrderById: vi.fn(),
+    getReviewByOrderId: vi.fn(),
+    createReview: vi.fn(),
+    creditMantou: vi.fn(),
+    isValidSuiAddress: vi.fn(),
+    normalizeSuiAddress: vi.fn(),
+    parseBodyRaw: vi.fn(),
+    onReviewSubmitted: vi.fn(),
+    REVIEW_TAG_OPTIONS: ["技术好", "态度好", "有耐心", "配合默契", "准时上线"],
+    mockPrisma,
+  };
+});
 
 vi.mock("next/server", () => {
   class MockNextResponse {
@@ -36,6 +42,7 @@ vi.mock("next/server", () => {
 
 vi.mock("@/lib/admin/admin-auth", () => ({ requireAdmin: mocks.requireAdmin }));
 vi.mock("@/lib/auth/user-auth", () => ({ requireUserAuth: mocks.requireUserAuth }));
+vi.mock("@/lib/db", () => ({ prisma: mocks.mockPrisma }));
 vi.mock("@/lib/admin/admin-store", () => ({
   getOrderById: mocks.getOrderById,
   getReviewByOrderId: mocks.getReviewByOrderId,
@@ -316,7 +323,8 @@ describe("POST /api/orders/[orderId]/review", () => {
     const res = await POST(req, makeCtx("ORD-001"));
     expect(res.status).toBe(200);
     expect(mocks.createReview).toHaveBeenCalledWith(
-      expect.objectContaining({ content: undefined })
+      expect.objectContaining({ content: undefined }),
+      mocks.mockPrisma
     );
   });
 

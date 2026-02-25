@@ -86,7 +86,8 @@ describe("RefBinder", () => {
         method: "POST",
         body: JSON.stringify({ address: "0xabc", refCode: "REF001" }),
       }),
-      "0xabc"
+      "0xabc",
+      { silent: true }
     );
   });
 

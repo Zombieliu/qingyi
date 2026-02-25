@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import type { TransactionClient } from "@/lib/admin/admin-store-utils";
 import { logBusinessEvent } from "@/lib/business-events";
 
 /**
@@ -41,16 +42,18 @@ export async function addPointsAndUpgrade(params: {
   points: number;
   reason: string;
   orderId?: string;
+  tx?: TransactionClient;
 }) {
   const { userAddress, points, reason, orderId } = params;
+  const db = params.tx || prisma;
   if (points <= 0 || !userAddress) return null;
 
   // 查找或创建 member
-  let member = await prisma.adminMember.findFirst({ where: { userAddress } });
+  let member = await db.adminMember.findFirst({ where: { userAddress } });
 
   if (!member) {
     // 自动创建 member 记录
-    member = await prisma.adminMember.create({
+    member = await db.adminMember.create({
       data: {
         id: `MBR-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
         userAddress,
@@ -71,7 +74,7 @@ export async function addPointsAndUpgrade(params: {
   const newTotal = (member.points || 0) + actualPoints;
 
   // 更新积分
-  const updated = await prisma.adminMember.update({
+  const updated = await db.adminMember.update({
     where: { id: member.id },
     data: {
       points: newTotal,
@@ -90,7 +93,7 @@ export async function addPointsAndUpgrade(params: {
   });
 
   // 检查自动升级
-  const upgraded = await checkAndUpgrade(updated.id, newTotal);
+  const upgraded = await checkAndUpgrade(updated.id, newTotal, db);
 
   return {
     memberId: updated.id,
@@ -104,9 +107,13 @@ export async function addPointsAndUpgrade(params: {
 /**
  * 检查积分是否达到更高等级门槛，自动升级
  */
-async function checkAndUpgrade(memberId: string, currentPoints: number) {
+async function checkAndUpgrade(
+  memberId: string,
+  currentPoints: number,
+  db: TransactionClient | typeof prisma = prisma
+) {
   // 获取所有上架的等级，按 level 降序（从高到低匹配）
-  const tiers = await prisma.adminMembershipTier.findMany({
+  const tiers = await db.adminMembershipTier.findMany({
     where: { status: "上架" },
     orderBy: { level: "desc" },
   });
@@ -119,7 +126,7 @@ async function checkAndUpgrade(memberId: string, currentPoints: number) {
   if (!qualifiedTier) return null;
 
   // 获取当前 member
-  const member = await prisma.adminMember.findUnique({ where: { id: memberId } });
+  const member = await db.adminMember.findUnique({ where: { id: memberId } });
   if (!member) return null;
 
   // 如果已经是这个等级或更高，不降级
@@ -129,7 +136,7 @@ async function checkAndUpgrade(memberId: string, currentPoints: number) {
   }
 
   // 升级
-  await prisma.adminMember.update({
+  await db.adminMember.update({
     where: { id: memberId },
     data: {
       tierId: qualifiedTier.id,
@@ -175,6 +182,7 @@ export async function onOrderCompleted(params: {
   userAddress: string;
   amount: number;
   orderId: string;
+  tx?: TransactionClient;
 }) {
   const points = Math.round(params.amount * POINTS_RULES.ORDER_COMPLETE_RATE);
   return addPointsAndUpgrade({
@@ -182,18 +190,24 @@ export async function onOrderCompleted(params: {
     points,
     reason: "order_complete",
     orderId: params.orderId,
+    tx: params.tx,
   });
 }
 
 /**
  * 用户评价时调用
  */
-export async function onReviewSubmitted(params: { userAddress: string; orderId: string }) {
+export async function onReviewSubmitted(params: {
+  userAddress: string;
+  orderId: string;
+  tx?: TransactionClient;
+}) {
   return addPointsAndUpgrade({
     userAddress: params.userAddress,
     points: POINTS_RULES.REVIEW,
     reason: "review",
     orderId: params.orderId,
+    tx: params.tx,
   });
 }
 

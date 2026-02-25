@@ -5,6 +5,7 @@ import {
   executeSponsoredTransaction,
 } from "@/lib/chain/chain-sponsor";
 import { parseBody } from "@/lib/shared/api-validation";
+import { apiBadRequest } from "@/lib/shared/api-response";
 
 const postSchema = z.object({
   step: z.enum(["prepare", "execute"]),
@@ -21,7 +22,7 @@ export async function POST(req: Request) {
 
   if (payload.step === "prepare") {
     if (!payload.sender || !payload.kindBytes) {
-      return NextResponse.json({ error: "sender and kindBytes are required" }, { status: 400 });
+      return apiBadRequest("sender and kindBytes are required");
     }
     try {
       const result = await buildSponsoredTransactionFromKind({
@@ -30,16 +31,13 @@ export async function POST(req: Request) {
       });
       return NextResponse.json(result);
     } catch (error) {
-      return NextResponse.json({ error: (error as Error).message }, { status: 400 });
+      return apiBadRequest((error as Error).message);
     }
   }
 
   if (payload.step === "execute") {
     if (!payload.txBytes || !payload.userSignature) {
-      return NextResponse.json(
-        { error: "txBytes and userSignature are required" },
-        { status: 400 }
-      );
+      return apiBadRequest("txBytes and userSignature are required");
     }
     try {
       const result = await executeSponsoredTransaction({
@@ -48,9 +46,9 @@ export async function POST(req: Request) {
       });
       return NextResponse.json(result);
     } catch (error) {
-      return NextResponse.json({ error: (error as Error).message }, { status: 400 });
+      return apiBadRequest((error as Error).message);
     }
   }
 
-  return NextResponse.json({ error: "Invalid request" }, { status: 400 });
+  return apiBadRequest("Invalid request");
 }

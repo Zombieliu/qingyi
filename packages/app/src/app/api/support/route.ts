@@ -6,6 +6,8 @@ import type { AdminSupportTicket, SupportStatus } from "@/lib/admin/admin-types"
 import { rateLimit } from "@/lib/rate-limit";
 import { getClientIp } from "@/lib/shared/api-utils";
 import { parseBody } from "@/lib/shared/api-validation";
+import { apiRateLimited } from "@/lib/shared/api-response";
+import { withApiHandler } from "@/lib/shared/api-handler";
 
 const supportSchema = z.object({
   message: z.string().trim().min(1, "message required"),
@@ -17,27 +19,30 @@ const supportSchema = z.object({
   screenshots: z.array(z.string().max(700_000)).max(3).optional(),
 });
 
-export async function POST(req: Request) {
-  if (!(await rateLimit(`support:${getClientIp(req)}`, 5, 60000))) {
-    return NextResponse.json({ error: "rate_limited" }, { status: 429 });
-  }
+export const POST = withApiHandler(
+  async (req: Request) => {
+    if (!(await rateLimit(`support:${getClientIp(req)}`, 5, 60000))) {
+      return apiRateLimited();
+    }
 
-  const parsed = await parseBody(req, supportSchema);
-  if (!parsed.success) return parsed.response;
-  const body = parsed.data;
+    const parsed = await parseBody(req, supportSchema);
+    if (!parsed.success) return parsed.response;
+    const body = parsed.data;
 
-  const ticket: AdminSupportTicket = {
-    id: `SUP-${Date.now()}-${crypto.randomInt(1000, 9999)}`,
-    userName: body.name || body.userName,
-    userAddress: body.userAddress,
-    contact: body.contact,
-    topic: body.topic || "其他",
-    message: body.message,
-    status: "待处理" as SupportStatus,
-    meta: body.screenshots?.length ? { screenshots: body.screenshots } : undefined,
-    createdAt: Date.now(),
-  };
+    const ticket: AdminSupportTicket = {
+      id: `SUP-${Date.now()}-${crypto.randomInt(1000, 9999)}`,
+      userName: body.name || body.userName,
+      userAddress: body.userAddress,
+      contact: body.contact,
+      topic: body.topic || "其他",
+      message: body.message,
+      status: "待处理" as SupportStatus,
+      meta: body.screenshots?.length ? { screenshots: body.screenshots } : undefined,
+      createdAt: Date.now(),
+    };
 
-  await addSupportTicket(ticket);
-  return NextResponse.json({ id: ticket.id, status: ticket.status });
-}
+    await addSupportTicket(ticket);
+    return NextResponse.json({ id: ticket.id, status: ticket.status });
+  },
+  { auth: "public" }
+);

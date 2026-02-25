@@ -97,6 +97,53 @@ describe("GET /api/admin/vip/tiers", () => {
     await GET(makeGetRequest({ page: "1", pageSize: "1" }));
     expect(mockQueryMembershipTiers).toHaveBeenCalledWith(expect.objectContaining({ pageSize: 5 }));
   });
+
+  it("clamps pageSize to max 200", async () => {
+    mockQueryMembershipTiers.mockResolvedValue({ items: [], total: 0 });
+    await GET(makeGetRequest({ page: "1", pageSize: "999" }));
+    expect(mockQueryMembershipTiers).toHaveBeenCalledWith(
+      expect.objectContaining({ pageSize: 200 })
+    );
+  });
+
+  it("uses cursor pagination when both page and cursor params are present", async () => {
+    mockDecodeCursorParam.mockReturnValue("abc123");
+    mockQueryMembershipTiersCursor.mockResolvedValue({ items: [], nextCursor: null });
+    await GET(makeGetRequest({ page: "2", cursor: "abc123" }));
+    expect(mockQueryMembershipTiersCursor).toHaveBeenCalled();
+    expect(mockQueryMembershipTiers).not.toHaveBeenCalled();
+  });
+
+  it("passes status and q filters to cursor query", async () => {
+    mockQueryMembershipTiersCursor.mockResolvedValue({ items: [], nextCursor: null });
+    await GET(makeGetRequest({ status: "上架", q: "gold" }));
+    expect(mockQueryMembershipTiersCursor).toHaveBeenCalledWith(
+      expect.objectContaining({ status: "上架", q: "gold" })
+    );
+  });
+
+  it("passes status and q filters to offset query", async () => {
+    mockQueryMembershipTiers.mockResolvedValue({ items: [], total: 0 });
+    await GET(makeGetRequest({ page: "1", status: "下架", q: "silver" }));
+    expect(mockQueryMembershipTiers).toHaveBeenCalledWith(
+      expect.objectContaining({ status: "下架", q: "silver" })
+    );
+  });
+
+  it("encodes nextCursor in cursor response", async () => {
+    mockQueryMembershipTiersCursor.mockResolvedValue({ items: [], nextCursor: "next123" });
+    mockEncodeCursorParam.mockReturnValue("encoded123");
+    const res = await GET(makeGetRequest());
+    const json = await res.json();
+    expect(json.nextCursor).toBe("encoded123");
+    expect(mockEncodeCursorParam).toHaveBeenCalledWith("next123");
+  });
+
+  it("clamps page to minimum 1", async () => {
+    mockQueryMembershipTiers.mockResolvedValue({ items: [], total: 0 });
+    await GET(makeGetRequest({ page: "0" }));
+    expect(mockQueryMembershipTiers).toHaveBeenCalledWith(expect.objectContaining({ page: 1 }));
+  });
 });
 
 // ─── POST ──────────────────────────────────────────────
@@ -132,5 +179,67 @@ describe("POST /api/admin/vip/tiers", () => {
     expect(res.status).toBe(201);
     const json = await res.json();
     expect(json.perks).toEqual([{ label: "专属客服", desc: "24小时" }, { label: "优先派单" }]);
+  });
+
+  it("normalizes array perks with string items", async () => {
+    mockAddMembershipTier.mockResolvedValue(undefined);
+    const res = await POST(
+      makePostRequest({ name: "VIP", level: 1, perks: ["专属客服", "优先派单"] })
+    );
+    expect(res.status).toBe(201);
+    const json = await res.json();
+    expect(json.perks).toEqual([{ label: "专属客服" }, { label: "优先派单" }]);
+  });
+
+  it("normalizes array perks with object items", async () => {
+    mockAddMembershipTier.mockResolvedValue(undefined);
+    const res = await POST(
+      makePostRequest({
+        name: "VIP",
+        level: 1,
+        perks: [{ label: "专属客服", desc: "24小时" }, { label: "优先派单" }],
+      })
+    );
+    expect(res.status).toBe(201);
+    const json = await res.json();
+    expect(json.perks).toEqual([{ label: "专属客服", desc: "24小时" }, { label: "优先派单" }]);
+  });
+
+  it("normalizes array perks with mixed string and object items", async () => {
+    mockAddMembershipTier.mockResolvedValue(undefined);
+    const res = await POST(
+      makePostRequest({
+        name: "VIP",
+        level: 1,
+        perks: ["专属客服", { label: "优先派单", desc: "VIP专享" }],
+      })
+    );
+    expect(res.status).toBe(201);
+    const json = await res.json();
+    expect(json.perks).toEqual([{ label: "专属客服" }, { label: "优先派单", desc: "VIP专享" }]);
+  });
+
+  it("leaves perks undefined when not provided", async () => {
+    mockAddMembershipTier.mockResolvedValue(undefined);
+    const res = await POST(makePostRequest({ name: "Basic", level: 0 }));
+    expect(res.status).toBe(201);
+    const json = await res.json();
+    expect(json.perks).toBeUndefined();
+  });
+
+  it("uses custom id when provided", async () => {
+    mockAddMembershipTier.mockResolvedValue(undefined);
+    const res = await POST(makePostRequest({ id: "MY-TIER-1", name: "Gold", level: 2 }));
+    expect(res.status).toBe(201);
+    const json = await res.json();
+    expect(json.id).toBe("MY-TIER-1");
+  });
+
+  it("handles string perks with multiple pipe separators", async () => {
+    mockAddMembershipTier.mockResolvedValue(undefined);
+    const res = await POST(makePostRequest({ name: "VIP", level: 1, perks: "客服|24小时|全天候" }));
+    expect(res.status).toBe(201);
+    const json = await res.json();
+    expect(json.perks).toEqual([{ label: "客服", desc: "24小时|全天候" }]);
   });
 });

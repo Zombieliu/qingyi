@@ -26,7 +26,8 @@ export function useUnreadCount() {
       const res = await fetchWithUserAuth(
         `/api/notifications?address=${addr}&countOnly=1`,
         {},
-        addr
+        addr,
+        { silent: true }
       );
       if (res.ok) {
         const data = await res.json();
@@ -41,7 +42,7 @@ export function useUnreadCount() {
     const addr = getCurrentAddress();
     if (!addr) return;
     // Initial fetch
-    fetchWithUserAuth(`/api/notifications?address=${addr}&countOnly=1`, {}, addr)
+    fetchWithUserAuth(`/api/notifications?address=${addr}&countOnly=1`, {}, addr, { silent: true })
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         if (data) setCount(data.unread ?? 0);
@@ -49,7 +50,9 @@ export function useUnreadCount() {
       .catch(() => {});
     // Refresh every 30s
     const interval = setInterval(() => {
-      fetchWithUserAuth(`/api/notifications?address=${addr}&countOnly=1`, {}, addr)
+      fetchWithUserAuth(`/api/notifications?address=${addr}&countOnly=1`, {}, addr, {
+        silent: true,
+      })
         .then((res) => (res.ok ? res.json() : null))
         .then((data) => {
           if (data) setCount(data.unread ?? 0);

@@ -11,12 +11,13 @@ import { touchAccessTokenByHash } from "@/lib/admin/admin-store";
 import { recordAudit } from "@/lib/admin/admin-audit";
 import { parseBody } from "@/lib/shared/api-validation";
 import { env } from "@/lib/env";
+import { AdminMessages } from "@/lib/shared/messages";
 
 const loginSchema = z.object({ token: z.string().trim().min(1) });
 
 export async function POST(req: Request) {
   if (!(await enforceLoginRateLimit(req))) {
-    return NextResponse.json({ error: "登录过于频繁" }, { status: 429 });
+    return NextResponse.json({ error: AdminMessages.LOGIN_RATE_LIMITED }, { status: 429 });
   }
 
   const ipCheck = enforceAdminIpAllowlist(req);
@@ -28,7 +29,7 @@ export async function POST(req: Request) {
 
   const roleEntry = await getAdminRoleForToken(token);
   if (!roleEntry) {
-    return NextResponse.json({ error: "密钥错误" }, { status: 401 });
+    return NextResponse.json({ error: AdminMessages.LOGIN_WRONG_KEY }, { status: 401 });
   }
   if (roleEntry.source === "db" && roleEntry.tokenHash) {
     await touchAccessTokenByHash(roleEntry.tokenHash);
@@ -44,7 +45,7 @@ export async function POST(req: Request) {
     });
   } catch (error) {
     console.error("admin login: failed to create session", error);
-    return NextResponse.json({ error: "服务暂不可用" }, { status: 503 });
+    return NextResponse.json({ error: AdminMessages.LOGIN_SERVICE_UNAVAILABLE }, { status: 503 });
   }
 
   const response = NextResponse.json({ ok: true, role: roleEntry.role });

@@ -4,6 +4,7 @@ import { z } from "zod";
 import { parseBodyRaw } from "@/lib/shared/api-validation";
 import { env } from "@/lib/env";
 import { creditLedgerWithAdmin } from "@/lib/ledger/ledger-credit";
+import { apiBadRequest, apiUnauthorized, apiInternalError } from "@/lib/shared/api-response";
 
 const ledgerCreditSchema = z.object({
   user: z.string().min(1),
@@ -31,7 +32,7 @@ export async function POST(req: Request) {
     }
 
     if (!requireAuth(req, adminToken)) {
-      return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+      return apiUnauthorized();
     }
 
     const parsed = await parseBodyRaw(req, ledgerCreditSchema);
@@ -40,11 +41,11 @@ export async function POST(req: Request) {
 
     const user = normalizeSuiAddress(body.user);
     if (!user || !isValidSuiAddress(user)) {
-      return NextResponse.json({ error: "invalid user address" }, { status: 400 });
+      return apiBadRequest("invalid user address");
     }
     const amountStr = String(body.amount).trim();
     if (!/^[0-9]+$/.test(amountStr) || amountStr === "0") {
-      return NextResponse.json({ error: "amount must be positive integer" }, { status: 400 });
+      return apiBadRequest("amount must be positive integer");
     }
 
     const result = await creditLedgerWithAdmin({
@@ -60,6 +61,6 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ ok: true, ...result });
   } catch (e) {
-    return NextResponse.json({ error: (e as Error).message || "credit failed" }, { status: 500 });
+    return apiInternalError(e);
   }
 }

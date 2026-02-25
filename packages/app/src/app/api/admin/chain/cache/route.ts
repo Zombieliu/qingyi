@@ -3,6 +3,7 @@ import { requireAdmin } from "@/lib/admin/admin-auth";
 import { getCacheStats, clearCache, getChainOrderStats } from "@/lib/chain/chain-order-cache";
 import { fetchChainOrdersCached } from "@/lib/chain/chain-sync";
 import { env } from "@/lib/env";
+import { AdminMessages } from "@/lib/shared/messages";
 
 /**
  * 链上订单缓存监控和管理 API
@@ -62,7 +63,7 @@ export async function DELETE(req: Request) {
   const afterStats = getCacheStats();
 
   return NextResponse.json({
-    message: "缓存已清空",
+    message: AdminMessages.CACHE_CLEARED,
     before: beforeStats,
     after: afterStats,
     timestamp: new Date().toISOString(),
@@ -81,7 +82,7 @@ export async function POST(req: Request) {
   const chainStats = await getChainOrderStats(false); // 不再次刷新，使用刚才的缓存
 
   return NextResponse.json({
-    message: "缓存已刷新",
+    message: AdminMessages.CACHE_REFRESHED,
     refreshDuration: duration,
     orderCount: orders.length,
     cacheStats: stats,

@@ -44,6 +44,16 @@ describe("isAuthorizedCron", () => {
     expect(isAuthorizedCron(req)).toBe(false);
   });
 
+  it("rejects header token with different length", () => {
+    const req = makeRequest({ headers: { "x-cron-secret": "short" } });
+    expect(isAuthorizedCron(req)).toBe(false);
+  });
+
+  it("rejects query token with different length", () => {
+    const req = makeRequest({ url: "https://example.com/api/cron/test?token=x" });
+    expect(isAuthorizedCron(req)).toBe(false);
+  });
+
   it("rejects empty query token", () => {
     const req = makeRequest({ url: "https://example.com/api/cron/test?token=" });
     expect(isAuthorizedCron(req)).toBe(false);
@@ -57,6 +67,7 @@ describe("isAuthorizedCron", () => {
 
 describe("isAuthorizedCron (no secret)", () => {
   it("rejects in production when no secret configured", async () => {
+    vi.resetModules();
     vi.doMock("@/lib/env", () => ({ env: { CRON_SECRET: "" } }));
     const origEnv = process.env.NODE_ENV;
     // @ts-expect-error test override

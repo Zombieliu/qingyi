@@ -23,6 +23,11 @@ vi.mock("../admin-store-utils", () => ({
   })),
 }));
 
+vi.mock("@/lib/shared/soft-delete", () => ({
+  notDeleted: { deletedAt: null },
+  softDelete: () => ({ deletedAt: new Date() }),
+}));
+
 import {
   queryCoupons,
   queryCouponsCursor,
@@ -310,13 +315,13 @@ describe("coupon-store", () => {
 
   describe("removeCoupon", () => {
     it("should return true on success", async () => {
-      mockPrisma.adminCoupon.delete.mockResolvedValue({});
+      mockPrisma.adminCoupon.update.mockResolvedValue({});
       const result = await removeCoupon("coupon-1");
       expect(result).toBe(true);
     });
 
     it("should return false on error", async () => {
-      mockPrisma.adminCoupon.delete.mockRejectedValue(new Error("not found"));
+      mockPrisma.adminCoupon.update.mockRejectedValue(new Error("not found"));
       const result = await removeCoupon("nonexistent");
       expect(result).toBe(false);
     });

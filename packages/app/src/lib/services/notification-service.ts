@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { publishNotificationEvent } from "@/lib/realtime";
+import { NotificationMessages } from "@/lib/shared/messages";
 
 export type NotificationType = "order_status" | "referral" | "system" | "growth";
 
@@ -139,14 +140,7 @@ export function notifyOrderStatusChange(params: {
   stage: string;
   item: string;
 }) {
-  const stageLabels: Record<string, string> = {
-    已支付: "已支付，等待陪练接单",
-    进行中: "陪练已接单，服务进行中",
-    待结算: "服务完成，待结算",
-    已完成: "订单已完成",
-    已取消: "订单已取消",
-    已退款: "订单已退款",
-  };
+  const stageLabels = NotificationMessages.STAGE_LABELS;
 
   // Kook notification (best-effort, non-blocking)
   import("@/lib/services/kook-service")
@@ -164,7 +158,7 @@ export function notifyOrderStatusChange(params: {
   return createNotification({
     userAddress: params.userAddress,
     type: "order_status",
-    title: `订单状态更新`,
+    title: NotificationMessages.ORDER_STATUS_TITLE,
     body: `${params.item} — ${stageLabels[params.stage] || params.stage}`,
     orderId: params.orderId,
   });
@@ -179,8 +173,8 @@ export function notifyCompanionNewOrder(params: {
   return createNotification({
     userAddress: params.companionAddress,
     type: "order_status",
-    title: "新订单",
-    body: `${params.item} ¥${params.amount}，请尽快处理`,
+    title: NotificationMessages.COMPANION_NEW_ORDER_TITLE,
+    body: NotificationMessages.COMPANION_NEW_ORDER_BODY(params.item, params.amount),
     orderId: params.orderId,
   });
 }
@@ -189,8 +183,8 @@ export function notifyReferralReward(params: { userAddress: string; reward: numb
   return createNotification({
     userAddress: params.userAddress,
     type: "referral",
-    title: "邀请奖励到账",
-    body: `你邀请的好友已完成首单，获得 ${params.reward} 馒头奖励`,
+    title: NotificationMessages.REFERRAL_REWARD_TITLE,
+    body: NotificationMessages.REFERRAL_REWARD_BODY(params.reward),
   });
 }
 
@@ -198,7 +192,7 @@ export function notifyLevelUp(params: { userAddress: string; tierName: string; l
   return createNotification({
     userAddress: params.userAddress,
     type: "growth",
-    title: "等级提升 🎉",
-    body: `恭喜升级到 ${params.tierName}`,
+    title: NotificationMessages.LEVEL_UP_TITLE,
+    body: NotificationMessages.LEVEL_UP_BODY(params.tierName),
   });
 }

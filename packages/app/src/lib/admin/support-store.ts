@@ -6,6 +6,7 @@ import {
   appendCursorWhere,
   buildCursorPayload,
 } from "./admin-store-utils";
+import { notDeleted, softDelete } from "@/lib/shared/soft-delete";
 
 function mapSupportTicket(row: {
   id: string;
@@ -45,7 +46,7 @@ export async function querySupportTickets(params: {
 }) {
   const { page, pageSize, status, q } = params;
   const keyword = (q || "").trim();
-  const where: Prisma.AdminSupportTicketWhereInput = {};
+  const where: Prisma.AdminSupportTicketWhereInput = { ...notDeleted };
   if (status && status !== "全部") where.status = status;
   if (keyword) {
     where.OR = [
@@ -82,7 +83,7 @@ export async function querySupportTicketsCursor(params: {
 }) {
   const { pageSize, status, q, cursor } = params;
   const keyword = (q || "").trim();
-  const where: Prisma.AdminSupportTicketWhereInput = {};
+  const where: Prisma.AdminSupportTicketWhereInput = { ...notDeleted };
   if (status && status !== "全部") where.status = status;
   if (keyword) {
     where.OR = [
@@ -146,7 +147,7 @@ export async function updateSupportTicket(ticketId: string, patch: Partial<Admin
 
 export async function removeSupportTicket(ticketId: string) {
   try {
-    await prisma.adminSupportTicket.delete({ where: { id: ticketId } });
+    await prisma.adminSupportTicket.update({ where: { id: ticketId }, data: softDelete() });
     return true;
   } catch {
     return false;

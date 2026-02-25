@@ -1,15 +1,16 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent, act } from "@testing-library/react";
+import { renderToString } from "react-dom/server";
 
-const { mockPush, mockSetLocale, mockApplySeniorMode, mockGetCookie, mockSetCookie } = vi.hoisted(
-  () => ({
+const { mockPush, mockSetLocale, mockApplySeniorMode, mockGetCookie, mockSetCookie, mockLocale } =
+  vi.hoisted(() => ({
     mockPush: vi.fn(),
     mockSetLocale: vi.fn(),
     mockApplySeniorMode: vi.fn(),
     mockGetCookie: vi.fn(() => undefined as string | undefined),
     mockSetCookie: vi.fn(),
-  })
-);
+    mockLocale: { value: "en" as string },
+  }));
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: mockPush }),
@@ -17,7 +18,7 @@ vi.mock("next/navigation", () => ({
 
 vi.mock("@/lib/i18n/i18n-client", () => ({
   useI18n: () => ({
-    locale: "en",
+    locale: mockLocale.value,
     setLocale: mockSetLocale,
     t: (k: string) => k,
   }),
@@ -45,6 +46,7 @@ describe("SettingsPanel", () => {
     vi.clearAllMocks();
     localStorage.clear();
     originalLocation = window.location;
+    mockLocale.value = "en";
   });
 
   afterEach(() => {
@@ -223,5 +225,76 @@ describe("SettingsPanel", () => {
 
     expect(mockSetLocale).toHaveBeenCalledWith("zh");
     expect(reloadMock).toHaveBeenCalled();
+  });
+
+  it("reads senior mode as OFF when cookie is '0'", () => {
+    mockGetCookie.mockReturnValue("0");
+    render(<SettingsPanel onBack={onBack} onLogout={onLogout} />);
+    const toggle = screen.getByRole("button", { pressed: false });
+    expect(toggle).toBeInTheDocument();
+    mockGetCookie.mockReturnValue(undefined);
+  });
+
+  it("reads senior mode as OFF when localStorage is not '1'", () => {
+    mockGetCookie.mockReturnValue(undefined);
+    localStorage.setItem("qy_senior_mode_v1", "0");
+    render(<SettingsPanel onBack={onBack} onLogout={onLogout} />);
+    const toggle = screen.getByRole("button", { pressed: false });
+    expect(toggle).toBeInTheDocument();
+  });
+
+  it("renders about row without icon", () => {
+    render(<SettingsPanel onBack={onBack} onLogout={onLogout} />);
+    // The "about" row has no icon, just label
+    const aboutLabel = screen.getByText("settings.row.about");
+    expect(aboutLabel).toBeInTheDocument();
+    // It should be inside a button (has href)
+    expect(aboutLabel.closest("button")).not.toBeNull();
+  });
+
+  it("renders guide and feedback rows with icons", () => {
+    render(<SettingsPanel onBack={onBack} onLogout={onLogout} />);
+    expect(screen.getByText("settings.row.guide")).toBeInTheDocument();
+    expect(screen.getByText("settings.row.feedback")).toBeInTheDocument();
+  });
+
+  it("renders description for language row", () => {
+    render(<SettingsPanel onBack={onBack} onLogout={onLogout} />);
+    expect(screen.getByText("settings.language.current")).toBeInTheDocument();
+  });
+
+  it("renders description for senior mode row", () => {
+    render(<SettingsPanel onBack={onBack} onLogout={onLogout} />);
+    expect(screen.getByText("settings.row.senior.desc")).toBeInTheDocument();
+  });
+
+  it("renders chevrons for about section rows", () => {
+    const { container } = render(<SettingsPanel onBack={onBack} onLogout={onLogout} />);
+    const chevrons = container.querySelectorAll(".settings-chevron");
+    // About section rows all have href, so they all get chevrons
+    expect(chevrons.length).toBeGreaterThanOrEqual(3);
+  });
+
+  it("renders correctly with zh locale (nextLocale=en branch)", () => {
+    mockLocale.value = "zh";
+    const reloadMock = vi.fn();
+    Object.defineProperty(window, "location", {
+      value: { ...originalLocation, reload: reloadMock },
+      writable: true,
+      configurable: true,
+    });
+
+    render(<SettingsPanel onBack={onBack} onLogout={onLogout} />);
+    // Language switch should call setLocale with "en" (nextLocale when locale is "zh")
+    const switchBtn = screen.getByText("settings.language.switch");
+    fireEvent.click(switchBtn);
+    expect(mockSetLocale).toHaveBeenCalledWith("en");
+    expect(reloadMock).toHaveBeenCalled();
+  });
+
+  it("renders via SSR without errors", () => {
+    const html = renderToString(<SettingsPanel onBack={onBack} onLogout={onLogout} />);
+    expect(html).toContain("settings.title");
+    expect(html).toContain("settings.logout");
   });
 });

@@ -91,4 +91,12 @@ describe("apiError additional codes", () => {
     const body = await res.json();
     expect(body.message).toBeUndefined();
   });
+
+  it("falls back to 500 for unknown error code", async () => {
+    // Force an unknown code to cover the || 500 fallback branch
+    const res = apiError("unknown_code" as Parameters<typeof apiError>[0]);
+    expect(res.status).toBe(500);
+    const body = await res.json();
+    expect(body.error).toBe("unknown_code");
+  });
 });

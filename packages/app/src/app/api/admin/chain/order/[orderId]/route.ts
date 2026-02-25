@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin/admin-auth";
 import { findChainOrder, findChainOrderDirect } from "@/lib/chain/chain-sync";
 import { getOrderById } from "@/lib/admin/admin-store";
+import { ChainMessages } from "@/lib/shared/messages";
 
 type RouteContext = {
   params: Promise<{ orderId: string }>;
@@ -47,7 +48,7 @@ export async function GET(req: Request, { params }: RouteContext) {
     return NextResponse.json(
       {
         error: "order_not_found",
-        message: "订单不存在（链上和本地均未找到）",
+        message: ChainMessages.CHAIN_ORDER_NOT_FOUND_BOTH,
         orderId,
       },
       { status: 404 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { signAuthIntent } from "@/lib/chain/qy-chain";
+import { AuthMessages } from "@/lib/shared/messages";
 
 const AUTH_RETRY_ERRORS = new Set([
   "auth_required",
@@ -31,7 +32,7 @@ async function buildAuthHeaders(intent: string, body?: string, addressOverride?:
 
 export async function ensureUserSession(address: string) {
   if (!address) {
-    throw new Error("请先登录账号");
+    throw new Error(AuthMessages.LOGIN_REQUIRED);
   }
   if (sessionPromise) return sessionPromise;
   sessionPromise = (async () => {
@@ -59,9 +60,20 @@ export async function ensureUserSession(address: string) {
   }
 }
 
-export async function fetchWithUserAuth(url: string, init: RequestInit, address: string) {
+export type FetchAuthOptions = {
+  /** When true, return the 401 response as-is instead of triggering passkey re-auth */
+  silent?: boolean;
+};
+
+export async function fetchWithUserAuth(
+  url: string,
+  init: RequestInit,
+  address: string,
+  options?: FetchAuthOptions
+) {
   const res = await fetch(url, init);
   if (res.status !== 401) return res;
+  if (options?.silent) return res;
   let shouldRetry = true;
   try {
     const data = await res.clone().json();

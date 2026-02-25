@@ -1,343 +1,30 @@
 import type { AdminOrder } from "./admin-types";
-import { mapPaymentStatus } from "@/lib/chain/chain-status";
-import {
-  prisma,
-  Prisma,
-  type CursorPayload,
-  appendCursorWhere,
-  buildCursorPayload,
-} from "./admin-store-utils";
+import { mapOrder } from "./order-query-store";
+import { prisma, Prisma, type TransactionClient } from "./admin-store-utils";
 import { creditMantou } from "./mantou-store";
+import { AdminMessages } from "@/lib/shared/messages";
 
-function mapOrder(row: {
-  id: string;
-  user: string;
-  userAddress: string | null;
-  companionAddress: string | null;
-  item: string;
-  amount: Prisma.Decimal | number;
-  currency: string;
-  paymentStatus: string;
-  stage: string;
-  note: string | null;
-  assignedTo: string | null;
-  source: string | null;
-  chainDigest: string | null;
-  chainStatus: number | null;
-  serviceFee: Prisma.Decimal | number | null;
-  deposit: Prisma.Decimal | number | null;
-  meta: Prisma.JsonValue | null;
-  createdAt: Date;
-  updatedAt: Date | null;
-}): AdminOrder {
-  // Compute displayStatus: chain orders use chainStatus, non-chain use stage/paymentStatus
-  const isChain = row.chainDigest !== null || row.chainStatus !== null;
-  const displayStatus =
-    isChain && row.chainStatus !== null
-      ? mapPaymentStatus(row.chainStatus)
-      : row.paymentStatus || row.stage;
+// 向后兼容 re-export — 查询函数
+export {
+  mapOrder,
+  listOrders,
+  queryOrders,
+  queryOrdersCursor,
+  queryPublicOrdersCursor,
+  hasOrdersForAddress,
+  listE2eOrderIds,
+} from "./order-query-store";
 
-  return {
-    id: row.id,
-    user: row.user,
-    userAddress: row.userAddress || undefined,
-    companionAddress: row.companionAddress || undefined,
-    item: row.item,
-    amount: Number(row.amount),
-    currency: row.currency,
-    paymentStatus: row.paymentStatus,
-    stage: row.stage as AdminOrder["stage"],
-    displayStatus,
-    note: row.note || undefined,
-    assignedTo: row.assignedTo || undefined,
-    source: row.source || undefined,
-    chainDigest: row.chainDigest || undefined,
-    chainStatus: row.chainStatus ?? undefined,
-    serviceFee: row.serviceFee != null ? Number(row.serviceFee) : undefined,
-    deposit: row.deposit != null ? Number(row.deposit) : undefined,
-    meta: (row.meta as Record<string, unknown> | null) || undefined,
-    createdAt: row.createdAt.getTime(),
-    updatedAt: row.updatedAt ? row.updatedAt.getTime() : undefined,
-  };
-}
-
-export async function listOrders(limit = 1000) {
-  const rows = await prisma.adminOrder.findMany({
-    orderBy: { createdAt: "desc" },
-    take: limit,
-  });
-  return rows.map(mapOrder);
-}
-
-const CHAIN_ORDER_WHERE: Prisma.AdminOrderWhereInput = {
-  OR: [{ chainDigest: { not: null } }, { chainStatus: { not: null } }, { source: "chain" }],
-};
-
-export async function listChainOrdersForAdmin(limit = 500) {
-  const rows = await prisma.adminOrder.findMany({
-    where: CHAIN_ORDER_WHERE,
-    orderBy: { createdAt: "desc" },
-    take: limit,
-    select: {
-      id: true,
-      chainStatus: true,
-      chainDigest: true,
-      source: true,
-      meta: true,
-    },
-  });
-  return rows.map((row) => ({
-    id: row.id,
-    chainStatus: row.chainStatus ?? undefined,
-    chainDigest: row.chainDigest ?? undefined,
-    source: row.source ?? undefined,
-    meta: (row.meta as Record<string, unknown> | null) || undefined,
-  }));
-}
-
-export async function listChainOrdersForAutoFinalize(limit = 500) {
-  const rows = await prisma.adminOrder.findMany({
-    where: CHAIN_ORDER_WHERE,
-    orderBy: { createdAt: "desc" },
-    take: limit,
-    select: {
-      id: true,
-      chainStatus: true,
-      chainDigest: true,
-      source: true,
-      meta: true,
-    },
-  });
-  return rows.map((row) => ({
-    id: row.id,
-    chainStatus: row.chainStatus ?? undefined,
-    chainDigest: row.chainDigest ?? undefined,
-    source: row.source ?? undefined,
-    meta: (row.meta as Record<string, unknown> | null) || undefined,
-  }));
-}
-
-export async function listChainOrdersForCleanup(limit = 1000) {
-  const rows = await prisma.adminOrder.findMany({
-    where: { source: "chain" },
-    orderBy: { createdAt: "desc" },
-    take: limit,
-    select: {
-      id: true,
-      source: true,
-      createdAt: true,
-    },
-  });
-  return rows.map((row) => ({
-    id: row.id,
-    source: row.source ?? undefined,
-    createdAt: row.createdAt.getTime(),
-  }));
-}
-
-function buildOrderWhere(params: {
-  stage?: string;
-  q?: string;
-  paymentStatus?: string;
-  assignedTo?: string;
-  userAddress?: string;
-  address?: string;
-  companionMissing?: boolean;
-  excludeStages?: string[];
-}): Prisma.AdminOrderWhereInput {
-  const {
-    stage,
-    q,
-    paymentStatus,
-    assignedTo,
-    userAddress,
-    address,
-    companionMissing,
-    excludeStages,
-  } = params;
-  const keyword = (q || "").trim();
-  const where: Prisma.AdminOrderWhereInput = {};
-  const andConditions: Prisma.AdminOrderWhereInput[] = [];
-
-  if (stage && stage !== "全部") {
-    where.stage = stage;
-  }
-  if (excludeStages && excludeStages.length > 0) {
-    where.stage = { notIn: excludeStages };
-  }
-  if (paymentStatus) {
-    where.paymentStatus = paymentStatus;
-  }
-  if (assignedTo) {
-    where.assignedTo = assignedTo;
-  }
-  if (companionMissing) {
-    where.companionAddress = null;
-  }
-  if (address) {
-    andConditions.push({ OR: [{ userAddress: address }, { companionAddress: address }] });
-  } else if (userAddress) {
-    where.userAddress = userAddress;
-  }
-  if (keyword) {
-    andConditions.push({
-      OR: [
-        { user: { contains: keyword } },
-        { item: { contains: keyword } },
-        { id: { contains: keyword } },
-      ],
-    });
-  }
-  if (andConditions.length > 0) {
-    where.AND = andConditions;
-  }
-  return where;
-}
-
-export async function queryOrders(params: {
-  page: number;
-  pageSize: number;
-  stage?: string;
-  q?: string;
-  paymentStatus?: string;
-  assignedTo?: string;
-  userAddress?: string;
-  address?: string;
-  companionMissing?: boolean;
-  excludeStages?: string[];
-}) {
-  const {
-    page,
-    pageSize,
-    stage,
-    q,
-    paymentStatus,
-    assignedTo,
-    userAddress,
-    address,
-    companionMissing,
-    excludeStages,
-  } = params;
-  const where = buildOrderWhere({
-    stage,
-    q,
-    paymentStatus,
-    assignedTo,
-    userAddress,
-    address,
-    companionMissing,
-    excludeStages,
-  });
-
-  const total = await prisma.adminOrder.count({ where });
-  const totalPages = Math.max(1, Math.ceil(total / pageSize));
-  const clampedPage = Math.min(Math.max(page, 1), totalPages);
-  const rows = await prisma.adminOrder.findMany({
-    where,
-    orderBy: { createdAt: "desc" },
-    skip: (clampedPage - 1) * pageSize,
-    take: pageSize,
-  });
-
-  return {
-    items: rows.map(mapOrder),
-    total,
-    page: clampedPage,
-    pageSize,
-    totalPages,
-  };
-}
-
-export async function queryOrdersCursor(params: {
-  pageSize: number;
-  stage?: string;
-  q?: string;
-  paymentStatus?: string;
-  assignedTo?: string;
-  userAddress?: string;
-  address?: string;
-  companionMissing?: boolean;
-  excludeStages?: string[];
-  cursor?: CursorPayload;
-}) {
-  const {
-    pageSize,
-    stage,
-    q,
-    paymentStatus,
-    assignedTo,
-    userAddress,
-    address,
-    companionMissing,
-    excludeStages,
-    cursor,
-  } = params;
-  const where = buildOrderWhere({
-    stage,
-    q,
-    paymentStatus,
-    assignedTo,
-    userAddress,
-    address,
-    companionMissing,
-    excludeStages,
-  });
-  appendCursorWhere(where, cursor);
-
-  const rows = await prisma.adminOrder.findMany({
-    where,
-    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-    take: pageSize + 1,
-  });
-  const hasMore = rows.length > pageSize;
-  const sliced = hasMore ? rows.slice(0, pageSize) : rows;
-  return {
-    items: sliced.map(mapOrder),
-    nextCursor: hasMore ? buildCursorPayload(sliced[sliced.length - 1]) : null,
-  };
-}
-
-export async function hasOrdersForAddress(address: string) {
-  if (!address) return false;
-  const count = await prisma.adminOrder.count({ where: { userAddress: address } });
-  return count > 0;
-}
+// 向后兼容 re-export — chain 查询函数
+export {
+  listChainOrdersForAdmin,
+  listChainOrdersForAutoFinalize,
+  listChainOrdersForCleanup,
+} from "./order-chain-store";
 
 export async function getOrderById(orderId: string) {
   const row = await prisma.adminOrder.findUnique({ where: { id: orderId } });
   return row ? mapOrder(row) : null;
-}
-
-export async function queryPublicOrdersCursor(params: {
-  pageSize: number;
-  excludeStages?: string[];
-  cursor?: { createdAt: number; id: string };
-}) {
-  const { pageSize, excludeStages, cursor } = params;
-  const where: Prisma.AdminOrderWhereInput = { companionAddress: null };
-  if (excludeStages && excludeStages.length > 0) {
-    where.stage = { notIn: excludeStages };
-  }
-  if (cursor) {
-    const cursorDate = new Date(cursor.createdAt);
-    where.AND = [
-      {
-        OR: [{ createdAt: { lt: cursorDate } }, { createdAt: cursorDate, id: { lt: cursor.id } }],
-      },
-    ];
-  }
-
-  const rows = await prisma.adminOrder.findMany({
-    where,
-    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-    take: pageSize + 1,
-  });
-  const hasMore = rows.length > pageSize;
-  const sliced = hasMore ? rows.slice(0, pageSize) : rows;
-  return {
-    items: sliced.map(mapOrder),
-    nextCursor: hasMore ? sliced[sliced.length - 1] : null,
-  };
 }
 
 export async function removeOrders(orderIds: string[]) {
@@ -345,23 +32,6 @@ export async function removeOrders(orderIds: string[]) {
   if (ids.length === 0) return 0;
   const result = await prisma.adminOrder.deleteMany({ where: { id: { in: ids } } });
   return result.count;
-}
-
-export async function listE2eOrderIds() {
-  const rows = await prisma.adminOrder.findMany({
-    where: {
-      OR: [
-        { id: { startsWith: "E2E-ORDER-" } },
-        { item: { contains: "Admin E2E" } },
-        { item: { equals: "E2E Test Order" } },
-        { user: { equals: "E2E" } },
-        { user: { equals: "flow-test-user" } },
-        { note: { contains: "flow-test" } },
-      ],
-    },
-    select: { id: true },
-  });
-  return rows.map((row) => row.id);
 }
 
 export async function addOrder(order: AdminOrder) {
@@ -391,45 +61,51 @@ export async function addOrder(order: AdminOrder) {
   return mapOrder(row);
 }
 
-export async function updateOrder(orderId: string, patch: Partial<AdminOrder>) {
+export async function updateOrder(
+  orderId: string,
+  patch: Partial<AdminOrder>,
+  tx?: TransactionClient
+) {
   try {
-    const data: Prisma.AdminOrderUpdateInput = {
-      updatedAt: new Date(),
+    const run = async (db: TransactionClient) => {
+      const data: Prisma.AdminOrderUpdateInput = { updatedAt: new Date() };
+      if (patch.paymentStatus !== undefined) data.paymentStatus = patch.paymentStatus;
+      if (patch.note !== undefined) data.note = patch.note;
+      if (patch.assignedTo !== undefined) data.assignedTo = patch.assignedTo;
+      if (patch.stage !== undefined) data.stage = patch.stage;
+      if (patch.user !== undefined) data.user = patch.user;
+      if (patch.userAddress !== undefined) data.userAddress = patch.userAddress;
+      if (patch.companionAddress !== undefined) data.companionAddress = patch.companionAddress;
+      if (patch.item !== undefined) data.item = patch.item;
+      if (patch.amount !== undefined) data.amount = patch.amount;
+      if (patch.currency !== undefined) data.currency = patch.currency;
+      if (patch.source !== undefined) data.source = patch.source;
+      if (patch.chainDigest !== undefined) data.chainDigest = patch.chainDigest;
+      if (patch.chainStatus !== undefined) data.chainStatus = patch.chainStatus;
+      if (patch.serviceFee !== undefined) data.serviceFee = patch.serviceFee;
+      if (patch.deposit !== undefined) data.deposit = patch.deposit;
+      if (patch.meta !== undefined) {
+        const current = await db.adminOrder.findUnique({
+          where: { id: orderId },
+          select: { meta: true },
+        });
+        const merged = {
+          ...(current?.meta ? (current.meta as Record<string, unknown>) : {}),
+          ...(patch.meta || {}),
+        };
+        data.meta = Object.keys(merged).length ? (merged as Prisma.InputJsonValue) : Prisma.DbNull;
+      }
+      const row = await db.adminOrder.update({ where: { id: orderId }, data });
+      const mapped = mapOrder(row);
+      await maybeCreditMantouForCompletedOrder(mapped, db);
+      await maybeAwardGrowthPoints(mapped, db);
+      return mapped;
     };
-    if (patch.paymentStatus !== undefined) data.paymentStatus = patch.paymentStatus;
-    if (patch.note !== undefined) data.note = patch.note;
-    if (patch.assignedTo !== undefined) data.assignedTo = patch.assignedTo;
-    if (patch.stage !== undefined) data.stage = patch.stage;
-    if (patch.user !== undefined) data.user = patch.user;
-    if (patch.userAddress !== undefined) data.userAddress = patch.userAddress;
-    if (patch.companionAddress !== undefined) data.companionAddress = patch.companionAddress;
-    if (patch.item !== undefined) data.item = patch.item;
-    if (patch.amount !== undefined) data.amount = patch.amount;
-    if (patch.currency !== undefined) data.currency = patch.currency;
-    if (patch.source !== undefined) data.source = patch.source;
-    if (patch.chainDigest !== undefined) data.chainDigest = patch.chainDigest;
-    if (patch.chainStatus !== undefined) data.chainStatus = patch.chainStatus;
-    if (patch.serviceFee !== undefined) data.serviceFee = patch.serviceFee;
-    if (patch.deposit !== undefined) data.deposit = patch.deposit;
-    if (patch.meta !== undefined) {
-      const current = await prisma.adminOrder.findUnique({
-        where: { id: orderId },
-        select: { meta: true },
-      });
-      const merged = {
-        ...(current?.meta ? (current.meta as Record<string, unknown>) : {}),
-        ...(patch.meta || {}),
-      };
-      data.meta = Object.keys(merged).length ? (merged as Prisma.InputJsonValue) : Prisma.DbNull;
-    }
 
-    const row = await prisma.adminOrder.update({
-      where: { id: orderId },
-      data,
-    });
-    const mapped = mapOrder(row);
-    await maybeCreditMantouForCompletedOrder(mapped);
-    await maybeAwardGrowthPoints(mapped);
+    const mapped = tx
+      ? await run(tx)
+      : await prisma.$transaction(async (txClient) => run(txClient));
+    // Notifications are non-critical, run outside the transaction
     await maybeNotifyOrderUpdate(mapped, patch);
     return mapped;
   } catch {
@@ -437,7 +113,7 @@ export async function updateOrder(orderId: string, patch: Partial<AdminOrder>) {
   }
 }
 
-async function maybeCreditMantouForCompletedOrder(order: AdminOrder) {
+async function maybeCreditMantouForCompletedOrder(order: AdminOrder, tx?: TransactionClient) {
   if (order.stage !== "已完成") return;
   const address = (order.companionAddress || "").trim();
   if (!address) return;
@@ -449,14 +125,15 @@ async function maybeCreditMantouForCompletedOrder(order: AdminOrder) {
       address,
       amount: Math.floor(diamondCharge),
       orderId: order.id,
-      note: `来自订单 ${order.id} 的钻石兑换`,
+      note: AdminMessages.DIAMOND_EXCHANGE_NOTE(order.id),
+      tx,
     });
   } catch {
     // Ignore auto-credit failures to avoid blocking order updates.
   }
 }
 
-async function maybeAwardGrowthPoints(order: AdminOrder) {
+async function maybeAwardGrowthPoints(order: AdminOrder, tx?: TransactionClient) {
   if (order.stage !== "已完成") return;
   const address = (order.userAddress || "").trim();
   if (!address) return;
@@ -466,6 +143,7 @@ async function maybeAwardGrowthPoints(order: AdminOrder) {
       userAddress: address,
       amount: order.amount,
       orderId: order.id,
+      tx,
     });
   } catch {
     // Ignore growth point failures to avoid blocking order updates.
@@ -473,12 +151,10 @@ async function maybeAwardGrowthPoints(order: AdminOrder) {
 }
 
 async function maybeNotifyOrderUpdate(order: AdminOrder, patch: Partial<AdminOrder>) {
-  // Only notify on stage changes
   if (!patch.stage) return;
   try {
     const { notifyOrderStatusChange, notifyCompanionNewOrder } =
       await import("@/lib/services/notification-service");
-    // Notify user
     if (order.userAddress) {
       await notifyOrderStatusChange({
         userAddress: order.userAddress,
@@ -487,7 +163,6 @@ async function maybeNotifyOrderUpdate(order: AdminOrder, patch: Partial<AdminOrd
         item: order.item,
       });
     }
-    // Notify companion when order is confirmed or in progress
     if (order.companionAddress && (patch.stage === "已确认" || patch.stage === "进行中")) {
       await notifyCompanionNewOrder({
         companionAddress: order.companionAddress,
@@ -508,10 +183,7 @@ export async function updateOrderIfUnassigned(orderId: string, patch: Partial<Ad
       select: { meta: true, companionAddress: true },
     });
     if (!current || current.companionAddress) return null;
-
-    const data: Prisma.AdminOrderUpdateManyMutationInput = {
-      updatedAt: new Date(),
-    };
+    const data: Prisma.AdminOrderUpdateManyMutationInput = { updatedAt: new Date() };
     if (patch.stage !== undefined) data.stage = patch.stage;
     if (patch.companionAddress !== undefined) data.companionAddress = patch.companionAddress;
     if (patch.meta !== undefined) {
@@ -521,13 +193,11 @@ export async function updateOrderIfUnassigned(orderId: string, patch: Partial<Ad
       };
       data.meta = Object.keys(merged).length ? (merged as Prisma.InputJsonValue) : Prisma.DbNull;
     }
-
     const result = await prisma.adminOrder.updateMany({
       where: { id: orderId, companionAddress: null },
       data,
     });
     if (result.count === 0) return null;
-
     const row = await prisma.adminOrder.findUnique({ where: { id: orderId } });
     return row ? mapOrder(row) : null;
   } catch {

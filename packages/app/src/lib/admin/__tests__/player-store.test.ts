@@ -9,6 +9,7 @@ const mockPrisma = vi.hoisted(() => ({
     update: vi.fn(),
     delete: vi.fn(),
     deleteMany: vi.fn(),
+    updateMany: vi.fn(),
     count: vi.fn(),
   },
   adminOrder: {
@@ -104,14 +105,14 @@ describe("player-store", () => {
 
   describe("getPlayerById", () => {
     it("should return mapped player when found", async () => {
-      mockPrisma.adminPlayer.findUnique.mockResolvedValue(makePlayerRow());
+      mockPrisma.adminPlayer.findFirst.mockResolvedValue(makePlayerRow());
       const result = await getPlayerById("player-1");
       expect(result).not.toBeNull();
       expect(result!.name).toBe("TestPlayer");
     });
 
     it("should return null when not found", async () => {
-      mockPrisma.adminPlayer.findUnique.mockResolvedValue(null);
+      mockPrisma.adminPlayer.findFirst.mockResolvedValue(null);
       const result = await getPlayerById("nonexistent");
       expect(result).toBeNull();
     });
@@ -401,13 +402,13 @@ describe("player-store", () => {
 
   describe("removePlayer", () => {
     it("should return true on success", async () => {
-      mockPrisma.adminPlayer.delete.mockResolvedValue({});
+      mockPrisma.adminPlayer.update.mockResolvedValue({});
       const result = await removePlayer("player-1");
       expect(result).toBe(true);
     });
 
     it("should return false on error", async () => {
-      mockPrisma.adminPlayer.delete.mockRejectedValue(new Error("not found"));
+      mockPrisma.adminPlayer.update.mockRejectedValue(new Error("not found"));
       const result = await removePlayer("nonexistent");
       expect(result).toBe(false);
     });
@@ -415,7 +416,7 @@ describe("player-store", () => {
 
   describe("removePlayers", () => {
     it("should delete multiple and return count", async () => {
-      mockPrisma.adminPlayer.deleteMany.mockResolvedValue({ count: 3 });
+      mockPrisma.adminPlayer.updateMany.mockResolvedValue({ count: 3 });
       const result = await removePlayers(["p1", "p2", "p3"]);
       expect(result).toBe(3);
     });

@@ -52,7 +52,12 @@ vi.mock("next/server", () => {
       return new MockNextResponse(data, init);
     }
   }
-  return { NextResponse: MockNextResponse };
+  return {
+    NextResponse: MockNextResponse,
+    after: vi.fn((fn: unknown) => {
+      if (typeof fn === "function") fn();
+    }),
+  };
 });
 
 vi.mock("@/lib/admin/admin-store", () => ({

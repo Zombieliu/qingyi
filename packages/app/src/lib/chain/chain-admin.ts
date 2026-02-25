@@ -6,6 +6,7 @@ import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
 import { isValidSuiAddress, normalizeSuiAddress, toHex } from "@mysten/sui/utils";
 import { DAPP_HUB_ID, DAPP_HUB_INITIAL_SHARED_VERSION, PACKAGE_ID } from "contracts/deployment";
 import { env } from "@/lib/env";
+import { ChainMessages } from "@/lib/shared/messages";
 
 export type ChainOrder = {
   orderId: string;
@@ -145,7 +146,7 @@ async function getDubhePackageId(client: SuiClient): Promise<string> {
   const { hubId } = ensureChainEnv();
   const obj = await retryRpc(() => client.getObject({ id: hubId, options: { showType: true } }));
   const type = obj.data?.type;
-  if (!type) throw new Error("无法读取 DappHub 类型");
+  if (!type) throw new Error(ChainMessages.DAPP_HUB_TYPE_UNREADABLE);
   return type.split("::")[0];
 }
 

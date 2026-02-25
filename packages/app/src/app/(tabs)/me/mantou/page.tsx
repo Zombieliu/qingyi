@@ -11,25 +11,11 @@ import { fetchWithUserAuth } from "@/lib/auth/user-auth-client";
 import { StateBlock } from "@/app/components/state-block";
 import { formatErrorMessage } from "@/lib/shared/error-utils";
 import { useGuardianStatus } from "@/app/components/guardian-role";
-import { PLAYER_STATUS_OPTIONS, type PlayerStatus } from "@/lib/admin/admin-types";
-import { formatFullDateTime } from "@/lib/shared/date-utils";
-
-type WithdrawItem = {
-  id: string;
-  amount: number;
-  status: string;
-  account?: string;
-  note?: string;
-  createdAt: number;
-};
-
-type TxItem = {
-  id: string;
-  type: string;
-  amount: number;
-  note?: string;
-  createdAt: number;
-};
+import type { PlayerStatus } from "@/lib/admin/admin-types";
+import type { WithdrawItem, TxItem } from "./mantou-types";
+import { PlayerStatusSection } from "./player-status-section";
+import { WithdrawHistory } from "./withdraw-history";
+import { TransactionHistory } from "./transaction-history";
 
 export default function MantouPage() {
   const { balance, frozen, refresh } = useMantouBalance();
@@ -260,64 +246,17 @@ export default function MantouPage() {
         <div className="mt-1 text-xs text-slate-500">冻结中：{frozen}</div>
       </section>
 
-      <section className="dl-card" style={{ padding: 16, marginTop: 12 }}>
-        <div className="text-sm font-semibold text-gray-900">{t("ui.mantou.091")}</div>
-        <div className="mt-2 text-xs text-slate-500">{t("ui.mantou.092")}</div>
-        {guardianState === "checking" || statusLoading ? (
-          <div className="mt-3">
-            <StateBlock tone="loading" size="compact" title={t("me.mantou.004")} />
-          </div>
-        ) : !guardianAddress ? (
-          <div className="mt-3">
-            <StateBlock
-              tone="warning"
-              size="compact"
-              title={t("me.mantou.005")}
-              description={t("me.mantou.006")}
-            />
-          </div>
-        ) : !isGuardian ? (
-          <div className="mt-3">
-            <StateBlock
-              tone="warning"
-              size="compact"
-              title={t("me.mantou.007")}
-              description={t("me.mantou.008")}
-            />
-          </div>
-        ) : playerStatus ? (
-          <div className="mt-3">
-            <div className="text-xs text-slate-500">当前状态：{playerStatus}</div>
-            <div className="lc-tabs" style={{ marginTop: 8 }}>
-              {PLAYER_STATUS_OPTIONS.map((option) => (
-                <button
-                  key={option}
-                  type="button"
-                  className={`lc-tab-btn ${playerStatus === option ? "is-active" : ""}`}
-                  onClick={() => updateStatus(option)}
-                  disabled={statusSaving || playerStatus === option}
-                >
-                  {statusSaving && playerStatus === option ? t("tabs.me.mantou.i051") : option}
-                </button>
-              ))}
-            </div>
-            {statusHint && (
-              <div className="mt-3">
-                <StateBlock tone={statusHintTone} size="compact" title={statusHint} />
-              </div>
-            )}
-          </div>
-        ) : (
-          <div className="mt-3">
-            <StateBlock
-              tone="warning"
-              size="compact"
-              title={statusHint || t("tabs.me.mantou.i052")}
-              description={t("me.mantou.009")}
-            />
-          </div>
-        )}
-      </section>
+      <PlayerStatusSection
+        guardianState={guardianState}
+        guardianAddress={guardianAddress}
+        isGuardian={isGuardian}
+        playerStatus={playerStatus}
+        statusLoading={statusLoading}
+        statusSaving={statusSaving}
+        statusHint={statusHint}
+        statusHintTone={statusHintTone}
+        onUpdateStatus={updateStatus}
+      />
 
       <section className="dl-card" style={{ padding: 16, marginTop: 12 }}>
         <div className="text-sm font-semibold text-gray-900">{t("ui.mantou.093")}</div>
@@ -369,61 +308,9 @@ export default function MantouPage() {
         )}
       </section>
 
-      <section className="dl-card" style={{ padding: 16, marginTop: 12 }}>
-        <div className="text-sm font-semibold text-gray-900">{t("ui.mantou.098")}</div>
-        {withdraws.length === 0 ? (
-          <div className="mt-3">
-            <StateBlock
-              tone="empty"
-              size="compact"
-              title={t("me.mantou.013")}
-              description={t("me.mantou.014")}
-            />
-          </div>
-        ) : (
-          <div className="mt-3 grid gap-3">
-            {withdraws.map((item) => (
-              <div key={item.id} className="rounded-2xl border border-slate-100 p-3 text-xs">
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-600">{t("ui.mantou.099")}</span>
-                  <span className="font-semibold text-emerald-600">{item.amount}</span>
-                </div>
-                <div className="mt-1 text-slate-500">状态：{item.status}</div>
-                {item.account && <div className="mt-1 text-slate-500">账号：{item.account}</div>}
-                {item.note && <div className="mt-1 text-slate-500">备注：{item.note}</div>}
-                <div className="mt-1 text-slate-400">{formatFullDateTime(item.createdAt)}</div>
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
+      <WithdrawHistory withdraws={withdraws} />
 
-      <section className="dl-card" style={{ padding: 16, marginTop: 12, marginBottom: 24 }}>
-        <div className="text-sm font-semibold text-gray-900">{t("ui.mantou.100")}</div>
-        {transactions.length === 0 ? (
-          <div className="mt-3">
-            <StateBlock
-              tone="empty"
-              size="compact"
-              title={t("me.mantou.015")}
-              description={t("me.mantou.016")}
-            />
-          </div>
-        ) : (
-          <div className="mt-3 grid gap-3">
-            {transactions.map((item) => (
-              <div key={item.id} className="rounded-2xl border border-slate-100 p-3 text-xs">
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-600">{item.type}</span>
-                  <span className="font-semibold text-emerald-600">{item.amount}</span>
-                </div>
-                {item.note && <div className="mt-1 text-slate-500">备注：{item.note}</div>}
-                <div className="mt-1 text-slate-400">{formatFullDateTime(item.createdAt)}</div>
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
+      <TransactionHistory transactions={transactions} />
     </div>
   );
 }

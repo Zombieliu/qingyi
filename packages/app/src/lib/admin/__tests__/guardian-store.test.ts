@@ -23,6 +23,11 @@ vi.mock("../admin-store-utils", () => ({
   })),
 }));
 
+vi.mock("@/lib/shared/soft-delete", () => ({
+  notDeleted: { deletedAt: null },
+  softDelete: () => ({ deletedAt: new Date() }),
+}));
+
 import {
   queryGuardianApplications,
   queryGuardianApplicationsCursor,
@@ -230,13 +235,13 @@ describe("guardian-store", () => {
 
   describe("removeGuardianApplication", () => {
     it("should return true on success", async () => {
-      mockPrisma.adminGuardianApplication.delete.mockResolvedValue({});
+      mockPrisma.adminGuardianApplication.update.mockResolvedValue({});
       const result = await removeGuardianApplication("guardian-1");
       expect(result).toBe(true);
     });
 
     it("should return false on error", async () => {
-      mockPrisma.adminGuardianApplication.delete.mockRejectedValue(new Error("not found"));
+      mockPrisma.adminGuardianApplication.update.mockRejectedValue(new Error("not found"));
       const result = await removeGuardianApplication("nonexistent");
       expect(result).toBe(false);
     });

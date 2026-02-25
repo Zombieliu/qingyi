@@ -4,6 +4,13 @@ import { creditMantou, getOrderById } from "@/lib/admin/admin-store";
 import { requireUserAuth } from "@/lib/auth/user-auth";
 import { z } from "zod";
 import { parseBodyRaw } from "@/lib/shared/api-validation";
+import {
+  apiBadRequest,
+  apiNotFound,
+  apiForbidden,
+  apiInternalError,
+} from "@/lib/shared/api-response";
+import { AdminMessages } from "@/lib/shared/messages";
 
 const creditSchema = z.object({
   address: z.string().min(1),
@@ -17,7 +24,7 @@ export async function POST(req: Request) {
 
   const address = normalizeSuiAddress(payload.address);
   if (!address || !isValidSuiAddress(address)) {
-    return NextResponse.json({ error: "invalid address" }, { status: 400 });
+    return apiBadRequest("invalid address");
   }
   const orderId = payload.orderId;
 
@@ -30,17 +37,17 @@ export async function POST(req: Request) {
 
   const order = await getOrderById(orderId);
   if (!order) {
-    return NextResponse.json({ error: "order not found" }, { status: 404 });
+    return apiNotFound("order not found");
   }
   if (!order.companionAddress || order.companionAddress !== address) {
-    return NextResponse.json({ error: "forbidden" }, { status: 403 });
+    return apiForbidden();
   }
 
   const meta = (order.meta || {}) as Record<string, unknown>;
   const diamondCharge = Number(meta.diamondCharge ?? 0);
   const amount = Math.floor(Number.isFinite(diamondCharge) ? diamondCharge : 0);
   if (amount <= 0) {
-    return NextResponse.json({ error: "no diamond charge" }, { status: 400 });
+    return apiBadRequest("no diamond charge");
   }
 
   try {
@@ -48,13 +55,10 @@ export async function POST(req: Request) {
       address,
       amount,
       orderId,
-      note: `来自订单 ${orderId} 的钻石兑换`,
+      note: AdminMessages.DIAMOND_EXCHANGE_NOTE(orderId),
     });
     return NextResponse.json({ ok: true, duplicated: result.duplicated, wallet: result.wallet });
   } catch (error) {
-    return NextResponse.json(
-      { error: (error as Error).message || "credit failed" },
-      { status: 500 }
-    );
+    return apiInternalError(error);
   }
 }

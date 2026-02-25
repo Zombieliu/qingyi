@@ -3,6 +3,7 @@ import { requireAdmin } from "@/lib/admin/admin-auth";
 import { resolveDispute } from "@/lib/services/dispute-service";
 import { parseBody } from "@/lib/shared/api-validation";
 import { z } from "zod";
+import { DisputeMessages } from "@/lib/shared/messages";
 
 const resolveSchema = z.object({
   orderId: z.string().min(1),
@@ -25,7 +26,7 @@ export async function POST(req: Request) {
     });
     return NextResponse.json(dispute);
   } catch (error) {
-    const msg = error instanceof Error ? error.message : "处理争议失败";
+    const msg = error instanceof Error ? error.message : DisputeMessages.RESOLVE_FAILED;
     return NextResponse.json({ error: msg }, { status: 400 });
   }
 }

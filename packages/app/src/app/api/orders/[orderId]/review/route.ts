@@ -5,12 +5,15 @@ import {
   createReview,
   creditMantou,
 } from "@/lib/admin/admin-store";
+import { prisma } from "@/lib/db";
 import { requireUserAuth } from "@/lib/auth/user-auth";
 import { requireAdmin } from "@/lib/admin/admin-auth";
 import { isValidSuiAddress, normalizeSuiAddress } from "@mysten/sui/utils";
 import { REVIEW_TAG_OPTIONS } from "@/lib/admin/admin-types";
 import { z } from "zod";
 import { parseBodyRaw } from "@/lib/shared/api-validation";
+import { AdminMessages } from "@/lib/shared/messages";
+import { apiBadRequest, apiForbidden, apiNotFound, apiError } from "@/lib/shared/api-response";
 
 const reviewSchema = z.object({
   address: z.string().min(1),
@@ -29,7 +32,7 @@ export async function GET(req: Request, { params }: RouteContext) {
   const { orderId } = await params;
   const review = await getReviewByOrderId(orderId);
   if (!review) {
-    return NextResponse.json({ error: "not_found" }, { status: 404 });
+    return apiNotFound("not_found");
   }
 
   // Allow admin or the order's user/companion to read
@@ -37,7 +40,7 @@ export async function GET(req: Request, { params }: RouteContext) {
   if (userAddressRaw) {
     const normalized = normalizeSuiAddress(userAddressRaw);
     if (!isValidSuiAddress(normalized)) {
-      return NextResponse.json({ error: "invalid_address" }, { status: 400 });
+      return apiBadRequest("invalid_address");
     }
     const auth = await requireUserAuth(req, {
       intent: `review:read:${orderId}`,
@@ -62,7 +65,7 @@ export async function POST(req: Request, { params }: RouteContext) {
   const { address: addressRaw, rating, content, tags } = body;
   const address = normalizeSuiAddress(addressRaw);
   if (!isValidSuiAddress(address)) {
-    return NextResponse.json({ error: "invalid_address" }, { status: 400 });
+    return apiBadRequest("invalid_address");
   }
 
   // Auth
@@ -75,62 +78,71 @@ export async function POST(req: Request, { params }: RouteContext) {
 
   // Validate tags
   if (tags && (!Array.isArray(tags) || tags.some((t) => !REVIEW_TAG_OPTIONS.includes(t)))) {
-    return NextResponse.json({ error: "invalid_tags" }, { status: 400 });
+    return apiBadRequest("invalid_tags");
   }
 
   // Check order exists and is completed
   const order = await getOrderById(orderId);
   if (!order) {
-    return NextResponse.json({ error: "order_not_found" }, { status: 404 });
+    return apiNotFound("order_not_found");
   }
   if (order.stage !== "已完成") {
-    return NextResponse.json({ error: "order_not_completed" }, { status: 400 });
+    return apiBadRequest("order_not_completed");
   }
 
   // Only the order user can submit a review
   if (!order.userAddress || order.userAddress !== address) {
-    return NextResponse.json({ error: "forbidden" }, { status: 403 });
+    return apiForbidden();
   }
 
   // Must have a companion to review
   if (!order.companionAddress) {
-    return NextResponse.json({ error: "no_companion" }, { status: 400 });
+    return apiBadRequest("no_companion");
   }
 
   // Check duplicate
   const existing = await getReviewByOrderId(orderId);
   if (existing) {
-    return NextResponse.json({ error: "already_reviewed" }, { status: 409 });
+    return apiError("already_reviewed", 409);
   }
 
-  const review = await createReview({
-    orderId,
-    reviewerAddress: address,
-    companionAddress: order.companionAddress,
-    rating,
-    content: content?.trim() || undefined,
-    tags,
+  // Create review + reward mantou + award growth points in a single transaction
+  const review = await prisma.$transaction(async (tx) => {
+    const rev = await createReview(
+      {
+        orderId,
+        reviewerAddress: address,
+        companionAddress: order.companionAddress,
+        rating,
+        content: content?.trim() || undefined,
+        tags,
+      },
+      tx
+    );
+
+    // Reward mantou
+    try {
+      await creditMantou({
+        address,
+        amount: REVIEW_REWARD_MANTOU,
+        orderId: `review:${orderId}`,
+        note: AdminMessages.REVIEW_REWARD_NOTE,
+        tx,
+      });
+    } catch (e) {
+      console.error("review mantou reward failed:", e);
+    }
+
+    // Award growth points for review
+    try {
+      const { onReviewSubmitted } = await import("@/lib/services/growth-service");
+      await onReviewSubmitted({ userAddress: address, orderId, tx });
+    } catch (e) {
+      console.error("review growth points failed:", e);
+    }
+
+    return rev;
   });
-
-  // Reward mantou (non-blocking)
-  try {
-    await creditMantou({
-      address,
-      amount: REVIEW_REWARD_MANTOU,
-      orderId: `review:${orderId}`,
-      note: "评价奖励",
-    });
-  } catch {
-    // non-critical
-  }
-
-  // Award growth points for review (non-blocking)
-  try {
-    const { onReviewSubmitted } = await import("@/lib/services/growth-service");
-    await onReviewSubmitted({ userAddress: address, orderId });
-  } catch {
-    // non-critical
-  }
 
   return NextResponse.json({ review, rewarded: REVIEW_REWARD_MANTOU });
 }

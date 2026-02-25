@@ -9,6 +9,7 @@ import { getClientIp } from "@/lib/shared/api-utils";
 import { parseBody } from "@/lib/shared/api-validation";
 import { suiAddress } from "@/lib/shared/zod-utils";
 import { env } from "@/lib/env";
+import { apiRateLimited } from "@/lib/shared/api-response";
 
 const guardianSchema = z.object({
   name: z.string().trim().min(1, "name required"),
@@ -27,7 +28,7 @@ async function enforceRateLimit(req: Request) {
 
 export async function POST(req: Request) {
   if (!(await enforceRateLimit(req))) {
-    return NextResponse.json({ error: "rate_limited" }, { status: 429 });
+    return apiRateLimited();
   }
 
   const parsed = await parseBody(req, guardianSchema);

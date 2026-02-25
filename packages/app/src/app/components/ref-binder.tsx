@@ -34,7 +34,8 @@ export function RefBinder() {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ address, refCode }),
           },
-          address
+          address,
+          { silent: true }
         );
         if (res.ok || res.status === 409) {
           localStorage.removeItem(REF_STORAGE_KEY);

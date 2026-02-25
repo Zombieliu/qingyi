@@ -4,6 +4,7 @@ import { requireAdmin } from "@/lib/admin/admin-auth";
 import { creditMantou } from "@/lib/admin/admin-store";
 import { isValidSuiAddress, normalizeSuiAddress } from "@mysten/sui/utils";
 import { parseBody } from "@/lib/shared/api-validation";
+import { apiBadRequest, apiInternalError } from "@/lib/shared/api-response";
 
 const postSchema = z.object({
   address: z.string().min(1),
@@ -21,7 +22,7 @@ export async function POST(req: Request) {
 
   const address = normalizeSuiAddress(body.address);
   if (!address || !isValidSuiAddress(address)) {
-    return NextResponse.json({ error: "invalid address" }, { status: 400 });
+    return apiBadRequest("invalid address");
   }
 
   try {
@@ -33,6 +34,6 @@ export async function POST(req: Request) {
     });
     return NextResponse.json({ ok: true, wallet: result.wallet });
   } catch (error) {
-    return NextResponse.json({ error: (error as Error).message || "seed failed" }, { status: 500 });
+    return apiInternalError(error);
   }
 }

@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 
 const VITALS_KEY = "vitals:recent";
 const MAX_ENTRIES = 500;
@@ -30,9 +30,10 @@ export async function POST(req: Request) {
     if (rating === "poor") {
       console.warn(`[WEB_VITAL_POOR] ${name}=${value} on ${page}`);
       // Alert on poor metrics (non-blocking)
-      import("@/lib/services/alert-service")
-        .then(({ alertOnVital }) => alertOnVital(name, value, page))
-        .catch(() => {});
+      after(async () => {
+        const { alertOnVital } = await import("@/lib/services/alert-service");
+        await alertOnVital(name, value, page);
+      });
     }
 
     // Store in Redis (best-effort)
@@ -46,6 +47,16 @@ export async function POST(req: Request) {
       /* Redis unavailable */
     }
 
+    // Persist to database (non-blocking)
+    after(async () => {
+      try {
+        const { persistVitals } = await import("@/lib/services/vitals-store");
+        await persistVitals([vital]);
+      } catch {
+        /* DB write failure is non-critical */
+      }
+    });
+
     return NextResponse.json({ ok: true });
   } catch {
     return NextResponse.json({ ok: false }, { status: 400 });
@@ -58,6 +69,37 @@ export async function GET(req: Request) {
     const auth = await requireAdmin(req, { role: "viewer" });
     if (!auth.ok) return auth.response;
 
+    const url = new URL(req.url);
+    const source = url.searchParams.get("source");
+
+    // Database query mode
+    if (source === "db") {
+      const name = url.searchParams.get("name") ?? undefined;
+      const page = url.searchParams.get("page") ?? undefined;
+      const days = Math.min(Number(url.searchParams.get("days")) || 7, 90);
+
+      const { getVitalsTrend, getVitalsPageSummary } = await import("@/lib/services/vitals-store");
+
+      if (page) {
+        const summary = await getVitalsPageSummary(page);
+        return NextResponse.json({ source: "db", page, summary });
+      }
+
+      if (name) {
+        const trend = await getVitalsTrend(name, days);
+        return NextResponse.json({ source: "db", name, days, trend });
+      }
+
+      // Default: trend for all core metrics
+      const coreMetrics = ["LCP", "FID", "CLS", "INP", "FCP", "TTFB"];
+      const trends: Record<string, Awaited<ReturnType<typeof getVitalsTrend>>> = {};
+      for (const m of coreMetrics) {
+        trends[m] = await getVitalsTrend(m, days);
+      }
+      return NextResponse.json({ source: "db", days, trends });
+    }
+
+    // Default: Redis real-time data
     const { getCacheAsync } = await import("@/lib/server-cache");
     const entry = await getCacheAsync<string>(VITALS_KEY);
     const entries: VitalEntry[] = entry ? JSON.parse(entry.value) : [];

@@ -6,6 +6,7 @@ import {
   appendCursorWhere,
   buildCursorPayload,
 } from "./admin-store-utils";
+import { notDeleted, softDelete } from "@/lib/shared/soft-delete";
 
 function mapGuardianApplication(row: {
   id: string;
@@ -45,7 +46,7 @@ export async function queryGuardianApplications(params: {
 }) {
   const { page, pageSize, status, q } = params;
   const keyword = (q || "").trim();
-  const where: Prisma.AdminGuardianApplicationWhereInput = {};
+  const where: Prisma.AdminGuardianApplicationWhereInput = { ...notDeleted };
   if (status && status !== "全部") where.status = status;
   if (keyword) {
     where.OR = [
@@ -82,7 +83,7 @@ export async function queryGuardianApplicationsCursor(params: {
 }) {
   const { pageSize, status, q, cursor } = params;
   const keyword = (q || "").trim();
-  const where: Prisma.AdminGuardianApplicationWhereInput = {};
+  const where: Prisma.AdminGuardianApplicationWhereInput = { ...notDeleted };
   if (status && status !== "全部") where.status = status;
   if (keyword) {
     where.OR = [
@@ -110,7 +111,11 @@ export async function queryGuardianApplicationsCursor(params: {
 export async function isApprovedGuardianAddress(address: string) {
   if (!address) return false;
   const row = await prisma.adminGuardianApplication.findFirst({
-    where: { userAddress: { equals: address, mode: "insensitive" }, status: "已通过" },
+    where: {
+      userAddress: { equals: address, mode: "insensitive" },
+      status: "已通过",
+      ...notDeleted,
+    },
     select: { id: true },
   });
   return Boolean(row);
@@ -157,7 +162,10 @@ export async function updateGuardianApplication(
 
 export async function removeGuardianApplication(applicationId: string) {
   try {
-    await prisma.adminGuardianApplication.delete({ where: { id: applicationId } });
+    await prisma.adminGuardianApplication.update({
+      where: { id: applicationId },
+      data: softDelete(),
+    });
     return true;
   } catch {
     return false;

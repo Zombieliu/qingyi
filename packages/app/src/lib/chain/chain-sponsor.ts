@@ -6,6 +6,8 @@ import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
 import { fromBase64, isValidSuiAddress, normalizeSuiAddress, toBase64 } from "@mysten/sui/utils";
 import { PACKAGE_ID } from "contracts/deployment";
 import { env } from "@/lib/env";
+import { chainRpcCircuit } from "@/lib/shared/circuit-breaker";
+import { ChainMessages } from "@/lib/shared/messages";
 
 const DEFAULT_SPONSOR_GAS_BUDGET = 50_000_000;
 
@@ -74,7 +76,12 @@ export async function buildSponsoredTransactionFromKind(params: {
     throw new Error("Invalid sender address");
   }
 
-  const tx = Transaction.fromKind(params.kindBytes);
+  let tx: Transaction;
+  try {
+    tx = Transaction.fromKind(params.kindBytes);
+  } catch {
+    throw new Error("Invalid kindBytes: failed to parse transaction kind data");
+  }
   tx.setSender(sender);
 
   ensureAllowedSponsoredTransaction(tx);
@@ -89,7 +96,7 @@ export async function buildSponsoredTransactionFromKind(params: {
     tx.setGasBudget(budget);
   }
 
-  const bytes = await tx.build({ client });
+  const bytes = await chainRpcCircuit.execute(() => tx.build({ client }));
 
   return {
     bytes: toBase64(bytes),
@@ -103,8 +110,14 @@ export async function executeSponsoredTransaction(params: {
   txBytes: string;
   userSignature: string;
 }) {
-  const bytes = fromBase64(params.txBytes);
-  const tx = Transaction.from(bytes);
+  let bytes: Uint8Array;
+  let tx: Transaction;
+  try {
+    bytes = fromBase64(params.txBytes);
+    tx = Transaction.from(bytes);
+  } catch {
+    throw new Error("Invalid txBytes: failed to parse transaction data");
+  }
   const data = ensureAllowedSponsoredTransaction(tx);
 
   const sponsorSigner = getSponsorSigner();
@@ -124,14 +137,16 @@ export async function executeSponsoredTransaction(params: {
 
   const client = new SuiClient({ url: getRpcUrl() });
   const sponsorSignature = await sponsorSigner.signTransaction(bytes);
-  const result = await client.executeTransactionBlock({
-    transactionBlock: bytes,
-    signature: [params.userSignature, sponsorSignature.signature],
-    options: { showEffects: true },
-  });
+  const result = await chainRpcCircuit.execute(() =>
+    client.executeTransactionBlock({
+      transactionBlock: bytes,
+      signature: [params.userSignature, sponsorSignature.signature],
+      options: { showEffects: true },
+    })
+  );
   const status = result.effects?.status?.status;
   if (status && status !== "success") {
-    throw new Error(result.effects?.status?.error || "链上交易失败");
+    throw new Error(result.effects?.status?.error || ChainMessages.TX_FAILED);
   }
 
   return { digest: result.digest };

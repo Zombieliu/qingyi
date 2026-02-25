@@ -8,21 +8,32 @@ const {
   mockRecordAudit,
   mockConstructEvent,
   mockEnv,
-} = vi.hoisted(() => ({
-  mockAddPaymentEvent: vi.fn(),
-  mockGetOrderById: vi.fn(),
-  mockUpdateOrder: vi.fn(),
-  mockUpsertLedgerRecord: vi.fn(),
-  mockRecordAudit: vi.fn(),
-  mockConstructEvent: vi.fn(),
-  mockEnv: {
-    STRIPE_SECRET_KEY: "sk_test_initial" as string | undefined,
-    STRIPE_WEBHOOK_SECRET: undefined as string | undefined,
-    LEDGER_ADMIN_TOKEN: undefined as string | undefined,
-  },
-}));
+  mockPrisma,
+} = vi.hoisted(() => {
+  const prisma = {
+    $transaction: vi.fn(async (fn: (tx: unknown) => Promise<unknown>) => fn(prisma)),
+  };
+  return {
+    mockAddPaymentEvent: vi.fn(),
+    mockGetOrderById: vi.fn(),
+    mockUpdateOrder: vi.fn(),
+    mockUpsertLedgerRecord: vi.fn(),
+    mockRecordAudit: vi.fn(),
+    mockConstructEvent: vi.fn(),
+    mockEnv: {
+      STRIPE_SECRET_KEY: "sk_test_initial" as string | undefined,
+      STRIPE_WEBHOOK_SECRET: undefined as string | undefined,
+      LEDGER_ADMIN_TOKEN: undefined as string | undefined,
+    },
+    mockPrisma: prisma,
+  };
+});
 
 vi.mock("server-only", () => ({}));
+
+vi.mock("@/lib/db", () => ({
+  prisma: mockPrisma,
+}));
 
 vi.mock("@/lib/admin/admin-store", () => ({
   addPaymentEvent: mockAddPaymentEvent,
@@ -143,7 +154,8 @@ describe("POST /api/pay/webhook", () => {
         provider: "stripe",
         event: "charge.succeeded",
         verified: false,
-      })
+      }),
+      mockPrisma
     );
   });
 
@@ -168,7 +180,7 @@ describe("POST /api/pay/webhook", () => {
     const res = await POST(makeWebhookRequest(event));
     expect(res.status).toBe(200);
     expect(mockGetOrderById).toHaveBeenCalledWith("ORD-1");
-    expect(mockUpdateOrder).toHaveBeenCalledWith("ORD-1", { paymentStatus: "已支付" });
+    expect(mockUpdateOrder).toHaveBeenCalledWith("ORD-1", { paymentStatus: "已支付" }, mockPrisma);
   });
   it("does not update order if order not found", async () => {
     const event = makeStripeEvent("payment_intent.succeeded", { orderId: "ORD-MISSING" });
@@ -193,7 +205,8 @@ describe("POST /api/pay/webhook", () => {
         userAddress: "0xabc",
         diamondAmount: 100,
         source: "stripe",
-      })
+      }),
+      mockPrisma
     );
   });
 
@@ -249,7 +262,8 @@ describe("POST /api/pay/webhook", () => {
     expect(mockUpsertLedgerRecord).toHaveBeenCalledWith(
       expect.objectContaining({
         receiptId: "stripe_pi_pi_from_charge",
-      })
+      }),
+      mockPrisma
     );
   });
 
@@ -275,7 +289,8 @@ describe("POST /api/pay/webhook", () => {
     expect(mockUpsertLedgerRecord).toHaveBeenCalledWith(
       expect.objectContaining({
         receiptId: "stripe_pi_pi_nested",
-      })
+      }),
+      mockPrisma
     );
   });
 
@@ -368,7 +383,8 @@ describe("POST /api/pay/webhook", () => {
       expect.objectContaining({
         userAddress: "0xalias",
         diamondAmount: 200,
-      })
+      }),
+      mockPrisma
     );
   });
 

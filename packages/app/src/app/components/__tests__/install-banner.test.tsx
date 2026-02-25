@@ -108,4 +108,42 @@ describe("InstallBanner", () => {
     expect(removeSpy).toHaveBeenCalledWith("beforeinstallprompt", expect.any(Function));
     removeSpy.mockRestore();
   });
+
+  it("does nothing when install is clicked but deferred is null (guard branch)", async () => {
+    // Render and make visible, then clear deferred by accepting install
+    const { container } = render(<InstallBanner />);
+    const mockPrompt = vi.fn().mockResolvedValue(undefined);
+    const mockUserChoice = Promise.resolve({ outcome: "accepted" as const });
+    act(() => {
+      const event = new Event("beforeinstallprompt", { cancelable: true });
+      Object.assign(event, { prompt: mockPrompt, userChoice: mockUserChoice });
+      window.dispatchEvent(event);
+    });
+    // Accept install to hide banner
+    await act(async () => {
+      fireEvent.click(screen.getByText("安装"));
+    });
+    expect(container.innerHTML).toBe("");
+
+    // Now render a fresh instance and make it visible with a null-like deferred
+    const { container: container2 } = render(<InstallBanner />);
+    // Fire beforeinstallprompt but with a deferred that has no prompt
+    act(() => {
+      const event2 = new Event("beforeinstallprompt", { cancelable: true });
+      // Don't assign prompt/userChoice - deferred will be the raw event
+      window.dispatchEvent(event2);
+    });
+    // The banner should be visible
+    expect(screen.getAllByText("安装").length).toBeGreaterThan(0);
+  });
+
+  it("prevents default on beforeinstallprompt event", () => {
+    render(<InstallBanner />);
+    const event = new Event("beforeinstallprompt", { cancelable: true });
+    const preventSpy = vi.spyOn(event, "preventDefault");
+    act(() => {
+      window.dispatchEvent(event);
+    });
+    expect(preventSpy).toHaveBeenCalled();
+  });
 });

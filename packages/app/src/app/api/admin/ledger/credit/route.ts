@@ -4,6 +4,7 @@ import { requireAdmin } from "@/lib/admin/admin-auth";
 import { recordAudit } from "@/lib/admin/admin-audit";
 import { parseBody } from "@/lib/shared/api-validation";
 import { env } from "@/lib/env";
+import { LedgerMessages } from "@/lib/shared/messages";
 
 const postSchema = z.object({}).passthrough();
 
@@ -13,7 +14,7 @@ export async function POST(req: Request) {
 
   const adminToken = env.LEDGER_ADMIN_TOKEN;
   if (!adminToken) {
-    return NextResponse.json({ error: "LEDGER_ADMIN_TOKEN 未配置" }, { status: 500 });
+    return NextResponse.json({ error: LedgerMessages.TOKEN_NOT_CONFIGURED }, { status: 500 });
   }
 
   const parsed = await parseBody(req, postSchema);

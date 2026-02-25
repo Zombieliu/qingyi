@@ -249,12 +249,12 @@ describe("updateSupportTicket", () => {
 
 describe("removeSupportTicket", () => {
   it("returns true on success", async () => {
-    mockDelete.mockResolvedValue(baseTicketRow);
+    mockUpdate.mockResolvedValue(baseTicketRow);
     expect(await removeSupportTicket("TK-1")).toBe(true);
   });
 
   it("returns false on error", async () => {
-    mockDelete.mockRejectedValue(new Error("not found"));
+    mockUpdate.mockRejectedValue(new Error("not found"));
     expect(await removeSupportTicket("TK-999")).toBe(false);
   });
 });

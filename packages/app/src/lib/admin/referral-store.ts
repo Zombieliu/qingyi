@@ -8,6 +8,7 @@ import type {
 import { prisma, Prisma } from "./admin-store-utils";
 import { creditMantou } from "./mantou-store";
 import { getCache, setCache } from "../server-cache";
+import { AdminMessages } from "@/lib/shared/messages";
 import { TZDate } from "@date-fns/tz";
 import { startOfWeek, startOfMonth } from "date-fns";
 
@@ -169,14 +170,14 @@ export async function processReferralReward(
     results.inviter = await creditMantou({
       address: referral.inviterAddress,
       amount: inviterReward,
-      note: `邀请返利：被邀请人首单完成 (${orderId})`,
+      note: AdminMessages.REFERRAL_INVITER_NOTE(orderId),
     });
   }
   if (inviteeReward > 0) {
     results.invitee = await creditMantou({
       address: referral.inviteeAddress,
       amount: inviteeReward,
-      note: `邀请奖励：首单完成奖励 (${orderId})`,
+      note: AdminMessages.REFERRAL_INVITEE_NOTE(orderId),
     });
   }
 

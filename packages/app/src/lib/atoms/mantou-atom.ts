@@ -40,7 +40,9 @@ export const mantouRefreshAtom = atom(null, async (get, set, force: boolean = fa
   set(mantouAtom, (prev) => ({ ...prev, loading: true }));
   try {
     const task = (async () => {
-      const res = await fetchWithUserAuth(`/api/mantou/balance?address=${address}`, {}, address);
+      const res = await fetchWithUserAuth(`/api/mantou/balance?address=${address}`, {}, address, {
+        silent: true,
+      });
       const data = await res.json();
       if (data?.balance !== undefined) {
         const nextBalance = String(data.balance ?? "0");

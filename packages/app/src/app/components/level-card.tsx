@@ -49,7 +49,7 @@ export function LevelCard() {
     const cached = readCache<LevelProgress>(cacheKey, 30_000, true);
     if (cached?.value) setData(cached.value);
 
-    fetchWithUserAuth(`/api/user/level?userAddress=${addr}`, {}, addr)
+    fetchWithUserAuth(`/api/user/level?userAddress=${addr}`, {}, addr, { silent: true })
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
         if (d) {

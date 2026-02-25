@@ -1,6 +1,7 @@
 import type { AdminAnnouncement } from "./admin-types";
 import { prisma } from "./admin-store-utils";
 import { getCache, setCache } from "../server-cache";
+import { notDeleted, softDelete } from "@/lib/shared/soft-delete";
 
 function mapAnnouncement(row: {
   id: string;
@@ -24,6 +25,7 @@ function mapAnnouncement(row: {
 
 export async function listAnnouncements() {
   const rows = await prisma.adminAnnouncement.findMany({
+    where: notDeleted,
     orderBy: { createdAt: "desc" },
     take: 200,
   });
@@ -68,7 +70,7 @@ export async function updateAnnouncement(
 
 export async function removeAnnouncement(announcementId: string) {
   try {
-    await prisma.adminAnnouncement.delete({ where: { id: announcementId } });
+    await prisma.adminAnnouncement.update({ where: { id: announcementId }, data: softDelete() });
     return true;
   } catch {
     return false;
@@ -78,7 +80,10 @@ export async function removeAnnouncement(announcementId: string) {
 export async function removeAnnouncements(announcementIds: string[]) {
   const ids = announcementIds.filter(Boolean);
   if (ids.length === 0) return 0;
-  const result = await prisma.adminAnnouncement.deleteMany({ where: { id: { in: ids } } });
+  const result = await prisma.adminAnnouncement.updateMany({
+    where: { id: { in: ids }, ...notDeleted },
+    data: softDelete(),
+  });
   return result.count;
 }
 
@@ -92,7 +97,7 @@ export async function listPublicAnnouncements() {
     return cached.value;
   }
   const rows = await prisma.adminAnnouncement.findMany({
-    where: { status: "published" },
+    where: { status: "published", ...notDeleted },
     orderBy: [{ updatedAt: "desc" }, { createdAt: "desc" }],
   });
   const items = rows.map(mapAnnouncement);

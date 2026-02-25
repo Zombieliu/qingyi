@@ -66,6 +66,7 @@ export function createMockPrisma() {
     pushSubscription: createMockModel(),
     disputeCase: createMockModel(),
     customerTag: createMockModel(),
+    webVital: createMockModel(),
     $transaction: vi.fn((fn: (tx: unknown) => unknown) => fn(createMockPrisma())),
     $queryRaw: vi.fn(),
     $executeRaw: vi.fn(),

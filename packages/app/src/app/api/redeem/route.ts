@@ -4,6 +4,7 @@ import { parseBodyRaw } from "@/lib/shared/api-validation";
 import { requireUserAuth } from "@/lib/auth/user-auth";
 import { redeemCodeForUser } from "@/lib/redeem/redeem-service";
 import { isValidSuiAddress, normalizeSuiAddress } from "@mysten/sui/utils";
+import { apiBadRequest, apiError } from "@/lib/shared/api-response";
 
 const redeemSchema = z.object({
   address: z.string().min(1),
@@ -23,7 +24,7 @@ export async function POST(req: Request) {
 
   const address = normalizeSuiAddress(body.address);
   if (!address || !isValidSuiAddress(address)) {
-    return NextResponse.json({ error: "invalid address" }, { status: 400 });
+    return apiBadRequest("invalid address");
   }
 
   const auth = await requireUserAuth(req, {
@@ -41,7 +42,7 @@ export async function POST(req: Request) {
   });
 
   if (!result.ok) {
-    return NextResponse.json({ error: result.error }, { status: result.status });
+    return apiError(result.error, result.status);
   }
 
   return NextResponse.json(result);

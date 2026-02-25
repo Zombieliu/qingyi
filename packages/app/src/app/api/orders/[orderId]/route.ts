@@ -13,6 +13,14 @@ import type { AdminOrder } from "@/lib/admin/admin-types";
 import { requireUserAuth } from "@/lib/auth/user-auth";
 import { z } from "zod";
 import { parseBodyRaw } from "@/lib/shared/api-validation";
+import {
+  apiBadRequest,
+  apiUnauthorized,
+  apiForbidden,
+  apiNotFound,
+  apiError,
+} from "@/lib/shared/api-response";
+import { OrderMessages } from "@/lib/shared/messages";
 
 const patchOrderSchema = z.object({
   paymentStatus: z.string().optional(),
@@ -35,8 +43,8 @@ async function tryReferralReward(order: AdminOrder, prevStage: string | undefine
   if (!order.userAddress || !order.amount) return;
   try {
     await processReferralReward(order.id, order.userAddress, order.amount);
-  } catch {
-    // non-critical — don't block order update
+  } catch (e) {
+    console.error("tryReferralReward failed:", e);
   }
 }
 
@@ -57,14 +65,14 @@ export async function GET(req: Request, { params }: RouteContext) {
   const { orderId } = await params;
   const order = await getOrderById(orderId);
   if (!order) {
-    return NextResponse.json({ error: "not found" }, { status: 404 });
+    return apiNotFound("not found");
   }
 
   const userAddressRaw = new URL(req.url).searchParams.get("userAddress") || "";
   if (userAddressRaw) {
     const normalized = normalizeSuiAddress(userAddressRaw);
     if (!isValidSuiAddress(normalized)) {
-      return NextResponse.json({ error: "invalid userAddress" }, { status: 400 });
+      return apiBadRequest("invalid userAddress");
     }
     const auth = await requireUserAuth(req, {
       intent: `orders:read:${orderId}`,
@@ -76,7 +84,7 @@ export async function GET(req: Request, { params }: RouteContext) {
       order.userAddress !== normalized &&
       order.companionAddress !== normalized
     ) {
-      return NextResponse.json({ error: "forbidden" }, { status: 403 });
+      return apiForbidden();
     }
     return NextResponse.json(order);
   }
@@ -90,7 +98,7 @@ export async function PATCH(req: Request, { params }: RouteContext) {
   const { orderId } = await params;
   const order = await getOrderById(orderId);
   if (!order) {
-    return NextResponse.json({ error: "not found" }, { status: 404 });
+    return apiNotFound("not found");
   }
 
   const parsed = await parseBodyRaw(req, patchOrderSchema);
@@ -115,14 +123,14 @@ export async function PATCH(req: Request, { params }: RouteContext) {
     if (body.meta && typeof body.meta === "object") patch.meta = body.meta;
 
     if (chainOrder && (patch.stage || patch.paymentStatus || patch.chainStatus)) {
-      return NextResponse.json({ error: "订单状态由系统同步，禁止手动修改" }, { status: 409 });
+      return apiError(OrderMessages.CHAIN_SYNC_FORBIDDEN, 409);
     }
     if (patch.stage && !canTransitionStage(order.stage, patch.stage)) {
-      return NextResponse.json({ error: "订单阶段不允许回退或跨越" }, { status: 409 });
+      return apiError(OrderMessages.STAGE_TRANSITION_DENIED, 409);
     }
 
     const updated = await updateOrder(orderId, patch);
-    if (!updated) return NextResponse.json({ error: "not found" }, { status: 404 });
+    if (!updated) return apiNotFound("not found");
     await tryReferralReward(updated, order.stage);
     return NextResponse.json(updated);
   }
@@ -134,11 +142,11 @@ export async function PATCH(req: Request, { params }: RouteContext) {
         ? body.companionAddress
         : "";
   if (!actorRaw) {
-    return NextResponse.json({ error: "userAddress required" }, { status: 401 });
+    return apiUnauthorized("userAddress required");
   }
   const actor = normalizeSuiAddress(actorRaw);
   if (!isValidSuiAddress(actor)) {
-    return NextResponse.json({ error: "invalid userAddress" }, { status: 400 });
+    return apiBadRequest("invalid userAddress");
   }
 
   const companionRaw = typeof body.companionAddress === "string" ? body.companionAddress : "";
@@ -146,25 +154,22 @@ export async function PATCH(req: Request, { params }: RouteContext) {
   if (companionRaw) {
     const companion = normalizeSuiAddress(companionRaw);
     if (!isValidSuiAddress(companion)) {
-      return NextResponse.json({ error: "invalid companionAddress" }, { status: 400 });
+      return apiBadRequest("invalid companionAddress");
     }
     if (order.userAddress && order.userAddress === companion) {
-      return NextResponse.json({ error: "cannot accept own order" }, { status: 403 });
+      return apiForbidden("cannot accept own order");
     }
     if (companion !== actor) {
-      return NextResponse.json(
-        { error: "companionAddress must match userAddress" },
-        { status: 400 }
-      );
+      return apiBadRequest("companionAddress must match userAddress");
     }
     if (order.companionAddress) {
       if (order.companionAddress !== companion) {
-        return NextResponse.json({ error: "order already accepted" }, { status: 409 });
+        return apiError("order already accepted", 409);
       }
       companionIsAssignee = true;
     }
   } else if (order.userAddress && order.userAddress !== actor) {
-    return NextResponse.json({ error: "forbidden" }, { status: 403 });
+    return apiForbidden();
   }
 
   const auth = await requireUserAuth(req, {
@@ -177,7 +182,7 @@ export async function PATCH(req: Request, { params }: RouteContext) {
   if (companionRaw) {
     const playerLookup = await getPlayerByAddress(actor);
     if (!playerLookup.player || playerLookup.conflict || playerLookup.player.status === "停用") {
-      return NextResponse.json({ error: "player_required" }, { status: 403 });
+      return apiForbidden("player_required");
     }
   }
 
@@ -188,14 +193,14 @@ export async function PATCH(req: Request, { params }: RouteContext) {
   if (typeof body.status === "string") {
     const stage = mapStatusToStage(body.status);
     if (chainOrder && stage) {
-      return NextResponse.json({ error: "订单状态由系统同步，禁止手动修改" }, { status: 409 });
+      return apiError(OrderMessages.CHAIN_SYNC_FORBIDDEN, 409);
     }
     (patch.meta as Record<string, unknown>).status = body.status;
     if (!chainOrder && stage) patch.stage = stage as AdminOrder["stage"];
   }
 
   if (patch.stage && !canTransitionStage(order.stage, patch.stage)) {
-    return NextResponse.json({ error: "订单阶段不允许回退或跨越" }, { status: 409 });
+    return apiError(OrderMessages.STAGE_TRANSITION_DENIED, 409);
   }
 
   const updated = companionRaw
@@ -205,9 +210,9 @@ export async function PATCH(req: Request, { params }: RouteContext) {
     : await updateOrder(orderId, patch);
   if (!updated) {
     if (companionRaw && !companionIsAssignee) {
-      return NextResponse.json({ error: "order already accepted" }, { status: 409 });
+      return apiError("order already accepted", 409);
     }
-    return NextResponse.json({ error: "not found" }, { status: 404 });
+    return apiNotFound("not found");
   }
   await tryReferralReward(updated, order.stage);
   return NextResponse.json(updated);
@@ -218,11 +223,11 @@ export async function DELETE(req: Request, { params }: RouteContext) {
   if (!admin.ok) return admin.response;
   const { orderId } = await params;
   const order = await getOrderById(orderId);
-  if (!order) return NextResponse.json({ error: "not found" }, { status: 404 });
+  if (!order) return apiNotFound("not found");
   if (isChainOrder(order)) {
-    return NextResponse.json({ error: "订单状态由系统同步，禁止手动修改" }, { status: 409 });
+    return apiError(OrderMessages.CHAIN_SYNC_FORBIDDEN, 409);
   }
   const updated = await updateOrder(orderId, { stage: "已取消" });
-  if (!updated) return NextResponse.json({ error: "not found" }, { status: 404 });
+  if (!updated) return apiNotFound("not found");
   return NextResponse.json({ ok: true });
 }

@@ -1,5 +1,6 @@
 import "server-only";
 import { prisma } from "@/lib/db";
+import { OrderMessages } from "@/lib/shared/messages";
 
 /**
  * 支付对账服务
@@ -55,13 +56,13 @@ export async function reconcileOrders(params: {
       order.stage !== "已退款"
     ) {
       mismatch = true;
-      issue = `链上已完成(status=${chainStatus})但本地状态为${order.stage}`;
+      issue = OrderMessages.RECONCILE_CHAIN_COMPLETED_LOCAL_NOT(chainStatus, order.stage);
     }
 
     // Rule 2: Local marked paid but no chain confirmation
     if (order.paymentStatus === "已支付" && order.source === "chain" && chainStatus === undefined) {
       mismatch = true;
-      issue = "本地标记已支付但无链上确认";
+      issue = OrderMessages.RECONCILE_PAID_NO_CHAIN;
     }
 
     // Rule 3: Order stuck in processing for too long (>24h)
@@ -69,14 +70,14 @@ export async function reconcileOrders(params: {
       const ageMs = Date.now() - new Date(order.createdAt).getTime();
       if (ageMs > 24 * 60 * 60 * 1000) {
         mismatch = true;
-        issue = `订单进行中超过24小时 (${Math.round(ageMs / 3600000)}h)`;
+        issue = OrderMessages.RECONCILE_STUCK_PROCESSING(Math.round(ageMs / 3600000));
       }
     }
 
     // Rule 4: Refund status mismatch
     if (order.stage === "已退款" && order.paymentStatus !== "已退款") {
       mismatch = true;
-      issue = "订单已退款但支付状态未更新";
+      issue = OrderMessages.RECONCILE_REFUND_STATUS_MISMATCH;
     }
 
     // Rule 5: Amount mismatch between local and chain
@@ -86,7 +87,10 @@ export async function reconcileOrders(params: {
       meta.chainAmount !== Number(order.amount)
     ) {
       mismatch = true;
-      issue = `金额不一致: 本地=${order.amount}, 链上=${meta.chainAmount}`;
+      issue = OrderMessages.RECONCILE_AMOUNT_MISMATCH(
+        Number(order.amount),
+        meta.chainAmount as number
+      );
     }
 
     items.push({
@@ -129,12 +133,15 @@ export async function autoFixReconcile(report: ReconcileReport): Promise<{
 
   for (const item of report.items) {
     // Only auto-fix clear-cut cases
-    if (item.issue?.includes("支付状态未更新") && item.localStatus === "已退款") {
+    if (
+      item.issue?.includes(OrderMessages.RECONCILE_REFUND_STATUS_MISMATCH) &&
+      item.localStatus === "已退款"
+    ) {
       await prisma.adminOrder.update({
         where: { id: item.orderId },
         data: { paymentStatus: "已退款" },
       });
-      details.push({ orderId: item.orderId, action: "更新支付状态为已退款" });
+      details.push({ orderId: item.orderId, action: OrderMessages.RECONCILE_FIX_REFUND_STATUS });
       fixed++;
     } else {
       skipped++;

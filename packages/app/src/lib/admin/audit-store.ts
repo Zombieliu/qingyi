@@ -2,6 +2,7 @@ import type { AdminAuditLog, AdminPaymentEvent } from "./admin-types";
 import {
   prisma,
   Prisma,
+  type TransactionClient,
   type CursorPayload,
   appendCursorWhere,
   buildCursorPayload,
@@ -155,8 +156,9 @@ export async function queryAuditLogsCursor(params: {
   };
 }
 
-export async function addPaymentEvent(entry: AdminPaymentEvent) {
-  const row = await prisma.adminPaymentEvent.create({
+export async function addPaymentEvent(entry: AdminPaymentEvent, tx?: TransactionClient) {
+  const db = tx || prisma;
+  const row = await db.adminPaymentEvent.create({
     data: {
       id: entry.id,
       provider: entry.provider,
@@ -170,17 +172,17 @@ export async function addPaymentEvent(entry: AdminPaymentEvent) {
     },
   });
   if (MAX_PAYMENT_EVENTS > 0) {
-    const total = await prisma.adminPaymentEvent.count();
+    const total = await db.adminPaymentEvent.count();
     const excess = total - MAX_PAYMENT_EVENTS;
     if (excess > 0) {
-      const oldRows = await prisma.adminPaymentEvent.findMany({
+      const oldRows = await db.adminPaymentEvent.findMany({
         orderBy: { createdAt: "desc" },
         skip: MAX_PAYMENT_EVENTS,
         take: excess,
         select: { id: true },
       });
       if (oldRows.length) {
-        await prisma.adminPaymentEvent.deleteMany({
+        await db.adminPaymentEvent.deleteMany({
           where: { id: { in: oldRows.map((item) => item.id) } },
         });
       }

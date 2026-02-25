@@ -1,5 +1,8 @@
 import "server-only";
 
+import { kookCircuit } from "@/lib/shared/circuit-breaker";
+import { KookMessages } from "@/lib/shared/messages";
+
 /**
  * Kook (开黑啦) Bot integration for order notifications.
  *
@@ -26,20 +29,22 @@ type SendResult = {
 async function kookRequest(path: string, body: Record<string, unknown>): Promise<unknown> {
   if (!BOT_TOKEN) throw new Error("KOOK_BOT_TOKEN not configured");
 
-  const res = await fetch(`${KOOK_API}${path}`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bot ${BOT_TOKEN}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(body),
-  });
+  return kookCircuit.execute(async () => {
+    const res = await fetch(`${KOOK_API}${path}`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bot ${BOT_TOKEN}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+    });
 
-  const data = await res.json();
-  if (data.code !== 0) {
-    throw new Error(`Kook API error: ${data.message || JSON.stringify(data)}`);
-  }
-  return data.data;
+    const data = await res.json();
+    if (data.code !== 0) {
+      throw new Error(`Kook API error: ${data.message || JSON.stringify(data)}`);
+    }
+    return data.data;
+  });
 }
 
 /** Send a text/kmarkdown message to a channel */
@@ -86,12 +91,12 @@ export async function notifyKookNewOrder(params: {
   channelId?: string;
 }) {
   const content = [
-    "**📦 新订单**",
-    `> 订单号: \`${params.orderId}\``,
-    `> 商品: ${params.item}`,
-    `> 金额: ¥${params.amount}`,
-    `> 用户: \`${params.userAddress.slice(0, 8)}...\``,
-    `> 时间: ${new Date().toLocaleString("zh-CN", { timeZone: "Asia/Shanghai" })}`,
+    KookMessages.NEW_ORDER_HEADER,
+    `> ${KookMessages.ORDER_ID_LABEL}: \`${params.orderId}\``,
+    `> ${KookMessages.ITEM_LABEL}: ${params.item}`,
+    `> ${KookMessages.AMOUNT_LABEL}: ¥${params.amount}`,
+    `> ${KookMessages.USER_LABEL}: \`${params.userAddress.slice(0, 8)}...\``,
+    `> ${KookMessages.TIME_LABEL}: ${new Date().toLocaleString("zh-CN", { timeZone: "Asia/Shanghai" })}`,
   ].join("\n");
 
   return sendChannelMessage({ content, channelId: params.channelId });
@@ -104,22 +109,14 @@ export async function notifyKookOrderStatus(params: {
   stage: string;
   channelId?: string;
 }) {
-  const stageEmoji: Record<string, string> = {
-    已支付: "💰",
-    进行中: "🎮",
-    待结算: "⏳",
-    已完成: "✅",
-    已取消: "❌",
-    已退款: "💸",
-    争议中: "⚠️",
-  };
+  const stageEmoji = KookMessages.STAGE_EMOJI;
 
   const emoji = stageEmoji[params.stage] || "📋";
   const content = [
-    `**${emoji} 订单状态更新**`,
-    `> 订单号: \`${params.orderId}\``,
-    `> 商品: ${params.item}`,
-    `> 状态: **${params.stage}**`,
+    KookMessages.STATUS_UPDATE_HEADER(emoji),
+    `> ${KookMessages.ORDER_ID_LABEL}: \`${params.orderId}\``,
+    `> ${KookMessages.ITEM_LABEL}: ${params.item}`,
+    `> ${KookMessages.STATUS_LABEL}: **${params.stage}**`,
   ].join("\n");
 
   return sendChannelMessage({ content, channelId: params.channelId });
@@ -133,10 +130,10 @@ export async function notifyKookCompanionAccepted(params: {
   channelId?: string;
 }) {
   const content = [
-    "**🎯 陪练接单**",
-    `> 订单号: \`${params.orderId}\``,
-    `> 陪练: ${params.companionName}`,
-    `> 商品: ${params.item}`,
+    KookMessages.COMPANION_ACCEPTED_HEADER,
+    `> ${KookMessages.ORDER_ID_LABEL}: \`${params.orderId}\``,
+    `> ${KookMessages.COMPANION_LABEL}: ${params.companionName}`,
+    `> ${KookMessages.ITEM_LABEL}: ${params.item}`,
   ].join("\n");
 
   return sendChannelMessage({ content, channelId: params.channelId });
@@ -151,11 +148,11 @@ export async function notifyKookDailySummary(params: {
   channelId?: string;
 }) {
   const content = [
-    "**📊 每日汇总**",
-    `> 日期: ${params.date}`,
-    `> 总订单: ${params.totalOrders}`,
-    `> 已完成: ${params.completedOrders}`,
-    `> 营收: ¥${params.revenue.toFixed(2)}`,
+    KookMessages.DAILY_SUMMARY_HEADER,
+    `> ${KookMessages.DATE_LABEL}: ${params.date}`,
+    `> ${KookMessages.TOTAL_ORDERS_LABEL}: ${params.totalOrders}`,
+    `> ${KookMessages.COMPLETED_LABEL}: ${params.completedOrders}`,
+    `> ${KookMessages.REVENUE_LABEL}: ¥${params.revenue.toFixed(2)}`,
   ].join("\n");
 
   return sendChannelMessage({ content, channelId: params.channelId });

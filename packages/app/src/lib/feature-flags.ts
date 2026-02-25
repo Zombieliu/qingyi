@@ -8,6 +8,8 @@
  * Admin API: POST /api/admin/feature-flags to toggle at runtime
  */
 
+import { FeatureFlagDescriptions } from "@/lib/shared/messages";
+
 export type FeatureFlag =
   | "dispute_flow"
   | "push_notifications"
@@ -24,14 +26,23 @@ type FlagConfig = {
 };
 
 const FLAG_REGISTRY: Record<FeatureFlag, FlagConfig> = {
-  dispute_flow: { defaultValue: false, description: "订单争议/退款流程" },
-  push_notifications: { defaultValue: false, description: "PWA Push 通知" },
-  advanced_analytics: { defaultValue: false, description: "高级数据分析面板" },
-  credit_system: { defaultValue: true, description: "授信额度系统" },
-  companion_schedule: { defaultValue: true, description: "陪练排班功能" },
-  coupon_system: { defaultValue: true, description: "优惠券系统" },
-  referral_rewards: { defaultValue: true, description: "推荐奖励" },
-  web_vitals: { defaultValue: true, description: "Web Vitals 性能上报" },
+  dispute_flow: { defaultValue: false, description: FeatureFlagDescriptions.dispute_flow },
+  push_notifications: {
+    defaultValue: false,
+    description: FeatureFlagDescriptions.push_notifications,
+  },
+  advanced_analytics: {
+    defaultValue: false,
+    description: FeatureFlagDescriptions.advanced_analytics,
+  },
+  credit_system: { defaultValue: true, description: FeatureFlagDescriptions.credit_system },
+  companion_schedule: {
+    defaultValue: true,
+    description: FeatureFlagDescriptions.companion_schedule,
+  },
+  coupon_system: { defaultValue: true, description: FeatureFlagDescriptions.coupon_system },
+  referral_rewards: { defaultValue: true, description: FeatureFlagDescriptions.referral_rewards },
+  web_vitals: { defaultValue: true, description: FeatureFlagDescriptions.web_vitals },
 };
 
 // In-memory cache for server-side Redis overrides (TTL 60s)

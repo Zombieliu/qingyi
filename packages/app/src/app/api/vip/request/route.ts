@@ -10,6 +10,7 @@ import { isValidSuiAddress, normalizeSuiAddress } from "@mysten/sui/utils";
 import { requireUserAuth } from "@/lib/auth/user-auth";
 import { z } from "zod";
 import { parseBodyRaw } from "@/lib/shared/api-validation";
+import { apiBadRequest } from "@/lib/shared/api-response";
 
 const vipRequestSchema = z.object({
   userAddress: z.string().trim().min(1),
@@ -25,10 +26,10 @@ export async function POST(req: Request) {
 
   const userAddress = normalizeSuiAddress(body.userAddress);
   if (!userAddress) {
-    return NextResponse.json({ error: "userAddress required" }, { status: 400 });
+    return apiBadRequest("userAddress required");
   }
   if (!isValidSuiAddress(userAddress)) {
-    return NextResponse.json({ error: "invalid userAddress" }, { status: 400 });
+    return apiBadRequest("invalid userAddress");
   }
   const auth = await requireUserAuth(req, {
     intent: "vip:request:create",
@@ -45,7 +46,7 @@ export async function POST(req: Request) {
     tierId = tier?.id || "";
   }
   if (!tier) {
-    return NextResponse.json({ error: "no active tier" }, { status: 400 });
+    return apiBadRequest("no active tier");
   }
 
   const request: AdminMembershipRequest = {

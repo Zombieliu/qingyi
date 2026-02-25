@@ -3,6 +3,8 @@ import { requireUserAuth } from "@/lib/auth/user-auth";
 import { createDispute, getDispute, listUserDisputes } from "@/lib/services/dispute-service";
 import { parseBody } from "@/lib/shared/api-validation";
 import { z } from "zod";
+import { apiBadRequest, apiNotFound } from "@/lib/shared/api-response";
+import { DisputeMessages } from "@/lib/shared/messages";
 
 const createSchema = z.object({
   orderId: z.string().min(1),
@@ -26,8 +28,8 @@ export async function POST(req: Request) {
     });
     return NextResponse.json(dispute, { status: 201 });
   } catch (error) {
-    const msg = error instanceof Error ? error.message : "创建争议失败";
-    return NextResponse.json({ error: msg }, { status: 400 });
+    const msg = error instanceof Error ? error.message : DisputeMessages.CREATE_FAILED;
+    return apiBadRequest(msg);
   }
 }
 
@@ -42,7 +44,7 @@ export async function GET(req: Request) {
   // If orderId provided, return single dispute; otherwise list all
   if (orderId) {
     const dispute = await getDispute(orderId);
-    if (!dispute) return NextResponse.json({ error: "not found" }, { status: 404 });
+    if (!dispute) return apiNotFound("not found");
     return NextResponse.json(dispute);
   }
 

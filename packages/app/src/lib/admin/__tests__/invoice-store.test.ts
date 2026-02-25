@@ -23,6 +23,11 @@ vi.mock("../admin-store-utils", () => ({
   })),
 }));
 
+vi.mock("@/lib/shared/soft-delete", () => ({
+  notDeleted: { deletedAt: null },
+  softDelete: () => ({ deletedAt: new Date() }),
+}));
+
 import {
   queryInvoiceRequests,
   queryInvoiceRequestsCursor,
@@ -225,13 +230,13 @@ describe("invoice-store", () => {
 
   describe("removeInvoiceRequest", () => {
     it("should return true on success", async () => {
-      mockPrisma.adminInvoiceRequest.delete.mockResolvedValue({});
+      mockPrisma.adminInvoiceRequest.update.mockResolvedValue({});
       const result = await removeInvoiceRequest("invoice-1");
       expect(result).toBe(true);
     });
 
     it("should return false on error", async () => {
-      mockPrisma.adminInvoiceRequest.delete.mockRejectedValue(new Error("not found"));
+      mockPrisma.adminInvoiceRequest.update.mockRejectedValue(new Error("not found"));
       const result = await removeInvoiceRequest("nonexistent");
       expect(result).toBe(false);
     });

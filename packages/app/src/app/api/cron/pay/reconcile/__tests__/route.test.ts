@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   prisma: {
     adminPaymentEvent: { findMany: vi.fn() },
     ledgerRecord: { findMany: vi.fn(), update: vi.fn() },
+    $transaction: vi.fn(),
   },
   env: {
     CRON_LOCK_TTL_MS: 60000,
@@ -94,6 +95,10 @@ describe("GET /api/cron/pay/reconcile", () => {
     mocks.prisma.adminPaymentEvent.findMany.mockReset();
     mocks.prisma.ledgerRecord.findMany.mockReset();
     mocks.prisma.ledgerRecord.update.mockReset();
+    mocks.prisma.$transaction.mockReset();
+    mocks.prisma.$transaction.mockImplementation(async (fn: (tx: unknown) => Promise<unknown>) =>
+      fn(mocks.prisma)
+    );
   });
 
   it("returns 401 when not authorized", async () => {
@@ -200,7 +205,8 @@ describe("GET /api/cron/pay/reconcile", () => {
         userAddress: "0xabc",
         diamondAmount: 100,
         status: "paid",
-      })
+      }),
+      mocks.prisma
     );
   });
 
@@ -471,7 +477,8 @@ describe("GET /api/cron/pay/reconcile", () => {
     const body = await res.json();
     expect(body.reconciled).toBe(1);
     expect(mocks.upsertLedgerRecord).toHaveBeenCalledWith(
-      expect.objectContaining({ channel: "wechat_pay" })
+      expect.objectContaining({ channel: "wechat_pay" }),
+      mocks.prisma
     );
   });
 

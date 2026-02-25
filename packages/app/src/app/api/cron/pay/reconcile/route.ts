@@ -255,6 +255,16 @@ export async function GET(req: Request) {
   const skipped: Array<{ orderId: string; reason: string }> = [];
   const reconciled: string[] = [];
 
+  // Collect items that need reconciliation, then apply in a single transaction
+  type UpsertItem = { orderId: string; record: StripeSuccessRecord };
+  type PatchItem = {
+    orderId: string;
+    record: StripeSuccessRecord;
+    existing: (typeof ledgerRows)[number];
+  };
+  const upsertItems: UpsertItem[] = [];
+  const patchItems: PatchItem[] = [];
+
   for (const [orderId, record] of successMap.entries()) {
     if (!orderId) continue;
     const existing = ledgerById.get(orderId) || ledgerByOrderId.get(orderId);
@@ -265,51 +275,66 @@ export async function GET(req: Request) {
         skipped.push({ orderId, reason: "missing metadata" });
         continue;
       }
-      await upsertLedgerRecord({
-        id: orderId,
-        userAddress: record.userAddress,
-        diamondAmount: record.diamondAmount,
-        amount: record.amountCny,
-        currency: record.currency || "CNY",
-        channel: record.channel || "stripe",
-        status: "paid",
-        orderId,
-        receiptId: record.paymentIntentId ? `stripe_pi_${record.paymentIntentId}` : undefined,
-        source: "stripe",
-        note: "reconciled_from_event",
-        meta: {
-          reconciledAt: now,
-          reconcileSource: record.source,
-          eventId: record.eventId,
-          paymentIntentId: record.paymentIntentId,
-        },
-      });
-      reconciled.push(orderId);
+      upsertItems.push({ orderId, record });
       continue;
     }
     if (existing.status !== "paid" && existing.status !== "credited") {
       patchedLedger.push(orderId);
       if (!apply) continue;
-      const existingMeta =
-        existing.meta && typeof existing.meta === "object"
-          ? (existing.meta as Record<string, unknown>)
-          : {};
-      await prisma.ledgerRecord.update({
-        where: { id: existing.id },
-        data: {
-          status: "paid",
-          updatedAt: new Date(now),
-          note: existing.note || "reconciled_from_event",
-          meta: {
-            ...existingMeta,
-            reconciledAt: now,
-            reconcileSource: record.source,
-            eventId: record.eventId,
-          } as Prisma.InputJsonValue,
-        },
-      });
-      reconciled.push(orderId);
+      patchItems.push({ orderId, record, existing });
     }
+  }
+
+  // Apply all ledger changes in a single transaction
+  if (apply && (upsertItems.length > 0 || patchItems.length > 0)) {
+    await prisma.$transaction(async (tx) => {
+      for (const { orderId, record } of upsertItems) {
+        await upsertLedgerRecord(
+          {
+            id: orderId,
+            userAddress: record.userAddress!,
+            diamondAmount: record.diamondAmount!,
+            amount: record.amountCny,
+            currency: record.currency || "CNY",
+            channel: record.channel || "stripe",
+            status: "paid",
+            orderId,
+            receiptId: record.paymentIntentId ? `stripe_pi_${record.paymentIntentId}` : undefined,
+            source: "stripe",
+            note: "reconciled_from_event",
+            meta: {
+              reconciledAt: now,
+              reconcileSource: record.source,
+              eventId: record.eventId,
+              paymentIntentId: record.paymentIntentId,
+            },
+          },
+          tx
+        );
+        reconciled.push(orderId);
+      }
+      for (const { orderId, record, existing } of patchItems) {
+        const existingMeta =
+          existing.meta && typeof existing.meta === "object"
+            ? (existing.meta as Record<string, unknown>)
+            : {};
+        await tx.ledgerRecord.update({
+          where: { id: existing.id },
+          data: {
+            status: "paid",
+            updatedAt: new Date(now),
+            note: existing.note || "reconciled_from_event",
+            meta: {
+              ...existingMeta,
+              reconciledAt: now,
+              reconcileSource: record.source,
+              eventId: record.eventId,
+            } as Prisma.InputJsonValue,
+          },
+        });
+        reconciled.push(orderId);
+      }
+    });
   }
 
   const stalePendingRows = await prisma.ledgerRecord.findMany({

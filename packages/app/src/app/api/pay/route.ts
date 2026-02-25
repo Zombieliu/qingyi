@@ -6,6 +6,8 @@ import { requireUserAuth } from "@/lib/auth/user-auth";
 import { z } from "zod";
 import { parseBodyRaw } from "@/lib/shared/api-validation";
 import { env } from "@/lib/env";
+import { apiBadRequest, apiError, apiInternalError } from "@/lib/shared/api-response";
+import { stripeCircuit, CircuitBreakerError } from "@/lib/shared/circuit-breaker";
 
 const paySchema = z.object({
   amount: z.number().positive(),
@@ -30,14 +32,11 @@ export async function POST(req: Request) {
     payload;
 
   if (!stripe) {
-    return NextResponse.json(
-      { error: "stripe_unavailable", message: "STRIPE_SECRET_KEY not set" },
-      { status: 503 }
-    );
+    return apiError("stripe_unavailable", 503);
   }
   const normalizedAddress = normalizeSuiAddress(userAddress);
   if (!isValidSuiAddress(normalizedAddress)) {
-    return NextResponse.json({ error: "invalid userAddress" }, { status: 400 });
+    return apiBadRequest("invalid userAddress");
   }
   const auth = await requireUserAuth(req, {
     intent: `pay:create:${orderId}`,
@@ -54,35 +53,37 @@ export async function POST(req: Request) {
     }
   }
   if (channel === "alipay" && !resolvedReturnUrl) {
-    return NextResponse.json({ error: "returnUrl required for alipay" }, { status: 400 });
+    return apiBadRequest("returnUrl required for alipay");
   }
 
   try {
-    let intent = await stripe.paymentIntents.create(
-      {
-        amount: Math.round(amount * 100),
-        currency: "cny",
-        description: body,
-        metadata: {
-          orderId,
-          userAddress: auth.address,
-          diamondAmount: String(diamondAmount),
-          subject,
+    let intent = await stripeCircuit.execute(() =>
+      stripe!.paymentIntents.create(
+        {
+          amount: Math.round(amount * 100),
+          currency: "cny",
+          description: body,
+          metadata: {
+            orderId,
+            userAddress: auth.address,
+            diamondAmount: String(diamondAmount),
+            subject,
+          },
+          payment_method_types: [channel],
+          payment_method_data: { type: channel },
+          payment_method_options:
+            channel === "wechat_pay"
+              ? {
+                  wechat_pay: {
+                    client: "web",
+                  },
+                }
+              : undefined,
+          confirm: true,
+          return_url: resolvedReturnUrl || undefined,
         },
-        payment_method_types: [channel],
-        payment_method_data: { type: channel },
-        payment_method_options:
-          channel === "wechat_pay"
-            ? {
-                wechat_pay: {
-                  client: "web",
-                },
-              }
-            : undefined,
-        confirm: true,
-        return_url: resolvedReturnUrl || undefined,
-      },
-      { idempotencyKey: `pay:${orderId}` }
+        { idempotencyKey: `pay:${orderId}` }
+      )
     );
 
     if (intent.next_action?.type === "wechat_pay_display_qr_code") {
@@ -161,8 +162,8 @@ export async function POST(req: Request) {
         },
         createdAt: Date.now(),
       });
-    } catch {
-      // ignore ledger record failures to avoid blocking payment flow
+    } catch (e) {
+      console.error("ledger record upsert failed:", e);
     }
 
     return NextResponse.json({
@@ -183,7 +184,9 @@ export async function POST(req: Request) {
       qrCodeText: wechatQr?.data || null,
     });
   } catch (e) {
-    const message = (e as Error).message || "stripe request failed";
-    return NextResponse.json({ error: message }, { status: 500 });
+    if (e instanceof CircuitBreakerError) {
+      return apiError("stripe_circuit_open", 503);
+    }
+    return apiInternalError(e);
   }
 }

@@ -17,6 +17,7 @@ import {
 } from "@mysten/sui/keypairs/passkey";
 import { DAPP_HUB_ID, DAPP_HUB_INITIAL_SHARED_VERSION, PACKAGE_ID } from "contracts/deployment";
 import { buildAuthMessage } from "../auth/auth-message";
+import { ChainMessages, BrandName } from "@/lib/shared/messages";
 
 // Re-export lightweight utilities so existing `import { getCurrentAddress } from "qy-chain"` still works
 // but new code should import from qy-chain-lite directly to avoid pulling SUI SDK
@@ -51,7 +52,7 @@ export type ChainOrder = {
   lastUpdatedMs?: number;
 };
 
-const RP_NAME = "情谊电竞";
+const RP_NAME = BrandName.RP_NAME;
 const EVENT_LIMIT = Number(process.env.NEXT_PUBLIC_QY_EVENT_LIMIT || "200");
 const EVENT_MIN_INTERVAL_MS = Number(process.env.NEXT_PUBLIC_QY_EVENT_MIN_INTERVAL_MS || "60000");
 const CHAIN_SPONSOR_MODE = (process.env.NEXT_PUBLIC_CHAIN_SPONSOR || "auto").toLowerCase();
@@ -86,7 +87,7 @@ function getProviderOptions(): BrowserPasswordProviderOptions {
 
 async function sha256Base64(value: string) {
   if (typeof crypto === "undefined" || !crypto.subtle) {
-    throw new Error("浏览器不支持安全签名");
+    throw new Error(ChainMessages.BROWSER_NOT_SUPPORTED);
   }
   const bytes = new TextEncoder().encode(value);
   const digest = await crypto.subtle.digest("SHA-256", bytes);
@@ -139,7 +140,7 @@ function normalizeSuiNetwork(value?: string): SuiNetwork {
 function getRuleSetId(): string {
   const rule = process.env.NEXT_PUBLIC_QY_RULESET_ID || "1";
   if (!/^[0-9]+$/.test(rule)) {
-    throw new Error("规则集 ID 不合法");
+    throw new Error(ChainMessages.RULESET_INVALID);
   }
   return rule;
 }
@@ -153,11 +154,11 @@ function getDefaultCompanion(): string {
     }
   }
   if (!addr) {
-    throw new Error("未配置默认陪玩地址（NEXT_PUBLIC_QY_DEFAULT_COMPANION）");
+    throw new Error(ChainMessages.DEFAULT_COMPANION_MISSING);
   }
   const normalized = normalizeSuiAddress(addr);
   if (!isValidSuiAddress(normalized)) {
-    throw new Error("默认陪玩地址无效");
+    throw new Error(ChainMessages.DEFAULT_COMPANION_INVALID);
   }
   return normalized;
 }
@@ -185,11 +186,11 @@ function resolvePackageId() {
 function getDappHubSharedRef() {
   const dappHubId = resolveDappHubId();
   if (!dappHubId || dappHubId === "0x0") {
-    throw new Error("合约未部署：缺少 DAPP_HUB_ID");
+    throw new Error(ChainMessages.CONTRACT_MISSING_HUB_ID);
   }
   const sharedVersion = resolveDappHubInitialSharedVersion();
   if (!sharedVersion || sharedVersion === "0") {
-    throw new Error("合约未部署：缺少 DAPP_HUB_INITIAL_SHARED_VERSION");
+    throw new Error(ChainMessages.CONTRACT_MISSING_HUB_VERSION);
   }
   return Inputs.SharedObjectRef({
     objectId: dappHubId,
@@ -203,7 +204,7 @@ async function getDubhePackageId(client: SuiClient): Promise<string> {
   const obj = await client.getObject({ id: DAPP_HUB_ID, options: { showType: true } });
   const type = obj.data?.type;
   if (!type) {
-    throw new Error("无法读取 DappHub 类型");
+    throw new Error(ChainMessages.DAPP_HUB_TYPE_UNREADABLE);
   }
   cachedDubhePackageId = type.split("::")[0];
   return cachedDubhePackageId;
@@ -212,21 +213,21 @@ async function getDubhePackageId(client: SuiClient): Promise<string> {
 function ensurePackageId() {
   const packageId = resolvePackageId();
   if (!packageId || packageId === "0x0") {
-    throw new Error("合约未部署：缺少 PACKAGE_ID");
+    throw new Error(ChainMessages.CONTRACT_MISSING_PACKAGE);
   }
 }
 
 function toChainAmount(amount: number | string): string {
   const n = typeof amount === "string" ? Number(amount) : amount;
   if (!Number.isFinite(n) || n < 0) {
-    throw new Error("金额不合法");
+    throw new Error(ChainMessages.AMOUNT_INVALID);
   }
   return String(Math.round(n * 100));
 }
 
 function ensureOrderId(orderId: string) {
   if (!/^[0-9]+$/.test(orderId)) {
-    throw new Error("orderId 必须是数字字符串");
+    throw new Error(ChainMessages.ORDER_ID_MUST_BE_NUMERIC);
   }
 }
 
@@ -304,11 +305,11 @@ async function executeSponsoredTransaction(tx: Transaction) {
   });
   const prepareData = await prepareRes.json().catch(() => ({}));
   if (!prepareRes.ok) {
-    throw new Error(prepareData?.error || "赞助交易构建失败");
+    throw new Error(prepareData?.error || ChainMessages.SPONSOR_BUILD_FAILED);
   }
   const txBytes = prepareData?.bytes;
   if (!txBytes || typeof txBytes !== "string") {
-    throw new Error("赞助交易返回无效");
+    throw new Error(ChainMessages.SPONSOR_INVALID_RESPONSE);
   }
   const userSignature = await signer.signTransaction(fromBase64(txBytes));
   const signature =
@@ -326,7 +327,7 @@ async function executeSponsoredTransaction(tx: Transaction) {
   });
   const execData = await execRes.json().catch(() => ({}));
   if (!execRes.ok) {
-    throw new Error(execData?.error || "赞助交易失败");
+    throw new Error(execData?.error || ChainMessages.SPONSOR_EXEC_FAILED);
   }
   return { digest: execData?.digest as string };
 }
@@ -366,7 +367,7 @@ async function executeTransaction(tx: Transaction) {
     });
     const status = result.effects?.status?.status;
     if (status && status !== "success") {
-      throw new Error(result.effects?.status?.error || "链上交易失败");
+      throw new Error(result.effects?.status?.error || ChainMessages.TX_FAILED);
     }
     return { digest: result.digest };
   };
@@ -553,7 +554,7 @@ export async function fetchChainOrders(): Promise<ChainOrder[]> {
     ensurePackageId();
     const dappHubId = String(DAPP_HUB_ID || "");
     if (!dappHubId || dappHubId === "0x0") {
-      throw new Error("合约未部署：缺少 DAPP_HUB_ID");
+      throw new Error(ChainMessages.CONTRACT_MISSING_HUB_ID);
     }
     const client = new SuiClient({ url: getRpcUrl() });
     const dubhePackageId = await getDubhePackageId(client);

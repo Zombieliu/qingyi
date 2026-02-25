@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import crypto from "crypto";
 import {
   addOrder,
@@ -27,6 +27,13 @@ import { parseBodyRaw } from "@/lib/shared/api-validation";
 import { env } from "@/lib/env";
 import { trackOrderCreated, trackWebhookFailed } from "@/lib/business-events";
 import { publishOrderEvent } from "@/lib/realtime";
+import {
+  apiBadRequest,
+  apiUnauthorized,
+  apiForbidden,
+  apiRateLimited,
+  apiInternalError,
+} from "@/lib/shared/api-response";
 const PUBLIC_ORDER_CACHE_TTL_MS = 5000;
 const PUBLIC_ORDER_CACHE_CONTROL = "private, max-age=5, stale-while-revalidate=10";
 
@@ -119,12 +126,12 @@ export async function GET(req: Request) {
     isPublicPool &&
     !(await enforceRateLimit(req, env.PUBLIC_ORDER_RATE_LIMIT_MAX, env.ORDER_RATE_LIMIT_WINDOW_MS))
   ) {
-    return NextResponse.json({ error: "rate_limited" }, { status: 429 });
+    return apiRateLimited();
   }
   const userAddressRaw = searchParams.get("address") || searchParams.get("userAddress") || "";
   const userAddress = userAddressRaw ? normalizeSuiAddress(userAddressRaw) : "";
   if (userAddress && !isValidSuiAddress(userAddress)) {
-    return NextResponse.json({ error: "invalid userAddress" }, { status: 400 });
+    return apiBadRequest("invalid userAddress");
   }
   const user = (searchParams.get("user") || "").trim();
   const q = (searchParams.get("q") || "").trim();
@@ -141,13 +148,13 @@ export async function GET(req: Request) {
 
   if (isPublicPool) {
     if (!userAddress) {
-      return NextResponse.json({ error: "address_required" }, { status: 401 });
+      return apiUnauthorized("address_required");
     }
     const auth = await requireUserAuth(req, { intent: "orders:public", address: userAddress });
     if (!auth.ok) return auth.response;
     const playerLookup = await getPlayerByAddress(userAddress);
     if (!playerLookup.player || playerLookup.conflict || playerLookup.player.status === "停用") {
-      return NextResponse.json({ error: "player_required" }, { status: 403 });
+      return apiForbidden("player_required");
     }
     const cursorRaw = searchParams.get("cursor") || "";
     let cursor: { createdAt: number; id: string } | undefined;
@@ -158,10 +165,10 @@ export async function GET(req: Request) {
         if (typeof parsed.createdAt === "number" && typeof parsed.id === "string") {
           cursor = { createdAt: parsed.createdAt, id: parsed.id };
         } else {
-          return NextResponse.json({ error: "invalid_cursor" }, { status: 400 });
+          return apiBadRequest("invalid_cursor");
         }
       } catch {
-        return NextResponse.json({ error: "invalid_cursor" }, { status: 400 });
+        return apiBadRequest("invalid_cursor");
       }
     }
 
@@ -239,7 +246,7 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   if (!(await enforceRateLimit(req, env.ORDER_RATE_LIMIT_MAX, env.ORDER_RATE_LIMIT_WINDOW_MS))) {
-    return NextResponse.json({ error: "rate_limited" }, { status: 429 });
+    return apiRateLimited();
   }
 
   const parsed = await parseBodyRaw(req, orderSchema);
@@ -254,17 +261,17 @@ export async function POST(req: Request) {
   if (payload.userAddress) {
     const normalized = normalizeSuiAddress(payload.userAddress);
     if (!isValidSuiAddress(normalized)) {
-      return NextResponse.json({ error: "invalid userAddress" }, { status: 400 });
+      return apiBadRequest("invalid userAddress");
     }
     userAddress = normalized;
   } else {
-    return NextResponse.json({ error: "userAddress required" }, { status: 401 });
+    return apiUnauthorized("userAddress required");
   }
   let companionAddress: string | undefined;
   if (payload.companionAddress) {
     const normalized = normalizeSuiAddress(payload.companionAddress);
     if (!isValidSuiAddress(normalized)) {
-      return NextResponse.json({ error: "invalid companionAddress" }, { status: 400 });
+      return apiBadRequest("invalid companionAddress");
     }
     companionAddress = normalized;
   }
@@ -295,17 +302,17 @@ export async function POST(req: Request) {
       !Number.isFinite(minSpend) ||
       !Number.isFinite(originalTotal)
     ) {
-      return NextResponse.json({ error: "invalid_discount" }, { status: 400 });
+      return apiBadRequest("invalid_discount");
     }
     if (originalTotal < minSpend || discount <= 0) {
-      return NextResponse.json({ error: "invalid_discount" }, { status: 400 });
+      return apiBadRequest("invalid_discount");
     }
     const expected = Number((originalTotal - discount).toFixed(2));
     if (Math.abs(expected - amount) > 0.01) {
-      return NextResponse.json({ error: "discount_mismatch" }, { status: 400 });
+      return apiBadRequest("discount_mismatch");
     }
     if (await hasOrdersForAddress(userAddress)) {
-      return NextResponse.json({ error: "first_order_only" }, { status: 403 });
+      return apiForbidden("first_order_only");
     }
   }
 
@@ -345,19 +352,21 @@ export async function POST(req: Request) {
 
     // Publish realtime event
     if (userAddress) {
-      void publishOrderEvent(userAddress, {
-        type: "status_change",
-        orderId,
-        stage: "待处理",
-        timestamp: Date.now(),
-      });
+      after(
+        publishOrderEvent(userAddress, {
+          type: "status_change",
+          orderId,
+          stage: "待处理",
+          timestamp: Date.now(),
+        })
+      );
     }
 
     // 新订单可能影响公共订单池，清除缓存
     invalidateCacheByPrefix("public-orders:");
   } catch (error) {
     console.error("Failed to persist order:", error);
-    return NextResponse.json({ error: "persist_failed" }, { status: 500 });
+    return apiInternalError("persist_failed");
   }
   if (env.E2E_SKIP_WEBHOOK === "1") {
     return NextResponse.json({ orderId, sent: true, error: null });
@@ -366,7 +375,7 @@ export async function POST(req: Request) {
   // 异步发送企微 webhook，不阻塞用户响应
   const webhook = env.WECHAT_WEBHOOK_URL;
   if (webhook) {
-    const notifyPromise = (async () => {
+    after(async () => {
       try {
         const requestedNameRaw =
           typeof meta?.requestedPlayerName === "string" ? meta.requestedPlayerName.trim() : "";
@@ -424,10 +433,7 @@ export async function POST(req: Request) {
         console.error("WeCom webhook error:", (e as Error).message);
         trackWebhookFailed(orderId, (e as Error).message);
       }
-    })();
-    // Vercel/Node: 不 await，让通知在后台完成
-    // 如果运行时支持 waitUntil，用它来保证函数不会提前终止
-    void notifyPromise;
+    });
   }
 
   return NextResponse.json({ orderId, sent: true, error: null });

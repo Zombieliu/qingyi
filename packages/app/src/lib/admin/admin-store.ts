@@ -1,7 +1,7 @@
 import "server-only";
 
 // Re-export shared utilities
-export { type CursorPayload } from "./admin-store-utils";
+export { type CursorPayload, type TransactionClient } from "./admin-store-utils";
 
 // Re-export all domain modules
 export * from "./order-store";

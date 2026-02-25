@@ -6,6 +6,7 @@ import {
   appendCursorWhere,
   buildCursorPayload,
 } from "./admin-store-utils";
+import { notDeleted, softDelete } from "@/lib/shared/soft-delete";
 
 function mapCoupon(row: {
   id: string;
@@ -43,7 +44,7 @@ export async function queryCoupons(params: {
 }) {
   const { page, pageSize, status, q } = params;
   const keyword = (q || "").trim();
-  const where: Prisma.AdminCouponWhereInput = {};
+  const where: Prisma.AdminCouponWhereInput = { ...notDeleted };
   if (status && status !== "全部") where.status = status;
   if (keyword) {
     where.OR = [{ title: { contains: keyword } }, { code: { contains: keyword } }];
@@ -74,7 +75,7 @@ export async function queryCouponsCursor(params: {
 }) {
   const { pageSize, status, q, cursor } = params;
   const keyword = (q || "").trim();
-  const where: Prisma.AdminCouponWhereInput = {};
+  const where: Prisma.AdminCouponWhereInput = { ...notDeleted };
   if (status && status !== "全部") where.status = status;
   if (keyword) {
     where.OR = [
@@ -102,6 +103,7 @@ export async function listActiveCoupons() {
   const rows = await prisma.adminCoupon.findMany({
     where: {
       status: "可用",
+      ...notDeleted,
       AND: [
         { OR: [{ startsAt: null }, { startsAt: { lte: now } }] },
         { OR: [{ expiresAt: null }, { expiresAt: { gte: now } }] },
@@ -186,7 +188,7 @@ export async function updateCoupon(couponId: string, patch: Partial<AdminCoupon>
 
 export async function removeCoupon(couponId: string) {
   try {
-    await prisma.adminCoupon.delete({ where: { id: couponId } });
+    await prisma.adminCoupon.update({ where: { id: couponId }, data: softDelete() });
     return true;
   } catch {
     return false;

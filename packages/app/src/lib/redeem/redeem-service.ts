@@ -16,6 +16,7 @@ import { creditLedgerWithAdmin } from "@/lib/ledger/ledger-credit";
 import { normalizeRedeemCode } from "@/lib/admin/redeem-store";
 import type { RedeemRewardType } from "@/lib/admin/admin-types";
 import { isValidSuiAddress, normalizeSuiAddress } from "@mysten/sui/utils";
+import { AdminMessages } from "@/lib/shared/messages";
 
 type RewardSummary = {
   type: RedeemRewardType;
@@ -105,7 +106,7 @@ async function applyReward(params: {
       address: params.address,
       amount,
       orderId: params.recordId,
-      note: `卡密兑换 ${params.recordId}`,
+      note: AdminMessages.REDEEM_NOTE(params.recordId),
     });
     return {
       reward: { type: "mantou", amount },
@@ -124,7 +125,7 @@ async function applyReward(params: {
       amount,
       receiptId: params.recordId,
       orderId: params.recordId,
-      note: `卡密兑换 ${params.recordId}`,
+      note: AdminMessages.REDEEM_NOTE(params.recordId),
       source: "redeem",
     });
     return {
@@ -210,7 +211,7 @@ async function applyReward(params: {
     };
   }
 
-  const message = (parsed as { message?: string }).message || "兑换成功";
+  const message = (parsed as { message?: string }).message || AdminMessages.REDEEM_SUCCESS;
   return {
     reward: { type: "custom", message },
     meta: { message },

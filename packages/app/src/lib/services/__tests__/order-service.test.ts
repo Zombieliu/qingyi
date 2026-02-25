@@ -386,6 +386,23 @@ describe("server mode functions", () => {
     expect(result).toBeNull();
   });
 
+  it("fetchOrderDetail returns null when json parse fails", async () => {
+    vi.resetModules();
+    vi.stubEnv("NEXT_PUBLIC_ORDER_SOURCE", "server");
+    const { fetchWithUserAuth } = await import("@/lib/auth/user-auth-client");
+    (fetchWithUserAuth as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: true,
+      json: async () => {
+        throw new Error("invalid json");
+      },
+    });
+    const { getCurrentAddress } = await import("@/lib/chain/qy-chain-lite");
+    (getCurrentAddress as ReturnType<typeof vi.fn>).mockReturnValue("0xabc");
+    const mod = await import("../order-service");
+    const result = await mod.fetchOrderDetail("ORD-1", "0xabc");
+    expect(result).toBeNull();
+  });
+
   it("createOrder calls API in server mode", async () => {
     vi.resetModules();
     vi.stubEnv("NEXT_PUBLIC_ORDER_SOURCE", "server");
@@ -442,6 +459,42 @@ describe("server mode functions", () => {
     await expect(
       mod.patchOrder("ORD-1", { stage: "已确认" } as Parameters<typeof mod.patchOrder>[1])
     ).rejects.toThrow();
+  });
+
+  it("patchOrder uses message field from error response", async () => {
+    vi.resetModules();
+    vi.stubEnv("NEXT_PUBLIC_ORDER_SOURCE", "server");
+    const { fetchWithUserAuth } = await import("@/lib/auth/user-auth-client");
+    (fetchWithUserAuth as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: false,
+      status: 400,
+      json: async () => ({ message: "order not found" }),
+    });
+    const { getCurrentAddress } = await import("@/lib/chain/qy-chain-lite");
+    (getCurrentAddress as ReturnType<typeof vi.fn>).mockReturnValue("0xabc");
+    const mod = await import("../order-service");
+    await expect(
+      mod.patchOrder("ORD-1", { status: "已确认" } as Parameters<typeof mod.patchOrder>[1])
+    ).rejects.toThrow("order not found (HTTP 400)");
+  });
+
+  it("patchOrder throws when json parse fails", async () => {
+    vi.resetModules();
+    vi.stubEnv("NEXT_PUBLIC_ORDER_SOURCE", "server");
+    const { fetchWithUserAuth } = await import("@/lib/auth/user-auth-client");
+    (fetchWithUserAuth as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: false,
+      status: 500,
+      json: async () => {
+        throw new Error("parse error");
+      },
+    });
+    const { getCurrentAddress } = await import("@/lib/chain/qy-chain-lite");
+    (getCurrentAddress as ReturnType<typeof vi.fn>).mockReturnValue("0xabc");
+    const mod = await import("../order-service");
+    await expect(
+      mod.patchOrder("ORD-1", { status: "已确认" } as Parameters<typeof mod.patchOrder>[1])
+    ).rejects.toThrow("order patch failed (HTTP 500)");
   });
 
   it("patchOrder throws generic error when API returns no detail", async () => {
@@ -559,6 +612,26 @@ describe("server mode: fetchOrdersWithMeta", () => {
     expect(result.meta.error).toContain("500");
   });
 
+  it("returns empty items on API error with no cache", async () => {
+    const { getCurrentAddress } = await import("@/lib/chain/qy-chain-lite");
+    (getCurrentAddress as ReturnType<typeof vi.fn>).mockReturnValue("0xabc");
+    const { readCache } = await import("@/lib/shared/client-cache");
+    (readCache as ReturnType<typeof vi.fn>).mockReturnValue(null);
+    const { fetchWithUserAuth } = await import("@/lib/auth/user-auth-client");
+    (fetchWithUserAuth as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: false,
+      status: 500,
+      headers: new Headers({ "x-trace-id": "trace-123" }),
+    });
+    const mod = await import("../order-service");
+    const result = await mod.fetchOrdersWithMeta();
+    expect(result.items).toHaveLength(0);
+    expect(result.meta.fromCache).toBe(false);
+    expect(result.meta.stale).toBe(false);
+    expect(result.meta.error).toContain("500");
+    expect(result.meta.traceId).toBe("trace-123");
+  });
+
   it("fetches with force bypassing cache", async () => {
     const { getCurrentAddress } = await import("@/lib/chain/qy-chain-lite");
     (getCurrentAddress as ReturnType<typeof vi.fn>).mockReturnValue("0xabc");
@@ -653,6 +726,41 @@ describe("server mode: fetchPublicOrdersWithMeta", () => {
     expect(result.meta.fromCache).toBe(true);
   });
 
+  it("returns empty on server error with no cache", async () => {
+    const { getCurrentAddress } = await import("@/lib/chain/qy-chain-lite");
+    (getCurrentAddress as ReturnType<typeof vi.fn>).mockReturnValue("0xabc");
+    const { readCache } = await import("@/lib/shared/client-cache");
+    (readCache as ReturnType<typeof vi.fn>).mockReturnValue(null);
+    const { fetchWithUserAuth } = await import("@/lib/auth/user-auth-client");
+    (fetchWithUserAuth as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: false,
+      status: 500,
+      headers: new Headers({ "x-trace-id": "trace-456" }),
+    });
+    const mod = await import("../order-service");
+    const result = await mod.fetchPublicOrdersWithMeta();
+    expect(result.items).toHaveLength(0);
+    expect(result.meta.fromCache).toBe(false);
+    expect(result.meta.stale).toBe(false);
+    expect(result.meta.traceId).toBe("trace-456");
+  });
+
+  it("handles 403 error", async () => {
+    const { getCurrentAddress } = await import("@/lib/chain/qy-chain-lite");
+    (getCurrentAddress as ReturnType<typeof vi.fn>).mockReturnValue("0xabc");
+    const { readCache } = await import("@/lib/shared/client-cache");
+    (readCache as ReturnType<typeof vi.fn>).mockReturnValue(null);
+    const { fetchWithUserAuth } = await import("@/lib/auth/user-auth-client");
+    (fetchWithUserAuth as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: false,
+      status: 403,
+    });
+    const mod = await import("../order-service");
+    const result = await mod.fetchPublicOrdersWithMeta();
+    expect(result.items).toHaveLength(0);
+    expect(result.meta.error).toContain("403");
+  });
+
   it("passes cursor to API", async () => {
     const { getCurrentAddress } = await import("@/lib/chain/qy-chain-lite");
     (getCurrentAddress as ReturnType<typeof vi.fn>).mockReturnValue("0xabc");
@@ -700,6 +808,60 @@ describe("server mode: createOrder errors", () => {
         time: Date.now(),
       } as unknown as Parameters<typeof mod.createOrder>[0])
     ).rejects.toThrow("bad request");
+  });
+
+  it("throws default error when API returns no error field", async () => {
+    vi.resetModules();
+    vi.stubEnv("NEXT_PUBLIC_ORDER_SOURCE", "server");
+    const { fetchWithUserAuth } = await import("@/lib/auth/user-auth-client");
+    (fetchWithUserAuth as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: false,
+      status: 500,
+      json: async () => ({}),
+    });
+    const { getCurrentAddress } = await import("@/lib/chain/qy-chain-lite");
+    (getCurrentAddress as ReturnType<typeof vi.fn>).mockReturnValue("0xabc");
+    const mod = await import("../order-service");
+    await expect(
+      mod.createOrder({
+        id: "ORD-1",
+        user: "u",
+        item: "i",
+        amount: 1,
+        currency: "CNY",
+        paymentStatus: "未支付",
+        status: "待处理",
+        time: Date.now(),
+      } as unknown as Parameters<typeof mod.createOrder>[0])
+    ).rejects.toThrow("创建订单失败");
+  });
+
+  it("throws default error when json parse fails", async () => {
+    vi.resetModules();
+    vi.stubEnv("NEXT_PUBLIC_ORDER_SOURCE", "server");
+    const { fetchWithUserAuth } = await import("@/lib/auth/user-auth-client");
+    (fetchWithUserAuth as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: false,
+      status: 500,
+      json: async () => {
+        throw new Error("parse error");
+      },
+    });
+    const { getCurrentAddress } = await import("@/lib/chain/qy-chain-lite");
+    (getCurrentAddress as ReturnType<typeof vi.fn>).mockReturnValue("0xabc");
+    const mod = await import("../order-service");
+    await expect(
+      mod.createOrder({
+        id: "ORD-1",
+        user: "u",
+        item: "i",
+        amount: 1,
+        currency: "CNY",
+        paymentStatus: "未支付",
+        status: "待处理",
+        time: Date.now(),
+      } as unknown as Parameters<typeof mod.createOrder>[0])
+    ).rejects.toThrow("创建订单失败");
   });
 
   it("throws on address mismatch", async () => {
@@ -751,6 +913,42 @@ describe("server mode: syncChainOrder errors", () => {
     (getCurrentAddress as ReturnType<typeof vi.fn>).mockReturnValue("0xabc");
     const mod = await import("../order-service");
     await expect(mod.syncChainOrder("ORD-1", "0xabc")).rejects.toThrow();
+  });
+
+  it("throws generic error when API returns no detail", async () => {
+    vi.resetModules();
+    vi.stubEnv("NEXT_PUBLIC_ORDER_SOURCE", "server");
+    const { fetchWithUserAuth } = await import("@/lib/auth/user-auth-client");
+    (fetchWithUserAuth as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: false,
+      status: 500,
+      json: async () => ({}),
+    });
+    const { getCurrentAddress } = await import("@/lib/chain/qy-chain-lite");
+    (getCurrentAddress as ReturnType<typeof vi.fn>).mockReturnValue("0xabc");
+    const mod = await import("../order-service");
+    await expect(mod.syncChainOrder("ORD-1", "0xabc")).rejects.toThrow(
+      "chain sync failed (HTTP 500)"
+    );
+  });
+
+  it("throws generic error when json parse fails", async () => {
+    vi.resetModules();
+    vi.stubEnv("NEXT_PUBLIC_ORDER_SOURCE", "server");
+    const { fetchWithUserAuth } = await import("@/lib/auth/user-auth-client");
+    (fetchWithUserAuth as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: false,
+      status: 500,
+      json: async () => {
+        throw new Error("parse error");
+      },
+    });
+    const { getCurrentAddress } = await import("@/lib/chain/qy-chain-lite");
+    (getCurrentAddress as ReturnType<typeof vi.fn>).mockReturnValue("0xabc");
+    const mod = await import("../order-service");
+    await expect(mod.syncChainOrder("ORD-1", "0xabc")).rejects.toThrow(
+      "chain sync failed (HTTP 500)"
+    );
   });
 
   it("throws on address mismatch", async () => {

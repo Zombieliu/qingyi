@@ -6,6 +6,7 @@ import {
   appendCursorWhere,
   buildCursorPayload,
 } from "./admin-store-utils";
+import { notDeleted, softDelete } from "@/lib/shared/soft-delete";
 
 function mapInvoiceRequest(row: {
   id: string;
@@ -51,7 +52,7 @@ export async function queryInvoiceRequests(params: {
 }) {
   const { page, pageSize, status, q } = params;
   const keyword = (q || "").trim();
-  const where: Prisma.AdminInvoiceRequestWhereInput = {};
+  const where: Prisma.AdminInvoiceRequestWhereInput = { ...notDeleted };
   if (status && status !== "全部") where.status = status;
   if (keyword) {
     where.OR = [
@@ -90,7 +91,7 @@ export async function queryInvoiceRequestsCursor(params: {
 }) {
   const { pageSize, status, q, cursor } = params;
   const keyword = (q || "").trim();
-  const where: Prisma.AdminInvoiceRequestWhereInput = {};
+  const where: Prisma.AdminInvoiceRequestWhereInput = { ...notDeleted };
   if (status && status !== "全部") where.status = status;
   if (keyword) {
     where.OR = [
@@ -155,7 +156,7 @@ export async function updateInvoiceRequest(requestId: string, patch: Partial<Adm
 
 export async function removeInvoiceRequest(requestId: string) {
   try {
-    await prisma.adminInvoiceRequest.delete({ where: { id: requestId } });
+    await prisma.adminInvoiceRequest.update({ where: { id: requestId }, data: softDelete() });
     return true;
   } catch {
     return false;

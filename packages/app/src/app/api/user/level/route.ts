@@ -3,6 +3,7 @@ import { requireUserAuth } from "@/lib/auth/user-auth";
 import { getUserLevelProgress, onDailyCheckin } from "@/lib/services/growth-service";
 import { getCache, setCache, computeJsonEtag } from "@/lib/server-cache";
 import { getIfNoneMatch, jsonWithEtag, notModified } from "@/lib/http-cache";
+import { AdminMessages } from "@/lib/shared/messages";
 
 const CACHE_TTL_MS = 10_000;
 const CACHE_CONTROL = "private, max-age=10, stale-while-revalidate=30";
@@ -52,7 +53,7 @@ export async function POST(req: Request) {
 
   if ("alreadyCheckedIn" in result && result.alreadyCheckedIn) {
     return NextResponse.json(
-      { ok: false, error: "already_checked_in", message: "今日已签到" },
+      { ok: false, error: "already_checked_in", message: AdminMessages.ALREADY_CHECKED_IN },
       { status: 409 }
     );
   }

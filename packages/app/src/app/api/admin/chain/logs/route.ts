@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin/admin-auth";
 import { chainOrderLogger } from "@/lib/chain/chain-order-logger";
 import { env } from "@/lib/env";
+import { AdminMessages } from "@/lib/shared/messages";
 
 /**
  * 链上订单日志查看 API
@@ -49,7 +50,7 @@ export async function DELETE(req: Request) {
   const afterCount = chainOrderLogger.getLogs().length;
 
   return NextResponse.json({
-    message: "日志已清空",
+    message: AdminMessages.LOGS_CLEARED,
     beforeCount,
     afterCount,
     timestamp: new Date().toISOString(),

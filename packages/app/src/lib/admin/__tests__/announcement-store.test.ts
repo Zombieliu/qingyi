@@ -3,8 +3,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 const mockFindMany = vi.fn();
 const mockCreate = vi.fn();
 const mockUpdate = vi.fn();
-const mockDelete = vi.fn();
-const mockDeleteMany = vi.fn();
+const mockUpdateMany = vi.fn();
 
 vi.mock("../admin-store-utils", () => ({
   prisma: {
@@ -12,10 +11,14 @@ vi.mock("../admin-store-utils", () => ({
       findMany: (...args: unknown[]) => mockFindMany(...args),
       create: (...args: unknown[]) => mockCreate(...args),
       update: (...args: unknown[]) => mockUpdate(...args),
-      delete: (...args: unknown[]) => mockDelete(...args),
-      deleteMany: (...args: unknown[]) => mockDeleteMany(...args),
+      updateMany: (...args: unknown[]) => mockUpdateMany(...args),
     },
   },
+}));
+
+vi.mock("@/lib/shared/soft-delete", () => ({
+  notDeleted: { deletedAt: null },
+  softDelete: () => ({ deletedAt: new Date() }),
 }));
 
 vi.mock("../../server-cache", () => ({
@@ -116,19 +119,19 @@ describe("updateAnnouncement", () => {
 
 describe("removeAnnouncement", () => {
   it("returns true on success", async () => {
-    mockDelete.mockResolvedValue(baseAnnouncementRow);
+    mockUpdate.mockResolvedValue(baseAnnouncementRow);
     expect(await removeAnnouncement("ANN-1")).toBe(true);
   });
 
   it("returns false on error", async () => {
-    mockDelete.mockRejectedValue(new Error("not found"));
+    mockUpdate.mockRejectedValue(new Error("not found"));
     expect(await removeAnnouncement("ANN-999")).toBe(false);
   });
 });
 
 describe("removeAnnouncements", () => {
   it("deletes multiple announcements", async () => {
-    mockDeleteMany.mockResolvedValue({ count: 3 });
+    mockUpdateMany.mockResolvedValue({ count: 3 });
 
     const result = await removeAnnouncements(["ANN-1", "ANN-2", "ANN-3"]);
     expect(result).toBe(3);
@@ -137,13 +140,13 @@ describe("removeAnnouncements", () => {
   it("returns 0 for empty array", async () => {
     const result = await removeAnnouncements([]);
     expect(result).toBe(0);
-    expect(mockDeleteMany).not.toHaveBeenCalled();
+    expect(mockUpdateMany).not.toHaveBeenCalled();
   });
 
   it("filters out empty strings", async () => {
     const result = await removeAnnouncements(["", ""]);
     expect(result).toBe(0);
-    expect(mockDeleteMany).not.toHaveBeenCalled();
+    expect(mockUpdateMany).not.toHaveBeenCalled();
   });
 });
 

@@ -1,6 +1,7 @@
 import "server-only";
 import { prisma } from "@/lib/db";
 import { isFeatureEnabled } from "@/lib/feature-flags";
+import { DisputeMessages, OrderMessages } from "@/lib/shared/messages";
 
 function logDispute(event: string, data: Record<string, unknown>) {
   console.log(
@@ -45,19 +46,13 @@ export async function createDispute(params: {
   description: string;
   evidence?: string[];
 }): Promise<DisputeRecord> {
-  if (!isFeatureEnabled("dispute_flow")) throw new Error("争议功能暂未开放");
+  if (!isFeatureEnabled("dispute_flow")) throw new Error(DisputeMessages.FEATURE_DISABLED);
   const order = await prisma.adminOrder.findUnique({ where: { id: params.orderId } });
-  if (!order) throw new Error("订单不存在");
-  if (order.userAddress !== params.userAddress) throw new Error("无权操作此订单");
+  if (!order) throw new Error(OrderMessages.NOT_FOUND);
+  if (order.userAddress !== params.userAddress) throw new Error(OrderMessages.NO_PERMISSION);
   if (!["已完成", "进行中"].includes(order.stage)) {
-    throw new Error("当前订单状态不支持发起争议");
+    throw new Error(OrderMessages.STAGE_NOT_SUPPORT_DISPUTE);
   }
-
-  // Update order stage
-  await prisma.adminOrder.update({
-    where: { id: params.orderId },
-    data: { stage: "争议中" },
-  });
 
   const id = `DSP-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
   const dispute: DisputeRecord = {
@@ -71,15 +66,18 @@ export async function createDispute(params: {
     createdAt: new Date(),
   };
 
-  // Store in order meta
-  await prisma.adminOrder.update({
-    where: { id: params.orderId },
-    data: {
-      meta: {
-        ...((order.meta as Record<string, unknown>) || {}),
-        dispute,
+  // Update order stage + store dispute in meta within a single transaction
+  await prisma.$transaction(async (tx) => {
+    await tx.adminOrder.update({
+      where: { id: params.orderId },
+      data: {
+        stage: "争议中",
+        meta: {
+          ...((order.meta as Record<string, unknown>) || {}),
+          dispute,
+        },
       },
-    },
+    });
   });
 
   logDispute("dispute_created", {
@@ -88,7 +86,7 @@ export async function createDispute(params: {
     userAddress: params.userAddress,
   });
 
-  // Notify companion
+  // Notify companion (non-critical, outside transaction)
   try {
     const { notifyOrderStatusChange } = await import("@/lib/services/notification-service");
     if (order.companionAddress) {
@@ -115,11 +113,11 @@ export async function resolveDispute(params: {
   reviewerRole?: string;
 }): Promise<DisputeRecord> {
   const order = await prisma.adminOrder.findUnique({ where: { id: params.orderId } });
-  if (!order) throw new Error("订单不存在");
+  if (!order) throw new Error(OrderMessages.NOT_FOUND);
 
   const meta = (order.meta as Record<string, unknown>) || {};
   const dispute = meta.dispute as DisputeRecord | undefined;
-  if (!dispute) throw new Error("该订单没有争议记录");
+  if (!dispute) throw new Error(DisputeMessages.NO_DISPUTE_RECORD);
 
   const statusMap: Record<string, DisputeStatus> = {
     refund: "resolved_refund",
@@ -139,12 +137,14 @@ export async function resolveDispute(params: {
 
   const newStage = params.resolution === "reject" ? "已完成" : "已退款";
 
-  await prisma.adminOrder.update({
-    where: { id: params.orderId },
-    data: {
-      stage: newStage,
-      meta: { ...meta, dispute: resolved },
-    },
+  await prisma.$transaction(async (tx) => {
+    await tx.adminOrder.update({
+      where: { id: params.orderId },
+      data: {
+        stage: newStage,
+        meta: { ...meta, dispute: resolved },
+      },
+    });
   });
 
   logDispute("dispute_resolved", {
@@ -153,7 +153,7 @@ export async function resolveDispute(params: {
     refundAmount: resolved.refundAmount,
   });
 
-  // Notify user
+  // Notify user (non-critical, outside transaction)
   try {
     const { notifyOrderStatusChange } = await import("@/lib/services/notification-service");
     await notifyOrderStatusChange({

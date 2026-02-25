@@ -4,6 +4,7 @@ import { queryMantouWithdraws, requestMantouWithdraw } from "@/lib/admin/admin-s
 import { requireUserAuth } from "@/lib/auth/user-auth";
 import { z } from "zod";
 import { parseBodyRaw } from "@/lib/shared/api-validation";
+import { apiBadRequest, apiInternalError } from "@/lib/shared/api-response";
 
 const withdrawSchema = z.object({
   address: z.string().min(1),
@@ -19,7 +20,7 @@ export async function POST(req: Request) {
 
   const address = normalizeSuiAddress(payload.address);
   if (!address || !isValidSuiAddress(address)) {
-    return NextResponse.json({ error: "invalid address" }, { status: 400 });
+    return apiBadRequest("invalid address");
   }
   const auth = await requireUserAuth(req, {
     intent: "mantou:withdraw:create",
@@ -37,10 +38,7 @@ export async function POST(req: Request) {
     });
     return NextResponse.json({ ok: true, request: result.request, wallet: result.wallet });
   } catch (error) {
-    return NextResponse.json(
-      { error: (error as Error).message || "withdraw failed" },
-      { status: 500 }
-    );
+    return apiInternalError(error);
   }
 }
 
@@ -48,7 +46,7 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const address = normalizeSuiAddress(searchParams.get("address") || "");
   if (!address || !isValidSuiAddress(address)) {
-    return NextResponse.json({ error: "invalid address" }, { status: 400 });
+    return apiBadRequest("invalid address");
   }
   const auth = await requireUserAuth(req, { intent: "mantou:withdraw:read", address });
   if (!auth.ok) return auth.response;

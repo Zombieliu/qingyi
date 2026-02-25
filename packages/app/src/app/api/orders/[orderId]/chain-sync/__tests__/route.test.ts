@@ -62,6 +62,15 @@ vi.mock("@/lib/shared/api-validation", () => ({
   parseBodyRaw: mocks.parseBodyRaw,
 }));
 vi.mock("@/lib/env", () => ({ env: mocks.env }));
+vi.mock("@/lib/shared/api-response", () => ({
+  apiBadRequest: (error: string) => NextResponse.json({ error }, { status: 400 }),
+  apiUnauthorized: (error = "unauthorized") => NextResponse.json({ error }, { status: 401 }),
+  apiForbidden: (error = "forbidden") => NextResponse.json({ error }, { status: 403 }),
+  apiNotFound: (error = "not_found") => NextResponse.json({ error }, { status: 404 }),
+}));
+
+// Re-import NextResponse from the mock for api-response mock usage
+const { NextResponse } = await import("next/server");
 
 import { POST } from "../route";
 

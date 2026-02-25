@@ -7,6 +7,8 @@
  */
 "use client";
 
+import { ChainMessages } from "@/lib/shared/messages";
+
 /** Passkey wallet localStorage key (duplicated to avoid importing passkey-wallet.tsx which pulls SUI SDK) */
 export const PASSKEY_STORAGE_KEY = "qy_passkey_wallet_v3";
 
@@ -27,20 +29,20 @@ export function isVisualTestMode(): boolean {
 
 export function getStoredWallet(): StoredWallet {
   if (typeof window === "undefined") {
-    throw new Error("仅支持在浏览器端使用 Passkey");
+    throw new Error(ChainMessages.PASSKEY_BROWSER_ONLY);
   }
   const raw = localStorage.getItem(PASSKEY_STORAGE_KEY);
   if (!raw) {
-    throw new Error("未找到 Passkey 钱包，请先登录");
+    throw new Error(ChainMessages.PASSKEY_NOT_FOUND);
   }
   let parsed: StoredWallet;
   try {
     parsed = JSON.parse(raw) as StoredWallet;
   } catch {
-    throw new Error("Passkey 数据损坏，请重新登录");
+    throw new Error(ChainMessages.PASSKEY_DATA_CORRUPTED);
   }
   if (!parsed.address || !parsed.publicKey) {
-    throw new Error("Passkey 数据不完整，请重新登录");
+    throw new Error(ChainMessages.PASSKEY_DATA_INCOMPLETE);
   }
   return parsed;
 }

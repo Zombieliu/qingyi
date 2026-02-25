@@ -4,6 +4,7 @@ import { isValidSuiAddress, normalizeSuiAddress } from "@mysten/sui/utils";
 import { bindReferral } from "@/lib/admin/admin-store";
 import { requireUserAuth } from "@/lib/auth/user-auth";
 import { parseBody } from "@/lib/shared/api-validation";
+import { apiBadRequest, apiInternalError } from "@/lib/shared/api-response";
 
 const postSchema = z.object({
   inviteeAddress: z.string().min(1),
@@ -17,7 +18,7 @@ export async function POST(req: Request) {
 
   const inviteeAddress = normalizeSuiAddress(rawInviteeAddress);
   if (!inviteeAddress || !isValidSuiAddress(inviteeAddress)) {
-    return NextResponse.json({ error: "invalid inviteeAddress" }, { status: 400 });
+    return apiBadRequest("invalid inviteeAddress");
   }
 
   const refCode = rawRefCode.toLowerCase();
@@ -34,10 +35,10 @@ export async function POST(req: Request) {
 
   // Validate: refCode must map to a plausible address and not be self
   if (!isValidSuiAddress(inviterAddress)) {
-    return NextResponse.json({ error: "invalid refCode" }, { status: 400 });
+    return apiBadRequest("invalid refCode");
   }
   if (inviterAddress === inviteeAddress) {
-    return NextResponse.json({ error: "cannot_self_refer" }, { status: 400 });
+    return apiBadRequest("cannot_self_refer");
   }
 
   try {
@@ -48,6 +49,6 @@ export async function POST(req: Request) {
       referral: result.referral,
     });
   } catch (e) {
-    return NextResponse.json({ error: (e as Error).message || "bind failed" }, { status: 500 });
+    return apiInternalError(e);
   }
 }

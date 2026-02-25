@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin/admin-auth";
 import { isKookEnabled, sendChannelMessage } from "@/lib/services/kook-service";
+import { KookMessages } from "@/lib/shared/messages";
 
 /** GET: Check Kook integration status */
 export async function GET(req: Request) {
@@ -26,7 +27,7 @@ export async function POST(req: Request) {
   try {
     const { message, channelId } = await req.json();
     const result = await sendChannelMessage({
-      content: message || "🔔 情谊电竞测试消息",
+      content: message || KookMessages.TEST_MESSAGE,
       channelId,
     });
     return NextResponse.json(result);

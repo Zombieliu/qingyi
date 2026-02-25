@@ -53,6 +53,36 @@ describe("cursor-utils", () => {
       const encoded = Buffer.from(JSON.stringify({ id: "abc" }), "utf8").toString("base64url");
       expect(decodeCursorParam(encoded)).toBeNull();
     });
+
+    it("returns null for non-object payload (string)", () => {
+      const encoded = Buffer.from(JSON.stringify("just a string"), "utf8").toString("base64url");
+      expect(decodeCursorParam(encoded)).toBeNull();
+    });
+
+    it("returns null for non-object payload (number)", () => {
+      const encoded = Buffer.from(JSON.stringify(42), "utf8").toString("base64url");
+      expect(decodeCursorParam(encoded)).toBeNull();
+    });
+
+    it("returns null for null payload", () => {
+      const encoded = Buffer.from(JSON.stringify(null), "utf8").toString("base64url");
+      expect(decodeCursorParam(encoded)).toBeNull();
+    });
+
+    it("returns null when createdAt is string instead of number", () => {
+      const encoded = Buffer.from(
+        JSON.stringify({ createdAt: "not-a-number", id: "abc" }),
+        "utf8"
+      ).toString("base64url");
+      expect(decodeCursorParam(encoded)).toBeNull();
+    });
+
+    it("returns null when id is number instead of string", () => {
+      const encoded = Buffer.from(JSON.stringify({ createdAt: 123, id: 456 }), "utf8").toString(
+        "base64url"
+      );
+      expect(decodeCursorParam(encoded)).toBeNull();
+    });
   });
 
   describe("roundtrip", () => {

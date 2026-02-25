@@ -14,6 +14,13 @@ import { getOrderById, updateOrder } from "@/lib/admin/admin-store";
 import { z } from "zod";
 import { parseBodyRaw } from "@/lib/shared/api-validation";
 import { env } from "@/lib/env";
+import {
+  apiBadRequest,
+  apiUnauthorized,
+  apiForbidden,
+  apiNotFound,
+} from "@/lib/shared/api-response";
+import { ChainMessages } from "@/lib/shared/messages";
 
 type RouteContext = {
   params: Promise<{ orderId: string }>;
@@ -58,7 +65,7 @@ const chainSyncSchema = z.object({
 export async function POST(req: Request, { params }: RouteContext) {
   const { orderId } = await params;
   if (!orderId) {
-    return NextResponse.json({ error: "orderId required" }, { status: 400 });
+    return apiBadRequest("orderId required");
   }
 
   const parsed = await parseBodyRaw(req, chainSyncSchema);
@@ -132,7 +139,7 @@ export async function POST(req: Request, { params }: RouteContext) {
 
       const errorDetail = {
         error: "chain_order_not_found",
-        message: "链上订单未找到",
+        message: ChainMessages.CHAIN_ORDER_NOT_FOUND,
         orderId,
         details: {
           existsInLocal: !!localOrder,
@@ -171,14 +178,14 @@ export async function POST(req: Request, { params }: RouteContext) {
   if (!admin.ok) {
     const userAddressRaw = typeof body.userAddress === "string" ? body.userAddress : "";
     if (!userAddressRaw) {
-      return NextResponse.json({ error: "userAddress required" }, { status: 401 });
+      return apiUnauthorized("userAddress required");
     }
     const normalized = normalizeSuiAddress(userAddressRaw);
     if (!isValidSuiAddress(normalized)) {
-      return NextResponse.json({ error: "invalid userAddress" }, { status: 400 });
+      return apiBadRequest("invalid userAddress");
     }
     if (chain.user !== normalized && chain.companion !== normalized) {
-      return NextResponse.json({ error: "forbidden" }, { status: 403 });
+      return apiForbidden();
     }
 
     const auth = await requireUserAuth(req, {

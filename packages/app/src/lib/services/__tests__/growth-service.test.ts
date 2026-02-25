@@ -36,6 +36,7 @@ import {
   addPointsAndUpgrade,
   onOrderCompleted,
   onReviewSubmitted,
+  onReferralFirstOrder,
   onDailyCheckin,
   getUserLevelProgress,
   POINTS_RULES,
@@ -187,6 +188,111 @@ describe("addPointsAndUpgrade", () => {
     });
     expect(result).toBeNull();
   });
+
+  it("returns null for negative points", async () => {
+    const result = await addPointsAndUpgrade({
+      userAddress: "0xabc",
+      points: -10,
+      reason: "test",
+    });
+    expect(result).toBeNull();
+  });
+
+  it("returns null for empty userAddress", async () => {
+    const result = await addPointsAndUpgrade({
+      userAddress: "",
+      points: 50,
+      reason: "test",
+    });
+    expect(result).toBeNull();
+  });
+
+  it("does not apply VIP multiplier when member has expired tier", async () => {
+    const expiredMember = {
+      ...baseMember,
+      tierId: "T1",
+      status: "active",
+      expiresAt: new Date(Date.now() - 86400_000), // expired yesterday
+      points: 100,
+    };
+    mockFindFirst.mockResolvedValue(expiredMember);
+    mockUpdate.mockResolvedValue({ ...expiredMember, points: 150 });
+    mockFindMany.mockResolvedValue(tiers);
+    mockFindUnique.mockResolvedValue(expiredMember);
+
+    const result = await addPointsAndUpgrade({
+      userAddress: "0xabc",
+      points: 50,
+      reason: "test",
+    });
+
+    expect(result!.multiplier).toBe(1);
+    expect(result!.earned).toBe(50);
+  });
+
+  it("does not apply VIP multiplier when member status is not active", async () => {
+    const inactiveMember = {
+      ...baseMember,
+      tierId: "T1",
+      status: "inactive",
+      points: 100,
+    };
+    mockFindFirst.mockResolvedValue(inactiveMember);
+    mockUpdate.mockResolvedValue({ ...inactiveMember, points: 150 });
+    mockFindMany.mockResolvedValue([]);
+
+    const result = await addPointsAndUpgrade({
+      userAddress: "0xabc",
+      points: 50,
+      reason: "test",
+    });
+
+    expect(result!.multiplier).toBe(1);
+  });
+
+  it("returns null upgrade when no tiers exist", async () => {
+    mockFindFirst.mockResolvedValue({ ...baseMember, points: 80 });
+    mockUpdate.mockResolvedValue({ ...baseMember, points: 130 });
+    mockFindMany.mockResolvedValue([]);
+
+    const result = await addPointsAndUpgrade({
+      userAddress: "0xabc",
+      points: 50,
+      reason: "test",
+    });
+
+    expect(result!.upgraded).toBeNull();
+  });
+
+  it("returns null upgrade when member not found during checkAndUpgrade", async () => {
+    mockFindFirst.mockResolvedValue({ ...baseMember, points: 80 });
+    mockUpdate.mockResolvedValue({ ...baseMember, points: 130 });
+    mockFindMany.mockResolvedValue(tiers);
+    mockFindUnique.mockResolvedValue(null);
+
+    const result = await addPointsAndUpgrade({
+      userAddress: "0xabc",
+      points: 50,
+      reason: "test",
+    });
+
+    expect(result!.upgraded).toBeNull();
+  });
+
+  it("returns null upgrade when no tier qualifies", async () => {
+    mockFindFirst.mockResolvedValue({ ...baseMember, points: 0 });
+    mockUpdate.mockResolvedValue({ ...baseMember, points: 10 });
+    mockFindMany.mockResolvedValue(tiers);
+
+    const result = await addPointsAndUpgrade({
+      userAddress: "0xabc",
+      points: 10,
+      reason: "test",
+    });
+
+    // 10 points doesn't qualify for any tier (min is 100)
+    expect(result!.upgraded).toBeNull();
+  });
 });
 
 describe("onOrderCompleted", () => {
@@ -268,6 +374,70 @@ describe("getUserLevelProgress", () => {
     expect(progress.currentTier).toBeNull();
     expect(progress.nextTier?.name).toBe("白银");
     expect(progress.pointsToNext).toBe(100);
+  });
+
+  it("returns 100% progress when at max tier", async () => {
+    mockFindFirst.mockResolvedValue({ ...baseMember, tierId: "T3", points: 5000 });
+    mockFindMany.mockResolvedValue(tiers);
+
+    const progress = await getUserLevelProgress("0xmax");
+
+    expect(progress.points).toBe(5000);
+    expect(progress.currentTier?.name).toBe("钻石");
+    expect(progress.nextTier).toBeNull();
+    expect(progress.pointsToNext).toBe(0);
+    // nextMin = currentMin * 2 = 4000, progress = min(100, (5000-2000)/(4000-2000)*100) = 100
+    expect(progress.progress).toBe(100);
+  });
+
+  it("returns progress with no tiers configured", async () => {
+    mockFindFirst.mockResolvedValue(null);
+    mockFindMany.mockResolvedValue([]);
+
+    const progress = await getUserLevelProgress("0xnew");
+
+    expect(progress.points).toBe(0);
+    expect(progress.currentTier).toBeNull();
+    expect(progress.nextTier).toBeNull();
+    expect(progress.allTiers).toHaveLength(0);
+  });
+
+  it("includes allTiers with reached status", async () => {
+    mockFindFirst.mockResolvedValue({ ...baseMember, tierId: "T1", points: 250 });
+    mockFindMany.mockResolvedValue(tiers);
+
+    const progress = await getUserLevelProgress("0xabc");
+
+    expect(progress.allTiers).toHaveLength(3);
+    expect(progress.allTiers[0].reached).toBe(true); // 白银 100 <= 250
+    expect(progress.allTiers[1].reached).toBe(false); // 黄金 500 > 250
+    expect(progress.allTiers[2].reached).toBe(false); // 钻石 2000 > 250
+  });
+
+  it("handles member with tierId not matching any tier", async () => {
+    mockFindFirst.mockResolvedValue({ ...baseMember, tierId: "T-DELETED", points: 250 });
+    mockFindMany.mockResolvedValue(tiers);
+
+    const progress = await getUserLevelProgress("0xabc");
+
+    expect(progress.currentTier).toBeNull();
+    expect(progress.isVip).toBe(false);
+  });
+});
+
+describe("onReferralFirstOrder", () => {
+  it("awards referral points to referrer", async () => {
+    mockFindFirst.mockResolvedValue({ ...baseMember, points: 0 });
+    mockUpdate.mockResolvedValue({ ...baseMember, points: 200 });
+    mockFindMany.mockResolvedValue([]);
+
+    const result = await onReferralFirstOrder({
+      referrerAddress: "0xreferrer",
+      refereeAddress: "0xreferee",
+      orderId: "ORD-1",
+    });
+
+    expect(result!.earned).toBe(POINTS_RULES.REFERRAL);
   });
 });
 

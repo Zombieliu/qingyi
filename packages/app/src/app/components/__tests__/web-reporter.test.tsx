@@ -56,4 +56,19 @@ describe("WebVitalsReporter", () => {
       expect(webVitals.onINP).toHaveBeenCalledWith(reportWebVitals);
     });
   });
+
+  it("handles import failure gracefully (catch branch)", async () => {
+    // Make the then callback throw to trigger the catch branch
+    const webVitals = await import("web-vitals");
+    vi.mocked(webVitals.onCLS).mockImplementation(() => {
+      throw new Error("module not available");
+    });
+
+    // The component should not throw even if web-vitals callbacks fail
+    const { container } = render(<WebVitalsReporter />);
+    expect(container.innerHTML).toBe("");
+
+    // Wait for the dynamic import + catch to complete
+    await new Promise((r) => setTimeout(r, 50));
+  });
 });

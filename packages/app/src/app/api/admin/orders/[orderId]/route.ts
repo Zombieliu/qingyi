@@ -6,6 +6,7 @@ import { recordAudit } from "@/lib/admin/admin-audit";
 import { canTransitionStage, isChainOrder } from "@/lib/order-guard";
 import type { AdminOrder, OrderStage } from "@/lib/admin/admin-types";
 import { parseBody } from "@/lib/shared/api-validation";
+import { OrderMessages, AdminMessages } from "@/lib/shared/messages";
 
 const patchSchema = z.object({
   paymentStatus: z.string().optional(),
@@ -44,10 +45,10 @@ export async function PATCH(req: Request, { params }: RouteContext) {
 
   const chainOrder = isChainOrder(current);
   if (chainOrder && (patch.stage || patch.paymentStatus)) {
-    return NextResponse.json({ error: "订单状态由系统同步，禁止手动修改" }, { status: 409 });
+    return NextResponse.json({ error: OrderMessages.CHAIN_SYNC_FORBIDDEN }, { status: 409 });
   }
   if (patch.stage && !canTransitionStage(current.stage, patch.stage)) {
-    return NextResponse.json({ error: "订单阶段不允许回退或跨越" }, { status: 409 });
+    return NextResponse.json({ error: OrderMessages.STAGE_TRANSITION_DENIED }, { status: 409 });
   }
 
   if (patch.assignedTo && patch.assignedTo !== current.assignedTo) {
@@ -55,18 +56,21 @@ export async function PATCH(req: Request, { params }: RouteContext) {
     const matched = players.find((p) => p.id === patch.assignedTo || p.name === patch.assignedTo);
     if (matched) {
       if (matched.status !== "可接单") {
-        return NextResponse.json({ error: "陪练当前不可接单" }, { status: 400 });
+        return NextResponse.json({ error: AdminMessages.PLAYER_NOT_AVAILABLE }, { status: 400 });
       }
       const depositBase = matched.depositBase ?? 0;
       const depositLocked = matched.depositLocked ?? 0;
       if (depositBase > 0 && depositLocked < depositBase) {
-        return NextResponse.json({ error: "陪练押金不足，无法派单" }, { status: 400 });
+        return NextResponse.json(
+          { error: AdminMessages.PLAYER_DEPOSIT_INSUFFICIENT },
+          { status: 400 }
+        );
       }
       const available = matched.availableCredit ?? 0;
       if (current.amount > available) {
         return NextResponse.json(
           {
-            error: `授信额度不足（可用 ${available} 元，订单 ${current.amount} 元）`,
+            error: AdminMessages.PLAYER_CREDIT_INSUFFICIENT(available, current.amount),
           },
           { status: 400 }
         );

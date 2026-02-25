@@ -6,6 +6,8 @@
  * 将底层错误信息转换为用户可理解的提示 + 恢复建议
  */
 
+import { ChainMessages } from "@/lib/shared/messages";
+
 export type ChainErrorInfo = {
   title: string;
   message: string;
@@ -21,81 +23,88 @@ const ERROR_PATTERNS: Array<{
   {
     test: (m) => m.includes("InsufficientGas") || m.includes("insufficient gas"),
     info: {
-      title: "Gas 不足",
-      message: "链上交易需要少量 SUI 作为手续费，你的钱包余额不足。",
+      title: ChainMessages.ERROR_GAS_TITLE,
+      message: ChainMessages.ERROR_GAS_MSG,
       recoverable: true,
-      action: "充值 SUI",
+      action: ChainMessages.ERROR_GAS_ACTION,
       actionType: "topup",
     },
   },
   {
-    test: (m) => m.includes("赞助交易") && (m.includes("失败") || m.includes("failed")),
+    test: (m) =>
+      m.includes(ChainMessages.SPONSOR_BUILD_FAILED) ||
+      m.includes(ChainMessages.SPONSOR_EXEC_FAILED) ||
+      (m.includes("赞助交易") && (m.includes("失败") || m.includes("failed"))),
     info: {
-      title: "代付交易失败",
-      message:
-        "平台代付通道暂时不可用，请稍后重试。如果持续失败，可以尝试用自己的 SUI 支付手续费。",
+      title: ChainMessages.ERROR_SPONSOR_TITLE,
+      message: ChainMessages.ERROR_SPONSOR_MSG,
       recoverable: true,
-      action: "重试",
+      action: ChainMessages.ERROR_RETRY,
       actionType: "retry",
     },
   },
   {
     test: (m) => m.includes("429") || m.includes("too many requests") || m.includes("Too Many"),
     info: {
-      title: "请求过于频繁",
-      message: "链上节点繁忙，请等几秒再试。",
+      title: ChainMessages.ERROR_RATE_LIMIT_TITLE,
+      message: ChainMessages.ERROR_RATE_LIMIT_MSG,
       recoverable: true,
-      action: "稍后重试",
+      action: ChainMessages.ERROR_RATE_LIMIT_ACTION,
       actionType: "retry",
     },
   },
   {
     test: (m) => m.includes("timeout") || m.includes("Timeout") || m.includes("fetch failed"),
     info: {
-      title: "网络超时",
-      message: "连接链上节点超时，可能是网络不稳定。请检查网络后重试。",
+      title: ChainMessages.ERROR_TIMEOUT_TITLE,
+      message: ChainMessages.ERROR_TIMEOUT_MSG,
       recoverable: true,
-      action: "重试",
+      action: ChainMessages.ERROR_RETRY,
       actionType: "retry",
     },
   },
   {
-    test: (m) => m.includes("未找到 Passkey") || m.includes("请先登录"),
+    test: (m) =>
+      m.includes(ChainMessages.PASSKEY_NOT_FOUND) ||
+      m.includes(ChainMessages.LOGIN_REQUIRED_KEYWORD),
     info: {
-      title: "未登录",
-      message: "请先登录或创建账号。",
+      title: ChainMessages.ERROR_NOT_LOGGED_IN_TITLE,
+      message: ChainMessages.ERROR_NOT_LOGGED_IN_MSG,
       recoverable: true,
-      action: "去登录",
+      action: ChainMessages.ERROR_NOT_LOGGED_IN_ACTION,
       actionType: "refresh",
     },
   },
   {
     test: (m) => m.includes("Passkey") || m.includes("passkey") || m.includes("credential"),
     info: {
-      title: "身份验证失败",
-      message: "指纹/面容验证未通过或被取消。请重新尝试验证。",
+      title: ChainMessages.ERROR_AUTH_TITLE,
+      message: ChainMessages.ERROR_AUTH_MSG,
       recoverable: true,
-      action: "重新验证",
+      action: ChainMessages.ERROR_AUTH_ACTION,
       actionType: "retry",
     },
   },
   {
     test: (m) => m.includes("MoveAbort") || m.includes("move_abort"),
     info: {
-      title: "合约执行失败",
-      message: "链上合约拒绝了这笔操作，可能是订单状态已变更。请刷新页面查看最新状态。",
+      title: ChainMessages.ERROR_CONTRACT_TITLE,
+      message: ChainMessages.ERROR_CONTRACT_MSG,
       recoverable: true,
-      action: "刷新",
+      action: ChainMessages.ERROR_REFRESH,
       actionType: "refresh",
     },
   },
   {
-    test: (m) => m.includes("合约未部署") || m.includes("PACKAGE_ID") || m.includes("DAPP_HUB"),
+    test: (m) =>
+      m.includes(ChainMessages.CONTRACT_MISSING_PACKAGE) ||
+      m.includes("PACKAGE_ID") ||
+      m.includes("DAPP_HUB"),
     info: {
-      title: "系统配置错误",
-      message: "链上合约未正确配置，请联系客服。",
+      title: ChainMessages.ERROR_CONFIG_TITLE,
+      message: ChainMessages.ERROR_CONFIG_MSG,
       recoverable: false,
-      action: "联系客服",
+      action: ChainMessages.ERROR_CONFIG_ACTION,
       actionType: "contact",
     },
   },
@@ -115,10 +124,10 @@ export function classifyChainError(error: unknown): ChainErrorInfo {
 
   // 默认：未知错误
   return {
-    title: "操作失败",
+    title: ChainMessages.ERROR_DEFAULT_TITLE,
     message: `${msg.slice(0, 100)}${msg.length > 100 ? "..." : ""}`,
     recoverable: true,
-    action: "重试",
+    action: ChainMessages.ERROR_RETRY,
     actionType: "retry",
   };
 }

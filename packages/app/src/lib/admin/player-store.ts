@@ -1,5 +1,6 @@
 import type { AdminPlayer } from "./admin-types";
 import { prisma, Prisma } from "./admin-store-utils";
+import { notDeleted, softDelete } from "@/lib/shared/soft-delete";
 
 function mapPlayer(row: {
   id: string;
@@ -40,7 +41,11 @@ function normalizePlayerAddress(address: string) {
 }
 
 export async function listPlayers(limit = 500) {
-  const rows = await prisma.adminPlayer.findMany({ orderBy: { createdAt: "desc" }, take: limit });
+  const rows = await prisma.adminPlayer.findMany({
+    where: notDeleted,
+    orderBy: { createdAt: "desc" },
+    take: limit,
+  });
   const players = rows.map(mapPlayer);
   const activeOrders = await prisma.adminOrder.groupBy({
     by: ["assignedTo"],
@@ -74,7 +79,7 @@ export async function listPlayers(limit = 500) {
 
 export async function getPlayerById(playerId: string) {
   if (!playerId) return null;
-  const row = await prisma.adminPlayer.findUnique({ where: { id: playerId } });
+  const row = await prisma.adminPlayer.findFirst({ where: { id: playerId, ...notDeleted } });
   return row ? mapPlayer(row) : null;
 }
 
@@ -147,6 +152,7 @@ export async function getCompanionEarnings(params?: {
 
 export async function listPlayersPublic() {
   const rows = await prisma.adminPlayer.findMany({
+    where: notDeleted,
     select: {
       id: true,
       name: true,
@@ -171,7 +177,7 @@ export async function getPlayerByAddress(address: string) {
   const normalized = normalizePlayerAddress(address);
   if (!normalized) return { player: null, conflict: false };
   const rows = await prisma.adminPlayer.findMany({
-    where: { address: { equals: normalized, mode: "insensitive" } },
+    where: { address: { equals: normalized, mode: "insensitive" }, ...notDeleted },
     orderBy: { createdAt: "desc" },
     take: 2,
   });
@@ -184,7 +190,7 @@ export async function updatePlayerStatusByAddress(address: string, status: Admin
   const normalized = normalizePlayerAddress(address);
   if (!normalized) return { player: null, conflict: false };
   const rows = await prisma.adminPlayer.findMany({
-    where: { address: { equals: normalized, mode: "insensitive" } },
+    where: { address: { equals: normalized, mode: "insensitive" }, ...notDeleted },
     orderBy: { createdAt: "desc" },
     take: 2,
   });
@@ -250,7 +256,7 @@ export async function updatePlayer(playerId: string, patch: Partial<AdminPlayer>
 
 export async function removePlayer(playerId: string) {
   try {
-    await prisma.adminPlayer.delete({ where: { id: playerId } });
+    await prisma.adminPlayer.update({ where: { id: playerId }, data: softDelete() });
     return true;
   } catch {
     return false;
@@ -260,6 +266,9 @@ export async function removePlayer(playerId: string) {
 export async function removePlayers(playerIds: string[]) {
   const ids = playerIds.filter(Boolean);
   if (ids.length === 0) return 0;
-  const result = await prisma.adminPlayer.deleteMany({ where: { id: { in: ids } } });
+  const result = await prisma.adminPlayer.updateMany({
+    where: { id: { in: ids }, ...notDeleted },
+    data: softDelete(),
+  });
   return result.count;
 }

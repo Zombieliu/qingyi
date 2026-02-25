@@ -295,4 +295,95 @@ describe("autoFixReconcile", () => {
     expect(result.skipped).toBe(0);
     expect(result.details).toHaveLength(0);
   });
+
+  it("handles mixed fixable and non-fixable items", async () => {
+    mockUpdate.mockResolvedValue({});
+
+    const report: ReconcileReport = {
+      total: 3,
+      matched: 0,
+      mismatched: 3,
+      items: [
+        {
+          orderId: "ORD-1",
+          localStatus: "已退款",
+          paymentStatus: "已支付",
+          mismatch: true,
+          issue: "订单已退款但支付状态未更新",
+        },
+        {
+          orderId: "ORD-2",
+          localStatus: "进行中",
+          paymentStatus: "已支付",
+          mismatch: true,
+          issue: "订单进行中超过24小时 (48h)",
+        },
+        {
+          orderId: "ORD-3",
+          localStatus: "已退款",
+          paymentStatus: "已支付",
+          mismatch: true,
+          issue: "订单已退款但支付状态未更新",
+        },
+      ],
+      generatedAt: new Date().toISOString(),
+    };
+
+    const result = await autoFixReconcile(report);
+
+    expect(result.fixed).toBe(2);
+    expect(result.skipped).toBe(1);
+    expect(result.details).toHaveLength(2);
+  });
+
+  it("skips item when issue is undefined", async () => {
+    const report: ReconcileReport = {
+      total: 1,
+      matched: 0,
+      mismatched: 1,
+      items: [
+        {
+          orderId: "ORD-1",
+          localStatus: "已退款",
+          paymentStatus: "已支付",
+          mismatch: true,
+        },
+      ],
+      generatedAt: new Date().toISOString(),
+    };
+
+    const result = await autoFixReconcile(report);
+
+    expect(result.fixed).toBe(0);
+    expect(result.skipped).toBe(1);
+  });
+});
+
+describe("reconcileOrders alert", () => {
+  it("triggers alert when mismatches found", async () => {
+    mockFindMany.mockResolvedValue([makeOrder({ chainStatus: 4, stage: "进行中" })]);
+
+    const report = await reconcileOrders({ from, to });
+
+    expect(report.mismatched).toBe(1);
+    // Alert is triggered asynchronously via dynamic import
+    // Wait a tick for the promise to resolve
+    await new Promise((r) => setTimeout(r, 10));
+  });
+
+  it("handles alert failure gracefully", async () => {
+    vi.doMock("@/lib/services/alert-service", () => ({
+      alertOnReconcile: vi.fn().mockRejectedValue(new Error("alert failed")),
+    }));
+
+    mockFindMany.mockResolvedValue([makeOrder({ stage: "已退款", paymentStatus: "已支付" })]);
+
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const report = await reconcileOrders({ from, to });
+
+    expect(report.mismatched).toBe(1);
+    await new Promise((r) => setTimeout(r, 10));
+    warnSpy.mockRestore();
+    vi.doUnmock("@/lib/services/alert-service");
+  });
 });

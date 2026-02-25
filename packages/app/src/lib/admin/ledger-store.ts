@@ -1,5 +1,6 @@
 import type { LedgerRecord } from "./admin-types";
-import { prisma, Prisma } from "./admin-store-utils";
+import { prisma, Prisma, type TransactionClient } from "./admin-store-utils";
+import { notDeleted } from "@/lib/shared/soft-delete";
 
 function mapLedgerRecord(row: {
   id: string;
@@ -37,7 +38,8 @@ function mapLedgerRecord(row: {
 
 type LedgerRecordInput = Omit<LedgerRecord, "createdAt" | "updatedAt"> & { createdAt?: number };
 
-export async function upsertLedgerRecord(entry: LedgerRecordInput) {
+export async function upsertLedgerRecord(entry: LedgerRecordInput, tx?: TransactionClient) {
+  const db = tx || prisma;
   const now = Date.now();
   const createdAt = new Date(entry.createdAt ?? now);
   const updateData: Prisma.LedgerRecordUpdateInput = {
@@ -57,7 +59,7 @@ export async function upsertLedgerRecord(entry: LedgerRecordInput) {
     updateData.meta = entry.meta ? (entry.meta as Prisma.InputJsonValue) : Prisma.DbNull;
   }
 
-  const row = await prisma.ledgerRecord.upsert({
+  const row = await db.ledgerRecord.upsert({
     where: { id: entry.id },
     create: {
       id: entry.id,
@@ -85,11 +87,12 @@ export async function queryLedgerRecords(params: {
   address: string;
 }) {
   const { page, pageSize, address } = params;
-  const total = await prisma.ledgerRecord.count({ where: { userAddress: address } });
+  const where = { userAddress: address, ...notDeleted };
+  const total = await prisma.ledgerRecord.count({ where });
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const clampedPage = Math.min(Math.max(page, 1), totalPages);
   const rows = await prisma.ledgerRecord.findMany({
-    where: { userAddress: address },
+    where,
     orderBy: { createdAt: "desc" },
     skip: (clampedPage - 1) * pageSize,
     take: pageSize,

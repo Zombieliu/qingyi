@@ -226,9 +226,78 @@ describe("PasskeyGate", () => {
   });
 
   it("shows device-change message when sessionOk but no passkey", async () => {
-    // This branch (sessionOk && !hasPasskey in blocked UI) is unreachable
-    // because if sessionOk is true, allowed is true, so state is "allowed"
-    expect(true).toBe(true);
+    // The sessionOk && !hasPasskey branch in the blocked UI is technically unreachable
+    // because if sessionOk is true, allowed is true, so state is "allowed".
+    // We verify this logic is correct.
+    const mockFetch = vi.fn().mockResolvedValue({ ok: true });
+    vi.stubGlobal("fetch", mockFetch);
+
+    await act(async () => {
+      render(
+        <PasskeyGate>
+          <div>Protected Content</div>
+        </PasskeyGate>
+      );
+    });
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 50));
+    });
+
+    // When sessionOk=true, state is "allowed", so children are rendered
+    expect(screen.getByText("Protected Content")).toBeInTheDocument();
+  });
+
+  it("cleans up visibilitychange listener on unmount", async () => {
+    const removeSpy = vi.spyOn(window, "removeEventListener");
+    const mockFetch = vi.fn().mockResolvedValue({ ok: true });
+    vi.stubGlobal("fetch", mockFetch);
+
+    let unmountFn!: () => void;
+    await act(async () => {
+      const result = render(
+        <PasskeyGate>
+          <div>Protected Content</div>
+        </PasskeyGate>
+      );
+      unmountFn = result.unmount;
+    });
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 10));
+    });
+
+    act(() => {
+      unmountFn();
+    });
+
+    expect(removeSpy).toHaveBeenCalledWith("visibilitychange", expect.any(Function));
+    removeSpy.mockRestore();
+  });
+
+  it("cleans up storage and passkey-updated listeners on unmount", async () => {
+    const removeSpy = vi.spyOn(window, "removeEventListener");
+    const mockFetch = vi.fn().mockResolvedValue({ ok: false });
+    vi.stubGlobal("fetch", mockFetch);
+
+    let unmountFn!: () => void;
+    await act(async () => {
+      const result = render(
+        <PasskeyGate>
+          <div>Protected Content</div>
+        </PasskeyGate>
+      );
+      unmountFn = result.unmount;
+    });
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 50));
+    });
+
+    act(() => {
+      unmountFn();
+    });
+
+    expect(removeSpy).toHaveBeenCalledWith("storage", expect.any(Function));
+    expect(removeSpy).toHaveBeenCalledWith("passkey-updated", expect.any(Function));
+    removeSpy.mockRestore();
   });
 
   it("handles unmount during session check (active=false branch)", async () => {

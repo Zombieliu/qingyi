@@ -296,6 +296,30 @@ describe("useBalance", () => {
     expect(result.current.loading).toBe(false);
     expect(typeof result.current.refresh).toBe("function");
   });
+
+  it("refresh calls dispatch with force=false by default", async () => {
+    mockGetCurrentAddress.mockReturnValue("");
+    const store = createStore();
+    const wrapper = ({ children }: { children: React.ReactNode }) =>
+      React.createElement(Provider, { store }, children);
+    const { result } = renderHook(() => useBalance(), { wrapper });
+    await act(async () => {
+      await result.current.refresh();
+    });
+    expect(result.current.balance).toBe("0");
+  });
+
+  it("refresh calls dispatch with force=true", async () => {
+    mockGetCurrentAddress.mockReturnValue("");
+    const store = createStore();
+    const wrapper = ({ children }: { children: React.ReactNode }) =>
+      React.createElement(Provider, { store }, children);
+    const { result } = renderHook(() => useBalance(), { wrapper });
+    await act(async () => {
+      await result.current.refresh({ force: true });
+    });
+    expect(result.current.balance).toBe("0");
+  });
 });
 
 describe("useMantouBalance", () => {
@@ -308,5 +332,29 @@ describe("useMantouBalance", () => {
     expect(result.current.frozen).toBe("0");
     expect(result.current.loading).toBe(false);
     expect(typeof result.current.refresh).toBe("function");
+  });
+
+  it("refresh calls dispatch with force=false by default", async () => {
+    mockGetCurrentAddress.mockReturnValue("");
+    const store = createStore();
+    const wrapper = ({ children }: { children: React.ReactNode }) =>
+      React.createElement(Provider, { store }, children);
+    const { result } = renderHook(() => useMantouBalance(), { wrapper });
+    await act(async () => {
+      await result.current.refresh();
+    });
+    expect(result.current.balance).toBe("0");
+  });
+
+  it("refresh calls dispatch with force=true", async () => {
+    mockGetCurrentAddress.mockReturnValue("");
+    const store = createStore();
+    const wrapper = ({ children }: { children: React.ReactNode }) =>
+      React.createElement(Provider, { store }, children);
+    const { result } = renderHook(() => useMantouBalance(), { wrapper });
+    await act(async () => {
+      await result.current.refresh({ force: true });
+    });
+    expect(result.current.balance).toBe("0");
   });
 });

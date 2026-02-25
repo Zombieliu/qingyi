@@ -2,10 +2,12 @@ import type { MantouWallet, MantouTransaction, MantouWithdrawRequest } from "./a
 import {
   prisma,
   Prisma,
+  type TransactionClient,
   type CursorPayload,
   appendCursorWhere,
   buildCursorPayload,
 } from "./admin-store-utils";
+import { MantouMessages } from "@/lib/shared/messages";
 
 function mapMantouWallet(row: {
   address: string;
@@ -85,12 +87,14 @@ export async function creditMantou(params: {
   amount: number;
   orderId?: string;
   note?: string;
+  tx?: TransactionClient;
 }) {
   const amount = Math.floor(params.amount);
   if (!Number.isFinite(amount) || amount <= 0) {
     throw new Error("amount must be positive integer");
   }
-  return prisma.$transaction(async (tx) => {
+
+  const run = async (tx: TransactionClient) => {
     if (params.orderId) {
       const existing = await tx.mantouTransaction.findFirst({
         where: { orderId: params.orderId, type: "credit" },
@@ -126,7 +130,13 @@ export async function creditMantou(params: {
       transaction: mapMantouTransaction(transaction),
       duplicated: false,
     };
-  });
+  };
+
+  // If an external transaction client is provided, use it directly; otherwise create one
+  if (params.tx) {
+    return run(params.tx);
+  }
+  return prisma.$transaction(async (tx) => run(tx));
 }
 
 export async function requestMantouWithdraw(params: {
@@ -144,7 +154,7 @@ export async function requestMantouWithdraw(params: {
     const balance = wallet?.balance ?? 0;
     const frozen = wallet?.frozen ?? 0;
     if (balance < amount) {
-      throw new Error("余额不足");
+      throw new Error(MantouMessages.INSUFFICIENT_BALANCE);
     }
     const now = new Date();
     const nextWallet = await tx.mantouWallet.upsert({
@@ -254,7 +264,7 @@ export async function updateMantouWithdrawStatus(params: {
     const wallet = await tx.mantouWallet.findUnique({ where: { address: request.address } });
     const frozen = wallet?.frozen ?? 0;
     if (frozen < request.amount) {
-      throw new Error("冻结余额不足");
+      throw new Error(MantouMessages.INSUFFICIENT_FROZEN);
     }
     if (params.status === "已通过") {
       await tx.mantouTransaction.create({

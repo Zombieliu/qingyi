@@ -6,8 +6,10 @@ import {
   updateOrder,
   upsertLedgerRecord,
 } from "@/lib/admin/admin-store";
+import { prisma } from "@/lib/db";
 import { recordAudit } from "@/lib/admin/admin-audit";
 import { env } from "@/lib/env";
+import { apiBadRequest, apiUnauthorized, apiError } from "@/lib/shared/api-response";
 
 const stripeSecretKey = env.STRIPE_SECRET_KEY;
 const stripe = stripeSecretKey ? new Stripe(stripeSecretKey) : null;
@@ -17,7 +19,7 @@ export async function POST(req: Request) {
   const signature = req.headers.get("stripe-signature") || "";
   const webhookSecret = env.STRIPE_WEBHOOK_SECRET;
   if (!webhookSecret && process.env.NODE_ENV === "production") {
-    return NextResponse.json({ error: "webhook_secret_required" }, { status: 503 });
+    return apiError("webhook_secret_required", 503);
   }
 
   let event: Stripe.Event;
@@ -25,19 +27,19 @@ export async function POST(req: Request) {
 
   if (webhookSecret) {
     if (!stripe) {
-      return NextResponse.json({ error: "STRIPE_SECRET_KEY not set" }, { status: 503 });
+      return apiError("STRIPE_SECRET_KEY not set", 503);
     }
     try {
       event = stripe.webhooks.constructEvent(rawBody, signature, webhookSecret);
       verified = true;
     } catch {
-      return NextResponse.json({ error: "invalid_signature" }, { status: 401 });
+      return apiUnauthorized("invalid_signature");
     }
   } else {
     try {
       event = JSON.parse(rawBody || "{}") as Stripe.Event;
     } catch {
-      return NextResponse.json({ error: "invalid_json" }, { status: 400 });
+      return apiBadRequest("invalid_json");
     }
   }
 
@@ -72,34 +74,9 @@ export async function POST(req: Request) {
     }
   }
 
-  try {
-    await addPaymentEvent({
-      id: event?.id || `pay_${Date.now()}_${Math.floor(Math.random() * 9000 + 1000)}`,
-      provider: "stripe",
-      event: eventType,
-      orderNo: orderId,
-      amount: amountRaw,
-      status,
-      verified,
-      createdAt: Date.now(),
-      raw: event as unknown as Record<string, unknown>,
-    });
-  } catch {
-    // ignore duplicate event insertions
-  }
-
   const isPaid = eventType === "payment_intent.succeeded";
-  if (orderId && isPaid) {
-    try {
-      const exists = await getOrderById(orderId);
-      if (exists) {
-        await updateOrder(orderId, { paymentStatus: "已支付" });
-      }
-    } catch {
-      // ignore missing orders
-    }
-  }
 
+  // Credit via external API (HTTP call, cannot be inside DB transaction)
   let creditOk = false;
   if (isPaid && userAddress && diamondAmount && env.LEDGER_ADMIN_TOKEN && paymentIntentId) {
     try {
@@ -122,35 +99,63 @@ export async function POST(req: Request) {
         }),
       });
       creditOk = res.ok;
-    } catch {
-      // ignore credit errors to avoid blocking webhook response
+    } catch (e) {
+      console.error("webhook credit failed:", e);
     }
   }
 
-  if (isPaid && userAddress && diamondAmount && orderId) {
-    const parsedAmount = Number(diamondAmount);
-    if (Number.isFinite(parsedAmount) && parsedAmount > 0) {
-      try {
-        await upsertLedgerRecord({
-          id: orderId,
-          userAddress,
-          diamondAmount: parsedAmount,
-          amount: typeof amountRaw === "number" ? amountRaw / 100 : undefined,
-          currency: "CNY",
-          status: creditOk ? "credited" : "paid",
-          orderId,
-          receiptId: paymentIntentId ? `stripe_pi_${paymentIntentId}` : undefined,
-          source: "stripe",
-          meta: {
-            eventType,
-            paymentIntentId,
-            status,
-          },
-        });
-      } catch {
-        // ignore ledger record failures to avoid blocking webhook response
+  // Wrap addPaymentEvent + updateOrder + upsertLedgerRecord in a single transaction
+  try {
+    await prisma.$transaction(async (tx) => {
+      await addPaymentEvent(
+        {
+          id: event?.id || `pay_${Date.now()}_${Math.floor(Math.random() * 9000 + 1000)}`,
+          provider: "stripe",
+          event: eventType,
+          orderNo: orderId,
+          amount: amountRaw,
+          status,
+          verified,
+          createdAt: Date.now(),
+          raw: event as unknown as Record<string, unknown>,
+        },
+        tx
+      );
+
+      if (orderId && isPaid) {
+        const exists = await getOrderById(orderId);
+        if (exists) {
+          await updateOrder(orderId, { paymentStatus: "已支付" }, tx);
+        }
       }
-    }
+
+      if (isPaid && userAddress && diamondAmount && orderId) {
+        const parsedAmount = Number(diamondAmount);
+        if (Number.isFinite(parsedAmount) && parsedAmount > 0) {
+          await upsertLedgerRecord(
+            {
+              id: orderId,
+              userAddress,
+              diamondAmount: parsedAmount,
+              amount: typeof amountRaw === "number" ? amountRaw / 100 : undefined,
+              currency: "CNY",
+              status: creditOk ? "credited" : "paid",
+              orderId,
+              receiptId: paymentIntentId ? `stripe_pi_${paymentIntentId}` : undefined,
+              source: "stripe",
+              meta: {
+                eventType,
+                paymentIntentId,
+                status,
+              },
+            },
+            tx
+          );
+        }
+      }
+    });
+  } catch (e) {
+    console.error("webhook transaction failed:", e);
   }
 
   await recordAudit(

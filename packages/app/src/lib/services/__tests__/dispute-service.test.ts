@@ -1,17 +1,22 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const mockFindUnique = vi.fn();
-const mockUpdate = vi.fn();
-const mockFindMany = vi.fn();
-
-vi.mock("@/lib/db", () => ({
-  prisma: {
+const { mockFindUnique, mockUpdate, mockFindMany, mockPrisma } = vi.hoisted(() => {
+  const mockFindUnique = vi.fn();
+  const mockUpdate = vi.fn();
+  const mockFindMany = vi.fn();
+  const mockPrisma: Record<string, unknown> = {
     adminOrder: {
       findUnique: (...args: unknown[]) => mockFindUnique(...args),
       update: (...args: unknown[]) => mockUpdate(...args),
       findMany: (...args: unknown[]) => mockFindMany(...args),
     },
-  },
+  };
+  mockPrisma.$transaction = vi.fn(async (fn: (tx: unknown) => Promise<unknown>) => fn(mockPrisma));
+  return { mockFindUnique, mockUpdate, mockFindMany, mockPrisma };
+});
+
+vi.mock("@/lib/db", () => ({
+  prisma: mockPrisma,
 }));
 
 vi.mock("@/lib/feature-flags", () => ({
@@ -61,7 +66,7 @@ describe("createDispute", () => {
     expect(result.orderId).toBe("ORD-1");
     expect(result.status).toBe("pending");
     expect(result.reason).toBe("service_quality");
-    expect(mockUpdate).toHaveBeenCalledTimes(2); // stage update + meta update
+    expect(mockUpdate).toHaveBeenCalledTimes(1); // single update inside transaction
   });
 
   it("throws when feature flag is disabled", async () => {

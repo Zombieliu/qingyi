@@ -112,6 +112,7 @@ describe("order-store", () => {
       mockPrisma.adminOrder.findMany.mockResolvedValue([row]);
       const result = await listOrders();
       expect(mockPrisma.adminOrder.findMany).toHaveBeenCalledWith({
+        where: { deletedAt: null },
         orderBy: { createdAt: "desc" },
         take: 1000,
       });
@@ -124,6 +125,7 @@ describe("order-store", () => {
       mockPrisma.adminOrder.findMany.mockResolvedValue([]);
       await listOrders(50);
       expect(mockPrisma.adminOrder.findMany).toHaveBeenCalledWith({
+        where: { deletedAt: null },
         orderBy: { createdAt: "desc" },
         take: 50,
       });

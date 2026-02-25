@@ -109,6 +109,32 @@ describe("createUserSession", () => {
     const callData = mockPrisma.userSession.create.mock.calls[0][0].data;
     expect(callData.lastSeenAt).toBeNull();
   });
+
+  it("handles null ip and userAgent in create", async () => {
+    const inputNoIpUa = { ...sampleInput, ip: null, userAgent: null };
+    const rowNoIpUa = { ...sampleRow, ip: null, userAgent: null };
+    mockPrisma.userSession.create.mockResolvedValue(rowNoIpUa);
+
+    const result = await createUserSession(inputNoIpUa);
+
+    expect(result.ip).toBeNull();
+    expect(result.userAgent).toBeNull();
+  });
+
+  it("handles undefined ip and userAgent in create", async () => {
+    const inputNoIpUa = {
+      ...sampleInput,
+      ip: undefined,
+      userAgent: undefined,
+    } as unknown as UserSessionRecord;
+    const rowNoIpUa = { ...sampleRow, ip: null, userAgent: null };
+    mockPrisma.userSession.create.mockResolvedValue(rowNoIpUa);
+
+    const result = await createUserSession(inputNoIpUa);
+
+    expect(result.ip).toBeNull();
+    expect(result.userAgent).toBeNull();
+  });
 });
 
 describe("getUserSessionByHash", () => {

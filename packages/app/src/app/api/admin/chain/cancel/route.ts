@@ -7,6 +7,7 @@ import * as chainOrderUtils from "@/lib/chain/chain-order-utils";
 import { recordAudit } from "@/lib/admin/admin-audit";
 import { parseBody } from "@/lib/shared/api-validation";
 import { env } from "@/lib/env";
+import { ChainMessages } from "@/lib/shared/messages";
 
 const postSchema = z.object({
   orderId: z
@@ -32,7 +33,7 @@ export async function POST(req: Request) {
       return NextResponse.json(
         {
           error: "chain_order_not_found",
-          message: "未找到链上订单",
+          message: ChainMessages.CHAIN_ORDER_NOT_FOUND_CHAIN,
           orderId,
           troubleshooting: [
             "检查订单 ID 是否正确",
@@ -47,7 +48,7 @@ export async function POST(req: Request) {
       return NextResponse.json(
         {
           error: "order_not_cancelable",
-          message: "订单已进入锁押金/争议流程，无法取消",
+          message: ChainMessages.CANCEL_DEPOSIT_LOCKED,
           currentStatus: chainOrder.status,
           allowedStatuses: [0, 1], // CREATED, PAID
         },

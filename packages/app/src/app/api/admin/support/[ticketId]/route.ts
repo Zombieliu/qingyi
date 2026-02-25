@@ -4,6 +4,7 @@ import { removeSupportTicket, updateSupportTicket } from "@/lib/admin/admin-stor
 import { recordAudit } from "@/lib/admin/admin-audit";
 import type { AdminSupportTicket } from "@/lib/admin/admin-types";
 import { createNotification } from "@/lib/services/notification-service";
+import { NotificationMessages } from "@/lib/shared/messages";
 
 type RouteContext = { params: Promise<{ ticketId: string }> };
 
@@ -32,7 +33,7 @@ export async function PATCH(req: Request, { params }: RouteContext) {
     createNotification({
       userAddress: updated.userAddress,
       type: "system",
-      title: "客服回复",
+      title: NotificationMessages.SUPPORT_REPLY_TITLE,
       body: body.reply.length > 100 ? body.reply.slice(0, 100) + "…" : body.reply,
     }).catch((e) => console.warn("[support] notification failed", e));
   }

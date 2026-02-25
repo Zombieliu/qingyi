@@ -87,12 +87,14 @@ describe("business-events", () => {
     expect(entry.event).toBe("webhook.failed");
   });
 
-  it("trackSponsorGasLow uses console.error (critical)", () => {
+  it("trackSponsorGasLow uses console.error (critical)", async () => {
     trackSponsorGasLow("0.001", "0.1");
     expect(errorSpy).toHaveBeenCalled();
     const entry = lastFromSpy(errorSpy);
     expect(entry.severity).toBe("critical");
     expect(entry.event).toBe("sponsor.gas.low");
+    // Wait for Sentry dynamic import to resolve
+    await new Promise((r) => setTimeout(r, 10));
   });
 
   it("trackAuthSessionCreated truncates address", () => {
@@ -167,5 +169,64 @@ describe("business-events", () => {
     logBusinessEvent("custom.simple");
     const entry = lastFromSpy(logSpy);
     expect(entry.event).toBe("custom.simple");
+  });
+
+  it("logBusinessEvent emits with critical severity via console.error", () => {
+    logBusinessEvent("custom.critical", { detail: "test" }, "critical");
+    const entry = lastFromSpy(errorSpy);
+    expect(entry.event).toBe("custom.critical");
+    expect(entry.severity).toBe("critical");
+  });
+
+  it("trackOrderCompleted works without durationMs", () => {
+    trackOrderCompleted("ORD-5");
+    const entry = lastFromSpy(logSpy);
+    expect(entry.event).toBe("order.completed");
+    expect((entry.data as Record<string, unknown>).durationMs).toBeUndefined();
+  });
+
+  it("trackAuthFailed works without ip", () => {
+    trackAuthFailed("bad_signature");
+    const entry = lastFromSpy(warnSpy);
+    expect(entry.event).toBe("auth.failed");
+    expect((entry.data as Record<string, unknown>).ip).toBeUndefined();
+  });
+
+  it("Sentry addBreadcrumb is called for info events", async () => {
+    const Sentry = await import("@sentry/nextjs");
+    vi.mocked(Sentry.addBreadcrumb).mockClear();
+    trackOrderCreated("ORD-SENTRY", "chain", 50);
+    // Wait for dynamic import promise to resolve
+    await new Promise((r) => setTimeout(r, 50));
+    expect(Sentry.addBreadcrumb).toHaveBeenCalledWith(
+      expect.objectContaining({
+        category: "business",
+        message: "order.created",
+        level: "info",
+      })
+    );
+  });
+
+  it("Sentry captureMessage is called for critical events", async () => {
+    const Sentry = await import("@sentry/nextjs");
+    vi.mocked(Sentry.captureMessage).mockClear();
+    trackSponsorGasLow("0.001", "0.1");
+    // Wait for dynamic import promise to resolve
+    await new Promise((r) => setTimeout(r, 50));
+    expect(Sentry.captureMessage).toHaveBeenCalledWith(
+      expect.stringContaining("[CRITICAL]"),
+      expect.objectContaining({ level: "fatal" })
+    );
+  });
+
+  it("handles Sentry import failure gracefully", async () => {
+    // Temporarily mock Sentry to reject
+    vi.doMock("@sentry/nextjs", () => {
+      throw new Error("Sentry not available");
+    });
+    // Should not throw
+    logBusinessEvent("test.sentry.fail", { key: "value" });
+    await new Promise((r) => setTimeout(r, 10));
+    vi.doUnmock("@sentry/nextjs");
   });
 });

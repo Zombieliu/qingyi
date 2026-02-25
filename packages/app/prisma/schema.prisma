@@ -28,6 +28,7 @@ model AdminOrder {
   meta          Json?
   createdAt     DateTime
   updatedAt     DateTime?
+  deletedAt     DateTime?
 
   @@index([createdAt])
   @@index([stage])
@@ -39,6 +40,7 @@ model AdminOrder {
   @@index([source])
   @@index([companionAddress, createdAt, id])  // public orders cursor query
   @@index([userAddress, createdAt])            // user order history
+  @@index([deletedAt])
 }
 
 model AdminPlayer {
@@ -59,10 +61,12 @@ model AdminPlayer {
   schedule  Json?    // 排班: { slots: [{ day: 0-6, start: "09:00", end: "22:00" }] }
   createdAt DateTime
   updatedAt DateTime?
+  deletedAt DateTime?
 
   @@index([createdAt])
   @@index([status])
   @@index([address])
+  @@index([deletedAt])
 }
 
 model AdminAnnouncement {
@@ -73,9 +77,11 @@ model AdminAnnouncement {
   status    String
   createdAt DateTime
   updatedAt DateTime?
+  deletedAt DateTime?
 
   @@index([createdAt])
   @@index([status])
+  @@index([deletedAt])
 }
 
 model AdminSession {
@@ -196,10 +202,12 @@ model LedgerRecord {
   meta          Json?
   createdAt     DateTime
   updatedAt     DateTime?
+  deletedAt     DateTime?
 
   @@index([userAddress, createdAt])
   @@index([orderId])
   @@index([receiptId])
+  @@index([deletedAt])
 }
 
 model GrowthEvent {
@@ -233,9 +241,11 @@ model AdminSupportTicket {
   meta        Json?
   createdAt   DateTime
   updatedAt   DateTime?
+  deletedAt   DateTime?
 
   @@index([createdAt])
   @@index([status])
+  @@index([deletedAt])
 }
 
 model AdminCoupon {
@@ -250,9 +260,11 @@ model AdminCoupon {
   expiresAt   DateTime?
   createdAt   DateTime
   updatedAt   DateTime?
+  deletedAt   DateTime?
 
   @@index([status])
   @@index([expiresAt])
+  @@index([deletedAt])
 }
 
 model RedeemBatch {
@@ -340,10 +352,12 @@ model AdminInvoiceRequest {
   meta        Json?
   createdAt   DateTime
   updatedAt   DateTime?
+  deletedAt   DateTime?
 
   @@index([createdAt])
   @@index([status])
   @@index([orderId])
+  @@index([deletedAt])
 }
 
 model AdminGuardianApplication {
@@ -359,10 +373,12 @@ model AdminGuardianApplication {
   meta        Json?
   createdAt   DateTime
   updatedAt   DateTime?
+  deletedAt   DateTime?
 
   @@index([createdAt])
   @@index([status])
   @@index([userAddress])
+  @@index([deletedAt])
 }
 
 model AdminMembershipTier {
@@ -528,6 +544,18 @@ model UserCoupon {
   @@unique([userAddress, couponId])
   @@index([userAddress, status])
   @@index([couponId])
+}
+
+model WebVital {
+  id        String   @id @default(cuid())
+  name      String   // LCP, FID, CLS, INP, FCP, TTFB
+  value     Float
+  rating    String   // good, needs-improvement, poor
+  page      String
+  createdAt DateTime @default(now())
+
+  @@index([name, createdAt])
+  @@index([page, createdAt])
 }
 
 // 客户内部标签 — 陪练/运营对老板的内部备注，老板不可见

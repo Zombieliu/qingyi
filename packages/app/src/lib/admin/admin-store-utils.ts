@@ -1,6 +1,12 @@
 import "server-only";
 import { prisma } from "../db";
-import { Prisma } from "@prisma/client";
+import { Prisma, PrismaClient } from "@prisma/client";
+
+/** Prisma interactive transaction client — use as optional param type */
+export type TransactionClient = Omit<
+  PrismaClient,
+  "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends"
+>;
 
 export { prisma, Prisma };
 

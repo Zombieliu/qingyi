@@ -1,5 +1,5 @@
 import type { OrderReview } from "./admin-types";
-import { prisma, Prisma } from "./admin-store-utils";
+import { prisma, Prisma, type TransactionClient } from "./admin-store-utils";
 
 function mapReview(row: {
   id: string;
@@ -28,16 +28,20 @@ export async function getReviewByOrderId(orderId: string): Promise<OrderReview |
   return row ? mapReview(row) : null;
 }
 
-export async function createReview(params: {
-  orderId: string;
-  reviewerAddress: string;
-  companionAddress: string;
-  rating: number;
-  content?: string;
-  tags?: string[];
-}): Promise<OrderReview> {
+export async function createReview(
+  params: {
+    orderId: string;
+    reviewerAddress: string;
+    companionAddress: string;
+    rating: number;
+    content?: string;
+    tags?: string[];
+  },
+  tx?: TransactionClient
+): Promise<OrderReview> {
+  const db = tx || prisma;
   const now = new Date();
-  const row = await prisma.orderReview.create({
+  const row = await db.orderReview.create({
     data: {
       id: `RV-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
       orderId: params.orderId,

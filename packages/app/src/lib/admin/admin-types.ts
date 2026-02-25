@@ -1,3 +1,5 @@
+import { ReviewTagLabels } from "@/lib/shared/messages";
+
 export type OrderStage = "待处理" | "已确认" | "进行中" | "已完成" | "已取消" | "争议中" | "已退款";
 export type PlayerStatus = "可接单" | "忙碌" | "停用";
 export type AnnouncementStatus = "draft" | "published" | "archived";
@@ -438,13 +440,4 @@ export interface OrderReview {
   createdAt: number;
 }
 
-export const REVIEW_TAG_OPTIONS = [
-  "技术好",
-  "态度好",
-  "有耐心",
-  "配合默契",
-  "准时上线",
-  "沟通顺畅",
-  "带飞能力强",
-  "氛围轻松",
-];
+export const REVIEW_TAG_OPTIONS = [...ReviewTagLabels];

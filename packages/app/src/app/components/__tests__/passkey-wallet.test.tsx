@@ -56,6 +56,11 @@ describe("passkey-wallet utilities", () => {
       localStorage.setItem(PASSKEY_STORAGE_KEY, JSON.stringify({ publicKey: "pk" }));
       expect(loadStoredWallet()).toBeNull();
     });
+
+    it("returns null for missing publicKey", () => {
+      localStorage.setItem(PASSKEY_STORAGE_KEY, JSON.stringify({ address: "0xabc" }));
+      expect(loadStoredWallet()).toBeNull();
+    });
   });
 
   describe("saveStoredWallet", () => {
@@ -113,6 +118,11 @@ describe("passkey-wallet utilities", () => {
       expect(result).toHaveLength(1);
     });
 
+    it("returns empty for non-array parsed data", () => {
+      localStorage.setItem(PASSKEY_WALLETS_KEY, JSON.stringify({ not: "array" }));
+      expect(loadWalletList()).toEqual([]);
+    });
+
     it("returns empty for invalid JSON", () => {
       localStorage.setItem(PASSKEY_WALLETS_KEY, "bad");
       expect(loadWalletList()).toEqual([]);
@@ -133,6 +143,17 @@ describe("passkey-wallet utilities", () => {
       const list = loadWalletList();
       expect(list).toHaveLength(1);
       expect(list[0].label).toBe("new");
+    });
+
+    it("sorts wallets by lastUsedAt with fallback to 0", () => {
+      // Add wallets without lastUsedAt to trigger the || 0 fallback in sort
+      rememberWallet({ address: "0x1", publicKey: "pk1" });
+      // Wait a bit so timestamps differ
+      rememberWallet({ address: "0x2", publicKey: "pk2" });
+      const list = loadWalletList();
+      expect(list).toHaveLength(2);
+      // Most recently used should be first
+      expect(list[0].address).toBe("0x2");
     });
   });
 
@@ -609,5 +630,228 @@ describe("PasskeyWallet component", () => {
       },
       { timeout: 4000 }
     );
+  });
+
+  it("ignores storage events for unrelated keys", async () => {
+    await act(async () => {
+      render(<PasskeyWallet />);
+    });
+
+    await act(async () => {
+      window.dispatchEvent(new StorageEvent("storage", { key: "some_other_key" }));
+    });
+
+    // No wallet should appear
+    expect(screen.queryByText("清除本地缓存")).not.toBeInTheDocument();
+  });
+
+  it("syncs on storage event for wallets key", async () => {
+    await act(async () => {
+      render(<PasskeyWallet />);
+    });
+
+    const wallets = [{ address: "0x1111111111111111", publicKey: "pk1" }];
+    localStorage.setItem(PASSKEY_WALLETS_KEY, JSON.stringify(wallets));
+
+    await act(async () => {
+      window.dispatchEvent(new StorageEvent("storage", { key: PASSKEY_WALLETS_KEY }));
+    });
+
+    expect(screen.getByText("ui.passkey-wallet.499")).toBeInTheDocument();
+  });
+
+  it("login: shows missing credential error for 'not found' message", async () => {
+    const wallet = { address: "0x1234567890abcdef", publicKey: "pk1" };
+    localStorage.setItem(PASSKEY_STORAGE_KEY, JSON.stringify(wallet));
+    mockEnsureUserSession.mockRejectedValueOnce(new Error("credential not found"));
+
+    await act(async () => {
+      render(<PasskeyWallet />);
+    });
+
+    const loginBtn = screen.getByText("comp.passkey_wallet.006");
+    await act(async () => {
+      fireEvent.click(loginBtn);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("state-block-danger")).toHaveTextContent("comp.passkey_wallet.004");
+    });
+  });
+
+  it("login: shows missing credential error for 'No credentials' message", async () => {
+    const wallet = { address: "0x1234567890abcdef", publicKey: "pk1" };
+    localStorage.setItem(PASSKEY_STORAGE_KEY, JSON.stringify(wallet));
+    mockEnsureUserSession.mockRejectedValueOnce(new Error("No credentials available"));
+
+    await act(async () => {
+      render(<PasskeyWallet />);
+    });
+
+    const loginBtn = screen.getByText("comp.passkey_wallet.006");
+    await act(async () => {
+      fireEvent.click(loginBtn);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("state-block-danger")).toHaveTextContent("comp.passkey_wallet.004");
+    });
+  });
+
+  it("login: shows fallback error when error has no message", async () => {
+    const wallet = { address: "0x1234567890abcdef", publicKey: "pk1" };
+    localStorage.setItem(PASSKEY_STORAGE_KEY, JSON.stringify(wallet));
+    mockEnsureUserSession.mockRejectedValueOnce({ name: "UnknownError" });
+
+    await act(async () => {
+      render(<PasskeyWallet />);
+    });
+
+    const loginBtn = screen.getByText("comp.passkey_wallet.006");
+    await act(async () => {
+      fireEvent.click(loginBtn);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("state-block-danger")).toHaveTextContent(
+        "components.passkey_wallet.i166"
+      );
+    });
+  });
+
+  it("create: shows fallback error when error has no message", async () => {
+    mockGetPasskeyInstance.mockRejectedValue({});
+
+    await act(async () => {
+      render(<PasskeyWallet />);
+    });
+
+    const createBtn = screen.getByText("comp.passkey_wallet.007");
+    await act(async () => {
+      fireEvent.click(createBtn);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("state-block-danger")).toHaveTextContent(
+        "components.passkey_wallet.i165"
+      );
+    });
+  });
+
+  it("recover: shows fallback error when error has no message", async () => {
+    mockSignAndRecover.mockRejectedValue({});
+
+    await act(async () => {
+      render(<PasskeyWallet />);
+    });
+
+    const recoverBtn = screen.getByText("comp.passkey_wallet.008");
+    await act(async () => {
+      fireEvent.click(recoverBtn);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("state-block-danger")).toHaveTextContent(
+        "components.passkey_wallet.i167"
+      );
+    });
+  });
+
+  it("does not show hasCredential hint when isConditionalMediationAvailable is missing", async () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (window as any).PublicKeyCredential = {};
+
+    await act(async () => {
+      render(<PasskeyWallet />);
+    });
+
+    await new Promise((r) => setTimeout(r, 50));
+
+    expect(screen.queryByText(/Passkey/)).not.toBeInTheDocument();
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    delete (window as any).PublicKeyCredential;
+  });
+
+  it("does not show hasCredential hint when isConditionalMediationAvailable returns false", async () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (window as any).PublicKeyCredential = {
+      isConditionalMediationAvailable: vi.fn().mockResolvedValue(false),
+    };
+
+    await act(async () => {
+      render(<PasskeyWallet />);
+    });
+
+    await new Promise((r) => setTimeout(r, 50));
+
+    expect(screen.queryByText(/Passkey/)).not.toBeInTheDocument();
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    delete (window as any).PublicKeyCredential;
+  });
+
+  it("handles isConditionalMediationAvailable throwing", async () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (window as any).PublicKeyCredential = {
+      isConditionalMediationAvailable: vi.fn().mockRejectedValue(new Error("fail")),
+    };
+
+    await act(async () => {
+      render(<PasskeyWallet />);
+    });
+
+    await new Promise((r) => setTimeout(r, 50));
+
+    // Should not show hint and not throw
+    expect(screen.queryByText(/Passkey/)).not.toBeInTheDocument();
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    delete (window as any).PublicKeyCredential;
+  });
+
+  it("shows wallet without lastUsedAt in list", async () => {
+    const wallets = [{ address: "0x1111111111111111", publicKey: "pk1" }];
+    localStorage.setItem(PASSKEY_WALLETS_KEY, JSON.stringify(wallets));
+
+    await act(async () => {
+      render(<PasskeyWallet />);
+    });
+
+    // Should render without date
+    expect(screen.getByText("0x1111...1111")).toBeInTheDocument();
+  });
+
+  it("handles unmount during credential availability check (abort signal)", async () => {
+    let resolveAvailable!: (v: boolean) => void;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (window as any).PublicKeyCredential = {
+      isConditionalMediationAvailable: vi.fn().mockImplementation(
+        () =>
+          new Promise((r) => {
+            resolveAvailable = r;
+          })
+      ),
+    };
+
+    let unmountFn!: () => void;
+    await act(async () => {
+      const result = render(<PasskeyWallet />);
+      unmountFn = result.unmount;
+    });
+
+    // Unmount while check is pending (triggers abort)
+    act(() => {
+      unmountFn();
+    });
+
+    // Resolve after unmount - should not set state
+    await act(async () => {
+      resolveAvailable(true);
+      await new Promise((r) => setTimeout(r, 10));
+    });
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    delete (window as any).PublicKeyCredential;
   });
 });

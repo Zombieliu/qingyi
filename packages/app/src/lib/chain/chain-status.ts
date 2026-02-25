@@ -12,6 +12,7 @@
  */
 
 import type { AdminOrder } from "@/lib/admin/admin-types";
+import { PaymentStatusLabels } from "@/lib/shared/messages";
 
 /** 链上状态码 → 订单阶段 */
 export function mapStage(chainStatus: number): AdminOrder["stage"] {
@@ -26,21 +27,21 @@ export function mapStage(chainStatus: number): AdminOrder["stage"] {
 export function mapPaymentStatus(chainStatus: number): string {
   switch (chainStatus) {
     case 0:
-      return "未支付";
+      return PaymentStatusLabels.UNPAID;
     case 1:
-      return "撮合费已付";
+      return PaymentStatusLabels.SERVICE_FEE_PAID;
     case 2:
-      return "押金已锁定";
+      return PaymentStatusLabels.DEPOSIT_LOCKED;
     case 3:
-      return "待结算";
+      return PaymentStatusLabels.PENDING_SETTLEMENT;
     case 4:
-      return "争议中";
+      return PaymentStatusLabels.IN_DISPUTE;
     case 5:
-      return "已结算";
+      return PaymentStatusLabels.SETTLED;
     case 6:
-      return "已取消";
+      return PaymentStatusLabels.CANCELLED;
     default:
-      return "未知";
+      return PaymentStatusLabels.UNKNOWN;
   }
 }
 
