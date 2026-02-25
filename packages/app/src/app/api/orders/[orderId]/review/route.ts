@@ -77,7 +77,11 @@ export async function POST(req: Request, { params }: RouteContext) {
   if (!auth.ok) return auth.response;
 
   // Validate tags
-  if (tags && (!Array.isArray(tags) || tags.some((t) => !REVIEW_TAG_OPTIONS.includes(t)))) {
+  if (
+    tags &&
+    (!Array.isArray(tags) ||
+      tags.some((t) => !(REVIEW_TAG_OPTIONS as readonly string[]).includes(t)))
+  ) {
     return apiBadRequest("invalid_tags");
   }
 
@@ -112,7 +116,7 @@ export async function POST(req: Request, { params }: RouteContext) {
       {
         orderId,
         reviewerAddress: address,
-        companionAddress: order.companionAddress,
+        companionAddress: order.companionAddress || "",
         rating,
         content: content?.trim() || undefined,
         tags,
