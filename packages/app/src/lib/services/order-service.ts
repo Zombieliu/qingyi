@@ -110,11 +110,15 @@ export async function deleteOrder(orderId: string, userAddress?: string) {
   if (userAddress && address && userAddress !== address) {
     throw new Error("userAddress mismatch");
   }
-  await fetchWithUserAuth(
+  const res = await fetchWithUserAuth(
     `/api/orders/${orderId}`,
     { method: "PATCH", headers: { "Content-Type": "application/json" }, body },
     address
   );
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data?.error || `delete failed (HTTP ${res.status})`);
+  }
 }
 
 export async function syncChainOrder(orderId: string, userAddress?: string, digest?: string) {

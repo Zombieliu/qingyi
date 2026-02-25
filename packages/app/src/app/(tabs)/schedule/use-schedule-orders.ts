@@ -344,8 +344,9 @@ export function useScheduleOrders() {
     if (effectiveStatus >= 1) patch.serviceFeePaid = true;
     if (effectiveStatus >= 2) patch.depositPaid = true;
     if (Object.keys(patch).length > 0) {
-      patchOrder(currentOrder.id, { ...patch, userAddress: getCurrentAddress() });
-      refreshOrders();
+      patchOrder(currentOrder.id, { ...patch, userAddress: getCurrentAddress() })
+        .then(() => refreshOrders())
+        .catch(() => {});
     }
   }, [chainCurrentOrder, chainCurrentStatus, currentOrder, refreshOrders]);
 

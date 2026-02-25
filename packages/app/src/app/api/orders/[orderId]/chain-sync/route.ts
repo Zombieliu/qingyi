@@ -133,45 +133,40 @@ export async function POST(req: Request, { params }: RouteContext) {
     }
 
     if (!chain) {
-      // 所有重试失败，返回详细错误信息
-      const cacheStats = getChainOrderCacheStats();
       const localOrder = await loadLocalOrder();
-
-      const errorDetail = {
+      const base = {
         error: "chain_order_not_found",
         message: ChainMessages.CHAIN_ORDER_NOT_FOUND,
         orderId,
-        details: {
-          existsInLocal: !!localOrder,
-          localOrderSource: localOrder?.source || null,
-          chainCacheStats: {
-            totalOrders: cacheStats.orderCount,
-            cacheAge: cacheStats.cacheAgeMs,
-            lastFetch: cacheStats.lastFetch,
-          },
-          retries: delays.length,
-          totalWaitTime: `${Math.min(
-            maxWaitMs,
-            delays.reduce((sum, value) => sum + value, 0)
-          )}ms`,
-          forced: force,
-        },
-        possibleReasons: [
-          "订单事件尚未被 Dubhe 索引器索引（已等待）",
-          "订单未在区块链上成功创建",
-          "订单超出查询范围（超过 " + env.ADMIN_CHAIN_EVENT_LIMIT + " 条）",
-          "网络配置错误（当前：" + env.SUI_NETWORK + "）",
-        ],
-        troubleshooting: [
-          "等待几秒后重试",
-          "检查订单交易 digest 在 Sui Explorer 中的状态",
-          "确认 PACKAGE_ID 和 DAPP_HUB_ID 配置正确",
-          "检查 Dubhe 索引器是否正常运行",
-          "尝试增加 ADMIN_CHAIN_EVENT_LIMIT 环境变量",
-        ],
       };
 
-      return NextResponse.json(errorDetail, { status: 404 });
+      if (process.env.NODE_ENV === "production") {
+        return NextResponse.json(base, { status: 404 });
+      }
+
+      // Non-production: include diagnostic details
+      const cacheStats = getChainOrderCacheStats();
+      return NextResponse.json(
+        {
+          ...base,
+          details: {
+            existsInLocal: !!localOrder,
+            localOrderSource: localOrder?.source || null,
+            chainCacheStats: {
+              totalOrders: cacheStats.orderCount,
+              cacheAge: cacheStats.cacheAgeMs,
+              lastFetch: cacheStats.lastFetch,
+            },
+            retries: delays.length,
+            totalWaitTime: `${Math.min(
+              maxWaitMs,
+              delays.reduce((sum, value) => sum + value, 0)
+            )}ms`,
+            forced: force,
+          },
+        },
+        { status: 404 }
+      );
     }
   }
 
@@ -184,16 +179,26 @@ export async function POST(req: Request, { params }: RouteContext) {
     if (!isValidSuiAddress(normalized)) {
       return apiBadRequest("invalid userAddress");
     }
-    if (chain.user !== normalized && chain.companion !== normalized) {
-      return apiForbidden();
-    }
 
+    // Authenticate first, then check permission
     const auth = await requireUserAuth(req, {
       intent: `orders:chain-sync:${orderId}`,
       address: normalized,
       body: rawBody,
     });
     if (!auth.ok) return auth.response;
+
+    if (chain.user !== normalized && chain.companion !== normalized) {
+      // Fallback: also allow the locally-assigned companion (covers index lag
+      // where the chain object hasn't reflected the claim yet)
+      const localOrder = await loadLocalOrder();
+      const localCompanion = localOrder?.companionAddress
+        ? normalizeSuiAddress(localOrder.companionAddress)
+        : null;
+      if (localCompanion !== normalized) {
+        return apiForbidden();
+      }
+    }
   }
 
   const synced = await upsertChainOrder(chain);

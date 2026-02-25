@@ -66,11 +66,11 @@ export default function InvoicePage() {
 
   const submit = async () => {
     if (!form.title.trim()) {
-      setHint("form.invoice_title_required");
+      setHint("请填写发票抬头");
       return;
     }
     if (!form.email.trim()) {
-      setHint("form.invoice_email_required");
+      setHint("请填写邮箱地址");
       return;
     }
     setSubmitting(true);
@@ -106,10 +106,10 @@ export default function InvoicePage() {
       const updated = [next, ...requests];
       setRequests(updated);
       persistLocalRequests(updated);
-      setHint("apply.invoice_submitted");
+      setHint("发票申请已提交");
       setForm((prev) => ({ ...prev, note: "" }));
     } catch {
-      setHint("error.network");
+      setHint("网络错误，请重试");
     } finally {
       setSubmitting(false);
     }

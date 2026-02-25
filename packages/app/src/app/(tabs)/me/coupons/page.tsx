@@ -45,6 +45,12 @@ export default function CouponsPage() {
   const [loading, setLoading] = useState(true);
   const [claims, setClaims] = useState<string[]>([]);
   const [hint, setHint] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!hint) return;
+    const timer = setTimeout(() => setHint(null), 2500);
+    return () => clearTimeout(timer);
+  }, [hint]);
   const [redeemCode, setRedeemCode] = useState("");
   const [redeemLoading, setRedeemLoading] = useState(false);
   const [redeemHint, setRedeemHint] = useState<string | null>(null);
@@ -93,8 +99,7 @@ export default function CouponsPage() {
     const next = [couponId, ...claims];
     setClaims(next);
     saveClaims(next);
-    setHint("apply.card_claimed");
-    setTimeout(() => setHint(null), 2500);
+    setHint("已领取");
   };
 
   const redeemSummary = useMemo(() => {

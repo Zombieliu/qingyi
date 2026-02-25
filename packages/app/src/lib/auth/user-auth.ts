@@ -75,6 +75,12 @@ export async function getUserSessionFromTokenAllowExpired(token: string) {
   const session = await getUserSessionByHash(sessionHash);
   if (!session) return null;
   const REFRESH_GRACE_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+  const MAX_SESSION_AGE_MS = 90 * 24 * 60 * 60 * 1000; // 90 days absolute max
+  // Reject sessions older than absolute max age regardless of renewal
+  if (session.createdAt + MAX_SESSION_AGE_MS < Date.now()) {
+    await removeUserSessionByHash(sessionHash);
+    return null;
+  }
   if (session.expiresAt + REFRESH_GRACE_MS < Date.now()) {
     await removeUserSessionByHash(sessionHash);
     return null;

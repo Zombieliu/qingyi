@@ -302,6 +302,7 @@ async function executeSponsoredTransaction(tx: Transaction) {
       sender: wallet.address,
       kindBytes: toBase64(kindBytes),
     }),
+    signal: AbortSignal.timeout(30_000),
   });
   const prepareData = await prepareRes.json().catch(() => ({}));
   if (!prepareRes.ok) {
@@ -324,6 +325,7 @@ async function executeSponsoredTransaction(tx: Transaction) {
       txBytes,
       userSignature: signature,
     }),
+    signal: AbortSignal.timeout(30_000),
   });
   const execData = await execRes.json().catch(() => ({}));
   if (!execRes.ok) {
@@ -703,24 +705,27 @@ export async function fetchChainOrderById(orderId: string): Promise<ChainOrder |
 
     const vals = fields.map((f, i) => decoders[f.decode](extractBytes(i)));
 
+    const safeStr = (v: unknown) => (typeof v === "string" ? v : String(v ?? ""));
+    const safeNum = (v: unknown) => (typeof v === "number" ? v : Number(v ?? 0));
+
     return {
       orderId,
-      user: vals[0] as string,
-      companion: vals[1] as string,
-      ruleSetId: vals[2] as string,
-      serviceFee: vals[3] as string,
-      deposit: vals[4] as string,
-      platformFeeBps: vals[5] as string,
-      status: vals[6] as number,
-      createdAt: vals[7] as string,
-      finishAt: vals[8] as string,
-      disputeDeadline: vals[9] as string,
-      vaultService: vals[10] as string,
-      vaultDeposit: vals[11] as string,
-      evidenceHash: vals[12] as string,
-      disputeStatus: vals[13] as number,
-      resolvedBy: vals[14] as string,
-      resolvedAt: vals[15] as string,
+      user: safeStr(vals[0]),
+      companion: safeStr(vals[1]),
+      ruleSetId: safeStr(vals[2]),
+      serviceFee: safeStr(vals[3]),
+      deposit: safeStr(vals[4]),
+      platformFeeBps: safeStr(vals[5]),
+      status: safeNum(vals[6]),
+      createdAt: safeStr(vals[7]),
+      finishAt: safeStr(vals[8]),
+      disputeDeadline: safeStr(vals[9]),
+      vaultService: safeStr(vals[10]),
+      vaultDeposit: safeStr(vals[11]),
+      evidenceHash: safeStr(vals[12]),
+      disputeStatus: safeNum(vals[13]),
+      resolvedBy: safeStr(vals[14]),
+      resolvedAt: safeStr(vals[15]),
     };
   } catch {
     return null;

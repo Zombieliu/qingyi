@@ -135,6 +135,7 @@ describe("POST /api/orders/[orderId]/chain-sync", () => {
     const thirdAddr = "0x" + "c".repeat(64);
     mocks.requireAdmin.mockResolvedValue({ ok: false, response: { status: 401 } });
     mocks.findChainOrder.mockResolvedValue(chainOrder);
+    mocks.getOrderById.mockResolvedValue(null);
     mocks.parseBodyRaw.mockResolvedValue({
       success: true,
       data: { userAddress: thirdAddr },
@@ -143,6 +144,23 @@ describe("POST /api/orders/[orderId]/chain-sync", () => {
     const req = makeReq("http://localhost/api/orders/ORD-001/chain-sync", { method: "POST" });
     const res = await POST(req, makeCtx("ORD-001"));
     expect(res.status).toBe(403);
+  });
+
+  it("allows locally-assigned companion to sync even if not on chain yet", async () => {
+    const companionAddr = "0x" + "d".repeat(64);
+    mocks.requireAdmin.mockResolvedValue({ ok: false, response: { status: 401 } });
+    mocks.findChainOrder.mockResolvedValue(chainOrder);
+    mocks.getOrderById.mockResolvedValue({ companionAddress: companionAddr });
+    mocks.requireUserAuth.mockResolvedValue({ ok: true });
+    mocks.upsertChainOrder.mockResolvedValue(chainOrder);
+    mocks.parseBodyRaw.mockResolvedValue({
+      success: true,
+      data: { userAddress: companionAddr },
+      rawBody: "{}",
+    });
+    const req = makeReq("http://localhost/api/orders/ORD-001/chain-sync", { method: "POST" });
+    const res = await POST(req, makeCtx("ORD-001"));
+    expect(res.status).toBe(200);
   });
 
   it("returns 400 for invalid userAddress", async () => {

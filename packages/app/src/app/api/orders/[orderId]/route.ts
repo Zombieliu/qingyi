@@ -116,8 +116,16 @@ export async function PATCH(req: Request, { params }: RouteContext) {
     if (typeof body.assignedTo === "string") patch.assignedTo = body.assignedTo;
     if (typeof body.stage === "string") patch.stage = body.stage as AdminOrder["stage"];
     if (typeof body.user === "string") patch.user = body.user;
-    if (typeof body.userAddress === "string") patch.userAddress = body.userAddress;
-    if (typeof body.companionAddress === "string") patch.companionAddress = body.companionAddress;
+    if (typeof body.userAddress === "string") {
+      const addr = normalizeSuiAddress(body.userAddress);
+      if (!isValidSuiAddress(addr)) return apiBadRequest("invalid userAddress");
+      patch.userAddress = addr;
+    }
+    if (typeof body.companionAddress === "string") {
+      const addr = normalizeSuiAddress(body.companionAddress);
+      if (!isValidSuiAddress(addr)) return apiBadRequest("invalid companionAddress");
+      patch.companionAddress = addr;
+    }
     if (typeof body.chainDigest === "string") patch.chainDigest = body.chainDigest;
     if (typeof body.chainStatus === "number") patch.chainStatus = body.chainStatus;
     if (typeof body.serviceFee === "number") patch.serviceFee = body.serviceFee;

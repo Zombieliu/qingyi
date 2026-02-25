@@ -173,7 +173,9 @@ export async function queryOrdersCursor(params: {
 
 export async function hasOrdersForAddress(address: string) {
   if (!address) return false;
-  const count = await prisma.adminOrder.count({ where: { userAddress: address } });
+  const count = await prisma.adminOrder.count({
+    where: { userAddress: address, deletedAt: null },
+  });
   return count > 0;
 }
 
@@ -219,6 +221,7 @@ export async function listE2eOrderIds() {
       ],
     },
     select: { id: true },
+    take: 1000,
   });
   return rows.map((row) => row.id);
 }

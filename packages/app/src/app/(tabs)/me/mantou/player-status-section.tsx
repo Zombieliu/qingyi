@@ -69,7 +69,7 @@ export function PlayerStatusSection({
           </div>
           {statusHint && (
             <div className="mt-3">
-              <StateBlock tone={statusHintTone} size="compact" title={statusHint} />
+              <StateBlock tone={statusHintTone} size="compact" title={t(statusHint)} />
             </div>
           )}
         </div>
@@ -78,7 +78,7 @@ export function PlayerStatusSection({
           <StateBlock
             tone="warning"
             size="compact"
-            title={statusHint || t("tabs.me.mantou.i052")}
+            title={statusHint ? t(statusHint) : t("tabs.me.mantou.i052")}
             description={t("me.mantou.009")}
           />
         </div>

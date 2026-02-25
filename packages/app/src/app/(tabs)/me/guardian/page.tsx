@@ -64,11 +64,11 @@ export default function GuardianPage() {
 
   const submit = async () => {
     if (!form.name.trim() || !form.contact.trim()) {
-      setHint("form.name_contact_required");
+      setHint("请填写姓名和联系方式");
       return;
     }
     if (!walletAddress) {
-      setHint("auth.login_before_apply");
+      setHint("请先登录");
       return;
     }
     setSubmitting(true);
@@ -105,10 +105,10 @@ export default function GuardianPage() {
       const updated = [next, ...applications];
       setApplications(updated);
       persistLocalApplications(updated);
-      setHint("apply.companion_submitted");
+      setHint("申请已提交");
       setForm((prev) => ({ ...prev, note: "" }));
     } catch {
-      setHint("error.network");
+      setHint("网络错误，请重试");
     } finally {
       setSubmitting(false);
     }

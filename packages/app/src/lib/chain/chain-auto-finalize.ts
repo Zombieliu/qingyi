@@ -183,7 +183,15 @@ export async function autoCompleteChainOrders(
   for (const order of targets) {
     try {
       await markCompletedAdmin(order.orderId);
-      await syncChainOrder(order.orderId);
+      // Sync is best-effort with retry — chain state already changed
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          await syncChainOrder(order.orderId);
+          break;
+        } catch {
+          if (attempt < 2) await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)));
+        }
+      }
       completed += 1;
       completedIds.push(order.orderId);
     } catch (error) {

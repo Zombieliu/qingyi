@@ -42,7 +42,10 @@ export default function SupportPage() {
     const local = loadLocalRequests();
     setRequests(local);
     if (walletAddress) {
-      fetch(`/api/support/my-tickets?address=${encodeURIComponent(walletAddress)}`)
+      const controller = new AbortController();
+      fetch(`/api/support/my-tickets?address=${encodeURIComponent(walletAddress)}`, {
+        signal: controller.signal,
+      })
         .then((res) => res.json())
         .then((data) => {
           if (Array.isArray(data?.items)) {
@@ -50,6 +53,7 @@ export default function SupportPage() {
           }
         })
         .catch(() => {});
+      return () => controller.abort();
     }
   }, [walletAddress]);
 

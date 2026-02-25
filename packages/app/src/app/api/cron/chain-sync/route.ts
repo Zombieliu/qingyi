@@ -17,6 +17,6 @@ export async function GET(req: Request) {
     return NextResponse.json({ ok: true, ...result });
   } catch (e) {
     trackCronFailed("chain-sync", (e as Error).message || "sync failed");
-    return NextResponse.json({ error: (e as Error).message || "sync failed" }, { status: 500 });
+    return NextResponse.json({ error: "sync failed" }, { status: 500 });
   }
 }

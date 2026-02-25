@@ -178,28 +178,30 @@ async function maybeNotifyOrderUpdate(order: AdminOrder, patch: Partial<AdminOrd
 
 export async function updateOrderIfUnassigned(orderId: string, patch: Partial<AdminOrder>) {
   try {
-    const current = await prisma.adminOrder.findUnique({
-      where: { id: orderId },
-      select: { meta: true, companionAddress: true },
+    return await prisma.$transaction(async (tx) => {
+      const current = await tx.adminOrder.findUnique({
+        where: { id: orderId },
+        select: { meta: true, companionAddress: true },
+      });
+      if (!current || current.companionAddress) return null;
+      const data: Prisma.AdminOrderUpdateManyMutationInput = { updatedAt: new Date() };
+      if (patch.stage !== undefined) data.stage = patch.stage;
+      if (patch.companionAddress !== undefined) data.companionAddress = patch.companionAddress;
+      if (patch.meta !== undefined) {
+        const merged = {
+          ...(current.meta ? (current.meta as Record<string, unknown>) : {}),
+          ...(patch.meta || {}),
+        };
+        data.meta = Object.keys(merged).length ? (merged as Prisma.InputJsonValue) : Prisma.DbNull;
+      }
+      const result = await tx.adminOrder.updateMany({
+        where: { id: orderId, companionAddress: null },
+        data,
+      });
+      if (result.count === 0) return null;
+      const row = await tx.adminOrder.findUnique({ where: { id: orderId } });
+      return row ? mapOrder(row) : null;
     });
-    if (!current || current.companionAddress) return null;
-    const data: Prisma.AdminOrderUpdateManyMutationInput = { updatedAt: new Date() };
-    if (patch.stage !== undefined) data.stage = patch.stage;
-    if (patch.companionAddress !== undefined) data.companionAddress = patch.companionAddress;
-    if (patch.meta !== undefined) {
-      const merged = {
-        ...(current.meta ? (current.meta as Record<string, unknown>) : {}),
-        ...(patch.meta || {}),
-      };
-      data.meta = Object.keys(merged).length ? (merged as Prisma.InputJsonValue) : Prisma.DbNull;
-    }
-    const result = await prisma.adminOrder.updateMany({
-      where: { id: orderId, companionAddress: null },
-      data,
-    });
-    if (result.count === 0) return null;
-    const row = await prisma.adminOrder.findUnique({ where: { id: orderId } });
-    return row ? mapOrder(row) : null;
   } catch {
     return null;
   }

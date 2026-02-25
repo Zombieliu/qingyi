@@ -176,6 +176,8 @@ export async function proxy(req: NextRequest) {
   res.headers.set("X-Frame-Options", "DENY");
   res.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
   res.headers.set("Content-Security-Policy", CSP_DIRECTIVES);
+  res.headers.set("Strict-Transport-Security", "max-age=63072000; includeSubDomains; preload");
+  res.headers.set("Permissions-Policy", "geolocation=(), microphone=(), camera=()");
 
   return res;
 }

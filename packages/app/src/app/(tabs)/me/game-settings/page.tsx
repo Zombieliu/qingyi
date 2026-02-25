@@ -96,7 +96,7 @@ function GameSettingsForm({
 
   const save = () => {
     if (!form.gameName.trim() || !form.gameId.trim()) {
-      setHint("form.game_info_required");
+      setHint("请填写游戏信息");
       return;
     }
     setSaving(true);
@@ -109,7 +109,7 @@ function GameSettingsForm({
     };
     persistProfile(profileKey, payload);
     setSavedAt(payload.updatedAt);
-    setHint("status.saved");
+    setHint("已保存");
     setSaving(false);
   };
 

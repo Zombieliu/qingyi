@@ -15,9 +15,6 @@ export async function GET(req: Request) {
     const result = await autoFinalizeChainOrdersSummary();
     return NextResponse.json({ ok: true, ...result });
   } catch (e) {
-    return NextResponse.json(
-      { error: (e as Error).message || "auto finalize failed" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "auto finalize failed" }, { status: 500 });
   }
 }

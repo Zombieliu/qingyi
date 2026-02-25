@@ -182,18 +182,26 @@ export async function syncChainOrders() {
   const chainOrders = result.orders;
   let created = 0;
   let updated = 0;
+  let allUpsertSucceeded = true;
 
   for (const chain of chainOrders) {
-    const existing = await getOrderById(chain.orderId);
-    await upsertChainOrder(chain);
-    if (existing) {
-      updated += 1;
-    } else {
-      created += 1;
+    try {
+      const existing = await getOrderById(chain.orderId);
+      await upsertChainOrder(chain);
+      if (existing) {
+        updated += 1;
+      } else {
+        created += 1;
+      }
+    } catch (e) {
+      allUpsertSucceeded = false;
+      console.error(`[chain-sync] upsertChainOrder failed for ${chain.orderId}:`, e);
     }
   }
 
-  if (result.latestCursor) {
+  // Only advance cursor when all upserts succeeded — otherwise failed orders
+  // would be skipped on the next incremental sync.
+  if (result.latestCursor && allUpsertSucceeded) {
     const shouldUpdate =
       !cursor ||
       cursor.txDigest !== result.latestCursor.txDigest ||

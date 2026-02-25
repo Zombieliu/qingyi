@@ -52,6 +52,18 @@ export async function POST(req: Request) {
       resolvedReturnUrl = `${origin}/wallet`;
     }
   }
+  // Validate returnUrl is same-origin to prevent open redirect
+  if (resolvedReturnUrl) {
+    try {
+      const reqOrigin = new URL(req.url).origin;
+      const targetOrigin = new URL(resolvedReturnUrl).origin;
+      if (targetOrigin !== reqOrigin) {
+        return apiBadRequest("returnUrl must be same-origin");
+      }
+    } catch {
+      return apiBadRequest("invalid returnUrl");
+    }
+  }
   if (channel === "alipay" && !resolvedReturnUrl) {
     return apiBadRequest("returnUrl required for alipay");
   }

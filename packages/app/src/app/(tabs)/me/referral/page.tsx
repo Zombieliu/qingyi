@@ -56,6 +56,13 @@ export default function ReferralPage() {
   const [status, setStatus] = useState<ReferralStatus | null>(null);
   const [loading, setLoading] = useState(() => Boolean(address));
   const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    if (!copied) return;
+    const timer = setTimeout(() => setCopied(false), 2000);
+    return () => clearTimeout(timer);
+  }, [copied]);
+
   const [boardType, setBoardType] = useState<"spend" | "companion" | "referral">("spend");
   const [boardPeriod, setBoardPeriod] = useState<"all" | "week" | "month">("all");
   const [board, setBoard] = useState<LeaderboardEntry[]>([]);
@@ -63,7 +70,12 @@ export default function ReferralPage() {
 
   useEffect(() => {
     if (!address) return;
-    fetchWithUserAuth(`/api/referral/status?address=${address}`, {}, address)
+    const controller = new AbortController();
+    fetchWithUserAuth(
+      `/api/referral/status?address=${address}`,
+      { signal: controller.signal },
+      address
+    )
       .then(async (res) => {
         if (res.ok) {
           setStatus(await res.json());
@@ -71,10 +83,14 @@ export default function ReferralPage() {
       })
       .catch(() => {})
       .finally(() => setLoading(false));
+    return () => controller.abort();
   }, [address]);
 
   useEffect(() => {
-    fetch(`/api/referral/leaderboard?type=${boardType}&period=${boardPeriod}&limit=50`)
+    const controller = new AbortController();
+    fetch(`/api/referral/leaderboard?type=${boardType}&period=${boardPeriod}&limit=50`, {
+      signal: controller.signal,
+    })
       .then(async (res) => {
         if (res.ok) {
           const data = await res.json();
@@ -83,6 +99,7 @@ export default function ReferralPage() {
       })
       .catch(() => {})
       .finally(() => setBoardLoading(false));
+    return () => controller.abort();
   }, [boardType, boardPeriod]);
 
   const handleBoardType = (next: "spend" | "companion" | "referral") => {
@@ -101,7 +118,6 @@ export default function ReferralPage() {
     try {
       await navigator.clipboard.writeText(link);
       setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
     } catch {
       // fallback
     }

@@ -35,6 +35,13 @@ export default function MantouPage() {
   const [statusSaving, setStatusSaving] = useState(false);
   const [statusHint, setStatusHint] = useState<string | null>(null);
   const [statusHintTone, setStatusHintTone] = useState<"success" | "warning">("warning");
+
+  useEffect(() => {
+    if (!statusHint) return;
+    const timer = setTimeout(() => setStatusHint(null), 2000);
+    return () => clearTimeout(timer);
+  }, [statusHint]);
+
   const cacheTtlMs = 60_000;
 
   const available = useMemo(() => Number(balance || 0), [balance]);
@@ -91,12 +98,12 @@ export default function MantouPage() {
       const address = guardianAddress;
       if (!address) {
         setPlayerStatus(null);
-        setStatusHint("auth.please_login");
+        setStatusHint("请先登录");
         return;
       }
       if (!isGuardian) {
         setPlayerStatus(null);
-        setStatusHint("companion.no_profile_status");
+        setStatusHint("未找到陪练资料");
         return;
       }
       setStatusLoading(true);
@@ -110,9 +117,9 @@ export default function MantouPage() {
         if (!res.ok) {
           const data = await res.json().catch(() => ({}));
           if (res.status === 404) {
-            setStatusHint("companion.no_profile_contact");
+            setStatusHint("未找到联系方式");
           } else if (res.status === 403) {
-            setStatusHint("companion.no_permission");
+            setStatusHint("无权限修改状态");
           } else {
             setStatusHint(data?.error || t("tabs.me.mantou.i047"));
           }
@@ -122,7 +129,7 @@ export default function MantouPage() {
         const data = await res.json().catch(() => ({}));
         setPlayerStatus((data?.status as PlayerStatus) || null);
       } catch {
-        setStatusHint("companion.status_load_failed");
+        setStatusHint("加载状态失败");
       } finally {
         setStatusLoading(false);
       }
@@ -134,7 +141,7 @@ export default function MantouPage() {
     if (statusSaving) return;
     const address = guardianAddress;
     if (!address) {
-      setStatusHint("auth.please_login");
+      setStatusHint("请先登录");
       return;
     }
     setStatusSaving(true);
@@ -157,8 +164,7 @@ export default function MantouPage() {
       }
       setPlayerStatus((data?.status as PlayerStatus) || nextStatus);
       setStatusHintTone("success");
-      setStatusHint("companion.status_updated");
-      setTimeout(() => setStatusHint(null), 2000);
+      setStatusHint("状态已更新");
     } catch (error) {
       setStatusHint(formatErrorMessage(error, t("me.mantou.001")));
     } finally {

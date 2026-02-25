@@ -83,6 +83,7 @@ export async function queryReferralsByInviter(inviterAddress: string) {
   const rows = await prisma.referral.findMany({
     where: { inviterAddress },
     orderBy: { createdAt: "desc" },
+    take: 500,
   });
   return rows.map(mapReferral);
 }
@@ -151,34 +152,45 @@ export async function processReferralReward(
   if (inviterReward <= 0 && inviteeReward <= 0) return null;
 
   const now = new Date();
-  await prisma.referral.update({
-    where: { inviteeAddress: userAddress },
-    data: {
-      status: "rewarded",
-      rewardInviter: inviterReward,
-      rewardInvitee: inviteeReward,
-      triggerOrderId: orderId,
-      rewardedAt: now,
-    },
-  });
 
   const results: {
     inviter?: Awaited<ReturnType<typeof creditMantou>>;
     invitee?: Awaited<ReturnType<typeof creditMantou>>;
   } = {};
-  if (inviterReward > 0) {
-    results.inviter = await creditMantou({
-      address: referral.inviterAddress,
-      amount: inviterReward,
-      note: AdminMessages.REFERRAL_INVITER_NOTE(orderId),
+
+  try {
+    await prisma.$transaction(async (tx) => {
+      await tx.referral.update({
+        where: { inviteeAddress: userAddress },
+        data: {
+          status: "rewarded",
+          rewardInviter: inviterReward,
+          rewardInvitee: inviteeReward,
+          triggerOrderId: orderId,
+          rewardedAt: now,
+        },
+      });
+
+      if (inviterReward > 0) {
+        results.inviter = await creditMantou({
+          address: referral.inviterAddress,
+          amount: inviterReward,
+          note: AdminMessages.REFERRAL_INVITER_NOTE(orderId),
+          tx,
+        });
+      }
+      if (inviteeReward > 0) {
+        results.invitee = await creditMantou({
+          address: referral.inviteeAddress,
+          amount: inviteeReward,
+          note: AdminMessages.REFERRAL_INVITEE_NOTE(orderId),
+          tx,
+        });
+      }
     });
-  }
-  if (inviteeReward > 0) {
-    results.invitee = await creditMantou({
-      address: referral.inviteeAddress,
-      amount: inviteeReward,
-      note: AdminMessages.REFERRAL_INVITEE_NOTE(orderId),
-    });
+  } catch (e) {
+    console.error("[referral] processReferralReward transaction failed:", e);
+    throw e;
   }
 
   // Award growth points to inviter (non-blocking)

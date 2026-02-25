@@ -62,6 +62,12 @@ export default function Me() {
     }
   });
   const [addrToast, setAddrToast] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!addrToast) return;
+    const timer = setTimeout(() => setAddrToast(null), 3000);
+    return () => clearTimeout(timer);
+  }, [addrToast]);
   const [gameProfile, setGameProfile] = useState<{ gameName: string; gameId: string } | null>(null);
 
   const goWallet = () => router.push("/wallet");
@@ -72,17 +78,14 @@ export default function Me() {
   const copyAddress = async () => {
     const addr = walletAddress || "";
     if (!addr) {
-      setAddrToast("auth.not_logged_in_no_address");
-      setTimeout(() => setAddrToast(null), 2000);
+      setAddrToast("请先登录");
       return;
     }
     try {
       await navigator.clipboard.writeText(addr);
-      setAddrToast("clipboard.sui_address_copied");
+      setAddrToast("Sui 地址已复制");
     } catch {
       setAddrToast(`Sui 地址：${addr}`);
-    } finally {
-      setTimeout(() => setAddrToast(null), 3000);
     }
   };
   const logout = async () => {

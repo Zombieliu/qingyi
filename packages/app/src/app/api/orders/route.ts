@@ -11,7 +11,7 @@ import {
 import { requireAdmin } from "@/lib/admin/admin-auth";
 import { isValidSuiAddress, normalizeSuiAddress } from "@mysten/sui/utils";
 import { requireUserAuth } from "@/lib/auth/user-auth";
-import { rateLimit } from "@/lib/rate-limit";
+import { rateLimit, consumeNonce } from "@/lib/rate-limit";
 import { clearChainOrderCache } from "@/lib/chain/chain-sync";
 import {
   getCacheAsync,
@@ -312,6 +312,11 @@ export async function POST(req: Request) {
       return apiBadRequest("discount_mismatch");
     }
     if (await hasOrdersForAddress(userAddress)) {
+      return apiForbidden("first_order_only");
+    }
+    // Prevent concurrent first-order discount abuse
+    const nonceKey = `first-order:${userAddress}`;
+    if (!(await consumeNonce(nonceKey, 30_000))) {
       return apiForbidden("first_order_only");
     }
   }

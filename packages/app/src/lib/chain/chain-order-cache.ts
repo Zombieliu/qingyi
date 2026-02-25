@@ -127,8 +127,10 @@ async function refreshCache(force = false): Promise<CacheEntry> {
     const duration = Date.now() - fetchStart;
     chainOrderLogger.error("refreshCache", error, { duration });
 
-    // 如果刷新失败但有旧缓存，返回旧缓存（降级策略）
-    if (cache && !isCacheStale()) {
+    // 如果刷新失败但有旧缓存且未严重过期，返回旧缓存（降级策略）
+    // 降级上限：缓存年龄不超过 MAX_CACHE_AGE 的 3 倍
+    const cacheAge = cache ? Date.now() - cache.fetchedAt : Infinity;
+    if (cache && cacheAge < MAX_CACHE_AGE_MS * 3) {
       chainOrderLogger.warn("refreshCache", {
         action: "fallback_to_stale_cache",
         cacheAge: Date.now() - cache.fetchedAt,
