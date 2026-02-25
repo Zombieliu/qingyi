@@ -138,7 +138,7 @@ jobs:
         env:
           SKIP_ENV_VALIDATION: "1"
           NEXT_TELEMETRY_DISABLED: "1"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         if: failure()
         with:
           name: playwright-report
