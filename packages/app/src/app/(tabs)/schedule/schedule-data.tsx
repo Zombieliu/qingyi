@@ -210,8 +210,10 @@ export function deriveMode(list: LocalOrder[]): Mode {
   if (!latest) return "select";
   const chainStatus = (latest.meta as { chain?: { status?: number } } | undefined)?.chain?.status;
   if (typeof chainStatus === "number") {
-    if (chainStatus === 3) return "pending-settlement";
-    if (chainStatus >= 2) return "enroute";
+    if (chainStatus >= 5) return "select"; // 5=已结算, 6=已取消 — 订单已结束
+    if (chainStatus === 4) return "pending-settlement"; // 争议中
+    if (chainStatus === 3) return "pending-settlement"; // 已完成待结算
+    if (chainStatus >= 2) return "enroute"; // 2=押金已锁定
   }
   if (
     latest.status.includes(t("tabs.schedule.schedule_data.i117")) ||

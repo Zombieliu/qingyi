@@ -221,6 +221,17 @@ export default function SupportPage() {
                     </td>
                     <td data-label={t("admin.support.010")}>
                       <div className="admin-text-strong">{ticket.topic || t("ui.support.543")}</div>
+                      {(ticket.meta as Record<string, unknown> | undefined)?.type ===
+                        "chain_dispute" && (
+                        <>
+                          <span className="admin-badge accent" style={{ marginTop: 2 }}>
+                            链上争议
+                          </span>
+                          <div className="admin-meta-faint">
+                            订单 {(ticket.meta as Record<string, unknown>)?.orderId as string}
+                          </div>
+                        </>
+                      )}
                     </td>
                     <td data-label={t("admin.support.011")}>
                       <div className="admin-meta">{ticket.message}</div>

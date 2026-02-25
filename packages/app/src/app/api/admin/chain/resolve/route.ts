@@ -5,6 +5,7 @@ import { resolveDisputeAdmin } from "@/lib/chain/chain-admin";
 import { syncChainOrder } from "@/lib/chain/chain-sync";
 import { recordAudit } from "@/lib/admin/admin-audit";
 import { parseBody } from "@/lib/shared/api-validation";
+import { closeDisputeTicket } from "@/lib/services/dispute-ticket-service";
 
 const postSchema = z.object({
   orderId: z.string().trim().min(1),
@@ -32,6 +33,11 @@ export async function POST(req: Request) {
       depositSlashBps,
       digest: result.digest,
     });
+    // best-effort: close the associated support ticket
+    closeDisputeTicket(orderId, {
+      resolution: `退服务费 ${serviceRefundBps}bps, 扣押金 ${depositSlashBps}bps`,
+      digest: result.digest,
+    }).catch(() => {});
     return NextResponse.json({ ok: true, digest: result.digest, effects: result.effects });
   } catch (e) {
     return NextResponse.json({ error: (e as Error).message || "resolve failed" }, { status: 500 });

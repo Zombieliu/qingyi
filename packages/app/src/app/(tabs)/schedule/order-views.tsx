@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { Loader2 } from "lucide-react";
 import type { LocalOrder } from "@/lib/services/order-store";
 import type { ChainOrder } from "@/lib/chain/qy-chain";
+import { createDisputeTicket } from "@/lib/services/dispute-ticket-client";
 import { fetchChainOrderById } from "@/lib/chain/qy-chain";
 import type { Mode } from "./schedule-data";
 import { t } from "@/lib/i18n/t";
@@ -472,12 +473,20 @@ export function PendingSettlementView({
                 description: t("tabs.schedule.order_views.i047"),
                 confirmLabel: t("tabs.schedule.order_views.i048"),
                 action: async (value) => {
-                  await runChainAction(
+                  const ok = await runChainAction(
                     `dispute-${currentOrder.id}`,
                     () => raiseDisputeOnChain(currentOrder.id, value),
                     t("ui.order-views.578"),
                     currentOrder.id
                   );
+                  if (ok) {
+                    createDisputeTicket({
+                      orderId: currentOrder.id,
+                      evidence: value,
+                      userAddress: getCurrentAddress(),
+                      orderItem: currentOrder.item,
+                    });
+                  }
                 },
               });
             }}

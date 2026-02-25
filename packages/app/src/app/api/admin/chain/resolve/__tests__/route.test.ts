@@ -1,18 +1,27 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const { mockRequireAdmin, mockResolveDisputeAdmin, mockSyncChainOrder, mockRecordAudit } =
-  vi.hoisted(() => ({
-    mockRequireAdmin: vi.fn(),
-    mockResolveDisputeAdmin: vi.fn(),
-    mockSyncChainOrder: vi.fn(),
-    mockRecordAudit: vi.fn(),
-  }));
+const {
+  mockRequireAdmin,
+  mockResolveDisputeAdmin,
+  mockSyncChainOrder,
+  mockRecordAudit,
+  mockCloseDisputeTicket,
+} = vi.hoisted(() => ({
+  mockRequireAdmin: vi.fn(),
+  mockResolveDisputeAdmin: vi.fn(),
+  mockSyncChainOrder: vi.fn(),
+  mockRecordAudit: vi.fn(),
+  mockCloseDisputeTicket: vi.fn(),
+}));
 
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/admin/admin-auth", () => ({ requireAdmin: mockRequireAdmin }));
 vi.mock("@/lib/chain/chain-admin", () => ({ resolveDisputeAdmin: mockResolveDisputeAdmin }));
 vi.mock("@/lib/chain/chain-sync", () => ({ syncChainOrder: mockSyncChainOrder }));
 vi.mock("@/lib/admin/admin-audit", () => ({ recordAudit: mockRecordAudit }));
+vi.mock("@/lib/services/dispute-ticket-service", () => ({
+  closeDisputeTicket: mockCloseDisputeTicket,
+}));
 
 import { POST } from "../route";
 
@@ -47,6 +56,7 @@ describe("POST /api/admin/chain/resolve", () => {
   it("resolves dispute successfully", async () => {
     mockResolveDisputeAdmin.mockResolvedValue({ digest: "d1", effects: {} });
     mockSyncChainOrder.mockResolvedValue(undefined);
+    mockCloseDisputeTicket.mockResolvedValue(undefined);
     const res = await POST(
       makePost({ orderId: "1", serviceRefundBps: 5000, depositSlashBps: 3000 })
     );
@@ -54,6 +64,10 @@ describe("POST /api/admin/chain/resolve", () => {
     expect(json.ok).toBe(true);
     expect(json.digest).toBe("d1");
     expect(mockRecordAudit).toHaveBeenCalled();
+    expect(mockCloseDisputeTicket).toHaveBeenCalledWith("1", {
+      resolution: "退服务费 5000bps, 扣押金 3000bps",
+      digest: "d1",
+    });
   });
 
   it("returns 500 on error", async () => {

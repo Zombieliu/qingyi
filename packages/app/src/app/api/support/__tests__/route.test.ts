@@ -139,7 +139,46 @@ describe("POST /api/support", () => {
     });
     await POST(req);
     const call = mocks.addSupportTicket.mock.calls[0][0];
-    expect(call.meta).toBeUndefined();
+    expect(call.meta).toEqual({});
+  });
+
+  it("merges body.meta with screenshots", async () => {
+    mocks.parseBody.mockResolvedValue({
+      success: true,
+      data: {
+        message: "Dispute",
+        screenshots: ["data:image/png;base64,abc"],
+        meta: { type: "chain_dispute", orderId: "ORD-1" },
+      },
+    });
+    const req = createMockRequest("http://localhost/api/support", {
+      method: "POST",
+      body: "{}",
+    });
+    await POST(req);
+    const call = mocks.addSupportTicket.mock.calls[0][0];
+    expect(call.meta).toEqual({
+      type: "chain_dispute",
+      orderId: "ORD-1",
+      screenshots: ["data:image/png;base64,abc"],
+    });
+  });
+
+  it("passes body.meta without screenshots", async () => {
+    mocks.parseBody.mockResolvedValue({
+      success: true,
+      data: {
+        message: "Dispute",
+        meta: { type: "chain_dispute", orderId: "ORD-2" },
+      },
+    });
+    const req = createMockRequest("http://localhost/api/support", {
+      method: "POST",
+      body: "{}",
+    });
+    await POST(req);
+    const call = mocks.addSupportTicket.mock.calls[0][0];
+    expect(call.meta).toEqual({ type: "chain_dispute", orderId: "ORD-2" });
   });
 
   it("uses rate limit with correct key pattern", async () => {

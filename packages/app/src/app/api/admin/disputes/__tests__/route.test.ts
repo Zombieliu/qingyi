@@ -1,13 +1,17 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const { mockRequireAdmin, mockResolveDispute } = vi.hoisted(() => ({
+const { mockRequireAdmin, mockResolveDispute, mockCloseDisputeTicket } = vi.hoisted(() => ({
   mockRequireAdmin: vi.fn(),
   mockResolveDispute: vi.fn(),
+  mockCloseDisputeTicket: vi.fn(),
 }));
 
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/admin/admin-auth", () => ({ requireAdmin: mockRequireAdmin }));
 vi.mock("@/lib/services/dispute-service", () => ({ resolveDispute: mockResolveDispute }));
+vi.mock("@/lib/services/dispute-ticket-service", () => ({
+  closeDisputeTicket: mockCloseDisputeTicket,
+}));
 
 import { POST } from "../route";
 
@@ -41,9 +45,13 @@ describe("POST /api/admin/disputes", () => {
 
   it("resolves dispute successfully", async () => {
     mockResolveDispute.mockResolvedValue({ id: "d1", status: "resolved" });
+    mockCloseDisputeTicket.mockResolvedValue(undefined);
     const res = await POST(makePost({ orderId: "1", resolution: "refund" }));
     const json = await res.json();
     expect(json.id).toBe("d1");
+    expect(mockCloseDisputeTicket).toHaveBeenCalledWith("1", {
+      resolution: "refund",
+    });
   });
 
   it("returns 400 on dispute error", async () => {

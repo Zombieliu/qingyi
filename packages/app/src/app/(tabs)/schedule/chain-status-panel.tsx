@@ -4,6 +4,7 @@ import { Loader2 } from "lucide-react";
 import type { ChainOrder } from "@/lib/chain/qy-chain";
 import { StateBlock } from "@/app/components/state-block";
 import { statusLabel, formatAmount, formatTime } from "./schedule-data";
+import { createDisputeTicket } from "@/lib/services/dispute-ticket-client";
 
 interface ChainStatusPanelProps {
   chainAddress: string;
@@ -259,12 +260,20 @@ function ChainOrderActions({
                   description: t("tabs.schedule.chain_status_panel.i041"),
                   confirmLabel: t("tabs.schedule.chain_status_panel.i042"),
                   action: async (value) => {
-                    await runChainAction(
+                    const ok = await runChainAction(
                       `dispute-${display.orderId}`,
                       () => raiseDisputeOnChain(display.orderId, value),
                       t("ui.chain-status-panel.579"),
                       display.orderId
                     );
+                    if (ok) {
+                      createDisputeTicket({
+                        orderId: display.orderId,
+                        evidence: value,
+                        orderItem: `托管费 ¥${formatAmount(display.serviceFee)}`,
+                        orderAmount: display.serviceFee,
+                      });
+                    }
                   },
                 });
               }}

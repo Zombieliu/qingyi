@@ -4,6 +4,7 @@ import { resolveDispute } from "@/lib/services/dispute-service";
 import { parseBody } from "@/lib/shared/api-validation";
 import { z } from "zod";
 import { DisputeMessages } from "@/lib/shared/messages";
+import { closeDisputeTicket } from "@/lib/services/dispute-ticket-service";
 
 const resolveSchema = z.object({
   orderId: z.string().min(1),
@@ -24,6 +25,10 @@ export async function POST(req: Request) {
       ...body.data,
       reviewerRole: auth.role,
     });
+    // best-effort: close the associated support ticket
+    closeDisputeTicket(body.data.orderId, {
+      resolution: `${body.data.resolution}${body.data.refundAmount ? ` ¥${body.data.refundAmount}` : ""}`,
+    }).catch(() => {});
     return NextResponse.json(dispute);
   } catch (error) {
     const msg = error instanceof Error ? error.message : DisputeMessages.RESOLVE_FAILED;
