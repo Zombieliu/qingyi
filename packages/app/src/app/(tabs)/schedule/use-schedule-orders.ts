@@ -118,8 +118,8 @@ export function useScheduleOrders() {
     },
   });
 
-  // When in "notifying" mode (waiting for companion), poll faster
-  const isWaiting = mode === "notifying";
+  // When in any active order mode, poll faster to pick up state changes promptly
+  const isWaiting = mode !== "select";
   useBackoffPoll({
     enabled: !sseConnected,
     baseMs: isWaiting ? 8_000 : 60_000,

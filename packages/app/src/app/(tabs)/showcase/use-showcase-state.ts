@@ -3,6 +3,7 @@ import { useRouter } from "next/navigation";
 import { t } from "@/lib/i18n/t";
 import { type LocalOrder } from "@/lib/services/order-store";
 import { shortDigest } from "./showcase-utils";
+import { useMantouBalance } from "@/lib/atoms/mantou-atom";
 import {
   deleteOrder,
   fetchOrderDetail,
@@ -27,6 +28,7 @@ import {
   getDefaultCompanionAddress,
 } from "@/lib/chain/qy-chain";
 import { useBackoffPoll } from "@/app/components/use-backoff-poll";
+import { useOrderEvents } from "@/app/components/use-order-events";
 import { useGuardianStatus } from "@/app/components/guardian-role";
 import { GAME_PROFILE_KEY } from "@/lib/shared/constants";
 import { getLocalChainStatus, mergeChainStatus } from "@/lib/chain/chain-status";
@@ -56,6 +58,7 @@ export function useShowcaseState() {
   const router = useRouter();
   const { state: guardianState, isGuardian } = useGuardianStatus();
   const canAccessShowcase = isGuardian;
+  const { refresh: refreshMantou } = useMantouBalance();
 
   const [orders, setOrders] = useState<LocalOrder[]>([]);
   const [chainOrders, setChainOrders] = useState<ChainOrder[]>([]);
@@ -240,8 +243,20 @@ export function useShowcaseState() {
     refreshMyOrders();
   }, [canAccessShowcase, refreshMyOrders]);
 
+  // SSE: listen for order events targeting this companion's address
+  const companionAddr = chainAddress || getCurrentAddress() || "";
+  const { connected: sseConnected } = useOrderEvents({
+    address: companionAddr,
+    enabled: canAccessShowcase && Boolean(companionAddr),
+    onEvent: () => {
+      refreshOrders(true);
+      refreshMyOrders(true);
+      refreshMantou({ force: true });
+    },
+  });
+
   useBackoffPoll({
-    enabled: canAccessShowcase,
+    enabled: canAccessShowcase && !sseConnected,
     baseMs: 20_000,
     maxMs: 120_000,
     onPoll: async () => {

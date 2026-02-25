@@ -95,19 +95,26 @@ export default function NotificationsPage() {
   const clearAll = async () => {
     if (!window.confirm("确定清空所有消息？")) return;
     setClearing(true);
-    await fetchWithUserAuth(
-      "/api/notifications",
-      {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ address }),
-      },
-      address
-    ).catch(() => {});
-    setNotifications([]);
-    setTotalPages(1);
-    setPage(1);
-    setClearing(false);
+    try {
+      const res = await fetchWithUserAuth(
+        "/api/notifications",
+        {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ address }),
+        },
+        address
+      );
+      if (res.ok) {
+        setNotifications([]);
+        setTotalPages(1);
+        setPage(1);
+      }
+    } catch {
+      // ignore
+    } finally {
+      setClearing(false);
+    }
   };
 
   return (

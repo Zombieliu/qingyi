@@ -6,6 +6,7 @@ export type NotificationType = "order_status" | "referral" | "system" | "growth"
 
 /**
  * 创建通知并通过 SSE 实时推送
+ * 自动去重：同一 userAddress + orderId + title 在 60 秒内不重复创建
  */
 export async function createNotification(params: {
   userAddress: string;
@@ -16,6 +17,20 @@ export async function createNotification(params: {
 }) {
   const { userAddress, type, title, body, orderId } = params;
   if (!userAddress) return null;
+
+  // Dedup: skip if identical notification was created within last 60s
+  if (orderId) {
+    const recent = await prisma.notification.findFirst({
+      where: {
+        userAddress,
+        orderId,
+        title,
+        createdAt: { gte: new Date(Date.now() - 60_000) },
+      },
+      select: { id: true },
+    });
+    if (recent) return null;
+  }
 
   const notification = await prisma.notification.create({
     data: {

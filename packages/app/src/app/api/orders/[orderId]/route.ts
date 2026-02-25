@@ -152,6 +152,16 @@ export async function PATCH(req: Request, { params }: RouteContext) {
         })
       );
     }
+    if (updated.companionAddress && updated.companionAddress !== order.userAddress) {
+      after(
+        publishOrderEvent(updated.companionAddress, {
+          type: "status_change",
+          orderId,
+          stage: updated.stage,
+          timestamp: Date.now(),
+        })
+      );
+    }
     return NextResponse.json(updated);
   }
 
@@ -240,6 +250,18 @@ export async function PATCH(req: Request, { params }: RouteContext) {
     after(
       publishOrderEvent(order.userAddress, {
         type: companionRaw ? "assigned" : "status_change",
+        orderId,
+        stage: updated.stage,
+        timestamp: Date.now(),
+      })
+    );
+  }
+  // Also notify the companion if present
+  const companionAddr = updated.companionAddress || order.companionAddress;
+  if (companionAddr && companionAddr !== order.userAddress) {
+    after(
+      publishOrderEvent(companionAddr, {
+        type: "status_change",
         orderId,
         stage: updated.stage,
         timestamp: Date.now(),

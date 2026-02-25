@@ -124,7 +124,7 @@ export async function upsertChainOrder(chain: ChainOrder) {
     }
     // Publish realtime event for SSE
     if (updated && statusFields.stage !== existing.stage) {
-      void publishOrderEvent(chain.user, {
+      const eventPayload = {
         type:
           statusFields.stage === "已完成"
             ? "completed"
@@ -135,7 +135,11 @@ export async function upsertChainOrder(chain: ChainOrder) {
         status: statusFields.paymentStatus,
         stage: statusFields.stage,
         timestamp: Date.now(),
-      });
+      } as const;
+      void publishOrderEvent(chain.user, eventPayload);
+      if (updated.companionAddress && updated.companionAddress !== chain.user) {
+        void publishOrderEvent(updated.companionAddress, eventPayload);
+      }
     }
     return updated;
   }
