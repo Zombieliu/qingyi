@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { after } from "next/server";
 import Stripe from "stripe";
 import {
   addPaymentEvent,
@@ -10,6 +11,7 @@ import { prisma } from "@/lib/db";
 import { recordAudit } from "@/lib/admin/admin-audit";
 import { env } from "@/lib/env";
 import { apiBadRequest, apiUnauthorized, apiError } from "@/lib/shared/api-response";
+import { publishOrderEvent } from "@/lib/realtime";
 
 const stripeSecretKey = env.STRIPE_SECRET_KEY;
 const stripe = stripeSecretKey ? new Stripe(stripeSecretKey) : null;
@@ -156,6 +158,18 @@ export async function POST(req: Request) {
     });
   } catch (e) {
     console.error("webhook transaction failed:", e);
+  }
+
+  // Notify user via SSE after transaction commits
+  if (isPaid && orderId && userAddress) {
+    after(
+      publishOrderEvent(userAddress, {
+        type: "status_change",
+        orderId,
+        status: "已支付",
+        timestamp: Date.now(),
+      })
+    );
   }
 
   await recordAudit(

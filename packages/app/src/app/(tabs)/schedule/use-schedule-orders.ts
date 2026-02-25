@@ -118,10 +118,12 @@ export function useScheduleOrders() {
     },
   });
 
+  // When in "notifying" mode (waiting for companion), poll faster
+  const isWaiting = mode === "notifying";
   useBackoffPoll({
     enabled: !sseConnected,
-    baseMs: 60_000,
-    maxMs: 180_000,
+    baseMs: isWaiting ? 8_000 : 60_000,
+    maxMs: isWaiting ? 30_000 : 180_000,
     onPoll: async () => refreshOrders(userAddress || getCurrentAddress(), true),
   });
 

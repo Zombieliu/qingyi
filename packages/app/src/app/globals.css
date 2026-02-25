@@ -963,6 +963,12 @@ button,
   transform: none;
   box-shadow: none;
   background: #f8fafc;
+  color: var(--text);
+}
+.dl-tab-btn.primary:disabled,
+.dl-tab-btn.accent:disabled {
+  background: #f8fafc;
+  color: var(--text);
 }
 
 .dl-profile {

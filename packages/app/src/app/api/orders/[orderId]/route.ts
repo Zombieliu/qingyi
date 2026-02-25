@@ -21,6 +21,8 @@ import {
   apiError,
 } from "@/lib/shared/api-response";
 import { OrderMessages } from "@/lib/shared/messages";
+import { publishOrderEvent } from "@/lib/realtime";
+import { after } from "next/server";
 
 const patchOrderSchema = z.object({
   paymentStatus: z.string().optional(),
@@ -132,6 +134,16 @@ export async function PATCH(req: Request, { params }: RouteContext) {
     const updated = await updateOrder(orderId, patch);
     if (!updated) return apiNotFound("not found");
     await tryReferralReward(updated, order.stage);
+    if (order.userAddress) {
+      after(
+        publishOrderEvent(order.userAddress, {
+          type: "status_change",
+          orderId,
+          stage: updated.stage,
+          timestamp: Date.now(),
+        })
+      );
+    }
     return NextResponse.json(updated);
   }
 
@@ -215,6 +227,17 @@ export async function PATCH(req: Request, { params }: RouteContext) {
     return apiNotFound("not found");
   }
   await tryReferralReward(updated, order.stage);
+  // Notify the order owner via SSE
+  if (order.userAddress) {
+    after(
+      publishOrderEvent(order.userAddress, {
+        type: companionRaw ? "assigned" : "status_change",
+        orderId,
+        stage: updated.stage,
+        timestamp: Date.now(),
+      })
+    );
+  }
   return NextResponse.json(updated);
 }
 
@@ -229,5 +252,15 @@ export async function DELETE(req: Request, { params }: RouteContext) {
   }
   const updated = await updateOrder(orderId, { stage: "已取消" });
   if (!updated) return apiNotFound("not found");
+  if (order.userAddress) {
+    after(
+      publishOrderEvent(order.userAddress, {
+        type: "cancelled",
+        orderId,
+        stage: "已取消",
+        timestamp: Date.now(),
+      })
+    );
+  }
   return NextResponse.json({ ok: true });
 }

@@ -539,79 +539,120 @@ export default function Schedule() {
 
   // ─── Render ───
 
+  // Dialogs must render in ALL modes (they use portal-like fixed positioning)
+  const dialogs = (
+    <>
+      <ConfirmDialog
+        open={!!confirmAction}
+        title={confirmAction?.title ?? ""}
+        description={confirmAction?.description}
+        confirmLabel={confirmAction?.confirmLabel}
+        busy={confirmBusy}
+        onConfirm={runConfirmAction}
+        onClose={() => setConfirmAction(null)}
+      />
+      <PromptDialog
+        open={!!promptAction}
+        title={promptAction?.title ?? ""}
+        description={promptAction?.description}
+        placeholder={promptAction?.placeholder}
+        confirmLabel={promptAction?.confirmLabel}
+        value={promptValue}
+        busy={promptBusy}
+        onChange={setPromptValue}
+        onConfirm={runPromptAction}
+        onClose={() => setPromptAction(null)}
+      />
+    </>
+  );
+
   if (mode === "await-user-pay" && currentOrder?.driver) {
     return (
-      <AwaitUserPayView
-        currentOrder={currentOrder}
-        chainStatusHint={chainStatusHint}
-        toast={toast}
-        cancelOrder={cancelOrder}
-        renderActionLabel={renderActionLabel}
-        playerDue={playerDue}
-        patchOrder={patchOrder}
-        refreshOrders={refreshOrders}
-        setMode={setMode}
-        getCurrentAddress={getCurrentAddress}
-      />
+      <>
+        {dialogs}
+        <AwaitUserPayView
+          currentOrder={currentOrder}
+          chainStatusHint={chainStatusHint}
+          toast={toast}
+          cancelOrder={cancelOrder}
+          renderActionLabel={renderActionLabel}
+          playerDue={playerDue}
+          patchOrder={patchOrder}
+          refreshOrders={refreshOrders}
+          setMode={setMode}
+          getCurrentAddress={getCurrentAddress}
+        />
+      </>
     );
   }
 
   if (mode === "enroute" && currentOrder?.driver) {
     return (
-      <EnrouteView
-        currentOrder={currentOrder}
-        chainStatusHint={chainStatusHint}
-        toast={toast}
-        cancelOrder={cancelOrder}
-        renderActionLabel={renderActionLabel}
-        chainAction={chainAction}
-        chainOrders={chainOrders}
-        localChainStatus={localChainStatus}
-        setToast={setToast}
-        patchOrder={patchOrder}
-        refreshOrders={refreshOrders}
-        setMode={setMode}
-        getCurrentAddress={getCurrentAddress}
-        runChainAction={runChainAction}
-        fetchOrSyncChainOrder={fetchOrSyncChainOrder}
-        mergeChainStatus={mergeChainStatus}
-        classifyChainError={classifyChainError}
-        isChainLocalOrder={isChainLocalOrder}
-        statusLabel={statusLabel}
-        markCompletedOnChain={markCompletedOnChain}
-      />
+      <>
+        {dialogs}
+        <EnrouteView
+          currentOrder={currentOrder}
+          chainStatusHint={chainStatusHint}
+          toast={toast}
+          cancelOrder={cancelOrder}
+          renderActionLabel={renderActionLabel}
+          chainAction={chainAction}
+          chainOrders={chainOrders}
+          localChainStatus={localChainStatus}
+          setToast={setToast}
+          patchOrder={patchOrder}
+          refreshOrders={refreshOrders}
+          setMode={setMode}
+          getCurrentAddress={getCurrentAddress}
+          runChainAction={runChainAction}
+          fetchOrSyncChainOrder={fetchOrSyncChainOrder}
+          mergeChainStatus={mergeChainStatus}
+          classifyChainError={classifyChainError}
+          isChainLocalOrder={isChainLocalOrder}
+          statusLabel={statusLabel}
+          markCompletedOnChain={markCompletedOnChain}
+        />
+      </>
     );
   }
 
   if (mode === "pending-settlement" && currentOrder?.driver) {
     return (
-      <PendingSettlementView
-        currentOrder={currentOrder}
-        chainStatusHint={chainStatusHint}
-        toast={toast}
-        cancelOrder={cancelOrder}
-        renderActionLabel={renderActionLabel}
-        chainAction={chainAction}
-        chainOrders={chainOrders}
-        localChainStatus={localChainStatus}
-        setToast={setToast}
-        patchOrder={patchOrder}
-        refreshOrders={refreshOrders}
-        setMode={setMode}
-        getCurrentAddress={getCurrentAddress}
-        isChainLocalOrder={isChainLocalOrder}
-        runChainAction={runChainAction}
-        mergeChainStatus={mergeChainStatus}
-        openPrompt={openPrompt}
-        openConfirm={openConfirm}
-        raiseDisputeOnChain={raiseDisputeOnChain}
-        finalizeNoDisputeOnChain={finalizeNoDisputeOnChain}
-      />
+      <>
+        {dialogs}
+        <PendingSettlementView
+          currentOrder={currentOrder}
+          chainStatusHint={chainStatusHint}
+          toast={toast}
+          cancelOrder={cancelOrder}
+          renderActionLabel={renderActionLabel}
+          chainAction={chainAction}
+          chainOrders={chainOrders}
+          localChainStatus={localChainStatus}
+          setToast={setToast}
+          patchOrder={patchOrder}
+          refreshOrders={refreshOrders}
+          setMode={setMode}
+          getCurrentAddress={getCurrentAddress}
+          isChainLocalOrder={isChainLocalOrder}
+          runChainAction={runChainAction}
+          mergeChainStatus={mergeChainStatus}
+          openPrompt={openPrompt}
+          openConfirm={openConfirm}
+          raiseDisputeOnChain={raiseDisputeOnChain}
+          finalizeNoDisputeOnChain={finalizeNoDisputeOnChain}
+        />
+      </>
     );
   }
 
   if (mode === "notifying" && currentOrder) {
-    return <NotifyingView currentOrder={currentOrder} escrowFeeDisplay={escrowFeeDisplay} />;
+    return (
+      <>
+        {dialogs}
+        <NotifyingView currentOrder={currentOrder} escrowFeeDisplay={escrowFeeDisplay} />
+      </>
+    );
   }
 
   return (
@@ -665,28 +706,7 @@ export default function Schedule() {
 
       {debugOpen && <DebugModal onClose={() => setDebugOpen(false)} />}
 
-      <ConfirmDialog
-        open={!!confirmAction}
-        title={confirmAction?.title ?? ""}
-        description={confirmAction?.description}
-        confirmLabel={confirmAction?.confirmLabel}
-        busy={confirmBusy}
-        onConfirm={runConfirmAction}
-        onClose={() => setConfirmAction(null)}
-      />
-
-      <PromptDialog
-        open={!!promptAction}
-        title={promptAction?.title ?? ""}
-        description={promptAction?.description}
-        placeholder={promptAction?.placeholder}
-        confirmLabel={promptAction?.confirmLabel}
-        value={promptValue}
-        busy={promptBusy}
-        onChange={setPromptValue}
-        onConfirm={runPromptAction}
-        onClose={() => setPromptAction(null)}
-      />
+      {dialogs}
 
       <ScheduleSelectView
         checked={checked}

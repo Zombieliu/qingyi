@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/admin/admin-auth";
 import { getOrderById, listPlayers, updateOrder } from "@/lib/admin/admin-store";
@@ -7,6 +7,7 @@ import { canTransitionStage, isChainOrder } from "@/lib/order-guard";
 import type { AdminOrder, OrderStage } from "@/lib/admin/admin-types";
 import { parseBody } from "@/lib/shared/api-validation";
 import { OrderMessages, AdminMessages } from "@/lib/shared/messages";
+import { publishOrderEvent } from "@/lib/realtime";
 
 const patchSchema = z.object({
   paymentStatus: z.string().optional(),
@@ -96,6 +97,16 @@ export async function PATCH(req: Request, { params }: RouteContext) {
   const updated = await updateOrder(orderId, patch);
   if (!updated) {
     return NextResponse.json({ error: "not found" }, { status: 404 });
+  }
+  if (current.userAddress && (patch.stage || patch.assignedTo)) {
+    after(
+      publishOrderEvent(current.userAddress, {
+        type: patch.assignedTo ? "assigned" : "status_change",
+        orderId,
+        stage: updated.stage,
+        timestamp: Date.now(),
+      })
+    );
   }
   await recordAudit(req, auth, "orders.update", "order", orderId, patch);
   return NextResponse.json(updated);
