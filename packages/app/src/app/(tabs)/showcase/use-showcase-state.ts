@@ -18,6 +18,7 @@ import {
   claimOrderOnChain,
   cancelOrderOnChain,
   fetchChainOrders,
+  fetchChainOrderById,
   getCurrentAddress,
   isChainOrdersEnabled,
   isVisualTestMode,
@@ -393,12 +394,11 @@ export function useShowcaseState() {
       setChainOrders(list);
       found = list.find((order) => order.orderId === orderId) || null;
       if (found) return found;
-    } catch (error) {
-      const errorMsg = formatErrorMessage(error, t("showcase.003"));
-      if (errorMsg.includes("not found") || errorMsg.includes(t("tabs.showcase.i121"))) {
-        throw new Error("链上订单暂未索引完成，请稍后再试（通常需要等待3-10秒）");
-      }
-      throw new Error(errorMsg);
+    } catch {
+      // sync may fail (e.g. 403 when companion views another user's order)
+      // Fallback: query chain directly without server permission check
+      const direct = await fetchChainOrderById(orderId);
+      if (direct) return direct;
     }
     throw new Error("链上订单未找到，可能索引延迟较大，请稍后重试");
   };

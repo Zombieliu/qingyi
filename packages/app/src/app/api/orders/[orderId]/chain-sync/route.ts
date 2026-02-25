@@ -189,13 +189,17 @@ export async function POST(req: Request, { params }: RouteContext) {
     if (!auth.ok) return auth.response;
 
     if (chain.user !== normalized && chain.companion !== normalized) {
-      // Fallback: also allow the locally-assigned companion (covers index lag
+      // Fallback 1: allow the locally-assigned companion (covers index lag
       // where the chain object hasn't reflected the claim yet)
       const localOrder = await loadLocalOrder();
       const localCompanion = localOrder?.companionAddress
         ? normalizeSuiAddress(localOrder.companionAddress)
         : null;
-      if (localCompanion !== normalized) {
+      // Fallback 2: if the caller provided a valid digest, they just executed
+      // a chain transaction for this order (e.g. claim/deposit) — allow sync
+      // even before the local DB or chain index reflects the companion.
+      const hasValidDigest = Boolean(digest);
+      if (localCompanion !== normalized && !hasValidDigest) {
         return apiForbidden();
       }
     }

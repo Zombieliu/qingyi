@@ -188,12 +188,10 @@ export default function Schedule() {
       setChainOrders(list);
       found = list.find((order) => order.orderId === orderId) || null;
       if (found) return found;
-    } catch (error) {
-      const errorMsg = formatErrorMessage(error, t("schedule.002"));
-      if (errorMsg.includes("not found") || errorMsg.includes(t("tabs.schedule.i107"))) {
-        throw new Error("链上订单暂未索引完成，请稍后再试（通常需要等待3-10秒）");
-      }
-      throw new Error(errorMsg);
+    } catch {
+      // sync may fail (e.g. 403 permission) — fallback to direct chain query
+      const direct = await fetchChainOrderById(orderId);
+      if (direct) return direct;
     }
     const precise = await fetchChainOrderById(orderId);
     if (precise) return precise;
