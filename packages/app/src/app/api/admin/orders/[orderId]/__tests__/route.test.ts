@@ -39,6 +39,8 @@ vi.mock("@/lib/order-guard", () => ({
   canTransitionStage: mockCanTransitionStage,
 }));
 
+vi.mock("@/lib/realtime", () => ({ publishOrderEvent: vi.fn() }));
+
 import { GET, PATCH } from "../route";
 
 const authOk = { ok: true, role: "admin", authType: "session" };

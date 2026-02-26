@@ -15,7 +15,8 @@ const mocks = vi.hoisted(() => ({
   parseBodyRaw: vi.fn(),
 }));
 
-vi.mock("next/server", () => {
+vi.mock("next/server", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("next/server")>();
   class MockNextResponse {
     body: unknown;
     status: number;
@@ -32,7 +33,9 @@ vi.mock("next/server", () => {
       return new MockNextResponse(data, init);
     }
   }
-  return { NextResponse: MockNextResponse };
+  const after = (cbOrPromise: (() => void | Promise<void>) | Promise<unknown>) =>
+    typeof cbOrPromise === "function" ? cbOrPromise() : cbOrPromise;
+  return { ...actual, NextResponse: MockNextResponse, after };
 });
 
 vi.mock("@/lib/admin/admin-auth", () => ({ requireAdmin: mocks.requireAdmin }));
@@ -55,6 +58,7 @@ vi.mock("@/lib/order-guard", () => ({
 vi.mock("@/lib/shared/api-validation", () => ({
   parseBodyRaw: mocks.parseBodyRaw,
 }));
+vi.mock("@/lib/realtime", () => ({ publishOrderEvent: vi.fn() }));
 
 import { GET, PATCH, DELETE } from "../route";
 
