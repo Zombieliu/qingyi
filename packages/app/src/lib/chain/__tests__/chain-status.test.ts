@@ -66,6 +66,22 @@ describe("resolveEffectiveChainStatus", () => {
       3
     );
   });
+
+  it("allows DEPOSITED(2) → PAID(1) rollback for duo slot release", () => {
+    expect(resolveEffectiveChainStatus({ chainStatus: 2, meta: { duoOrder: true } }, 1)).toBe(1);
+  });
+
+  it("blocks rollback for non-duo orders", () => {
+    expect(resolveEffectiveChainStatus({ chainStatus: 2, meta: {} }, 1)).toBe(2);
+  });
+
+  it("still blocks other rollbacks (e.g. 3 → 1)", () => {
+    expect(resolveEffectiveChainStatus({ chainStatus: 3, meta: {} }, 1)).toBe(3);
+  });
+
+  it("still blocks 5 → 2 rollback", () => {
+    expect(resolveEffectiveChainStatus({ chainStatus: 5, meta: {} }, 2)).toBe(5);
+  });
 });
 
 describe("deriveOrderStatus", () => {

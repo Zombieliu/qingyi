@@ -62,6 +62,12 @@ export function resolveEffectiveChainStatus(
 
   const localStatus = getLocalChainStatus(existing);
 
+  // Allow DEPOSITED(2) → PAID(1) rollback for duo slot release only.
+  const isDuoOrder = Boolean((existing.meta as Record<string, unknown> | undefined)?.duoOrder);
+  if (isDuoOrder && typeof localStatus === "number" && localStatus === 2 && incomingStatus === 1) {
+    return incomingStatus;
+  }
+
   if (typeof localStatus === "number" && localStatus > incomingStatus) {
     return localStatus;
   }
