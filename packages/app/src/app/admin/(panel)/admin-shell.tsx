@@ -110,6 +110,7 @@ const navItems: NavItem[] = [
     minRole: "viewer",
   },
   { href: "/admin/orders", label: t("ui.admin-shell.666"), icon: ClipboardList, minRole: "viewer" },
+  { href: "/admin/duo-orders", label: "双陪订单", icon: Users, minRole: "viewer" },
   { href: "/admin/disputes", label: "争议管理", icon: AlertTriangle, minRole: "ops" },
   { href: "/admin/support", label: t("ui.admin-shell.572"), icon: Headset, minRole: "ops" },
   {
@@ -198,6 +199,7 @@ const navSections: Array<{ label: string; items: string[] }> = [
     label: t("ui.admin-shell.692"),
     items: [
       "/admin/orders",
+      "/admin/duo-orders",
       "/admin/disputes",
       "/admin/support",
       "/admin/coupons",
@@ -230,6 +232,7 @@ const navLookup = new Map(navItems.map((item) => [item.href, item]));
 const subtitles: Record<string, string> = {
   "/admin": t("ui.admin-shell.541"),
   "/admin/orders": t("ui.admin-shell.667"),
+  "/admin/duo-orders": "双陪订单管理",
   "/admin/disputes": "处理用户争议与申诉",
   "/admin/support": t("ui.admin-shell.573"),
   "/admin/coupons": t("ui.admin-shell.516"),

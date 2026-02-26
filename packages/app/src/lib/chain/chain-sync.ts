@@ -2,9 +2,11 @@ import "server-only";
 import {
   fetchChainOrdersAdmin,
   fetchChainOrdersAdminWithCursor,
+  fetchDuoChainOrdersAdminWithCursor,
   type ChainOrder,
 } from "./chain-admin";
 import { addOrder, getOrderById, updateOrder, processReferralReward } from "../admin/admin-store";
+import { getDuoOrderById } from "../admin/duo-order-store";
 import type { AdminOrder } from "../admin/admin-types";
 import { isValidSuiAddress, normalizeSuiAddress } from "@mysten/sui/utils";
 import { findChainOrderCached, clearCache, getCacheStats } from "./chain-order-cache";
@@ -18,6 +20,7 @@ import {
   deriveOrderStatus,
 } from "./chain-status";
 import { trackChainSyncResult, trackChainSyncFailed } from "@/lib/business-events";
+import { upsertDuoChainOrder } from "./duo-chain-sync";
 import { AdminMessages } from "@/lib/shared/messages";
 
 // Re-export for backward compatibility
@@ -173,8 +176,13 @@ export async function syncChainOrders() {
   const incremental = Boolean(cursor);
 
   let result;
+  let duoResult;
   try {
     result = await fetchChainOrdersAdminWithCursor({
+      cursor: incremental ? cursor : null,
+      order: incremental ? "ascending" : "descending",
+    });
+    duoResult = await fetchDuoChainOrdersAdminWithCursor({
       cursor: incremental ? cursor : null,
       order: incremental ? "ascending" : "descending",
     });
@@ -184,8 +192,11 @@ export async function syncChainOrders() {
   }
 
   const chainOrders = result.orders;
+  const duoOrders = duoResult.orders;
   let created = 0;
   let updated = 0;
+  let duoCreated = 0;
+  let duoUpdated = 0;
   let allUpsertSucceeded = true;
 
   for (const chain of chainOrders) {
@@ -203,25 +214,49 @@ export async function syncChainOrders() {
     }
   }
 
+  for (const chain of duoOrders) {
+    try {
+      const existing = await getDuoOrderById(chain.orderId);
+      await upsertDuoChainOrder(chain);
+      if (existing) {
+        duoUpdated += 1;
+      } else {
+        duoCreated += 1;
+      }
+    } catch (e) {
+      allUpsertSucceeded = false;
+      console.error(`[chain-sync] upsertDuoChainOrder failed for ${chain.orderId}:`, e);
+    }
+  }
+
   // Only advance cursor when all upserts succeeded — otherwise failed orders
   // would be skipped on the next incremental sync.
-  if (result.latestCursor && allUpsertSucceeded) {
+  const latestCursor =
+    duoResult.latestCursor &&
+    (!result.latestCursor || (duoResult.latestEventMs || 0) > (result.latestEventMs || 0))
+      ? duoResult.latestCursor
+      : result.latestCursor;
+  const latestEventMs =
+    duoResult.latestCursor && latestCursor === duoResult.latestCursor
+      ? duoResult.latestEventMs
+      : result.latestEventMs;
+  if (latestCursor && allUpsertSucceeded) {
     const shouldUpdate =
       !cursor ||
-      cursor.txDigest !== result.latestCursor.txDigest ||
-      cursor.eventSeq !== result.latestCursor.eventSeq;
+      cursor.txDigest !== latestCursor.txDigest ||
+      cursor.eventSeq !== latestCursor.eventSeq;
     if (shouldUpdate) {
       await updateChainEventCursor({
-        cursor: result.latestCursor,
-        lastEventMs: result.latestEventMs || undefined,
+        cursor: latestCursor,
+        lastEventMs: latestEventMs || undefined,
       });
     }
   }
 
   const syncResult = {
-    total: chainOrders.length,
-    created,
-    updated,
+    total: chainOrders.length + duoOrders.length,
+    created: created + duoCreated,
+    updated: updated + duoUpdated,
     mode: incremental ? "incremental" : "bootstrap",
     durationMs: Date.now() - startMs,
   };

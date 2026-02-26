@@ -6,6 +6,7 @@ vi.mock("@/lib/env", () => ({
 }));
 
 // Mock admin-store
+const mockGetDuoOrderById = vi.fn();
 const mockGetOrderById = vi.fn();
 const mockAddOrder = vi.fn();
 const mockUpdateOrder = vi.fn();
@@ -17,12 +18,19 @@ vi.mock("../../admin/admin-store", () => ({
   processReferralReward: (...a: unknown[]) => mockProcessReferralReward(...a),
 }));
 
+vi.mock("../../admin/duo-order-store", () => ({
+  getDuoOrderById: (...a: unknown[]) => mockGetDuoOrderById(...a),
+}));
+
 // Mock chain-admin
 const mockFetchChainOrdersAdmin = vi.fn();
 const mockFetchChainOrdersAdminWithCursor = vi.fn();
+const mockFetchDuoChainOrdersAdminWithCursor = vi.fn();
 vi.mock("../chain-admin", () => ({
   fetchChainOrdersAdmin: (...a: unknown[]) => mockFetchChainOrdersAdmin(...a),
   fetchChainOrdersAdminWithCursor: (...a: unknown[]) => mockFetchChainOrdersAdminWithCursor(...a),
+  fetchDuoChainOrdersAdminWithCursor: (...a: unknown[]) =>
+    mockFetchDuoChainOrdersAdminWithCursor(...a),
 }));
 
 // Mock chain-order-cache
@@ -98,6 +106,12 @@ function makeChainOrder(overrides: Partial<ChainOrder> = {}): ChainOrder {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockFetchDuoChainOrdersAdminWithCursor.mockResolvedValue({
+    orders: [],
+    latestCursor: null,
+    latestEventMs: null,
+  });
+  mockGetDuoOrderById.mockResolvedValue(null);
 });
 
 // ─── toCny (tested via upsertChainOrder) ───

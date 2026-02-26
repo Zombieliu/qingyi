@@ -7,6 +7,7 @@ import { isValidSuiAddress, normalizeSuiAddress, toHex } from "@mysten/sui/utils
 import { DAPP_HUB_ID, DAPP_HUB_INITIAL_SHARED_VERSION, PACKAGE_ID } from "contracts/deployment";
 import { env } from "@/lib/env";
 import { ChainMessages } from "@/lib/shared/messages";
+import type { DuoChainOrder } from "./duo-chain";
 
 export type ChainOrder = {
   orderId: string;
@@ -122,6 +123,37 @@ function decodeOrderFromTuple(keyTuple: number[][], valueTuple: number[][]): Cha
   };
 }
 
+function decodeDuoOrderFromTuple(
+  keyTuple: number[][],
+  valueTuple: number[][]
+): DuoChainOrder | null {
+  if (!Array.isArray(keyTuple) || keyTuple.length < 1) return null;
+  if (!Array.isArray(valueTuple) || valueTuple.length < 19) return null;
+  const orderId = decodeU64(keyTuple[0]);
+  return {
+    orderId,
+    user: decodeAddress(valueTuple[0]),
+    companionA: decodeAddress(valueTuple[1]),
+    companionB: decodeAddress(valueTuple[2]),
+    ruleSetId: decodeU64(valueTuple[3]),
+    serviceFee: decodeU64(valueTuple[4]),
+    depositPerCompanion: decodeU64(valueTuple[5]),
+    platformFeeBps: decodeU64(valueTuple[6]),
+    status: decodeU8(valueTuple[7]),
+    teamStatus: decodeU8(valueTuple[8]),
+    createdAt: decodeU64(valueTuple[9]),
+    finishAt: decodeU64(valueTuple[10]),
+    disputeDeadline: decodeU64(valueTuple[11]),
+    vaultService: decodeU64(valueTuple[12]),
+    vaultDepositA: decodeU64(valueTuple[13]),
+    vaultDepositB: decodeU64(valueTuple[14]),
+    evidenceHash: decodeVecU8(valueTuple[15]),
+    disputeStatus: decodeU8(valueTuple[16]),
+    resolvedBy: decodeAddress(valueTuple[17]),
+    resolvedAt: decodeU64(valueTuple[18]),
+  };
+}
+
 function ensureChainEnv() {
   const pkg = String(PACKAGE_ID || "");
   const hubId = String(DAPP_HUB_ID || "");
@@ -163,6 +195,11 @@ function getAdminSigner() {
 
 export async function fetchChainOrdersAdmin(): Promise<ChainOrder[]> {
   const result = await fetchChainOrdersAdminInternal();
+  return result.orders;
+}
+
+export async function fetchDuoChainOrdersAdmin(): Promise<DuoChainOrder[]> {
+  const result = await fetchDuoChainOrdersAdminInternal();
   return result.orders;
 }
 
@@ -255,12 +292,110 @@ async function fetchChainOrdersAdminInternal(options?: {
   };
 }
 
+async function fetchDuoChainOrdersAdminInternal(options?: {
+  cursor?: EventId | null;
+  limit?: number;
+  order?: "ascending" | "descending";
+}): Promise<{
+  orders: DuoChainOrder[];
+  latestCursor: EventId | null;
+  latestEventMs: number | null;
+}> {
+  const { pkg } = ensureChainEnv();
+  const client = new SuiClient({ url: getRpcUrl() });
+  const dubhePackageId = await getDubhePackageId(client);
+  const eventType = `${dubhePackageId}::dubhe_events::Dubhe_Store_SetRecord`;
+  const targetKey = normalizeDappKey(`${strip0x(pkg)}::dapp_key::DappKey`);
+  const orders = new Map<string, DuoChainOrder>();
+  let cursor: EventId | null = options?.cursor ?? null;
+  let remaining = Number.isFinite(options?.limit)
+    ? Number(options?.limit)
+    : Number.isFinite(EVENT_LIMIT)
+      ? EVENT_LIMIT
+      : 200;
+  const orderDirection = options?.order || "descending";
+  let latestCursor: EventId | null = null;
+  let latestEventMs: number | null = null;
+
+  while (remaining > 0) {
+    let page: Awaited<ReturnType<typeof client.queryEvents>>;
+    let attempt = 0;
+    while (true) {
+      try {
+        page = await retryRpc(() =>
+          client.queryEvents({
+            query: { MoveEventType: eventType },
+            limit: Math.min(50, remaining),
+            order: orderDirection,
+            cursor,
+          })
+        );
+        break;
+      } catch (err) {
+        attempt += 1;
+        if (attempt > 5) throw err;
+      }
+    }
+    if (page.data.length > 0) {
+      if (orderDirection === "descending") {
+        if (!latestCursor) {
+          latestCursor = page.data[0].id ?? null;
+          const ts = Number(page.data[0].timestampMs || 0);
+          latestEventMs = ts || null;
+        }
+      } else {
+        const lastEvent = page.data[page.data.length - 1];
+        latestCursor = lastEvent.id ?? latestCursor;
+        const ts = Number(lastEvent.timestampMs || 0);
+        if (ts) latestEventMs = ts;
+      }
+    }
+    for (const event of page.data) {
+      const parsed = event.parsedJson as {
+        dapp_key?: string;
+        table_id?: string;
+        key_tuple?: number[][];
+        value_tuple?: number[][];
+      } | null;
+      if (!parsed || parsed.table_id !== "duo_order") continue;
+      const dappKey = normalizeDappKey(parsed.dapp_key || "");
+      if (dappKey !== targetKey) continue;
+      const chainOrder = decodeDuoOrderFromTuple(parsed.key_tuple || [], parsed.value_tuple || []);
+      if (!chainOrder) continue;
+      if (orderDirection === "ascending" || !orders.has(chainOrder.orderId)) {
+        orders.set(chainOrder.orderId, chainOrder);
+      }
+    }
+    remaining -= page.data.length;
+    if (!page.hasNextPage) break;
+    cursor = page.nextCursor ?? null;
+  }
+
+  return {
+    orders: Array.from(orders.values()).sort((a, b) => Number(b.createdAt) - Number(a.createdAt)),
+    latestCursor,
+    latestEventMs,
+  };
+}
+
 export async function fetchChainOrdersAdminWithCursor(options?: {
   cursor?: EventId | null;
   limit?: number;
   order?: "ascending" | "descending";
 }): Promise<FetchChainOrdersResult> {
   return fetchChainOrdersAdminInternal(options);
+}
+
+export async function fetchDuoChainOrdersAdminWithCursor(options?: {
+  cursor?: EventId | null;
+  limit?: number;
+  order?: "ascending" | "descending";
+}): Promise<{
+  orders: DuoChainOrder[];
+  latestCursor: EventId | null;
+  latestEventMs: number | null;
+}> {
+  return fetchDuoChainOrdersAdminInternal(options);
 }
 
 type ParsedEvent = {
@@ -599,4 +734,117 @@ export function validateCompanionAddress(address: string) {
     throw new Error("invalid address");
   }
   return normalized;
+}
+
+export type DuoChainOrderFromDigest = {
+  orderId: string;
+  user: string;
+  companionA: string;
+  companionB: string;
+  ruleSetId: string;
+  serviceFee: string;
+  depositPerCompanion: string;
+  status: number;
+  teamStatus: number;
+  createdAt: string;
+  finishAt: string;
+  disputeDeadline: string;
+  releasedSlot?: number; // 0=A, 1=B if a release event was found
+  releasedCompanion?: string;
+};
+
+export async function findDuoChainOrderFromDigest(
+  digest: string
+): Promise<DuoChainOrderFromDigest | null> {
+  const { pkg } = ensureChainEnv();
+  if (!digest) return null;
+  const client = new SuiClient({ url: getRpcUrl() });
+  const tx = await retryRpc(() =>
+    client.getTransactionBlock({ digest, options: { showEvents: true } })
+  );
+  const events = (tx.events || []) as ParsedEvent[];
+  if (!events.length) return null;
+  const prefix = `${pkg}::events::`;
+
+  const createdEv = events.find((e) => e.type === `${prefix}DuoOrderCreated`);
+  const claimedEv = events.find((e) => e.type === `${prefix}DuoSlotClaimed`);
+  const depositEv = events.find((e) => e.type === `${prefix}DuoDepositLocked`);
+  const completedEv = events.find((e) => e.type === `${prefix}DuoOrderCompleted`);
+  const disputedEv = events.find((e) => e.type === `${prefix}DuoOrderDisputed`);
+  const resolvedEv = events.find((e) => e.type === `${prefix}DuoOrderResolved`);
+  const finalizedEv = events.find((e) => e.type === `${prefix}DuoOrderFinalized`);
+  const releasedEv = events.find((e) => e.type === `${prefix}DuoSlotReleased`);
+
+  const hasDuoEvent = Boolean(
+    createdEv ||
+    claimedEv ||
+    depositEv ||
+    completedEv ||
+    disputedEv ||
+    resolvedEv ||
+    finalizedEv ||
+    releasedEv
+  );
+  if (!hasDuoEvent) return null;
+
+  const created = createdEv?.parsedJson as Record<string, unknown> | undefined;
+  const claimed = claimedEv?.parsedJson as Record<string, unknown> | undefined;
+  const deposit = depositEv?.parsedJson as Record<string, unknown> | undefined;
+  const completed = completedEv?.parsedJson as Record<string, unknown> | undefined;
+  const released = releasedEv?.parsedJson as Record<string, unknown> | undefined;
+
+  const orderId =
+    readStringField(created, "order_id", "") ||
+    readOrderIdFromEvent(claimedEv) ||
+    readOrderIdFromEvent(depositEv) ||
+    readOrderIdFromEvent(completedEv) ||
+    readOrderIdFromEvent(disputedEv) ||
+    readOrderIdFromEvent(resolvedEv) ||
+    readOrderIdFromEvent(finalizedEv) ||
+    readOrderIdFromEvent(releasedEv) ||
+    "";
+  if (!orderId) return null;
+
+  const result: DuoChainOrderFromDigest = {
+    orderId,
+    user: readAddressField(created, "user"),
+    companionA: readAddressField(created, "companion_a"),
+    companionB: readAddressField(created, "companion_b"),
+    ruleSetId: readStringField(created, "rule_set_id", "0"),
+    serviceFee: readStringField(created, "service_fee", "0"),
+    depositPerCompanion: readStringField(created, "deposit_per_companion", "0"),
+    status: 0,
+    teamStatus: 0,
+    createdAt: String(tx.timestampMs || Date.now()),
+    finishAt: "0",
+    disputeDeadline: "0",
+  };
+
+  if (claimed) {
+    const slot = Number(readStringField(claimed, "slot", "0"));
+    const companion = readAddressField(claimed, "companion");
+    if (slot === 0) result.companionA = companion;
+    else result.companionB = companion;
+  }
+  if (deposit) {
+    result.status = 1;
+    result.teamStatus = Number(readStringField(deposit, "team_status", "0"));
+    if (result.teamStatus === 3) result.status = 2;
+  }
+  if (completed) {
+    result.status = 3;
+    result.finishAt = readStringField(completed, "finish_at", "0");
+    result.disputeDeadline = readStringField(completed, "dispute_deadline", "0");
+  }
+  if (disputedEv) result.status = 4;
+  if (resolvedEv) result.status = 5;
+  if (finalizedEv) result.status = 5;
+  if (released) {
+    result.releasedSlot = Number(readStringField(released, "slot", "0"));
+    result.releasedCompanion = readAddressField(released, "companion");
+    // Release can roll back status from 2→1
+    if (result.status === 2) result.status = 1;
+  }
+
+  return result;
 }
