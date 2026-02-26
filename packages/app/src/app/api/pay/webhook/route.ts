@@ -78,33 +78,9 @@ export async function POST(req: Request) {
 
   const isPaid = eventType === "payment_intent.succeeded";
 
-  // Credit via external API (HTTP call, cannot be inside DB transaction)
-  let creditOk = false;
-  if (isPaid && userAddress && diamondAmount && env.LEDGER_ADMIN_TOKEN && paymentIntentId) {
-    try {
-      const url = new URL("/api/ledger/credit", req.url);
-      const res = await fetch(url, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${env.LEDGER_ADMIN_TOKEN}`,
-        },
-        body: JSON.stringify({
-          user: userAddress,
-          amount: diamondAmount,
-          receiptId: `stripe_pi_${paymentIntentId}`,
-          orderId,
-          amountCny: typeof amountRaw === "number" ? amountRaw / 100 : undefined,
-          currency: "CNY",
-          source: "stripe",
-          note: "stripe webhook credit",
-        }),
-      });
-      creditOk = res.ok;
-    } catch (e) {
-      console.error("webhook credit failed:", e);
-    }
-  }
+  // P0 FIX: Only process payment mutations when webhook signature is verified.
+  // Unverified events are logged but never trigger credit or status changes.
+  const shouldMutate = verified && isPaid;
 
   // Wrap addPaymentEvent + updateOrder + upsertLedgerRecord in a single transaction
   try {
@@ -124,14 +100,16 @@ export async function POST(req: Request) {
         tx
       );
 
-      if (orderId && isPaid) {
+      if (!shouldMutate) return;
+
+      if (orderId) {
         const exists = await getOrderById(orderId);
         if (exists) {
           await updateOrder(orderId, { paymentStatus: "已支付" }, tx);
         }
       }
 
-      if (isPaid && userAddress && diamondAmount && orderId) {
+      if (userAddress && diamondAmount && orderId) {
         const parsedAmount = Number(diamondAmount);
         if (Number.isFinite(parsedAmount) && parsedAmount > 0) {
           await upsertLedgerRecord(
@@ -141,7 +119,7 @@ export async function POST(req: Request) {
               diamondAmount: parsedAmount,
               amount: typeof amountRaw === "number" ? amountRaw / 100 : undefined,
               currency: "CNY",
-              status: creditOk ? "credited" : "paid",
+              status: "paid",
               orderId,
               receiptId: paymentIntentId ? `stripe_pi_${paymentIntentId}` : undefined,
               source: "stripe",
