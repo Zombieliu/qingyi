@@ -5,6 +5,10 @@
  *   CLOSED  - Normal operation, requests pass through
  *   OPEN    - Failures exceeded threshold, requests are rejected immediately
  *   HALF_OPEN - After reset timeout, one probe request is allowed through
+ *
+ * TODO(P3): Circuit breaker state is per-process. In serverless/multi-instance
+ * deployments, each instance has independent state, reducing protection effectiveness.
+ * Consider using Redis-backed state for cross-instance coordination.
  */
 
 export enum CircuitState {

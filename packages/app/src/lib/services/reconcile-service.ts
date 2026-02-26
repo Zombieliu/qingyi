@@ -33,6 +33,7 @@ export async function reconcileOrders(params: {
   const orders = await prisma.adminOrder.findMany({
     where: {
       createdAt: { gte: params.from, lte: params.to },
+      deletedAt: null, // P2 FIX: Exclude soft-deleted orders from reconciliation
     },
     orderBy: { createdAt: "desc" },
     take: params.limit || 500,

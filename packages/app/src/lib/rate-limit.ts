@@ -4,6 +4,20 @@ import { env } from "@/lib/env";
 
 const redis = env.UPSTASH_REDIS_REST_URL && env.UPSTASH_REDIS_REST_TOKEN ? Redis.fromEnv() : null;
 
+// P0 FIX: Warn once when falling back to in-memory rate limiting in production.
+// In-memory buckets are per-process and ineffective in serverless/multi-instance deployments.
+let memoryFallbackWarned = false;
+function warnMemoryFallback() {
+  if (!memoryFallbackWarned && process.env.NODE_ENV === "production") {
+    memoryFallbackWarned = true;
+    console.warn(
+      "[rate-limit] Redis not configured — falling back to in-memory rate limiting. " +
+        "This is ineffective in serverless/multi-instance deployments. " +
+        "Set UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN for production."
+    );
+  }
+}
+
 const memoryBuckets = new Map<string, { count: number; resetAt: number }>();
 const memoryNonces = new Map<string, number>();
 
@@ -28,6 +42,7 @@ export async function rateLimit(key: string, limit: number, windowMs: number): P
   }
 
   pruneMemory(now);
+  warnMemoryFallback();
   const existing = memoryBuckets.get(key);
   if (!existing || existing.resetAt <= now) {
     memoryBuckets.set(key, { count: 1, resetAt: now + windowMs });
@@ -45,6 +60,7 @@ export async function consumeNonce(key: string, ttlMs: number): Promise<boolean>
   }
 
   pruneMemory(now);
+  warnMemoryFallback();
   const existing = memoryNonces.get(key);
   if (existing && existing > now) return false;
   memoryNonces.set(key, now + ttlMs);

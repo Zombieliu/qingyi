@@ -169,10 +169,12 @@ function enforceRateLimit(req: Request, limit: number, windowMs: number) {
   return rateLimit(key, limit, windowMs);
 }
 
-export function ensureSameOrigin(req: Request) {
+export function ensureSameOrigin(req: Request, requirePresence = false) {
   const origin = req.headers.get("origin");
   const host = req.headers.get("host");
-  if (!origin || !host) return true;
+  // P1 FIX: When requirePresence is true (mutation requests), reject if Origin header is missing.
+  if (!origin) return !requirePresence;
+  if (!host) return !requirePresence;
   try {
     return new URL(origin).host === host;
   } catch {
@@ -271,7 +273,7 @@ export async function requireAdmin(
     };
   }
 
-  if (requireOrigin && !ensureSameOrigin(req) && !req.headers.get("x-admin-token")) {
+  if (requireOrigin && !ensureSameOrigin(req, true) && !req.headers.get("x-admin-token")) {
     return {
       ok: false,
       response: NextResponse.json({ error: "invalid_origin" }, { status: 403 }),

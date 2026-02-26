@@ -13,7 +13,8 @@ const prismaDatasourceUrl = (() => {
     const url = new URL(rawUrl);
     const params = url.searchParams;
     if (!params.has("connection_limit")) {
-      const defaultLimit = process.env.NODE_ENV === "production" ? "1" : "10";
+      // P2 FIX: Raised production default from 1 to 5 for better concurrency
+      const defaultLimit = process.env.NODE_ENV === "production" ? "5" : "10";
       params.set("connection_limit", String(env.PRISMA_CONNECTION_LIMIT || defaultLimit));
     }
     if (!params.has("pool_timeout")) {

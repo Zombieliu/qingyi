@@ -185,14 +185,33 @@ describe("POST /api/pay/webhook", () => {
     expect(mockUpdateOrder).not.toHaveBeenCalled();
   });
 
+  it("does not mutate orders or ledger for unverified webhooks (P0 fix)", async () => {
+    // Without STRIPE_WEBHOOK_SECRET, verified=false, shouldMutate=false
+    const event = makeStripeEvent("payment_intent.succeeded", {
+      orderId: "ORD-UNVERIFIED",
+      userAddress: "0xabc",
+      diamondAmount: "100",
+    });
+    mockGetOrderById.mockResolvedValue({ id: "ORD-UNVERIFIED" });
+    await POST(makeWebhookRequest(event));
+    expect(mockUpdateOrder).not.toHaveBeenCalled();
+    expect(mockUpsertLedgerRecord).not.toHaveBeenCalled();
+    // But payment event should still be recorded
+    expect(mockAddPaymentEvent).toHaveBeenCalled();
+  });
+
   it("updates order paymentStatus on payment_intent.succeeded", async () => {
+    // P0 FIX: Only verified webhooks trigger mutations — set up verified context
+    mockEnv.STRIPE_WEBHOOK_SECRET = "whsec_test";
     const event = makeStripeEvent("payment_intent.succeeded", { orderId: "ORD-1" });
+    mockConstructEvent.mockReturnValue(event);
     mockGetOrderById.mockResolvedValue({ id: "ORD-1" });
     mockUpdateOrder.mockResolvedValue({ id: "ORD-1", paymentStatus: "已支付" });
-    const res = await POST(makeWebhookRequest(event));
+    const res = await POST(makeWebhookRequest(event, { "stripe-signature": "sig_test" }));
     expect(res.status).toBe(200);
     expect(mockGetOrderById).toHaveBeenCalledWith("ORD-1");
     expect(mockUpdateOrder).toHaveBeenCalledWith("ORD-1", { paymentStatus: "已支付" }, mockPrisma);
+    mockEnv.STRIPE_WEBHOOK_SECRET = undefined;
   });
   it("does not update order if order not found", async () => {
     const event = makeStripeEvent("payment_intent.succeeded", { orderId: "ORD-MISSING" });
@@ -202,15 +221,17 @@ describe("POST /api/pay/webhook", () => {
   });
 
   it("upserts ledger record on succeeded with metadata", async () => {
+    mockEnv.STRIPE_WEBHOOK_SECRET = "whsec_test";
     const event = makeStripeEvent("payment_intent.succeeded", {
       orderId: "ORD-1",
       userAddress: "0xabc",
       diamondAmount: "100",
     });
+    mockConstructEvent.mockReturnValue(event);
     mockGetOrderById.mockResolvedValue({ id: "ORD-1" });
     mockUpdateOrder.mockResolvedValue({});
     mockUpsertLedgerRecord.mockResolvedValue(undefined);
-    await POST(makeWebhookRequest(event));
+    await POST(makeWebhookRequest(event, { "stripe-signature": "sig_test" }));
     expect(mockUpsertLedgerRecord).toHaveBeenCalledWith(
       expect.objectContaining({
         id: "ORD-1",
@@ -220,6 +241,7 @@ describe("POST /api/pay/webhook", () => {
       }),
       mockPrisma
     );
+    mockEnv.STRIPE_WEBHOOK_SECRET = undefined;
   });
 
   it("ignores duplicate payment event insertion errors", async () => {
@@ -245,14 +267,18 @@ describe("POST /api/pay/webhook", () => {
   });
 
   it("extracts orderId from order_id metadata alias", async () => {
+    mockEnv.STRIPE_WEBHOOK_SECRET = "whsec_test";
     const event = makeStripeEvent("payment_intent.succeeded", { order_id: "ORD-ALT" });
+    mockConstructEvent.mockReturnValue(event);
     mockGetOrderById.mockResolvedValue({ id: "ORD-ALT" });
     mockUpdateOrder.mockResolvedValue({});
-    await POST(makeWebhookRequest(event));
+    await POST(makeWebhookRequest(event, { "stripe-signature": "sig_test" }));
     expect(mockGetOrderById).toHaveBeenCalledWith("ORD-ALT");
+    mockEnv.STRIPE_WEBHOOK_SECRET = undefined;
   });
 
   it("extracts payment_intent id from charge object via payment_intent field (string)", async () => {
+    mockEnv.STRIPE_WEBHOOK_SECRET = "whsec_test";
     const event = {
       id: `evt_${Date.now()}`,
       type: "payment_intent.succeeded",
@@ -267,19 +293,22 @@ describe("POST /api/pay/webhook", () => {
         },
       },
     };
+    mockConstructEvent.mockReturnValue(event);
     mockGetOrderById.mockResolvedValue({ id: "ORD-1" });
     mockUpdateOrder.mockResolvedValue({});
     mockUpsertLedgerRecord.mockResolvedValue(undefined);
-    await POST(makeWebhookRequest(event));
+    await POST(makeWebhookRequest(event, { "stripe-signature": "sig_test" }));
     expect(mockUpsertLedgerRecord).toHaveBeenCalledWith(
       expect.objectContaining({
         receiptId: "stripe_pi_pi_from_charge",
       }),
       mockPrisma
     );
+    mockEnv.STRIPE_WEBHOOK_SECRET = undefined;
   });
 
   it("extracts payment_intent id from charge object via payment_intent object", async () => {
+    mockEnv.STRIPE_WEBHOOK_SECRET = "whsec_test";
     const event = {
       id: `evt_${Date.now()}`,
       type: "payment_intent.succeeded",
@@ -294,43 +323,41 @@ describe("POST /api/pay/webhook", () => {
         },
       },
     };
+    mockConstructEvent.mockReturnValue(event);
     mockGetOrderById.mockResolvedValue({ id: "ORD-2" });
     mockUpdateOrder.mockResolvedValue({});
     mockUpsertLedgerRecord.mockResolvedValue(undefined);
-    await POST(makeWebhookRequest(event));
+    await POST(makeWebhookRequest(event, { "stripe-signature": "sig_test" }));
     expect(mockUpsertLedgerRecord).toHaveBeenCalledWith(
       expect.objectContaining({
         receiptId: "stripe_pi_pi_nested",
       }),
       mockPrisma
     );
+    mockEnv.STRIPE_WEBHOOK_SECRET = undefined;
   });
 
-  it("calls ledger credit API when all conditions met", async () => {
+  it("does not call external ledger credit API (P0 fix: removed HTTP credit call)", async () => {
+    // P0 FIX: Webhook no longer makes HTTP calls to /api/ledger/credit.
+    // Credit is handled via upsertLedgerRecord in the DB transaction.
     mockEnv.LEDGER_ADMIN_TOKEN = "test-token";
-    const fetchSpy = vi
-      .spyOn(globalThis, "fetch")
-      .mockResolvedValue(new Response(JSON.stringify({ ok: true }), { status: 200 }));
+    mockEnv.STRIPE_WEBHOOK_SECRET = "whsec_test";
+    const fetchSpy = vi.spyOn(globalThis, "fetch");
     const event = makeStripeEvent("payment_intent.succeeded", {
       orderId: "ORD-CREDIT",
       userAddress: "0xabc",
       diamondAmount: "100",
     });
+    mockConstructEvent.mockReturnValue(event);
     mockGetOrderById.mockResolvedValue({ id: "ORD-CREDIT" });
     mockUpdateOrder.mockResolvedValue({});
     mockUpsertLedgerRecord.mockResolvedValue(undefined);
-    await POST(makeWebhookRequest(event));
-    expect(fetchSpy).toHaveBeenCalledWith(
-      expect.any(URL),
-      expect.objectContaining({
-        method: "POST",
-        headers: expect.objectContaining({
-          Authorization: "Bearer test-token",
-        }),
-      })
-    );
+    await POST(makeWebhookRequest(event, { "stripe-signature": "sig_test" }));
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(mockUpsertLedgerRecord).toHaveBeenCalled();
     fetchSpy.mockRestore();
     mockEnv.LEDGER_ADMIN_TOKEN = undefined;
+    mockEnv.STRIPE_WEBHOOK_SECRET = undefined;
   });
 
   it("handles ledger credit API failure gracefully", async () => {
@@ -382,15 +409,17 @@ describe("POST /api/pay/webhook", () => {
   });
 
   it("extracts user_address and diamond_amount aliases from metadata", async () => {
+    mockEnv.STRIPE_WEBHOOK_SECRET = "whsec_test";
     const event = makeStripeEvent("payment_intent.succeeded", {
       orderId: "ORD-ALIAS",
       user_address: "0xalias",
       diamond_amount: "200",
     });
+    mockConstructEvent.mockReturnValue(event);
     mockGetOrderById.mockResolvedValue({ id: "ORD-ALIAS" });
     mockUpdateOrder.mockResolvedValue({});
     mockUpsertLedgerRecord.mockResolvedValue(undefined);
-    await POST(makeWebhookRequest(event));
+    await POST(makeWebhookRequest(event, { "stripe-signature": "sig_test" }));
     expect(mockUpsertLedgerRecord).toHaveBeenCalledWith(
       expect.objectContaining({
         userAddress: "0xalias",
@@ -398,6 +427,7 @@ describe("POST /api/pay/webhook", () => {
       }),
       mockPrisma
     );
+    mockEnv.STRIPE_WEBHOOK_SECRET = undefined;
   });
 
   it("handles event with no data object", async () => {

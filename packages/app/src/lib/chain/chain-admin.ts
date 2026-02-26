@@ -76,6 +76,9 @@ async function retryRpc<T>(
   throw lastError || new Error("rpc failed");
 }
 
+// TODO(P3): decodeOrderFromTuple, decodeU64, decodeU8, decodeAddress, decodeVecU8
+// are duplicated between chain-admin.ts (server) and qy-chain.ts (client).
+// Extract to a shared chain-codec.ts module.
 function decodeU64(bytes: number[]): string {
   return bcs.u64().parse(Uint8Array.from(bytes));
 }

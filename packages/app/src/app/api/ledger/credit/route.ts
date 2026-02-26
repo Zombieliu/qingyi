@@ -4,7 +4,14 @@ import { z } from "zod";
 import { parseBodyRaw } from "@/lib/shared/api-validation";
 import { env } from "@/lib/env";
 import { creditLedgerWithAdmin } from "@/lib/ledger/ledger-credit";
-import { apiBadRequest, apiUnauthorized, apiInternalError } from "@/lib/shared/api-response";
+import { rateLimit } from "@/lib/rate-limit";
+import { getClientIp } from "@/lib/shared/api-utils";
+import {
+  apiBadRequest,
+  apiUnauthorized,
+  apiRateLimited,
+  apiInternalError,
+} from "@/lib/shared/api-response";
 
 const ledgerCreditSchema = z.object({
   user: z.string().min(1),
@@ -26,6 +33,12 @@ function requireAuth(req: Request, token: string) {
 
 export async function POST(req: Request) {
   try {
+    // P1 FIX: Rate limit ledger credit API to prevent abuse if token leaks
+    const ip = getClientIp(req);
+    if (!(await rateLimit(`ledger:credit:${ip}`, 10, 60_000))) {
+      return apiRateLimited();
+    }
+
     const adminToken = env.LEDGER_ADMIN_TOKEN;
     if (!adminToken) {
       throw new Error("Missing env: LEDGER_ADMIN_TOKEN");

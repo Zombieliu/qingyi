@@ -139,7 +139,7 @@ export async function POST(req: Request) {
   }
 
   // Notify user via SSE after transaction commits
-  if (isPaid && orderId && userAddress) {
+  if (shouldMutate && orderId && userAddress) {
     after(
       publishOrderEvent(userAddress, {
         type: "status_change",

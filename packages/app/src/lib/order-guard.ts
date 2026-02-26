@@ -4,6 +4,9 @@ export function isChainOrder(order: Pick<AdminOrder, "chainDigest" | "chainStatu
   return Boolean(order.chainDigest) || order.chainStatus !== undefined || order.source === "chain";
 }
 
+// Order stage state machine.
+// Design note: "已完成" cannot transition directly to "已退款" — it must go through
+// "争议中" first. This is intentional: refunds require a formal dispute process.
 const STAGE_FLOW: Record<OrderStage, OrderStage[]> = {
   待处理: ["待处理", "已确认", "进行中", "已取消"],
   已确认: ["已确认", "进行中", "已取消"],

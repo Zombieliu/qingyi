@@ -5,6 +5,7 @@ export const env = createEnv({
   server: {
     // Database
     DATABASE_URL: z.string().min(1),
+    DATABASE_DIRECT_URL: z.string().optional(), // P2 FIX: Used by Prisma for direct (non-pooled) connections
     DATABASE_POOL_URL: z.string().optional(),
     DATABASE_POOLED_URL: z.string().optional(),
     PRISMA_CONNECTION_LIMIT: z.coerce.number().default(5),
@@ -131,6 +132,7 @@ export const env = createEnv({
   runtimeEnv: {
     // Server
     DATABASE_URL: process.env.DATABASE_URL,
+    DATABASE_DIRECT_URL: process.env.DATABASE_DIRECT_URL,
     DATABASE_POOL_URL: process.env.DATABASE_POOL_URL,
     DATABASE_POOLED_URL: process.env.DATABASE_POOLED_URL,
     PRISMA_CONNECTION_LIMIT: process.env.PRISMA_CONNECTION_LIMIT,

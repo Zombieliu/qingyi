@@ -3,6 +3,10 @@ import { prisma } from "@/lib/db";
 import { isFeatureEnabled } from "@/lib/feature-flags";
 import { DisputeMessages, OrderMessages } from "@/lib/shared/messages";
 
+// TODO(P1): Dispute records are currently stored in AdminOrder.meta JSON field.
+// This prevents efficient querying, concurrent resolution, and history tracking.
+// Migrate to a dedicated Dispute table with proper indexes and foreign keys.
+
 function logDispute(event: string, data: Record<string, unknown>) {
   console.log(
     JSON.stringify({ type: "dispute", event, ...data, timestamp: new Date().toISOString() })

@@ -39,10 +39,13 @@ function hashToken(token: string) {
   return crypto.createHash("sha256").update(token).digest("hex");
 }
 
-function ensureSameOrigin(req: Request) {
+function ensureSameOrigin(req: Request, requirePresence = false) {
   const origin = req.headers.get("origin");
   const host = req.headers.get("host");
-  if (!origin || !host) return true;
+  // P1 FIX: When requirePresence is true (mutation requests), reject if Origin header is missing.
+  // This prevents CSRF from non-browser clients that strip the Origin header.
+  if (!origin) return !requirePresence;
+  if (!host) return !requirePresence;
   try {
     return new URL(origin).host === host;
   } catch {
@@ -74,7 +77,8 @@ export async function getUserSessionFromTokenAllowExpired(token: string) {
   const sessionHash = hashToken(token);
   const session = await getUserSessionByHash(sessionHash);
   if (!session) return null;
-  const REFRESH_GRACE_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+  // P2 FIX: Reduced grace period from 30 days to 7 days to limit session reuse window
+  const REFRESH_GRACE_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
   const MAX_SESSION_AGE_MS = 90 * 24 * 60 * 60 * 1000; // 90 days absolute max
   // Reject sessions older than absolute max age regardless of renewal
   if (session.createdAt + MAX_SESSION_AGE_MS < Date.now()) {
@@ -296,7 +300,7 @@ export async function requireUserAuth(
     } else {
       const requireOrigin =
         params.requireOrigin ?? !["GET", "HEAD", "OPTIONS"].includes(req.method.toUpperCase());
-      if (requireOrigin && !ensureSameOrigin(req)) {
+      if (requireOrigin && !ensureSameOrigin(req, true)) {
         return {
           ok: false,
           response: NextResponse.json({ error: "origin_mismatch" }, { status: 403 }),
