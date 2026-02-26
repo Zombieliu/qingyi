@@ -6,6 +6,7 @@ const mockCount = vi.fn();
 const mockUpdate = vi.fn();
 const mockUpdateMany = vi.fn();
 const mockFindUnique = vi.fn();
+const mockFindFirst = vi.fn();
 const mockDeleteMany = vi.fn();
 
 vi.mock("@/lib/db", () => ({
@@ -17,6 +18,7 @@ vi.mock("@/lib/db", () => ({
       update: (...args: unknown[]) => mockUpdate(...args),
       updateMany: (...args: unknown[]) => mockUpdateMany(...args),
       findUnique: (...args: unknown[]) => mockFindUnique(...args),
+      findFirst: (...args: unknown[]) => mockFindFirst(...args),
       deleteMany: (...args: unknown[]) => mockDeleteMany(...args),
     },
   },
@@ -53,6 +55,7 @@ import {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockFindFirst.mockResolvedValue(null);
 });
 
 describe("createNotification", () => {

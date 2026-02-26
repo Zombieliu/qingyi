@@ -148,9 +148,9 @@ describe("fetchChainOrdersCached", () => {
     mockFetchChainOrdersAdmin.mockResolvedValueOnce(orders);
     await fetchChainOrdersCached();
 
-    // Advance time past MAX_CACHE_AGE_MS (300000ms)
+    // Advance time past MAX_CACHE_AGE_MS * 3 (300000ms * 3)
     const realDateNow = Date.now;
-    Date.now = () => realDateNow() + 400_000;
+    Date.now = () => realDateNow() + 1_000_000;
 
     mockFetchChainOrdersAdmin.mockRejectedValueOnce(new Error("network error"));
     await expect(fetchChainOrdersCached(true)).rejects.toThrow("network error");

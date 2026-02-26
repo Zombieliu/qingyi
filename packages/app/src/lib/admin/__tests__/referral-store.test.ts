@@ -7,6 +7,7 @@ const mockUpdate = vi.fn();
 const mockCount = vi.fn();
 const mockGroupBy = vi.fn();
 const mockUpsert = vi.fn();
+const mockTransaction = vi.fn();
 
 vi.mock("../admin-store-utils", () => ({
   prisma: {
@@ -25,6 +26,7 @@ vi.mock("../admin-store-utils", () => ({
     adminOrder: {
       groupBy: (...args: unknown[]) => mockGroupBy(...args),
     },
+    $transaction: (...args: unknown[]) => mockTransaction(...args),
   },
   Prisma: {},
 }));
@@ -62,6 +64,14 @@ import {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockTransaction.mockImplementation(
+    async (
+      fn: (tx: { referral: { update: (...args: unknown[]) => unknown } }) => Promise<unknown>
+    ) =>
+      fn({
+        referral: { update: (...args: unknown[]) => mockUpdate(...args) },
+      })
+  );
 });
 
 const baseReferral = {
