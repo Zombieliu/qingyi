@@ -171,7 +171,7 @@ describe("POST /api/pay", () => {
     mocks.requireUserAuth.mockResolvedValue({ ok: true, address: VALID_ADDRESS });
     mocks.stripeCreate.mockResolvedValue(stripeIntent);
     mocks.upsertLedgerRecord.mockResolvedValue(undefined);
-    const req = makeReq("http://localhost/api/pay", {
+    const req = makeReq("http://localhost:3000/api/pay", {
       method: "POST",
       headers: { origin: "http://localhost:3000" },
     });
@@ -216,7 +216,7 @@ describe("POST /api/pay", () => {
     });
     mocks.requireUserAuth.mockResolvedValue({ ok: true, address: VALID_ADDRESS });
     mocks.stripeCreate.mockRejectedValue(new Error("Stripe error"));
-    const req = makeReq("http://localhost/api/pay", {
+    const req = makeReq("http://localhost:3000/api/pay", {
       method: "POST",
       headers: { origin: "http://localhost:3000" },
     });
@@ -235,7 +235,7 @@ describe("POST /api/pay", () => {
     });
     mocks.requireUserAuth.mockResolvedValue({ ok: true, address: VALID_ADDRESS });
     mocks.stripeCreate.mockResolvedValue(successIntent);
-    const req = makeReq("http://localhost/api/pay", {
+    const req = makeReq("http://localhost:3000/api/pay", {
       method: "POST",
       headers: { origin: "http://localhost:3000" },
     });
@@ -259,7 +259,7 @@ describe("POST /api/pay", () => {
     mocks.requireUserAuth.mockResolvedValue({ ok: true, address: VALID_ADDRESS });
     mocks.stripeCreate.mockResolvedValue(stripeIntent);
     mocks.upsertLedgerRecord.mockRejectedValue(new Error("db error"));
-    const req = makeReq("http://localhost/api/pay", {
+    const req = makeReq("http://localhost:3000/api/pay", {
       method: "POST",
       headers: { origin: "http://localhost:3000" },
     });
@@ -292,7 +292,7 @@ describe("POST /api/pay", () => {
     mocks.requireUserAuth.mockResolvedValue({ ok: true, address: VALID_ADDRESS });
     mocks.stripeCreate.mockResolvedValue(emptyQrIntent);
     mocks.stripeRetrieve.mockResolvedValue(refreshedIntent);
-    const req = makeReq("http://localhost/api/pay", {
+    const req = makeReq("http://localhost:3000/api/pay", {
       method: "POST",
       headers: { origin: "http://localhost:3000" },
     });
@@ -308,7 +308,7 @@ describe("POST /api/pay", () => {
     });
     mocks.requireUserAuth.mockResolvedValue({ ok: true, address: VALID_ADDRESS });
     mocks.stripeCreate.mockResolvedValue(stripeIntent);
-    const req = makeReq("http://localhost/api/pay", {
+    const req = makeReq("http://mysite.com/api/pay", {
       method: "POST",
       headers: { origin: "http://mysite.com" },
     });

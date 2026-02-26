@@ -27,6 +27,7 @@ describe("AutoTranslate", () => {
   it("translates translatable props on elements with children", () => {
     render(
       <AutoTranslate>
+        {/* @ts-expect-error - testing non-standard prop on div */}
         <div placeholder="placeholder.key">
           <span>child.key</span>
         </div>
@@ -97,6 +98,7 @@ describe("AutoTranslate", () => {
   it("translates alt prop on element with children", () => {
     render(
       <AutoTranslate>
+        {/* @ts-expect-error - testing non-standard prop on div */}
         <div alt="alt.key">
           <span>child</span>
         </div>

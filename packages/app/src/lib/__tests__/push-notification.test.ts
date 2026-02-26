@@ -49,17 +49,17 @@ describe("isPushSupported", () => {
       });
     }
     if (!hasPM) {
-      (window as Record<string, unknown>).PushManager = class {};
+      (window as unknown as Record<string, unknown>).PushManager = class {};
     }
     if (!hasNotif) {
-      (window as Record<string, unknown>).Notification = { permission: "default" };
+      (window as unknown as Record<string, unknown>).Notification = { permission: "default" };
     }
 
     expect(isPushSupported()).toBe(true);
 
     // Cleanup
-    if (!hasPM) delete (window as Record<string, unknown>).PushManager;
-    if (!hasNotif) delete (window as Record<string, unknown>).Notification;
+    if (!hasPM) delete (window as unknown as Record<string, unknown>).PushManager;
+    if (!hasNotif) delete (window as unknown as Record<string, unknown>).Notification;
   });
 });
 
@@ -82,7 +82,7 @@ describe("getPushPermission", () => {
     // Ensure all APIs present
     const hasSW = "serviceWorker" in navigator;
     const hasPM = "PushManager" in window;
-    const origNotif = (window as Record<string, unknown>).Notification;
+    const origNotif = (window as unknown as Record<string, unknown>).Notification;
 
     if (!hasSW) {
       Object.defineProperty(navigator, "serviceWorker", {
@@ -91,18 +91,18 @@ describe("getPushPermission", () => {
       });
     }
     if (!hasPM) {
-      (window as Record<string, unknown>).PushManager = class {};
+      (window as unknown as Record<string, unknown>).PushManager = class {};
     }
-    (window as Record<string, unknown>).Notification = { permission: "granted" };
+    (window as unknown as Record<string, unknown>).Notification = { permission: "granted" };
 
     expect(getPushPermission()).toBe("granted");
 
     // Cleanup
-    if (!hasPM) delete (window as Record<string, unknown>).PushManager;
+    if (!hasPM) delete (window as unknown as Record<string, unknown>).PushManager;
     if (origNotif) {
-      (window as Record<string, unknown>).Notification = origNotif;
+      (window as unknown as Record<string, unknown>).Notification = origNotif;
     } else {
-      delete (window as Record<string, unknown>).Notification;
+      delete (window as unknown as Record<string, unknown>).Notification;
     }
   });
 });
@@ -135,7 +135,7 @@ describe("subscribeToPush", () => {
     // after the isPushSupported() check passes.
     const hasSW = "serviceWorker" in navigator;
     const hasPM = "PushManager" in window;
-    const origNotif = (window as Record<string, unknown>).Notification;
+    const origNotif = (window as unknown as Record<string, unknown>).Notification;
 
     if (!hasSW) {
       Object.defineProperty(navigator, "serviceWorker", {
@@ -144,18 +144,18 @@ describe("subscribeToPush", () => {
       });
     }
     if (!hasPM) {
-      (window as Record<string, unknown>).PushManager = class {};
+      (window as unknown as Record<string, unknown>).PushManager = class {};
     }
     if (!origNotif) {
-      (window as Record<string, unknown>).Notification = { permission: "default" };
+      (window as unknown as Record<string, unknown>).Notification = { permission: "default" };
     }
 
     const result = await subscribeToPush("0xabc");
     expect(result).toBe(false);
 
     // Cleanup
-    if (!hasPM) delete (window as Record<string, unknown>).PushManager;
-    if (!origNotif) delete (window as Record<string, unknown>).Notification;
+    if (!hasPM) delete (window as unknown as Record<string, unknown>).PushManager;
+    if (!origNotif) delete (window as unknown as Record<string, unknown>).Notification;
   });
 
   it("returns true on successful subscription with VAPID key", async () => {
@@ -167,7 +167,7 @@ describe("subscribeToPush", () => {
 
     const hasSW = "serviceWorker" in navigator;
     const hasPM = "PushManager" in window;
-    const origNotif = (window as Record<string, unknown>).Notification;
+    const origNotif = (window as unknown as Record<string, unknown>).Notification;
 
     const mockSubscription = {
       toJSON: () => ({ endpoint: "https://push.example.com/sub/123" }),
@@ -188,9 +188,9 @@ describe("subscribeToPush", () => {
       writable: true,
     });
     if (!hasPM) {
-      (window as Record<string, unknown>).PushManager = class {};
+      (window as unknown as Record<string, unknown>).PushManager = class {};
     }
-    (window as Record<string, unknown>).Notification = {
+    (window as unknown as Record<string, unknown>).Notification = {
       permission: "granted",
       requestPermission: vi.fn().mockResolvedValue("granted"),
     };
@@ -208,11 +208,11 @@ describe("subscribeToPush", () => {
 
     // Cleanup
     delete process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-    if (!hasPM) delete (window as Record<string, unknown>).PushManager;
+    if (!hasPM) delete (window as unknown as Record<string, unknown>).PushManager;
     if (origNotif) {
-      (window as Record<string, unknown>).Notification = origNotif;
+      (window as unknown as Record<string, unknown>).Notification = origNotif;
     } else {
-      delete (window as Record<string, unknown>).Notification;
+      delete (window as unknown as Record<string, unknown>).Notification;
     }
     vi.unstubAllGlobals();
   });
@@ -224,7 +224,7 @@ describe("subscribeToPush", () => {
     const mod = await import("../push-notification");
 
     const hasPM = "PushManager" in window;
-    const origNotif = (window as Record<string, unknown>).Notification;
+    const origNotif = (window as unknown as Record<string, unknown>).Notification;
 
     Object.defineProperty(navigator, "serviceWorker", {
       value: {
@@ -236,9 +236,9 @@ describe("subscribeToPush", () => {
       writable: true,
     });
     if (!hasPM) {
-      (window as Record<string, unknown>).PushManager = class {};
+      (window as unknown as Record<string, unknown>).PushManager = class {};
     }
-    (window as Record<string, unknown>).Notification = {
+    (window as unknown as Record<string, unknown>).Notification = {
       permission: "denied",
       requestPermission: vi.fn().mockResolvedValue("denied"),
     };
@@ -248,11 +248,11 @@ describe("subscribeToPush", () => {
 
     // Cleanup
     delete process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-    if (!hasPM) delete (window as Record<string, unknown>).PushManager;
+    if (!hasPM) delete (window as unknown as Record<string, unknown>).PushManager;
     if (origNotif) {
-      (window as Record<string, unknown>).Notification = origNotif;
+      (window as unknown as Record<string, unknown>).Notification = origNotif;
     } else {
-      delete (window as Record<string, unknown>).Notification;
+      delete (window as unknown as Record<string, unknown>).Notification;
     }
   });
 
@@ -263,7 +263,7 @@ describe("subscribeToPush", () => {
     const mod = await import("../push-notification");
 
     const hasPM = "PushManager" in window;
-    const origNotif = (window as Record<string, unknown>).Notification;
+    const origNotif = (window as unknown as Record<string, unknown>).Notification;
 
     Object.defineProperty(navigator, "serviceWorker", {
       value: {
@@ -278,9 +278,9 @@ describe("subscribeToPush", () => {
       writable: true,
     });
     if (!hasPM) {
-      (window as Record<string, unknown>).PushManager = class {};
+      (window as unknown as Record<string, unknown>).PushManager = class {};
     }
-    (window as Record<string, unknown>).Notification = {
+    (window as unknown as Record<string, unknown>).Notification = {
       permission: "granted",
       requestPermission: vi.fn().mockResolvedValue("granted"),
     };
@@ -292,11 +292,11 @@ describe("subscribeToPush", () => {
 
     // Cleanup
     delete process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-    if (!hasPM) delete (window as Record<string, unknown>).PushManager;
+    if (!hasPM) delete (window as unknown as Record<string, unknown>).PushManager;
     if (origNotif) {
-      (window as Record<string, unknown>).Notification = origNotif;
+      (window as unknown as Record<string, unknown>).Notification = origNotif;
     } else {
-      delete (window as Record<string, unknown>).Notification;
+      delete (window as unknown as Record<string, unknown>).Notification;
     }
     consoleSpy.mockRestore();
   });
@@ -308,7 +308,7 @@ describe("subscribeToPush", () => {
     const mod = await import("../push-notification");
 
     const hasPM = "PushManager" in window;
-    const origNotif = (window as Record<string, unknown>).Notification;
+    const origNotif = (window as unknown as Record<string, unknown>).Notification;
 
     const existingSub = {
       toJSON: () => ({ endpoint: "https://push.example.com/existing" }),
@@ -329,9 +329,9 @@ describe("subscribeToPush", () => {
       writable: true,
     });
     if (!hasPM) {
-      (window as Record<string, unknown>).PushManager = class {};
+      (window as unknown as Record<string, unknown>).PushManager = class {};
     }
-    (window as Record<string, unknown>).Notification = {
+    (window as unknown as Record<string, unknown>).Notification = {
       permission: "granted",
       requestPermission: vi.fn().mockResolvedValue("granted"),
     };
@@ -345,11 +345,11 @@ describe("subscribeToPush", () => {
 
     // Cleanup
     delete process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-    if (!hasPM) delete (window as Record<string, unknown>).PushManager;
+    if (!hasPM) delete (window as unknown as Record<string, unknown>).PushManager;
     if (origNotif) {
-      (window as Record<string, unknown>).Notification = origNotif;
+      (window as unknown as Record<string, unknown>).Notification = origNotif;
     } else {
-      delete (window as Record<string, unknown>).Notification;
+      delete (window as unknown as Record<string, unknown>).Notification;
     }
     vi.unstubAllGlobals();
   });

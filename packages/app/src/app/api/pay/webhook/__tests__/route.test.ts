@@ -9,6 +9,8 @@ const {
   mockConstructEvent,
   mockEnv,
   mockPrisma,
+  mockAfter,
+  mockPublishOrderEvent,
 } = vi.hoisted(() => {
   const prisma = {
     $transaction: vi.fn(async (fn: (tx: unknown) => Promise<unknown>) => fn(prisma)),
@@ -26,10 +28,21 @@ const {
       LEDGER_ADMIN_TOKEN: undefined as string | undefined,
     },
     mockPrisma: prisma,
+    mockAfter: vi.fn(),
+    mockPublishOrderEvent: vi.fn(),
   };
 });
 
 vi.mock("server-only", () => ({}));
+
+vi.mock("next/server", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("next/server")>();
+  return { ...actual, after: mockAfter };
+});
+
+vi.mock("@/lib/realtime", () => ({
+  publishOrderEvent: mockPublishOrderEvent,
+}));
 
 vi.mock("@/lib/db", () => ({
   prisma: mockPrisma,
@@ -97,15 +110,14 @@ beforeEach(() => {
 // ─── POST /api/pay/webhook ─────────────────────────────
 describe("POST /api/pay/webhook", () => {
   it("returns 503 in production when webhook secret is missing", async () => {
-    const origEnv = process.env.NODE_ENV;
-    process.env.NODE_ENV = "production";
+    vi.stubEnv("NODE_ENV", "production");
     mockEnv.STRIPE_WEBHOOK_SECRET = undefined;
     const req = makeWebhookRequest({ type: "test" });
     const res = await POST(req);
     expect(res.status).toBe(503);
     const json = await res.json();
     expect(json.error).toBe("webhook_secret_required");
-    process.env.NODE_ENV = origEnv;
+    vi.unstubAllEnvs();
   });
 
   it("verifies signature when webhook secret is set", async () => {

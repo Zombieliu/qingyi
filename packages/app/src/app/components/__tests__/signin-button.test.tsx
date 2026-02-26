@@ -41,22 +41,23 @@ vi.mock("@/lib/auth/user-auth-client", () => ({
   ensureUserSession: (...args: unknown[]) => mockEnsureUserSession(...args),
 }));
 
-const mockLoadStoredWallet = vi.fn(() => null);
-const mockLoadWalletList = vi.fn(() => [] as unknown[]);
-const mockSaveStoredWallet = vi.fn((w: unknown) => w);
+const mockLoadStoredWallet = vi.fn<() => StoredWallet | null>(() => null);
+const mockLoadWalletList = vi.fn<() => StoredWallet[]>(() => []);
+const mockSaveStoredWallet = vi.fn<(w: StoredWallet) => StoredWallet | null>((w) => w);
 const mockRemoveWalletFromList = vi.fn();
 
 vi.mock("../passkey-wallet", () => ({
   PASSKEY_STORAGE_KEY: "qy_passkey_wallet_v3",
   PASSKEY_WALLETS_KEY: "qy_passkey_wallets_v1",
   getPasskeyProviderOptions: vi.fn(() => ({ rp: {} })),
-  loadStoredWallet: (...args: unknown[]) => mockLoadStoredWallet(...args),
-  loadWalletList: (...args: unknown[]) => mockLoadWalletList(...args),
-  removeWalletFromList: (...args: unknown[]) => mockRemoveWalletFromList(...args),
-  saveStoredWallet: (...args: unknown[]) => mockSaveStoredWallet(...args),
+  loadStoredWallet: (...args: []) => mockLoadStoredWallet(...args),
+  loadWalletList: (...args: []) => mockLoadWalletList(...args),
+  removeWalletFromList: (...args: [address: string]) => mockRemoveWalletFromList(...args),
+  saveStoredWallet: (...args: [w: StoredWallet]) => mockSaveStoredWallet(...args),
   shortAddress: vi.fn((a: string) => `${a.slice(0, 6)}...${a.slice(-4)}`),
 }));
 
+import type { StoredWallet } from "../passkey-wallet";
 import PasskeyLoginButton from "../passkey-login-button";
 
 describe("PasskeyLoginButton", () => {
@@ -65,7 +66,7 @@ describe("PasskeyLoginButton", () => {
     localStorage.clear();
     mockLoadStoredWallet.mockReturnValue(null);
     mockLoadWalletList.mockReturnValue([]);
-    mockSaveStoredWallet.mockImplementation((w: unknown) => w);
+    mockSaveStoredWallet.mockImplementation((w: StoredWallet) => w);
     mockEnsureUserSession.mockResolvedValue(undefined);
   });
 

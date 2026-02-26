@@ -245,7 +245,7 @@ export function EnrouteView({
       </div>
       {canConfirmCompletion && (
         <div className="ride-tip" style={{ marginTop: 0 }}>
-          陪练已结束服务，请确认完成后进入结算/争议期
+          陪练已结束服务，系统正在处理中。如长时间未更新，请手动确认完成。
           {chainStatusHint && <div className="mt-1 text-xs text-gray-500">{chainStatusHint}</div>}
         </div>
       )}
@@ -427,8 +427,43 @@ export function PendingSettlementView({
 
   const now = Date.now();
   const inDisputeWindow = disputeDeadline ? now <= disputeDeadline : false;
-  const canDispute = Boolean(canSettle && inDisputeWindow);
-  const canFinalize = Boolean(canSettle);
+  const isDisputing = effectiveStatus === 4;
+  const canDispute = Boolean(canSettle && inDisputeWindow && !isDisputing);
+  const canFinalize = Boolean(canSettle && !isDisputing);
+
+  if (isDisputing) {
+    return (
+      <div className="ride-shell">
+        <div className="ride-map-large">
+          <StateBlock
+            tone="warning"
+            size="compact"
+            align="center"
+            title="争议处理中"
+            description="您的申诉已提交，平台正在审核中，请耐心等待处理结果"
+          />
+        </div>
+        <div className="ride-driver-card dl-card">
+          <CompanionCard
+            currentOrder={currentOrder}
+            companionProfile={companionProfile}
+            statusLabel="争议中"
+          />
+          <div className="ml-auto text-right">
+            <div className="text-amber-600 font-semibold text-sm">申诉进行中</div>
+            <div className="text-xs text-gray-500">等待平台处理</div>
+          </div>
+          <div className="ride-driver-actions">
+            <a href="/me/support" className="dl-tab-btn">
+              查看工单
+            </a>
+          </div>
+          <div className="text-xs text-gray-500 mt-2">订单：{currentOrder.item}</div>
+          {toast && <div className="mt-2 text-xs text-emerald-600">{toast}</div>}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="ride-shell">
@@ -450,7 +485,11 @@ export function PendingSettlementView({
         <div className="ml-auto text-right">
           <div className="text-emerald-600 font-semibold text-sm">{t("ui.order-views.041")}</div>
           <div className="text-xs text-gray-500">
-            {inDisputeWindow ? t("tabs.schedule.order_views.i105") : t("schedule.012")}
+            {!disputeDeadline
+              ? "争议截止时间同步中…"
+              : inDisputeWindow
+                ? t("tabs.schedule.order_views.i105")
+                : t("schedule.012")}
           </div>
         </div>
         <div className="ride-driver-actions">

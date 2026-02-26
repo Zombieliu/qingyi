@@ -134,6 +134,7 @@ describe("POST /api/orders/[orderId]/chain-sync", () => {
   it("returns 403 when user is not order participant", async () => {
     const thirdAddr = "0x" + "c".repeat(64);
     mocks.requireAdmin.mockResolvedValue({ ok: false, response: { status: 401 } });
+    mocks.requireUserAuth.mockResolvedValue({ ok: true });
     mocks.findChainOrder.mockResolvedValue(chainOrder);
     mocks.getOrderById.mockResolvedValue(null);
     mocks.parseBodyRaw.mockResolvedValue({

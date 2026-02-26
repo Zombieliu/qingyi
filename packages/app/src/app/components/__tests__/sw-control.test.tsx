@@ -55,7 +55,7 @@ describe("SwControl", () => {
     });
     // Need to also remove the "serviceWorker" property check
     const desc = Object.getOwnPropertyDescriptor(navigator, "serviceWorker");
-    const nav = navigator as Navigator & { serviceWorker?: unknown };
+    const nav = navigator as unknown as { serviceWorker?: unknown };
     delete nav.serviceWorker;
 
     vi.resetModules();
@@ -114,7 +114,7 @@ describe("SwControl", () => {
     });
 
     // Now simulate the waiting worker being consumed (checkUpdate with no waiting)
-    reg.waiting = null;
+    reg.waiting = null as unknown as typeof reg.waiting;
     const checkBtn = screen.getByText("comp.sw_control.009");
     await act(async () => {
       fireEvent.click(checkBtn);

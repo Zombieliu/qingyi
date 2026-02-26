@@ -8,16 +8,23 @@ vi.mock("@/lib/chain/qy-chain-lite", () => ({
   getCurrentAddress: () => mockGetCurrentAddress(),
 }));
 
-const mockReadCache = vi.fn(() => null);
+const mockReadCache = vi.fn<
+  (
+    key: string,
+    maxAgeMs: number,
+    allowStale?: boolean
+  ) => { value: unknown; updatedAt: number; fresh: boolean } | null
+>(() => null);
 const mockWriteCache = vi.fn();
 vi.mock("@/lib/shared/client-cache", () => ({
-  readCache: (...args: unknown[]) => mockReadCache(...args),
-  writeCache: (...args: unknown[]) => mockWriteCache(...args),
+  readCache: (...args: [string, number, boolean?]) => mockReadCache(...args),
+  writeCache: (...args: [string, unknown]) => mockWriteCache(...args),
 }));
 
 const mockFetchWithUserAuth = vi.fn();
 vi.mock("@/lib/auth/user-auth-client", () => ({
-  fetchWithUserAuth: (...args: unknown[]) => mockFetchWithUserAuth(...args),
+  fetchWithUserAuth: (...args: [string, RequestInit, string, Record<string, unknown>?]) =>
+    mockFetchWithUserAuth(...args),
 }));
 
 // Mock React hooks for useBalance/useMantouBalance
@@ -83,7 +90,7 @@ describe("balanceRefreshAtom", () => {
 
   it("uses cached value when fresh", async () => {
     mockGetCurrentAddress.mockReturnValue("0xabc");
-    mockReadCache.mockReturnValue({ value: "200", fresh: true });
+    mockReadCache.mockReturnValue({ value: "200", updatedAt: Date.now(), fresh: true });
     const store = createStore();
     const result = await store.set(balanceRefreshAtom, false);
     expect(result).toBe("200");
@@ -101,7 +108,7 @@ describe("balanceRefreshAtom", () => {
 
   it("returns cached value on fetch error", async () => {
     mockGetCurrentAddress.mockReturnValue("0xabc");
-    mockReadCache.mockReturnValue({ value: "300", fresh: false });
+    mockReadCache.mockReturnValue({ value: "300", updatedAt: Date.now(), fresh: false });
     global.fetch = vi.fn().mockRejectedValue(new Error("network error"));
     const store = createStore();
     const result = await store.set(balanceRefreshAtom, true);
@@ -119,7 +126,7 @@ describe("balanceRefreshAtom", () => {
 
   it("applies stale cache value to atom even when not fresh", async () => {
     mockGetCurrentAddress.mockReturnValue("0xabc");
-    mockReadCache.mockReturnValue({ value: "150", fresh: false });
+    mockReadCache.mockReturnValue({ value: "150", updatedAt: Date.now(), fresh: false });
     global.fetch = vi.fn().mockResolvedValue({
       json: () => Promise.resolve({ balance: "200" }),
     });
@@ -140,7 +147,7 @@ describe("balanceRefreshAtom", () => {
     await store.set(balanceRefreshAtom, true);
 
     // Second call immediately - should be tooSoon
-    mockReadCache.mockReturnValue({ value: "100", fresh: false });
+    mockReadCache.mockReturnValue({ value: "100", updatedAt: Date.now(), fresh: false });
     const result = await store.set(balanceRefreshAtom, false);
     expect(result).toBe("100");
   });
@@ -202,7 +209,11 @@ describe("mantouRefreshAtom", () => {
 
   it("uses cached value when fresh", async () => {
     mockGetCurrentAddress.mockReturnValue("0xabc");
-    mockReadCache.mockReturnValue({ value: { balance: "50", frozen: "10" }, fresh: true });
+    mockReadCache.mockReturnValue({
+      value: { balance: "50", frozen: "10" },
+      updatedAt: Date.now(),
+      fresh: true,
+    });
     const store = createStore();
     const result = await store.set(mantouRefreshAtom, false);
     expect(result).toEqual({ balance: "50", frozen: "10" });
@@ -220,7 +231,11 @@ describe("mantouRefreshAtom", () => {
 
   it("returns cached value on fetch error", async () => {
     mockGetCurrentAddress.mockReturnValue("0xabc");
-    mockReadCache.mockReturnValue({ value: { balance: "80", frozen: "5" }, fresh: false });
+    mockReadCache.mockReturnValue({
+      value: { balance: "80", frozen: "5" },
+      updatedAt: Date.now(),
+      fresh: false,
+    });
     mockFetchWithUserAuth.mockRejectedValue(new Error("network error"));
     const store = createStore();
     const result = await store.set(mantouRefreshAtom, true);
@@ -238,7 +253,11 @@ describe("mantouRefreshAtom", () => {
 
   it("applies stale cache value to atom even when not fresh", async () => {
     mockGetCurrentAddress.mockReturnValue("0xabc");
-    mockReadCache.mockReturnValue({ value: { balance: "30", frozen: "5" }, fresh: false });
+    mockReadCache.mockReturnValue({
+      value: { balance: "30", frozen: "5" },
+      updatedAt: Date.now(),
+      fresh: false,
+    });
     mockFetchWithUserAuth.mockResolvedValue({
       json: () => Promise.resolve({ balance: "60", frozen: "15" }),
     });
@@ -260,7 +279,11 @@ describe("mantouRefreshAtom", () => {
     await store.set(mantouRefreshAtom, true);
 
     // Second call immediately - should be tooSoon
-    mockReadCache.mockReturnValue({ value: { balance: "100", frozen: "20" }, fresh: false });
+    mockReadCache.mockReturnValue({
+      value: { balance: "100", frozen: "20" },
+      updatedAt: Date.now(),
+      fresh: false,
+    });
     const result = await store.set(mantouRefreshAtom, false);
     expect(result).toEqual({ balance: "100", frozen: "20" });
   });

@@ -58,8 +58,10 @@ type MantouTxProxy = {
     findUnique: typeof mockWalletFindUnique;
     upsert: typeof mockWalletUpsert;
   };
-  mantouWithdrawRequest?: {
+  mantouWithdrawRequest: {
     create: typeof mockWithdrawCreate;
+    findUnique: typeof mockWithdrawFindUnique;
+    update: typeof mockWithdrawUpdate;
   };
 };
 
@@ -142,13 +144,6 @@ describe("getMantouWallet", () => {
 describe("creditMantou", () => {
   it("credits mantou and returns wallet + transaction", async () => {
     mockTransaction.mockImplementation(async (fn: TxHandler) => {
-      const tx = {
-        mantouTransaction: { findFirst: mockTxFindFirst },
-        mantouWallet: { findUnique: mockWalletFindUnique, upsert: mockWalletUpsert },
-        mantouTransaction2: { create: mockTxCreate },
-      };
-      // The function uses tx.mantouWallet.upsert and tx.mantouTransaction.create
-      // We need to provide a proper tx mock
       const txProxy = {
         mantouTransaction: {
           findFirst: mockTxFindFirst,
@@ -157,6 +152,11 @@ describe("creditMantou", () => {
         mantouWallet: {
           findUnique: mockWalletFindUnique,
           upsert: mockWalletUpsert,
+        },
+        mantouWithdrawRequest: {
+          create: mockWithdrawCreate,
+          findUnique: mockWithdrawFindUnique,
+          update: mockWithdrawUpdate,
         },
       };
       return fn(txProxy);
@@ -181,6 +181,11 @@ describe("creditMantou", () => {
         mantouWallet: {
           findUnique: mockWalletFindUnique,
           upsert: mockWalletUpsert,
+        },
+        mantouWithdrawRequest: {
+          create: mockWithdrawCreate,
+          findUnique: mockWithdrawFindUnique,
+          update: mockWithdrawUpdate,
         },
       };
       return fn(txProxy);
@@ -215,6 +220,11 @@ describe("creditMantou", () => {
       const txProxy = {
         mantouTransaction: { findFirst: mockTxFindFirst, create: mockTxCreate },
         mantouWallet: { findUnique: mockWalletFindUnique, upsert: mockWalletUpsert },
+        mantouWithdrawRequest: {
+          create: mockWithdrawCreate,
+          findUnique: mockWithdrawFindUnique,
+          update: mockWithdrawUpdate,
+        },
       };
       return fn(txProxy);
     });
@@ -234,8 +244,12 @@ describe("requestMantouWithdraw", () => {
     mockTransaction.mockImplementation(async (fn: TxHandler) => {
       const txProxy = {
         mantouWallet: { findUnique: mockWalletFindUnique, upsert: mockWalletUpsert },
-        mantouWithdrawRequest: { create: mockWithdrawCreate },
-        mantouTransaction: { create: mockTxCreate },
+        mantouWithdrawRequest: {
+          create: mockWithdrawCreate,
+          findUnique: mockWithdrawFindUnique,
+          update: mockWithdrawUpdate,
+        },
+        mantouTransaction: { findFirst: mockTxFindFirst, create: mockTxCreate },
       };
       return fn(txProxy);
     });
@@ -254,8 +268,12 @@ describe("requestMantouWithdraw", () => {
     mockTransaction.mockImplementation(async (fn: TxHandler) => {
       const txProxy = {
         mantouWallet: { findUnique: mockWalletFindUnique, upsert: mockWalletUpsert },
-        mantouWithdrawRequest: { create: mockWithdrawCreate },
-        mantouTransaction: { create: mockTxCreate },
+        mantouWithdrawRequest: {
+          create: mockWithdrawCreate,
+          findUnique: mockWithdrawFindUnique,
+          update: mockWithdrawUpdate,
+        },
+        mantouTransaction: { findFirst: mockTxFindFirst, create: mockTxCreate },
       };
       return fn(txProxy);
     });
@@ -370,9 +388,10 @@ describe("updateMantouWithdrawStatus", () => {
         mantouWithdrawRequest: {
           findUnique: mockWithdrawFindUnique,
           update: mockWithdrawUpdate,
+          create: mockWithdrawCreate,
         },
         mantouWallet: { findUnique: mockWalletFindUnique, upsert: mockWalletUpsert },
-        mantouTransaction: { create: mockTxCreate },
+        mantouTransaction: { findFirst: mockTxFindFirst, create: mockTxCreate },
       };
       return fn(txProxy);
     });
@@ -388,9 +407,10 @@ describe("updateMantouWithdrawStatus", () => {
         mantouWithdrawRequest: {
           findUnique: mockWithdrawFindUnique,
           update: mockWithdrawUpdate,
+          create: mockWithdrawCreate,
         },
         mantouWallet: { findUnique: mockWalletFindUnique, upsert: mockWalletUpsert },
-        mantouTransaction: { create: mockTxCreate },
+        mantouTransaction: { findFirst: mockTxFindFirst, create: mockTxCreate },
       };
       return fn(txProxy);
     });
@@ -407,9 +427,10 @@ describe("updateMantouWithdrawStatus", () => {
         mantouWithdrawRequest: {
           findUnique: mockWithdrawFindUnique,
           update: mockWithdrawUpdate,
+          create: mockWithdrawCreate,
         },
         mantouWallet: { findUnique: mockWalletFindUnique, upsert: mockWalletUpsert },
-        mantouTransaction: { create: mockTxCreate },
+        mantouTransaction: { findFirst: mockTxFindFirst, create: mockTxCreate },
       };
       return fn(txProxy);
     });
@@ -431,9 +452,10 @@ describe("updateMantouWithdrawStatus", () => {
         mantouWithdrawRequest: {
           findUnique: mockWithdrawFindUnique,
           update: mockWithdrawUpdate,
+          create: mockWithdrawCreate,
         },
         mantouWallet: { findUnique: mockWalletFindUnique, upsert: mockWalletUpsert },
-        mantouTransaction: { create: mockTxCreate },
+        mantouTransaction: { findFirst: mockTxFindFirst, create: mockTxCreate },
       };
       return fn(txProxy);
     });
@@ -454,9 +476,10 @@ describe("updateMantouWithdrawStatus", () => {
         mantouWithdrawRequest: {
           findUnique: mockWithdrawFindUnique,
           update: mockWithdrawUpdate,
+          create: mockWithdrawCreate,
         },
         mantouWallet: { findUnique: mockWalletFindUnique, upsert: mockWalletUpsert },
-        mantouTransaction: { create: mockTxCreate },
+        mantouTransaction: { findFirst: mockTxFindFirst, create: mockTxCreate },
       };
       return fn(txProxy);
     });
@@ -474,9 +497,10 @@ describe("updateMantouWithdrawStatus", () => {
         mantouWithdrawRequest: {
           findUnique: mockWithdrawFindUnique,
           update: mockWithdrawUpdate,
+          create: mockWithdrawCreate,
         },
         mantouWallet: { findUnique: mockWalletFindUnique, upsert: mockWalletUpsert },
-        mantouTransaction: { create: mockTxCreate },
+        mantouTransaction: { findFirst: mockTxFindFirst, create: mockTxCreate },
       };
       return fn(txProxy);
     });
@@ -498,9 +522,10 @@ describe("updateMantouWithdrawStatus", () => {
         mantouWithdrawRequest: {
           findUnique: mockWithdrawFindUnique,
           update: mockWithdrawUpdate,
+          create: mockWithdrawCreate,
         },
         mantouWallet: { findUnique: mockWalletFindUnique, upsert: mockWalletUpsert },
-        mantouTransaction: { create: mockTxCreate },
+        mantouTransaction: { findFirst: mockTxFindFirst, create: mockTxCreate },
       };
       return fn(txProxy);
     });
@@ -520,9 +545,10 @@ describe("updateMantouWithdrawStatus", () => {
         mantouWithdrawRequest: {
           findUnique: mockWithdrawFindUnique,
           update: mockWithdrawUpdate,
+          create: mockWithdrawCreate,
         },
         mantouWallet: { findUnique: mockWalletFindUnique, upsert: mockWalletUpsert },
-        mantouTransaction: { create: mockTxCreate },
+        mantouTransaction: { findFirst: mockTxFindFirst, create: mockTxCreate },
       };
       return fn(txProxy);
     });

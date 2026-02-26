@@ -6,15 +6,10 @@ import {
   stripeCircuit,
   kookCircuit,
   chainRpcCircuit,
+  type CircuitBreakerOptions,
 } from "../../shared/circuit-breaker";
 
-function createBreaker(
-  overrides?: Partial<Parameters<typeof CircuitBreaker.prototype.reset>[0]> & {
-    failureThreshold?: number;
-    resetTimeoutMs?: number;
-    onStateChange?: (from: CircuitState, to: CircuitState, name: string) => void;
-  }
-) {
+function createBreaker(overrides?: Partial<CircuitBreakerOptions>) {
   return new CircuitBreaker({
     name: "test",
     failureThreshold: 3,
@@ -232,7 +227,7 @@ describe("CircuitBreaker", () => {
     const cb = createBreaker({
       failureThreshold: 2,
       resetTimeoutMs: 500,
-      onStateChange: (_from, to) => states.push(to),
+      onStateChange: (_from: CircuitState, to: CircuitState) => states.push(to),
     });
 
     // CLOSED: 2 failures -> OPEN

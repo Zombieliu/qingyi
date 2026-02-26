@@ -188,7 +188,7 @@ describe("listPublicAnnouncements", () => {
           createdAt: now.getTime(),
         },
       ],
-      updatedAt: Date.now(),
+      expiresAt: Date.now() + 60000,
     });
 
     const result = await listPublicAnnouncements();

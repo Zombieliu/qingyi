@@ -151,7 +151,10 @@ describe("logChainOrderOperation", () => {
   it("wraps a function with performance tracking", async () => {
     vi.spyOn(console, "log").mockImplementation(() => {});
     const fn = async (orderId: string) => `done-${orderId}`;
-    const wrapped = logChainOrderOperation("wrapped-op", fn);
+    const wrapped = logChainOrderOperation(
+      "wrapped-op",
+      fn as (...args: unknown[]) => Promise<unknown>
+    );
     const result = await wrapped("123");
     expect(result).toBe("done-123");
     vi.restoreAllMocks();

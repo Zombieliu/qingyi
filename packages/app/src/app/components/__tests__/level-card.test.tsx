@@ -315,7 +315,11 @@ describe("LevelCard", () => {
 
   it("uses cache when available", async () => {
     const { readCache } = await import("@/lib/shared/client-cache");
-    vi.mocked(readCache).mockReturnValue({ value: mockLevelData, ts: Date.now() });
+    vi.mocked(readCache).mockReturnValue({
+      value: mockLevelData,
+      updatedAt: Date.now(),
+      fresh: true,
+    });
 
     render(<LevelCard />);
     // Should immediately show cached data

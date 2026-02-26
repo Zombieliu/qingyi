@@ -34,7 +34,6 @@ beforeEach(() => {
 describe("readCache", () => {
   it("returns null when window is undefined", () => {
     const origWindow = globalThis.window;
-    // @ts-expect-error - simulating server
     delete (globalThis as Record<string, unknown>).window;
 
     const result = readCache("key", 60_000);
@@ -101,7 +100,6 @@ describe("readCache", () => {
 describe("writeCache", () => {
   it("does nothing on server (window undefined)", () => {
     const origWindow = globalThis.window;
-    // @ts-expect-error - simulating server
     delete (globalThis as Record<string, unknown>).window;
 
     writeCache("key", "value");

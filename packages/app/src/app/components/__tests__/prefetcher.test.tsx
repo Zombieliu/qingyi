@@ -29,9 +29,8 @@ describe("RoutePrefetcher", () => {
       return 1;
     });
     const mockCancelIdleCallback = vi.fn();
-    // @ts-expect-error - mock
+    // @ts-expect-error - mock requestIdleCallback
     window.requestIdleCallback = mockRequestIdleCallback;
-    // @ts-expect-error - mock
     window.cancelIdleCallback = mockCancelIdleCallback;
 
     render(<RoutePrefetcher />);
@@ -39,7 +38,7 @@ describe("RoutePrefetcher", () => {
     expect(mockRequestIdleCallback).toHaveBeenCalled();
 
     // Execute the idle callback
-    idleCallback?.();
+    if (idleCallback) (idleCallback as () => void)();
 
     expect(mockPrefetch).toHaveBeenCalledWith("/");
     expect(mockPrefetch).toHaveBeenCalledWith("/me");
@@ -50,7 +49,7 @@ describe("RoutePrefetcher", () => {
 
   it("falls back to setTimeout when requestIdleCallback is not available", () => {
     vi.useFakeTimers();
-    // @ts-expect-error - remove mock
+    // @ts-expect-error - remove requestIdleCallback mock
     delete window.requestIdleCallback;
 
     render(<RoutePrefetcher />);

@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "reac
 import type { ElementType } from "react";
 import {
   Activity,
+  AlertTriangle,
   LayoutGrid,
   ClipboardList,
   Users,
@@ -109,6 +110,7 @@ const navItems: NavItem[] = [
     minRole: "viewer",
   },
   { href: "/admin/orders", label: t("ui.admin-shell.666"), icon: ClipboardList, minRole: "viewer" },
+  { href: "/admin/disputes", label: "争议管理", icon: AlertTriangle, minRole: "ops" },
   { href: "/admin/support", label: t("ui.admin-shell.572"), icon: Headset, minRole: "ops" },
   {
     href: "/admin/coupons",
@@ -196,6 +198,7 @@ const navSections: Array<{ label: string; items: string[] }> = [
     label: t("ui.admin-shell.692"),
     items: [
       "/admin/orders",
+      "/admin/disputes",
       "/admin/support",
       "/admin/coupons",
       "/admin/redeem",
@@ -227,6 +230,7 @@ const navLookup = new Map(navItems.map((item) => [item.href, item]));
 const subtitles: Record<string, string> = {
   "/admin": t("ui.admin-shell.541"),
   "/admin/orders": t("ui.admin-shell.667"),
+  "/admin/disputes": "处理用户争议与申诉",
   "/admin/support": t("ui.admin-shell.573"),
   "/admin/coupons": t("ui.admin-shell.516"),
   "/admin/vip": t("ui.admin-shell.518"),

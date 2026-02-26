@@ -234,7 +234,7 @@ describe("createRedeemCodes", () => {
     mockCodeFindMany.mockResolvedValue([
       {
         ...baseCodeRow,
-        rewardType: "credit",
+        rewardType: "diamond",
         rewardPayload: { amount: 50 },
         startsAt,
         expiresAt,
@@ -249,14 +249,14 @@ describe("createRedeemCodes", () => {
       status: "active",
       maxRedeem: 100,
       maxRedeemPerUser: 1,
-      rewardType: "credit",
+      rewardType: "diamond",
       rewardPayload: { amount: 50 },
       startsAt,
       expiresAt,
       note: "test note",
     });
 
-    expect(result[0].rewardType).toBe("credit");
+    expect(result[0].rewardType).toBe("diamond");
     expect(result[0].rewardPayload).toEqual({ amount: 50 });
     expect(result[0].startsAt).toBe(startsAt.getTime());
     expect(result[0].expiresAt).toBe(expiresAt.getTime());

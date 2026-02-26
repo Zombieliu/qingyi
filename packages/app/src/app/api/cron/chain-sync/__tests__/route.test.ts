@@ -96,7 +96,7 @@ describe("GET /api/cron/chain-sync", () => {
     const res = await GET(req);
     expect(res.status).toBe(500);
     const body = await res.json();
-    expect(body.error).toBe("RPC timeout");
+    expect(body.error).toBe("sync failed");
   });
 
   it("tracks cron failure on error", async () => {

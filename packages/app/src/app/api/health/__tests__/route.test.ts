@@ -53,7 +53,7 @@ describe("GET /api/health", () => {
   it("returns healthy status when database is reachable", async () => {
     mocks.queryRaw.mockResolvedValue([{ "?column?": 1 }]);
 
-    const res = await GET();
+    const res = await GET(new Request("http://localhost/api/health"));
     const body = await res.json();
 
     expect(res.status).toBe(200);
@@ -67,7 +67,7 @@ describe("GET /api/health", () => {
   it("returns unhealthy status when database is unreachable", async () => {
     mocks.queryRaw.mockRejectedValue(new Error("Connection refused"));
 
-    const res = await GET();
+    const res = await GET(new Request("http://localhost/api/health"));
     const body = await res.json();
 
     expect(res.status).toBe(503);
@@ -80,7 +80,7 @@ describe("GET /api/health", () => {
     mocks.queryRaw.mockResolvedValue([{ "?column?": 1 }]);
     mocks.redisPing.mockRejectedValue(new Error("Redis timeout"));
 
-    const res = await GET();
+    const res = await GET(new Request("http://localhost/api/health"));
     const body = await res.json();
 
     expect(res.status).toBe(200);
@@ -94,7 +94,7 @@ describe("GET /api/health", () => {
     mocks.queryRaw.mockResolvedValue([{ "?column?": 1 }]);
     mocks.redisPing.mockResolvedValue("PONG");
 
-    const res = await GET();
+    const res = await GET(new Request("http://localhost/api/health"));
     const body = await res.json();
 
     expect(res.status).toBe(200);
@@ -105,7 +105,7 @@ describe("GET /api/health", () => {
   it("includes version and environment info", async () => {
     mocks.queryRaw.mockResolvedValue([{ "?column?": 1 }]);
 
-    const res = await GET();
+    const res = await GET(new Request("http://localhost/api/health"));
     const body = await res.json();
 
     expect(body.version).toBeDefined();

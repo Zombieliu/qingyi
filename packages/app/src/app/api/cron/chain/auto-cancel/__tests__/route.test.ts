@@ -96,7 +96,7 @@ describe("GET /api/cron/chain/auto-cancel", () => {
     const res = await GET(makeReq());
     expect(res.status).toBe(500);
     const body = await res.json();
-    expect(body.error).toBe("chain error");
+    expect(body.error).toBe("auto cancel failed");
   });
 
   it("returns generic error message when error has no message", async () => {

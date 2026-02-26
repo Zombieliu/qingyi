@@ -194,8 +194,7 @@ describe("POST /api/auth/mini", () => {
   });
 
   it("requires signature in production when no bearer session", async () => {
-    const origEnv = process.env.NODE_ENV;
-    process.env.NODE_ENV = "production";
+    vi.stubEnv("NODE_ENV", "production");
     mocks.parseBodyRaw.mockResolvedValue({
       success: true,
       data: { platform: "wechat", code: "test-code", address: VALID_ADDRESS },
@@ -216,12 +215,11 @@ describe("POST /api/auth/mini", () => {
         intent: expect.stringContaining("mini:bind:wechat:mock_wechat_openid_"),
       })
     );
-    process.env.NODE_ENV = origEnv;
+    vi.unstubAllEnvs();
   });
 
   it("passes signature check in production and binds account", async () => {
-    const origEnv = process.env.NODE_ENV;
-    process.env.NODE_ENV = "production";
+    vi.stubEnv("NODE_ENV", "production");
     mocks.parseBodyRaw.mockResolvedValue({
       success: true,
       data: { platform: "wechat", code: "test-code", address: VALID_ADDRESS },
@@ -244,7 +242,7 @@ describe("POST /api/auth/mini", () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.ok).toBe(true);
-    process.env.NODE_ENV = origEnv;
+    vi.unstubAllEnvs();
   });
 
   it("uses bearer session address when no address provided", async () => {

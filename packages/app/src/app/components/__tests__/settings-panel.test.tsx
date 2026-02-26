@@ -7,7 +7,7 @@ const { mockPush, mockSetLocale, mockApplySeniorMode, mockGetCookie, mockSetCook
     mockPush: vi.fn(),
     mockSetLocale: vi.fn(),
     mockApplySeniorMode: vi.fn(),
-    mockGetCookie: vi.fn(() => undefined as string | undefined),
+    mockGetCookie: vi.fn((_name: string) => undefined as string | undefined),
     mockSetCookie: vi.fn(),
     mockLocale: { value: "en" as string },
   }));
@@ -31,8 +31,8 @@ vi.mock("@/app/components/senior-mode", () => ({
 
 vi.mock("@/lib/shared/cookie-utils", () => ({
   SENIOR_MODE_COOKIE_KEY: "qy_senior_mode",
-  getCookie: (...args: unknown[]) => mockGetCookie(...args),
-  setCookie: (...args: unknown[]) => mockSetCookie(...args),
+  getCookie: (...args: [string]) => mockGetCookie(...args),
+  setCookie: (...args: [string, string, number?]) => mockSetCookie(...args),
 }));
 
 import SettingsPanel from "../settings-panel";

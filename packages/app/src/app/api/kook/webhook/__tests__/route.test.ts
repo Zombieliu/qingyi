@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterAll } from "vitest";
 
 vi.mock("next/server", () => {
   class MockNextResponse {
@@ -29,8 +29,8 @@ describe("POST /api/kook/webhook", () => {
     vi.clearAllMocks();
     vi.resetModules();
     process.env = { ...originalEnv };
-    process.env.KOOK_VERIFY_TOKEN = "test-token";
-    process.env.NODE_ENV = "test";
+    (process.env as Record<string, string | undefined>).KOOK_VERIFY_TOKEN = "test-token";
+    (process.env as Record<string, string | undefined>).NODE_ENV = "test";
   });
 
   afterAll(() => {
@@ -140,7 +140,7 @@ describe("POST /api/kook/webhook", () => {
 
   it("returns 503 when KOOK_VERIFY_TOKEN not configured in production", async () => {
     process.env.KOOK_VERIFY_TOKEN = "";
-    process.env.NODE_ENV = "production";
+    (process.env as Record<string, string | undefined>).NODE_ENV = "production";
     const { POST } = await loadRoute();
     const req = makeReq({
       s: 0,
@@ -166,7 +166,7 @@ describe("POST /api/kook/webhook", () => {
 
   it("skips token check when KOOK_VERIFY_TOKEN is empty in non-production", async () => {
     process.env.KOOK_VERIFY_TOKEN = "";
-    process.env.NODE_ENV = "test";
+    (process.env as Record<string, string | undefined>).NODE_ENV = "test";
     const { POST } = await loadRoute();
     const req = makeReq({
       s: 0,

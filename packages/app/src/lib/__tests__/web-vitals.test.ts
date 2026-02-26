@@ -35,7 +35,7 @@ describe("web-vitals", () => {
 
       expect(mockSendBeacon).toHaveBeenCalledWith("/api/vitals", expect.any(String));
 
-      const body = JSON.parse(mockSendBeacon.mock.calls[0][1] as string);
+      const body = JSON.parse((mockSendBeacon.mock.calls[0] as unknown[])[1] as string);
       expect(body.name).toBe("LCP");
       expect(body.value).toBe(2500);
       expect(body.rating).toBe("good");
@@ -57,7 +57,7 @@ describe("web-vitals", () => {
         delta: 0.01,
       });
 
-      const body = JSON.parse(mockSendBeacon.mock.calls[0][1] as string);
+      const body = JSON.parse((mockSendBeacon.mock.calls[0] as unknown[])[1] as string);
       expect(body.value).toBe(123);
     });
 
@@ -223,7 +223,7 @@ describe("web-vitals", () => {
         delta: 100,
       });
 
-      const body = JSON.parse(mockSendBeacon.mock.calls[0][1] as string);
+      const body = JSON.parse((mockSendBeacon.mock.calls[0] as unknown[])[1] as string);
       expect(body.page).toBe("");
 
       globalThis.window = origWindow;

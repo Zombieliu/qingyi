@@ -56,7 +56,7 @@ describe("getSponsorBalance", () => {
   it("returns balance as bigint", async () => {
     mockGetBalance.mockResolvedValue({ totalBalance: "5000000000" });
     const balance = await getSponsorBalance();
-    expect(balance).toBe(5_000_000_000n);
+    expect(balance).toBe(BigInt(5_000_000_000));
   });
 });
 

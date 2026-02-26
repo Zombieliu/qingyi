@@ -101,7 +101,7 @@ describe("GET /api/cron/sponsor-check", () => {
     const res = await GET(makeReq());
     expect(res.status).toBe(500);
     const body = await res.json();
-    expect(body.error).toBe("rpc error");
+    expect(body.error).toBe("sponsor check failed");
   });
 
   it("returns generic error message when error has no message", async () => {

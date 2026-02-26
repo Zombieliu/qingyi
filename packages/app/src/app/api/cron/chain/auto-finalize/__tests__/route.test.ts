@@ -96,7 +96,7 @@ describe("GET /api/cron/chain/auto-finalize", () => {
     const res = await GET(makeReq());
     expect(res.status).toBe(500);
     const body = await res.json();
-    expect(body.error).toBe("finalize error");
+    expect(body.error).toBe("auto finalize failed");
   });
 
   it("returns generic error message when error has no message", async () => {

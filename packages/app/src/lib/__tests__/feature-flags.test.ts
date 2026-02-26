@@ -25,7 +25,6 @@ let savedWindow: typeof globalThis.window;
 
 function simulateServer() {
   savedWindow = globalThis.window;
-  // @ts-expect-error - simulating server environment
   delete (globalThis as Record<string, unknown>).window;
 }
 

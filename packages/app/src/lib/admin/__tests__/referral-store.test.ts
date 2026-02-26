@@ -262,7 +262,7 @@ describe("getLeaderboard", () => {
     const { getCache } = await import("../../server-cache");
     vi.mocked(getCache).mockReturnValueOnce({
       value: [{ rank: 1, address: "0xcached", value: 999 }],
-      updatedAt: Date.now(),
+      expiresAt: Date.now() + 60000,
     });
     const { getLeaderboard } = await import("../referral-store");
     const entries = await getLeaderboard("spend", "all", 10);

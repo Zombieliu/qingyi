@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { buildCursorPayload, appendCursorWhere, type CursorPayload } from "../admin-store-utils";
 
 vi.mock("@/lib/db", () => ({

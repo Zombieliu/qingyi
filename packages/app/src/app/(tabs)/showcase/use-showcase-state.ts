@@ -26,6 +26,7 @@ import {
   lockDepositOnChain,
   markCompletedOnChain,
   getDefaultCompanionAddress,
+  signAuthIntent,
 } from "@/lib/chain/qy-chain";
 import { useBackoffPoll } from "@/app/components/use-backoff-poll";
 import { useOrderEvents } from "@/app/components/use-order-events";
@@ -567,11 +568,38 @@ export function useShowcaseState() {
         ...prev,
         [orderId]: { ...(prev[orderId] || {}), companionEndedAt: endedAt },
       }));
-      if (!isChain) await refreshMyOrders(true);
-      setChainToast(isChain ? t("tabs.showcase.i125") : t("showcase.016"));
+      if (!isChain) {
+        await refreshMyOrders(true);
+        setChainToast(t("showcase.016"));
+        return;
+      }
+      // Chain order: best-effort push status to 3 (completed) via admin API
+      try {
+        const body = JSON.stringify({ orderId, address });
+        const auth = await signAuthIntent(`chain:mark-completed:${orderId}`, body);
+        const res = await fetch("/api/chain/mark-completed", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-auth-address": auth.address,
+            "x-auth-signature": auth.signature,
+            "x-auth-timestamp": String(auth.timestamp),
+            "x-auth-nonce": auth.nonce,
+            "x-auth-body-sha256": auth.bodyHash,
+          },
+          body,
+        });
+        if (res.ok) {
+          setChainToast("服务已结束，订单已进入结算期");
+          await loadChain();
+        } else {
+          setChainToast("服务已结束，链上状态将由系统自动推进");
+        }
+      } catch {
+        setChainToast("服务已结束，链上状态将由系统自动推进");
+      }
     } catch (error) {
       setChainToast(formatErrorMessage(error, t("showcase.017")));
-    } finally {
     }
   };
 
