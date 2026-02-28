@@ -215,7 +215,6 @@ export async function GET(req: Request) {
       items: result.items.map((item) => ({
         id: item.id,
         user: "匿名用户",
-        userAddress: item.userAddress ?? undefined,
         item: item.item,
         amount: item.amount,
         currency: item.currency,
@@ -368,7 +367,7 @@ export async function POST(req: Request) {
     }
 
     // 新订单可能影响公共订单池，清除缓存
-    invalidateCacheByPrefix("public-orders:");
+    invalidateCacheByPrefix("api:orders:public:");
   } catch (error) {
     console.error("Failed to persist order:", error);
     return apiInternalError("persist_failed");

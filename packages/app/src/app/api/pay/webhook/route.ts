@@ -12,6 +12,7 @@ import { recordAudit } from "@/lib/admin/admin-audit";
 import { env } from "@/lib/env";
 import { apiBadRequest, apiUnauthorized, apiError } from "@/lib/shared/api-response";
 import { publishOrderEvent } from "@/lib/realtime";
+import { DIAMOND_RATE } from "@/lib/shared/constants";
 
 const stripeSecretKey = env.STRIPE_SECRET_KEY;
 const stripe = stripeSecretKey ? new Stripe(stripeSecretKey) : null;
@@ -78,9 +79,19 @@ export async function POST(req: Request) {
 
   const isPaid = eventType === "payment_intent.succeeded";
 
+  const parsedDiamondAmount = Number(diamondAmount);
+  const expectedDiamonds =
+    typeof amountRaw === "number" ? Math.round((amountRaw / 100) * DIAMOND_RATE) : Number.NaN;
+  const pricingMatch =
+    Number.isFinite(parsedDiamondAmount) &&
+    parsedDiamondAmount > 0 &&
+    Number.isFinite(expectedDiamonds) &&
+    expectedDiamonds > 0 &&
+    expectedDiamonds === parsedDiamondAmount;
+
   // P0 FIX: Only process payment mutations when webhook signature is verified.
-  // Unverified events are logged but never trigger credit or status changes.
-  const shouldMutate = verified && isPaid;
+  // Unverified or mismatched pricing events are logged but never trigger credit or status changes.
+  const shouldMutate = verified && isPaid && pricingMatch;
 
   // Wrap addPaymentEvent + updateOrder + upsertLedgerRecord in a single transaction
   try {
@@ -110,13 +121,12 @@ export async function POST(req: Request) {
       }
 
       if (userAddress && diamondAmount && orderId) {
-        const parsedAmount = Number(diamondAmount);
-        if (Number.isFinite(parsedAmount) && parsedAmount > 0) {
+        if (Number.isFinite(parsedDiamondAmount) && parsedDiamondAmount > 0) {
           await upsertLedgerRecord(
             {
               id: orderId,
               userAddress,
-              diamondAmount: parsedAmount,
+              diamondAmount: parsedDiamondAmount,
               amount: typeof amountRaw === "number" ? amountRaw / 100 : undefined,
               currency: "CNY",
               status: "paid",
@@ -159,6 +169,7 @@ export async function POST(req: Request) {
     {
       event: eventType,
       verified,
+      pricingMatch,
     }
   );
 

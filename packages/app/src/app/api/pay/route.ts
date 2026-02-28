@@ -8,6 +8,7 @@ import { parseBodyRaw } from "@/lib/shared/api-validation";
 import { env } from "@/lib/env";
 import { apiBadRequest, apiError, apiInternalError } from "@/lib/shared/api-response";
 import { stripeCircuit, CircuitBreakerError } from "@/lib/shared/circuit-breaker";
+import { DIAMOND_RATE } from "@/lib/shared/constants";
 
 const paySchema = z.object({
   amount: z.number().positive(),
@@ -68,11 +69,19 @@ export async function POST(req: Request) {
     return apiBadRequest("returnUrl required for alipay");
   }
 
+  const expectedAmount = Number((diamondAmount / DIAMOND_RATE).toFixed(2));
+  if (!Number.isFinite(expectedAmount) || expectedAmount <= 0) {
+    return apiBadRequest("invalid diamondAmount");
+  }
+  if (Math.abs(expectedAmount - amount) > 0.01) {
+    return apiBadRequest("amount mismatch");
+  }
+
   try {
     let intent = await stripeCircuit.execute(() =>
       stripe!.paymentIntents.create(
         {
-          amount: Math.round(amount * 100),
+          amount: Math.round(expectedAmount * 100),
           currency: "cny",
           description: body,
           metadata: {
