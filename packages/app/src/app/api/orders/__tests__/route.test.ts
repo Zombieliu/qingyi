@@ -195,6 +195,23 @@ describe("GET /api/orders", () => {
     expect(res.status).toBe(403);
   });
 
+  it("rejects public address exposure without admin auth", async () => {
+    mocks.getPlayerByAddress.mockResolvedValue({
+      player: { status: "active", name: "Test" },
+      conflict: false,
+    });
+    mocks.requireAdmin.mockResolvedValue({
+      ok: false,
+      response: { status: 401, json: async () => ({ error: "unauthorized" }) },
+    });
+    const req = createMockRequest(
+      `http://localhost/api/orders?public=1&address=${VALID_ADDRESS}&includeAddress=1`
+    );
+    const res = await GET(req);
+    expect(res.status).toBe(401);
+    expect(mocks.requireAdmin).toHaveBeenCalled();
+  });
+
   it("returns public orders with cursor pagination", async () => {
     mocks.getPlayerByAddress.mockResolvedValue({
       player: { status: "active", name: "Test" },
