@@ -156,6 +156,15 @@ export async function GET(req: Request) {
     if (!playerLookup.player || playerLookup.conflict || playerLookup.player.status === "停用") {
       return apiForbidden("player_required");
     }
+
+    const includeAddress = searchParams.get("includeAddress") === "1";
+    let includeUserAddress = false;
+    if (includeAddress) {
+      const admin = await requireAdmin(req, { role: "viewer", requireOrigin: false });
+      if (!admin.ok) return admin.response;
+      includeUserAddress = true;
+    }
+
     const cursorRaw = searchParams.get("cursor") || "";
     let cursor: { createdAt: number; id: string } | undefined;
     if (cursorRaw) {
@@ -173,7 +182,7 @@ export async function GET(req: Request) {
     }
 
     const publicPageSize = Math.min(30, Math.max(5, Number(searchParams.get("pageSize") || "20")));
-    const cacheKey = `api:orders:public:${publicPageSize}:${cursorRaw || "start"}`;
+    const cacheKey = `api:orders:public:${publicPageSize}:${cursorRaw || "start"}:${includeUserAddress ? "addr" : "noaddr"}`;
     const cached = await getCacheAsync<{
       items: Array<{
         id: string;
@@ -215,6 +224,7 @@ export async function GET(req: Request) {
       items: result.items.map((item) => ({
         id: item.id,
         user: "匿名用户",
+        userAddress: includeUserAddress ? (item.userAddress ?? undefined) : undefined,
         item: item.item,
         amount: item.amount,
         currency: item.currency,
