@@ -402,6 +402,28 @@ model AdminExaminerApplication {
   @@index([deletedAt])
 }
 
+model AdminLiveApplication {
+  id          String   @id
+  user        String?
+  userAddress String?
+  contact     String?
+  platform    String?
+  liveUrl     String?
+  games       String?
+  liveTime    String?
+  status      String
+  note        String?
+  meta        Json?
+  createdAt   DateTime
+  updatedAt   DateTime?
+  deletedAt   DateTime?
+
+  @@index([createdAt])
+  @@index([status])
+  @@index([userAddress])
+  @@index([deletedAt])
+}
+
 model AdminMembershipTier {
   id           String   @id
   name         String

@@ -8,6 +8,7 @@ import {
   Phone,
   ShieldCheck,
   BadgeCheck,
+  Radio,
   User,
   Settings,
   Briefcase,
@@ -49,6 +50,7 @@ const grid = [
 
 const otherGrid = [
   { label: t("tabs.me.i086"), icon: BadgeCheck, color: "#14b8a6", href: "/me/examiner" },
+  { label: t("tabs.me.i087"), icon: Radio, color: "#f97316", href: "/me/live" },
 ];
 
 export default function Me() {
