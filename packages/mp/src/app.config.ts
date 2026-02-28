@@ -15,6 +15,7 @@ export default defineAppConfig({
     'pages/me/orders/index',
     'pages/me/invoice/index',
     'pages/me/guardian/index',
+    'pages/me/examiner/index',
     'pages/me/referral/index',
     'pages/me/game-settings/index'
   ],

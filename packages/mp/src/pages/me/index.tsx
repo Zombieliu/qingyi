@@ -19,6 +19,8 @@ const tools = [
   { label: '游戏设置', url: '/pages/me/game-settings/index' },
 ]
 
+const otherTools = [{ label: '申请考官', url: '/pages/me/examiner/index' }]
+
 export default function Me() {
   useAuthGuard()
   const address = getAddress()
@@ -123,6 +125,20 @@ export default function Me() {
         <Text className='section-title'>功能入口</Text>
         <View className='tool-grid'>
           {tools.map((item) => (
+            <View key={item.label} className='tool-item' onClick={() => Taro.navigateTo({ url: item.url })}>
+              <View className='tool-icon'>
+                <Text>{item.label.slice(0, 1)}</Text>
+              </View>
+              <Text className='tool-label'>{item.label}</Text>
+            </View>
+          ))}
+        </View>
+      </View>
+
+      <View className='section'>
+        <Text className='section-title'>其他功能</Text>
+        <View className='tool-grid'>
+          {otherTools.map((item) => (
             <View key={item.label} className='tool-item' onClick={() => Taro.navigateTo({ url: item.url })}>
               <View className='tool-icon'>
                 <Text>{item.label.slice(0, 1)}</Text>

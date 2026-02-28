@@ -381,6 +381,27 @@ model AdminGuardianApplication {
   @@index([deletedAt])
 }
 
+model AdminExaminerApplication {
+  id          String   @id
+  user        String?
+  userAddress String?
+  contact     String?
+  games       String?
+  rank        String?
+  liveTime    String?
+  status      String
+  note        String?
+  meta        Json?
+  createdAt   DateTime
+  updatedAt   DateTime?
+  deletedAt   DateTime?
+
+  @@index([createdAt])
+  @@index([status])
+  @@index([userAddress])
+  @@index([deletedAt])
+}
+
 model AdminMembershipTier {
   id           String   @id
   name         String

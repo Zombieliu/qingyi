@@ -7,6 +7,7 @@ import {
   Gift,
   Phone,
   ShieldCheck,
+  BadgeCheck,
   User,
   Settings,
   Briefcase,
@@ -44,6 +45,10 @@ const grid = [
   { label: t("tabs.me.i081"), icon: Briefcase, color: "#0891b2", href: "/companion" },
   { label: t("tabs.me.i082"), icon: Gift, color: "#ec4899", href: "/me/referral" },
   // 其他功能暂时隐藏
+];
+
+const otherGrid = [
+  { label: t("tabs.me.i086"), icon: BadgeCheck, color: "#14b8a6", href: "/me/examiner" },
 ];
 
 export default function Me() {
@@ -283,6 +288,22 @@ export default function Me() {
           ))}
         </div>
       </section>
+
+      {otherGrid.length > 0 && (
+        <section className="dl-card">
+          <div className="dl-section-title">{t("ui.me.053")}</div>
+          <div className="dl-grid">
+            {otherGrid.map((item) => (
+              <Link key={item.label} href={item.href} className="dl-grid-item">
+                <span className="dl-grid-icon" style={{ color: item.color }}>
+                  <item.icon size={20} />
+                </span>
+                <span className="dl-grid-label">{item.label}</span>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
     </>
   );
 }

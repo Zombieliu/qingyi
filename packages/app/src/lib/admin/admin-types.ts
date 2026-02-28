@@ -7,6 +7,7 @@ export type SupportStatus = "待处理" | "处理中" | "已完成";
 export type CouponStatus = "可用" | "停用" | "已过期";
 export type InvoiceStatus = "待审核" | "已开票" | "已拒绝";
 export type GuardianStatus = "待审核" | "面试中" | "已通过" | "已拒绝";
+export type ExaminerStatus = "待审核" | "面试中" | "已通过" | "已拒绝";
 export type MembershipTierStatus = "上架" | "下架";
 export type MemberStatus = "有效" | "已过期" | "待开通";
 export type MembershipRequestStatus = "待审核" | "已通过" | "已拒绝";
@@ -268,6 +269,21 @@ export interface AdminGuardianApplication {
   updatedAt?: number;
 }
 
+export interface AdminExaminerApplication {
+  id: string;
+  user?: string;
+  userAddress?: string;
+  contact?: string;
+  games?: string;
+  rank?: string;
+  liveTime?: string;
+  status: ExaminerStatus;
+  note?: string;
+  meta?: Record<string, unknown>;
+  createdAt: number;
+  updatedAt?: number;
+}
+
 export interface AdminMembershipTier {
   id: string;
   name: string;
@@ -386,6 +402,7 @@ export interface AdminStore {
   coupons: AdminCoupon[];
   invoiceRequests: AdminInvoiceRequest[];
   guardianApplications: AdminGuardianApplication[];
+  examinerApplications: AdminExaminerApplication[];
   membershipTiers: AdminMembershipTier[];
   members: AdminMember[];
   membershipRequests: AdminMembershipRequest[];
@@ -406,6 +423,7 @@ export const SUPPORT_STATUS_OPTIONS: SupportStatus[] = ["待处理", "处理中"
 export const COUPON_STATUS_OPTIONS: CouponStatus[] = ["可用", "停用", "已过期"];
 export const INVOICE_STATUS_OPTIONS: InvoiceStatus[] = ["待审核", "已开票", "已拒绝"];
 export const GUARDIAN_STATUS_OPTIONS: GuardianStatus[] = ["待审核", "面试中", "已通过", "已拒绝"];
+export const EXAMINER_STATUS_OPTIONS: ExaminerStatus[] = ["待审核", "面试中", "已通过", "已拒绝"];
 export const MEMBERSHIP_TIER_STATUS_OPTIONS: MembershipTierStatus[] = ["上架", "下架"];
 export const MEMBER_STATUS_OPTIONS: MemberStatus[] = ["有效", "已过期", "待开通"];
 export const MEMBERSHIP_REQUEST_STATUS_OPTIONS: MembershipRequestStatus[] = [

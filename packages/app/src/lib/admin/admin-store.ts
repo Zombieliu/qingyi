@@ -11,6 +11,7 @@ export * from "./support-store";
 export * from "./coupon-store";
 export * from "./invoice-store";
 export * from "./guardian-store";
+export * from "./examiner-store";
 export * from "./membership-store";
 export * from "./mantou-store";
 export * from "./referral-store";
