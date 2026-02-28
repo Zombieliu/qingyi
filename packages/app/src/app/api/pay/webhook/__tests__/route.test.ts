@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { DIAMOND_RATE } from "@/lib/shared/constants";
 
 const {
   mockAddPaymentEvent,
@@ -85,6 +86,12 @@ function makeStripeEvent(
   metadata: Record<string, string> = {},
   overrides: Record<string, unknown> = {}
 ) {
+  const rawDiamondAmount = Number(metadata.diamondAmount ?? metadata.diamond_amount);
+  const computedAmount =
+    Number.isFinite(rawDiamondAmount) && rawDiamondAmount > 0
+      ? Math.round((rawDiamondAmount / DIAMOND_RATE) * 100)
+      : 1000;
+  const resolvedAmount = (overrides.amount as number | undefined) ?? computedAmount;
   return {
     id: `evt_${Date.now()}`,
     type,
@@ -92,7 +99,7 @@ function makeStripeEvent(
       object: {
         id: "pi_test123",
         object: "payment_intent",
-        amount: 9900,
+        amount: resolvedAmount,
         status: "succeeded",
         metadata,
         ...overrides,
@@ -203,7 +210,10 @@ describe("POST /api/pay/webhook", () => {
   it("updates order paymentStatus on payment_intent.succeeded", async () => {
     // P0 FIX: Only verified webhooks trigger mutations — set up verified context
     mockEnv.STRIPE_WEBHOOK_SECRET = "whsec_test";
-    const event = makeStripeEvent("payment_intent.succeeded", { orderId: "ORD-1" });
+    const event = makeStripeEvent("payment_intent.succeeded", {
+      orderId: "ORD-1",
+      diamondAmount: "100",
+    });
     mockConstructEvent.mockReturnValue(event);
     mockGetOrderById.mockResolvedValue({ id: "ORD-1" });
     mockUpdateOrder.mockResolvedValue({ id: "ORD-1", paymentStatus: "已支付" });
@@ -268,7 +278,10 @@ describe("POST /api/pay/webhook", () => {
 
   it("extracts orderId from order_id metadata alias", async () => {
     mockEnv.STRIPE_WEBHOOK_SECRET = "whsec_test";
-    const event = makeStripeEvent("payment_intent.succeeded", { order_id: "ORD-ALT" });
+    const event = makeStripeEvent("payment_intent.succeeded", {
+      order_id: "ORD-ALT",
+      diamondAmount: "100",
+    });
     mockConstructEvent.mockReturnValue(event);
     mockGetOrderById.mockResolvedValue({ id: "ORD-ALT" });
     mockUpdateOrder.mockResolvedValue({});
@@ -286,7 +299,7 @@ describe("POST /api/pay/webhook", () => {
         object: {
           id: "ch_test123",
           object: "charge",
-          amount: 9900,
+          amount: 1000,
           status: "succeeded",
           metadata: { orderId: "ORD-1", userAddress: "0xabc", diamondAmount: "100" },
           payment_intent: "pi_from_charge",
@@ -316,7 +329,7 @@ describe("POST /api/pay/webhook", () => {
         object: {
           id: "ch_test456",
           object: "charge",
-          amount: 5000,
+          amount: 500,
           status: "succeeded",
           metadata: { orderId: "ORD-2", userAddress: "0xdef", diamondAmount: "50" },
           payment_intent: { id: "pi_nested" },

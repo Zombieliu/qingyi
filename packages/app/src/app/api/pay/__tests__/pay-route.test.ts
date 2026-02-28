@@ -54,6 +54,7 @@ vi.mock("stripe", () => {
   };
 });
 
+import { DIAMOND_RATE } from "@/lib/shared/constants";
 import { POST } from "../route";
 
 const VALID_ADDRESS = "0x" + "a".repeat(64);
@@ -63,7 +64,7 @@ function makeReq(url: string, init?: RequestInit) {
 }
 
 const validPayload = {
-  amount: 100,
+  amount: Number((50 / DIAMOND_RATE).toFixed(2)),
   subject: "diamond.topup",
   body: "diamond.topup_title",
   channel: "wechat_pay" as const,
