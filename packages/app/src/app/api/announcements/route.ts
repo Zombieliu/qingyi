@@ -1,4 +1,4 @@
-import { listPublicAnnouncements } from "@/lib/admin/admin-store";
+import { listPublicAnnouncementsEdgeRead } from "@/lib/edge-db/public-read-store";
 import { getCache, setCache, computeJsonEtag } from "@/lib/server-cache";
 import { getIfNoneMatch, jsonWithEtag, notModified } from "@/lib/http-cache";
 import { withApiHandler } from "@/lib/shared/api-handler";
@@ -18,7 +18,7 @@ export const GET = withApiHandler(
       return jsonWithEtag(cached.value, cached.etag, CACHE_CONTROL);
     }
 
-    const announcements = await listPublicAnnouncements();
+    const announcements = await listPublicAnnouncementsEdgeRead();
     const etag = computeJsonEtag(announcements);
     setCache(CACHE_KEY, announcements, CACHE_TTL_MS, etag);
     return jsonWithEtag(announcements, etag, CACHE_CONTROL);

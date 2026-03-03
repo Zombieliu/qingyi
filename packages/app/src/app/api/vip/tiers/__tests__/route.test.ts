@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  listActiveMembershipTiers: vi.fn(),
+  listActiveMembershipTiersEdgeRead: vi.fn(),
   getCache: vi.fn(),
   setCache: vi.fn(),
   computeJsonEtag: vi.fn(),
@@ -10,8 +10,8 @@ const mocks = vi.hoisted(() => ({
   notModified: vi.fn(),
 }));
 
-vi.mock("@/lib/admin/admin-store", () => ({
-  listActiveMembershipTiers: mocks.listActiveMembershipTiers,
+vi.mock("@/lib/edge-db/public-read-store", () => ({
+  listActiveMembershipTiersEdgeRead: mocks.listActiveMembershipTiersEdgeRead,
 }));
 vi.mock("@/lib/server-cache", () => ({
   getCache: mocks.getCache,
@@ -36,7 +36,7 @@ describe("GET /api/vip/tiers", () => {
 
   it("returns tiers from store", async () => {
     const tiers = [{ id: "T-1", name: "Gold" }];
-    mocks.listActiveMembershipTiers.mockResolvedValue(tiers);
+    mocks.listActiveMembershipTiersEdgeRead.mockResolvedValue(tiers);
     const mockRes = { status: 200, json: async () => tiers };
     mocks.jsonWithEtag.mockReturnValue(mockRes);
     const req = new Request("http://localhost/api/vip/tiers");

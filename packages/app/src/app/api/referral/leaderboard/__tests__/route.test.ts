@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  getLeaderboard: vi.fn(),
+  getLeaderboardEdgeRead: vi.fn(),
 }));
 
 vi.mock("next/server", () => {
@@ -24,8 +24,8 @@ vi.mock("next/server", () => {
   return { NextResponse: MockNextResponse };
 });
 
-vi.mock("@/lib/admin/admin-store", () => ({
-  getLeaderboard: mocks.getLeaderboard,
+vi.mock("@/lib/edge-db/public-read-store", () => ({
+  getLeaderboardEdgeRead: mocks.getLeaderboardEdgeRead,
 }));
 
 import { GET } from "../route";
@@ -53,7 +53,7 @@ describe("GET /api/referral/leaderboard", () => {
 
   it("returns leaderboard with default params", async () => {
     const entries = [{ address: "0x1", score: 100 }];
-    mocks.getLeaderboard.mockResolvedValue(entries);
+    mocks.getLeaderboardEdgeRead.mockResolvedValue(entries);
     const req = new Request("http://localhost/api/referral/leaderboard");
     const res = await GET(req);
     expect(res.status).toBe(200);
@@ -64,11 +64,11 @@ describe("GET /api/referral/leaderboard", () => {
   });
 
   it("passes custom type and period", async () => {
-    mocks.getLeaderboard.mockResolvedValue([]);
+    mocks.getLeaderboardEdgeRead.mockResolvedValue([]);
     const req = new Request(
       "http://localhost/api/referral/leaderboard?type=referral&period=week&limit=20"
     );
     await GET(req);
-    expect(mocks.getLeaderboard).toHaveBeenCalledWith("referral", "week", 20);
+    expect(mocks.getLeaderboardEdgeRead).toHaveBeenCalledWith("referral", "week", 20);
   });
 });
