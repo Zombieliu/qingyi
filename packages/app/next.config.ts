@@ -16,21 +16,24 @@ const withSerwist = withSerwistInit({
 });
 
 const repoRoot = path.resolve(__dirname, "../..");
+const isOpenNextBuild = process.env.OPEN_NEXT_BUILD === "1";
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
-  output: process.env.DOCKER_BUILD === "1" ? "standalone" : undefined,
+  output: process.env.DOCKER_BUILD === "1" || isOpenNextBuild ? "standalone" : undefined,
   transpilePackages: ["contracts"],
-  outputFileTracingRoot: repoRoot,
+  outputFileTracingRoot: isOpenNextBuild ? undefined : repoRoot,
   turbopack: {
     root: repoRoot,
   },
   typescript: {
     ignoreBuildErrors: false,
   },
-  outputFileTracingIncludes: {
-    "/**/*": ["node_modules/next/dist/compiled/source-map/**"],
-  },
+  outputFileTracingIncludes: isOpenNextBuild
+    ? undefined
+    : {
+        "/**/*": ["node_modules/next/dist/compiled/source-map/**"],
+      },
   images: {
     remotePatterns: [
       {
@@ -39,12 +42,22 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  webpack: (config) => {
+    if (!isOpenNextBuild) return config;
+    config.resolve ??= {};
+    config.resolve.alias ??= {};
+    config.resolve.alias["@sentry/nextjs"] = path.resolve(
+      __dirname,
+      "src/lib/shims/sentry-nextjs.ts"
+    );
+    return config;
+  },
 };
 
 const pwaConfig = process.env.PWA_BUILD === "1" ? withSerwist(nextConfig) : nextConfig;
 const analyzed = analyzeBuild(pwaConfig);
 
-export default withSentryConfig(analyzed, {
+const sentryConfig = {
   silent: true,
   org: process.env.SENTRY_ORG,
   project: process.env.SENTRY_PROJECT,
@@ -53,4 +66,8 @@ export default withSentryConfig(analyzed, {
   sourcemaps: {
     deleteSourcemapsAfterUpload: true,
   },
-});
+};
+
+export default isOpenNextBuild ? analyzed : withSentryConfig(analyzed, sentryConfig);
+
+import('@opennextjs/cloudflare').then(m => m.initOpenNextCloudflareForDev());

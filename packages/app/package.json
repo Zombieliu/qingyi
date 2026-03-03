@@ -3,8 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --webpack",
     "build": "next build --webpack",
+    "dev": "next dev --webpack",
     "build:webpack": "next build --webpack",
     "build:pwa": "next build --webpack",
     "start": "next start",
@@ -25,7 +25,12 @@
     "db:deploy": "prisma migrate deploy",
     "db:generate": "prisma generate",
     "postinstall": "prisma generate",
-    "db:seed": "prisma db seed"
+    "db:seed": "prisma db seed",
+    "opennext:patch": "node scripts/patch-opennext-cloudflare.mjs",
+    "preview": "pnpm run opennext:patch && OPEN_NEXT_BUILD=1 opennextjs-cloudflare build && opennextjs-cloudflare preview",
+    "deploy": "pnpm run opennext:patch && OPEN_NEXT_BUILD=1 opennextjs-cloudflare build && opennextjs-cloudflare deploy",
+    "upload": "pnpm run opennext:patch && OPEN_NEXT_BUILD=1 opennextjs-cloudflare build && opennextjs-cloudflare upload",
+    "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts"
   },
   "prisma": {
     "seed": "node prisma/seed.mjs"
@@ -34,6 +39,7 @@
     "@0xobelisk/sui-client": "^1.2.0-pre.86",
     "@date-fns/tz": "^1.4.1",
     "@mysten/sui": "^1.45.2",
+    "@opennextjs/cloudflare": "^1.17.1",
     "@prisma/client": "^5.19.1",
     "@radix-ui/react-slot": "^1.2.4",
     "@sentry/nextjs": "^8.53.0",
@@ -80,7 +86,8 @@
     "prisma": "^5.19.1",
     "tailwindcss": "^4",
     "typescript": "^5",
-    "vitest": "^4.0.18"
+    "vitest": "^4.0.18",
+    "wrangler": "^4.69.0"
   },
   "optionalDependencies": {
     "@tailwindcss/oxide-linux-x64-gnu": "4.1.18",
