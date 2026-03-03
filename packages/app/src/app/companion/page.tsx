@@ -17,6 +17,7 @@ import { StateBlock } from "@/app/components/state-block";
 import { t } from "@/lib/i18n/t";
 import { CustomerTagModal } from "./customer-tag-modal";
 import { CompanionOrderList } from "./companion-order-list";
+import { CompanionDuoOrderList } from "./companion-duo-order-list";
 
 type CompanionStats = {
   player: { id: string; name: string; status: string; role?: string } | null;
@@ -62,6 +63,8 @@ export default function CompanionPage() {
   );
   const [tagTarget, setTagTarget] = useState<{ orderId: string; userAddress: string } | null>(null);
   const [showSchedule, setShowSchedule] = useState(false);
+  const [duoOrders, setDuoOrders] = useState<Record<string, unknown>[]>([]);
+  const [duoOrdersLoading, setDuoOrdersLoading] = useState(true);
 
   const fetchStats = useCallback(async () => {
     if (!address) return;
@@ -102,12 +105,35 @@ export default function CompanionPage() {
     }
   }, [address, orderTab]);
 
+  const fetchDuoOrders = useCallback(async () => {
+    if (!address) return;
+    setDuoOrdersLoading(true);
+    try {
+      const res = await fetchWithUserAuth(
+        `/api/companion/duo-orders?address=${address}&status=active&pageSize=30`,
+        {},
+        address
+      );
+      if (res.ok) {
+        const data = await res.json();
+        setDuoOrders(data.orders || []);
+      }
+    } catch {
+      /* ignore */
+    } finally {
+      setDuoOrdersLoading(false);
+    }
+  }, [address]);
+
   useEffect(() => {
     fetchStats();
   }, [fetchStats]);
   useEffect(() => {
     fetchOrders();
   }, [fetchOrders]);
+  useEffect(() => {
+    fetchDuoOrders();
+  }, [fetchDuoOrders]);
 
   const toggleStatus = async () => {
     if (!stats?.player || stats.player.status === t("companion.i175")) return;
@@ -252,6 +278,13 @@ export default function CompanionPage() {
             ordersLoading={ordersLoading}
             onTabChange={setOrderTab}
             onTagUser={(orderId, userAddress) => setTagTarget({ orderId, userAddress })}
+          />
+
+          <CompanionDuoOrderList
+            orders={duoOrders}
+            loading={duoOrdersLoading}
+            address={address}
+            onRefresh={fetchDuoOrders}
           />
 
           <ScheduleSection

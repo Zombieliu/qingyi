@@ -2,12 +2,14 @@
 import { t } from "@/lib/i18n/t";
 import { useState } from "react";
 import { createOrder } from "@/lib/services/order-service";
+import { createDuoOrder } from "@/lib/services/duo-order-service";
 import {
   createChainOrderId,
   createOrderOnChain,
   getCurrentAddress,
   isChainOrdersEnabled,
 } from "@/lib/chain/qy-chain";
+import { createDuoOrderOnChain } from "@/lib/chain/duo-chain";
 import { trackEvent } from "@/lib/services/analytics";
 import { classifyChainError } from "@/lib/chain/chain-error";
 import { Button } from "@/components/ui/button";
@@ -19,6 +21,7 @@ interface Props {
   item: string;
   amount: number;
   note?: string;
+  duo?: boolean;
 }
 
 type GameProfile = {
@@ -42,7 +45,7 @@ function loadGameProfile(address: string) {
   }
 }
 
-export default function OrderButton({ user, item, amount, note }: Props) {
+export default function OrderButton({ user, item, amount, note, duo }: Props) {
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<{
     tone: "success" | "warning" | "danger" | "info";
@@ -70,15 +73,25 @@ export default function OrderButton({ user, item, amount, note }: Props) {
       let chainDigest: string | null = null;
       if (isChainOrdersEnabled()) {
         chainOrderId = createChainOrderId();
-        const chainResult = await createOrderOnChain({
-          orderId: chainOrderId,
-          serviceFee: amount,
-          deposit: 0,
-          autoPay: true,
-        });
-        chainDigest = chainResult.digest;
+        if (duo) {
+          const chainResult = await createDuoOrderOnChain({
+            orderId: chainOrderId,
+            serviceFee: amount,
+            depositPerCompanion: 0,
+            autoPay: true,
+          });
+          chainDigest = chainResult.digest;
+        } else {
+          const chainResult = await createOrderOnChain({
+            orderId: chainOrderId,
+            serviceFee: amount,
+            deposit: 0,
+            autoPay: true,
+          });
+          chainDigest = chainResult.digest;
+        }
       }
-      const result = await createOrder({
+      const orderPayload = {
         id: chainOrderId || `${Date.now()}`,
         user,
         userAddress: currentAddress || undefined,
@@ -90,6 +103,7 @@ export default function OrderButton({ user, item, amount, note }: Props) {
         note,
         meta: {
           publicPool: true,
+          duoOrder: duo || false,
           gameProfile: gameProfile
             ? {
                 gameName: gameProfile.gameName,
@@ -98,7 +112,14 @@ export default function OrderButton({ user, item, amount, note }: Props) {
               }
             : null,
         },
-      });
+      };
+      const result = duo
+        ? await createDuoOrder({
+            ...orderPayload,
+            serviceFee: amount,
+            depositPerCompanion: 0,
+          })
+        : await createOrder(orderPayload);
       if (chainOrderId) {
         const address = getCurrentAddress();
         const retrySync = async () => {
@@ -170,9 +191,9 @@ export default function OrderButton({ user, item, amount, note }: Props) {
         onClick={submit}
         disabled={loading}
         className="lc-order"
-        aria-label={`为 ${user} 下单 ${item}`}
+        aria-label={`为 ${user} ${duo ? "双陪" : ""}下单 ${item}`}
       >
-        {loading ? t("ui.order-button.560") : t("comp.order_button.002")}
+        {loading ? t("ui.order-button.560") : duo ? "双陪下单" : t("comp.order_button.002")}
       </Button>
       {status && (
         <div className="lc-order-state">

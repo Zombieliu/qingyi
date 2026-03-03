@@ -129,6 +129,31 @@ export interface AdminOrder {
   updatedAt?: number;
 }
 
+export interface DuoOrder {
+  id: string;
+  user: string;
+  userAddress?: string;
+  companionAddressA?: string;
+  companionAddressB?: string;
+  item: string;
+  amount: number;
+  currency: string;
+  paymentStatus: string;
+  stage: OrderStage;
+  displayStatus: string;
+  note?: string;
+  assignedTo?: string;
+  source?: string;
+  chainDigest?: string;
+  chainStatus?: number;
+  serviceFee?: number;
+  depositPerCompanion?: number;
+  teamStatus?: number;
+  meta?: Record<string, unknown>;
+  createdAt: number;
+  updatedAt?: number;
+}
+
 export interface AdminPlayer {
   id: string;
   name: string;

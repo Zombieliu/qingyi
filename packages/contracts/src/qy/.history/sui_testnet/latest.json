@@ -2,10 +2,10 @@
   "projectName": "qy",
   "network": "testnet",
   "startCheckpoint": "296979197",
-  "packageId": "0x656852b28b4e7a4b3e0c2d1aa33c74142da0620b375de5d2474fb5c4d1d6a148",
+  "packageId": "0x39f85b91ced61739812a4ca968f247f0f07213e820b3f9e1df956bc56e93718e",
   "dappHub": "0xfef203de9d3a2980429e91df535a0503ccf8d3c05aa3815936984243dc96f19f",
   "upgradeCap": "0xc646bc4b553a72299ed52d0bef37efc86e4defb8a74fd81ca9c68ec832f9803d",
-  "version": 1,
+  "version": 2,
   "components": {},
   "resources": {
     "ruleset": {
@@ -59,6 +59,34 @@
         "dispute_deadline": "u64",
         "vault_service": "u64",
         "vault_deposit": "u64",
+        "evidence_hash": "vector<u8>",
+        "dispute_status": "u8",
+        "resolved_by": "address",
+        "resolved_at": "u64"
+      },
+      "keys": [
+        "order_id"
+      ]
+    },
+    "duo_order": {
+      "offchain": false,
+      "fields": {
+        "order_id": "u64",
+        "user": "address",
+        "companion_a": "address",
+        "companion_b": "address",
+        "rule_set_id": "u64",
+        "service_fee": "u64",
+        "deposit_per_companion": "u64",
+        "platform_fee_bps": "u64",
+        "status": "u8",
+        "team_status": "u8",
+        "created_at": "u64",
+        "finish_at": "u64",
+        "dispute_deadline": "u64",
+        "vault_service": "u64",
+        "vault_deposit_a": "u64",
+        "vault_deposit_b": "u64",
         "evidence_hash": "vector<u8>",
         "dispute_status": "u8",
         "resolved_by": "address",

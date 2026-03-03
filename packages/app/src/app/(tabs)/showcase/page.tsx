@@ -6,6 +6,7 @@ import { StateBlock } from "@/app/components/state-block";
 import { ConfirmDialog } from "@/app/components/confirm-dialog";
 import { AcceptedOrderCard } from "./accepted-order-card";
 import { PublicOrderCard } from "./public-order-card";
+import { DuoPublicOrderCard } from "./duo-public-order-card";
 import { DisputeModal } from "./dispute-modal";
 import { DebugModal } from "./debug-modal";
 import { ChainOrdersSection } from "./chain-orders-section";
@@ -37,6 +38,9 @@ export default function Showcase() {
     debugOpen,
     publicCursor,
     publicLoading,
+    duoOrders,
+    duoPublicCursor,
+    duoLoading,
     // Refs
     acceptedRef,
     loadMoreRef,
@@ -44,6 +48,9 @@ export default function Showcase() {
     refreshAll,
     refreshOrders,
     loadMoreOrders,
+    claimDuoSlot,
+    releaseDuoSlot,
+    loadMoreDuoOrders,
     clearAll,
     cancel,
     complete,
@@ -202,6 +209,38 @@ export default function Showcase() {
           })}
         </div>
       ) : null}
+
+      {duoOrders.length > 0 && (
+        <div className="space-y-3 mb-6 motion-stack">
+          <div className="dl-card text-xs text-gray-500">
+            <div className="flex items-center gap-1">
+              <span className="text-violet-600 font-semibold">双陪订单</span>
+              <span className="text-gray-400">· 有空位可认领</span>
+            </div>
+          </div>
+          {duoOrders.map((o) => (
+            <DuoPublicOrderCard
+              key={`duo-${o.id}`}
+              order={o}
+              chainAddress={chainAddress}
+              onClaimSlot={claimDuoSlot}
+              onReleaseSlot={releaseDuoSlot}
+            />
+          ))}
+          {duoPublicCursor && (
+            <div className="flex justify-center">
+              <button
+                className="dl-tab-btn"
+                style={{ padding: "8px 12px" }}
+                onClick={loadMoreDuoOrders}
+                disabled={duoLoading}
+              >
+                {duoLoading ? "加载中…" : "加载更多双陪订单"}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
 
       {visibleOrders.length === 0 ? (
         <StateBlock

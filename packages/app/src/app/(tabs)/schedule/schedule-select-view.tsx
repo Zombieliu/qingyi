@@ -1,6 +1,6 @@
 "use client";
 import { t } from "@/lib/i18n/t";
-import { Clock3, QrCode } from "lucide-react";
+import { Clock3, QrCode, Users } from "lucide-react";
 import {
   type PublicPlayer,
   sections,
@@ -29,6 +29,7 @@ type Props = {
   onSelectPlayer: (id: string) => void;
   onRefreshPlayers: () => void;
   onSubmit: () => void;
+  onSubmitDuo: () => void;
   onScrollToSection: (key: string) => void;
 };
 
@@ -53,6 +54,7 @@ export function ScheduleSelectView(props: Props) {
     onSelectPlayer,
     onRefreshPlayers,
     onSubmit,
+    onSubmitDuo,
     onScrollToSection,
   } = props;
 
@@ -176,10 +178,16 @@ export function ScheduleSelectView(props: Props) {
             <div className="ride-discount-tag">{FIRST_ORDER_DISCOUNT.label}</div>
           )}
         </div>
-        <button className="ride-call" onClick={onSubmit}>
-          <QrCode size={16} style={{ marginRight: 6 }} />
-          先托管再呼叫
-        </button>
+        <div className="flex gap-2">
+          <button className="ride-call" onClick={onSubmit}>
+            <QrCode size={16} style={{ marginRight: 6 }} />
+            先托管再呼叫
+          </button>
+          <button className="ride-call" style={{ background: "#7c3aed" }} onClick={onSubmitDuo}>
+            <Users size={16} style={{ marginRight: 6 }} />
+            双陪下单
+          </button>
+        </div>
       </footer>
       {toast && <div className="ride-toast">{toast}</div>}
     </>

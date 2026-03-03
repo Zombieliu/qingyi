@@ -3,6 +3,8 @@ import { t } from "@/lib/i18n/t";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { type LocalOrder } from "@/lib/services/order-store";
 import { createOrder, deleteOrder, patchOrder, syncChainOrder } from "@/lib/services/order-service";
+import { createDuoOrder } from "@/lib/services/duo-order-service";
+import { createDuoOrderOnChain } from "@/lib/chain/duo-chain";
 import { trackEvent } from "@/lib/services/analytics";
 import { DIAMOND_RATE } from "@/lib/shared/constants";
 import { mergeChainStatus } from "@/lib/chain/chain-status";
@@ -113,6 +115,7 @@ export default function Schedule() {
     items: string[];
   }>({ total: 0, originalTotal: 0, discount: 0, service: 0, player: 0, items: [] });
   const [calling, setCalling] = useState(false);
+  const [duoMode, setDuoMode] = useState(false);
   const [debugOpen, setDebugOpen] = useState(false);
   const redirectRef = useRef(false);
   const [confirmAction, setConfirmAction] = useState<{
@@ -379,8 +382,34 @@ export default function Schedule() {
     const service = Number((total * MATCH_RATE).toFixed(2));
     const player = Math.max(Number((total - service).toFixed(2)), 0);
     setLocked({ total, originalTotal, discount, service, player, items: pickedNames });
+    setDuoMode(false);
     trackEvent("order_intent", {
       source: "schedule",
+      itemsCount: pickedNames.length,
+      originalTotal,
+      total,
+      discount,
+      eligible: firstOrderEligible,
+    });
+    setFeeOpen(true);
+    setFeeChecked(false);
+  };
+
+  const submitDuo = () => {
+    if (pickedNames.length === 0) {
+      setToast(t("form.select_service"));
+      return;
+    }
+    const originalTotal = pickedPrice || Math.max(pickedNames.length * 10, 10);
+    const canDiscount = firstOrderEligible && originalTotal >= FIRST_ORDER_DISCOUNT.minSpend;
+    const discount = canDiscount ? FIRST_ORDER_DISCOUNT.amount : 0;
+    const total = Math.max(originalTotal - discount, 0);
+    const service = Number((total * MATCH_RATE).toFixed(2));
+    const player = Math.max(Number((total - service).toFixed(2)), 0);
+    setLocked({ total, originalTotal, discount, service, player, items: pickedNames });
+    setDuoMode(true);
+    trackEvent("order_intent", {
+      source: "schedule_duo",
       itemsCount: pickedNames.length,
       originalTotal,
       total,
@@ -410,67 +439,96 @@ export default function Schedule() {
         if (!addr) throw new Error("请先登录账号以便扣减钻石");
         if (!hasEnoughDiamonds) throw new Error("钻石余额不足");
         chainOrderId = createChainOrderId();
-        const chainResult = await createOrderOnChain({
-          orderId: chainOrderId,
-          serviceFee: requiredDiamonds,
-          deposit: 0,
-          ruleSetId: disputePolicy.ruleSetId,
-          autoPay: true,
-          rawAmount: true,
-        });
-        chainDigest = chainResult.digest;
+        if (duoMode) {
+          const chainResult = await createDuoOrderOnChain({
+            orderId: chainOrderId,
+            serviceFee: requiredDiamonds,
+            depositPerCompanion: 0,
+            ruleSetId: disputePolicy.ruleSetId,
+            autoPay: true,
+            rawAmount: true,
+          });
+          chainDigest = chainResult.digest;
+        } else {
+          const chainResult = await createOrderOnChain({
+            orderId: chainOrderId,
+            serviceFee: requiredDiamonds,
+            deposit: 0,
+            ruleSetId: disputePolicy.ruleSetId,
+            autoPay: true,
+            rawAmount: true,
+          });
+          chainDigest = chainResult.digest;
+        }
       }
       const gameProfile = loadGameProfile(getCurrentAddress());
-      const result = await createOrder({
-        id: chainOrderId || `${Date.now()}`,
-        user: t("ui.schedule.571"),
-        userAddress: getCurrentAddress(),
-        item: locked.items.join("、"),
-        amount: locked.total,
-        status: selectedPlayer ? t("ui.showcase.168") : t("ui.schedule.596"),
-        time: new Date().toISOString(),
-        chainDigest: chainDigest || undefined,
-        serviceFee: locked.service,
-        serviceFeePaid: true,
-        playerDue: locked.player,
-        depositPaid: false,
-        playerPaid: true,
-        note: [
-          `来源：安排页呼叫服务。托管费用使用钻石支付(${requiredDiamonds}钻石)`,
-          locked.discount > 0 ? `首单优惠减免 ¥${locked.discount}` : "",
-          requestedNote,
-        ]
-          .filter(Boolean)
-          .join("；"),
-        meta: {
-          disputeWindowHours: disputePolicy.hours,
-          ruleSetId: disputePolicy.ruleSetId,
-          vipTier: vipTier?.name || null,
-          vipLevel: vipTier?.level ?? null,
-          paymentMode: "diamond_escrow",
-          diamondCharge: requiredDiamonds,
-          diamondChargeCny: locked.total,
-          firstOrderDiscount:
-            locked.discount > 0
-              ? {
-                  amount: locked.discount,
-                  minSpend: FIRST_ORDER_DISCOUNT.minSpend,
-                  originalTotal: locked.originalTotal,
-                }
-              : null,
-          requestedPlayerId: selectedPlayer?.id || null,
-          requestedPlayerName: selectedPlayer?.name || null,
-          requestedPlayerRole: selectedPlayer?.role || null,
-          publicPool: true,
-          gameProfile: gameProfile
+      const orderMeta = {
+        disputeWindowHours: disputePolicy.hours,
+        ruleSetId: disputePolicy.ruleSetId,
+        vipTier: vipTier?.name || null,
+        vipLevel: vipTier?.level ?? null,
+        paymentMode: "diamond_escrow",
+        diamondCharge: requiredDiamonds,
+        diamondChargeCny: locked.total,
+        duoOrder: duoMode,
+        firstOrderDiscount:
+          locked.discount > 0
             ? {
-                gameName: gameProfile.gameName,
-                gameId: gameProfile.gameId,
-                updatedAt: gameProfile.updatedAt,
+                amount: locked.discount,
+                minSpend: FIRST_ORDER_DISCOUNT.minSpend,
+                originalTotal: locked.originalTotal,
               }
             : null,
-        },
-      });
+        requestedPlayerId: selectedPlayer?.id || null,
+        requestedPlayerName: selectedPlayer?.name || null,
+        requestedPlayerRole: selectedPlayer?.role || null,
+        publicPool: true,
+        gameProfile: gameProfile
+          ? {
+              gameName: gameProfile.gameName,
+              gameId: gameProfile.gameId,
+              updatedAt: gameProfile.updatedAt,
+            }
+          : null,
+      };
+      const orderNote = [
+        `来源：安排页${duoMode ? "双陪" : ""}呼叫服务。托管费用使用钻石支付(${requiredDiamonds}钻石)`,
+        locked.discount > 0 ? `首单优惠减免 ¥${locked.discount}` : "",
+        requestedNote,
+      ]
+        .filter(Boolean)
+        .join("；");
+      const orderId = chainOrderId || `${Date.now()}`;
+      const result = duoMode
+        ? await createDuoOrder({
+            id: orderId,
+            user: t("ui.schedule.571"),
+            userAddress: getCurrentAddress(),
+            item: locked.items.join("、"),
+            amount: locked.total,
+            note: orderNote,
+            chainDigest: chainDigest || undefined,
+            serviceFee: locked.service,
+            depositPerCompanion: 0,
+            meta: orderMeta,
+          })
+        : await createOrder({
+            id: orderId,
+            user: t("ui.schedule.571"),
+            userAddress: getCurrentAddress(),
+            item: locked.items.join("、"),
+            amount: locked.total,
+            status: selectedPlayer ? t("ui.showcase.168") : t("ui.schedule.596"),
+            time: new Date().toISOString(),
+            chainDigest: chainDigest || undefined,
+            serviceFee: locked.service,
+            serviceFeePaid: true,
+            playerDue: locked.player,
+            depositPaid: false,
+            playerPaid: true,
+            note: orderNote,
+            meta: orderMeta,
+          });
       if (chainOrderId) {
         const address = getCurrentAddress();
         const retrySync = async () => {
@@ -517,6 +575,7 @@ export default function Schedule() {
       });
       setMode("notifying");
       setFeeOpen(false);
+      setDuoMode(false);
       if (result.sent === false) {
         setToast(result.error || t("tabs.schedule.i112"));
       } else {
@@ -731,6 +790,7 @@ export default function Schedule() {
         }}
         onRefreshPlayers={loadPlayers}
         onSubmit={submit}
+        onSubmitDuo={submitDuo}
         onScrollToSection={(key) => {
           sectionRefs.current[key]?.scrollIntoView({ behavior: "smooth", block: "start" });
         }}

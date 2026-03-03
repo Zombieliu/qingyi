@@ -1,14 +1,17 @@
 # 情谊电竞链上落地状态（testnet）
 
-更新时间：2026-02-13
+更新时间：2026-02-28
 
 ## 1) 合约部署状态
 - 已发布 qy 包（testnet）  
-  - PACKAGE_ID: 0x656852b28b4e7a4b3e0c2d1aa33c74142da0620b375de5d2474fb5c4d1d6a148
+  - PACKAGE_ID (v2, upgrade): 0x39f85b91ced61739812a4ca968f247f0f07213e820b3f9e1df956bc56e93718e
   - UpgradeCap: 0xc646bc4b553a72299ed52d0bef37efc86e4defb8a74fd81ca9c68ec832f9803d
-  - Publish Tx: AyTiqgpKFKxaLq2n88ymNwBW5CZnuXHUEAdTsyQracvj
-  - Deploy Hook Tx: CHQcSA1qrAuxeF6eFbaqSF115afTnTQ5yodeX2rN8h3X
-  - Genesis Init Tx: HKZsxy88tcsqHPxqCGhCq6u2PbNi9YujumEjK4nhVKtV
+  - Upgrade Tx (v2): ACh26kDwr7Uo3cPjnjw28HrKd4odaa8K8c7peQuTr23M
+  - PACKAGE_ID (v1): 0x656852b28b4e7a4b3e0c2d1aa33c74142da0620b375de5d2474fb5c4d1d6a148
+  - Publish Tx (v1): AyTiqgpKFKxaLq2n88ymNwBW5CZnuXHUEAdTsyQracvj
+  - Deploy Hook Tx (v1): CHQcSA1qrAuxeF6eFbaqSF115afTnTQ5yodeX2rN8h3X
+  - Genesis Init Tx (v1): HKZsxy88tcsqHPxqCGhCq6u2PbNi9YujumEjK4nhVKtV
+  - v2 未发现新的 deploy_hook/genesis 链上调用（截至 2026-02-28）
 - DappHub（Dubhe）  
   - DAPP_HUB_ID: 0xfef203de9d3a2980429e91df535a0503ccf8d3c05aa3815936984243dc96f19f
   - DAPP_HUB_INITIAL_SHARED_VERSION: 640107062

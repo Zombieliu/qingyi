@@ -13,6 +13,17 @@ import {
   patchOrder,
   syncChainOrder,
 } from "@/lib/services/order-service";
+import {
+  fetchDuoOrders,
+  claimDuoSlot as claimDuoSlotApi,
+  releaseDuoSlot as releaseDuoSlotApi,
+} from "@/lib/services/duo-order-service";
+import {
+  claimDuoSlotOnChain,
+  lockDuoDepositOnChain,
+  releaseDuoSlotOnChain,
+} from "@/lib/chain/duo-chain";
+import type { DuoOrder } from "@/lib/admin/admin-types";
 import { useAutoToast } from "@/app/components/use-auto-toast";
 import {
   type ChainOrder,
@@ -90,6 +101,9 @@ export function useShowcaseState() {
   >({});
   const [orderMetaLoading, setOrderMetaLoading] = useState<Record<string, boolean>>({});
   const [pendingScrollToAccepted, setPendingScrollToAccepted] = useState(false);
+  const [duoOrders, setDuoOrders] = useState<DuoOrder[]>([]);
+  const [duoPublicCursor, setDuoPublicCursor] = useState<string | null>(null);
+  const [duoLoading, setDuoLoading] = useState(false);
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
   const acceptedRef = useRef<HTMLDivElement | null>(null);
 
@@ -209,6 +223,108 @@ export function useShowcaseState() {
     }
   }, [canAccessShowcase, publicCursor, publicLoading]);
 
+  const refreshDuoOrders = useCallback(
+    async (force = false) => {
+      if (!canAccessShowcase) return;
+      setDuoLoading(true);
+      try {
+        const result = await fetchDuoOrders({ public: true });
+        const items: DuoOrder[] = result?.items ?? result?.orders ?? [];
+        setDuoOrders(items);
+        setDuoPublicCursor(result?.nextCursor || null);
+      } catch {
+        // silent — duo orders are supplementary
+      } finally {
+        setDuoLoading(false);
+      }
+    },
+    [canAccessShowcase]
+  );
+
+  const loadMoreDuoOrders = useCallback(async () => {
+    if (!canAccessShowcase || !duoPublicCursor || duoLoading) return;
+    setDuoLoading(true);
+    try {
+      const result = await fetchDuoOrders({ public: true, cursor: duoPublicCursor });
+      const items: DuoOrder[] = result?.items ?? result?.orders ?? [];
+      setDuoOrders((prev) => [...prev, ...items]);
+      setDuoPublicCursor(result?.nextCursor || null);
+    } finally {
+      setDuoLoading(false);
+    }
+  }, [canAccessShowcase, duoPublicCursor, duoLoading]);
+
+  const claimDuoSlot = async (orderId: string) => {
+    const address = getCurrentAddress();
+    if (!address) {
+      showToast("请先登录");
+      return;
+    }
+    // Chain claim + lock deposit
+    if (isChainOrdersEnabled()) {
+      const ok = await runChainAction(
+        `duo-claim-${orderId}`,
+        () => claimDuoSlotOnChain(orderId),
+        "链上认领成功"
+      );
+      if (!ok) return;
+      // Lock deposit after claiming
+      await runChainAction(
+        `duo-deposit-${orderId}`,
+        () => lockDuoDepositOnChain(orderId),
+        "押金已锁定"
+      );
+    }
+    // Server-side claim
+    try {
+      await claimDuoSlotApi(orderId, address);
+      showToast("认领成功");
+      await refreshDuoOrders(true);
+    } catch (e) {
+      showToast(formatErrorMessage(e, "认领失败"));
+    }
+  };
+
+  const releaseDuoSlot = async (orderId: string) => {
+    const address = getCurrentAddress();
+    if (!address) {
+      showToast("请先登录");
+      return;
+    }
+    openConfirm({
+      title: "释放槽位",
+      description: "确定要释放此槽位吗？如已缴押金将自动退还。",
+      confirmLabel: "确认释放",
+      action: async () => {
+        let chainDigest: string | undefined;
+        // Chain release
+        if (isChainOrdersEnabled()) {
+          try {
+            setChainAction(`duo-release-${orderId}`);
+            const result = await releaseDuoSlotOnChain(orderId);
+            chainDigest = result?.digest;
+            showToast(
+              chainDigest ? `链上释放成功（tx: ${chainDigest.slice(0, 8)}…）` : "链上释放成功"
+            );
+          } catch (e) {
+            showToast(formatErrorMessage(e, "链上释放失败"));
+            return;
+          } finally {
+            setChainAction(null);
+          }
+        }
+        // Server-side release
+        try {
+          await releaseDuoSlotApi(orderId, address, chainDigest);
+          showToast("槽位已释放");
+          await refreshDuoOrders(true);
+        } catch (e) {
+          showToast(formatErrorMessage(e, "释放失败"));
+        }
+      },
+    });
+  };
+
   const loadChain = useCallback(async () => {
     if (!canAccessShowcase) return;
     if (!isChainOrdersEnabled()) return;
@@ -228,9 +344,9 @@ export function useShowcaseState() {
   }, [canAccessShowcase]);
 
   const refreshAll = useCallback(async () => {
-    await Promise.all([refreshOrders(true), refreshMyOrders(true)]);
+    await Promise.all([refreshOrders(true), refreshMyOrders(true), refreshDuoOrders(true)]);
     await loadChain();
-  }, [loadChain, refreshMyOrders, refreshOrders]);
+  }, [loadChain, refreshMyOrders, refreshOrders, refreshDuoOrders]);
 
   // --- Effects ---
 
@@ -244,6 +360,11 @@ export function useShowcaseState() {
     refreshMyOrders();
   }, [canAccessShowcase, refreshMyOrders]);
 
+  useEffect(() => {
+    if (!canAccessShowcase) return;
+    refreshDuoOrders();
+  }, [canAccessShowcase, refreshDuoOrders]);
+
   // SSE: listen for order events targeting this companion's address
   const companionAddr = chainAddress || getCurrentAddress() || "";
   const { connected: sseConnected } = useOrderEvents({
@@ -252,6 +373,7 @@ export function useShowcaseState() {
     onEvent: () => {
       refreshOrders(true);
       refreshMyOrders(true);
+      refreshDuoOrders(true);
       refreshMantou({ force: true });
     },
   });
@@ -813,6 +935,9 @@ export function useShowcaseState() {
     showOrderSourceWarning,
     visibleChainOrders,
     visibleOrders,
+    duoOrders,
+    duoPublicCursor,
+    duoLoading,
     disputeOrder,
     disputeDeadline,
     // Refs
@@ -833,6 +958,10 @@ export function useShowcaseState() {
     cancel,
     complete,
     clearAll,
+    claimDuoSlot,
+    releaseDuoSlot,
+    refreshDuoOrders,
+    loadMoreDuoOrders,
     openConfirm,
     runConfirmAction,
     runChainAction,

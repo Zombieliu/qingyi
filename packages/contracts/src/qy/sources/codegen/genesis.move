@@ -2,6 +2,7 @@
       use sui::clock::Clock;
       use dubhe::dapp_service::DappHub;
       use qy::dapp_key;
+      use qy::duo_order;
       use dubhe::dapp_system;
       use std::ascii::string;
 
@@ -9,6 +10,10 @@
     // Create Dapp
     let dapp_key = dapp_key::new();
     dapp_system::create_dapp(dapp_hub, dapp_key, string(b"qy"), string(b"qingyi ledger contracts"), clock, ctx);
+
+    // ==========================================
+    duo_order::register_table(dapp_hub, ctx);
+// ==========================================
 
     // Logic that needs to be automated once the contract is deployed
     qy::deploy_hook::run(dapp_hub, ctx);

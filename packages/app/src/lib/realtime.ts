@@ -20,7 +20,14 @@ const NOTIF_PREFIX = "rt:notif:";
 const CHANNEL_TTL = 300; // 5 minutes
 
 export type OrderEvent = {
-  type: "status_change" | "assigned" | "completed" | "cancelled" | "deposit_paid";
+  type:
+    | "status_change"
+    | "assigned"
+    | "completed"
+    | "cancelled"
+    | "deposit_paid"
+    | "slot_released"
+    | "slot_claimed";
   orderId: string;
   status?: string;
   stage?: string;

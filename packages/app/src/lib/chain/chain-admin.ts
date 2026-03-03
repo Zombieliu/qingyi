@@ -48,6 +48,80 @@ function normalizeDappKey(value: string) {
   return strip0x(value.trim().toLowerCase());
 }
 
+type ParsedStoreEvent = {
+  dapp_key?: string;
+  account?: string;
+  table_id?: string;
+  key_tuple?: number[][];
+  value_tuple?: number[][];
+  key?: number[][];
+  value?: number[][];
+};
+
+function decodeTableIdFromKeyTuple(keyTuple: number[][]): string | null {
+  if (!Array.isArray(keyTuple) || keyTuple.length === 0) return null;
+  const head = keyTuple[0];
+  if (!Array.isArray(head)) return null;
+  try {
+    return new TextDecoder().decode(Uint8Array.from(head));
+  } catch {
+    return null;
+  }
+}
+
+function resolveTableId(parsed: ParsedStoreEvent | null): string | null {
+  if (!parsed) return null;
+  if (parsed.table_id) return parsed.table_id;
+  return decodeTableIdFromKeyTuple(resolveKeyTuple(parsed));
+}
+
+function resolveKeyTuple(parsed: ParsedStoreEvent): number[][] {
+  if (Array.isArray(parsed.key_tuple)) return parsed.key_tuple;
+  if (Array.isArray(parsed.key)) return parsed.key;
+  return [];
+}
+
+function resolveValueTuple(parsed: ParsedStoreEvent): number[][] {
+  if (Array.isArray(parsed.value_tuple)) return parsed.value_tuple;
+  if (Array.isArray(parsed.value)) return parsed.value;
+  return [];
+}
+
+function normalizeKeyTupleForDecode(parsed: ParsedStoreEvent, tableId: string | null): number[][] {
+  const raw = resolveKeyTuple(parsed);
+  if (!raw.length) return raw;
+  if (parsed.table_id) return raw;
+  const inferred = decodeTableIdFromKeyTuple(raw);
+  if (inferred && (!tableId || inferred === tableId)) {
+    return raw.slice(1);
+  }
+  return raw;
+}
+
+function normalizePackageId(value: string | undefined) {
+  if (!value) return "";
+  try {
+    return normalizeSuiAddress(value);
+  } catch {
+    return "";
+  }
+}
+
+function matchesTargetEvent(
+  eventPackageId: string | undefined,
+  parsed: ParsedStoreEvent,
+  targetKey: string,
+  pkg: string
+) {
+  const eventPkg = normalizePackageId(eventPackageId);
+  const pkgNormalized = normalizePackageId(pkg);
+  const matchesPackage = Boolean(eventPkg && pkgNormalized && eventPkg === pkgNormalized);
+  const dappKey = normalizeDappKey(parsed.dapp_key || "");
+  const accountKey = normalizeDappKey(parsed.account || "");
+  const matchesDappKey = dappKey === targetKey || accountKey === targetKey;
+  return matchesPackage || matchesDappKey;
+}
+
 function isRetryableRpcError(message: string) {
   const lower = message.toLowerCase();
   return RETRYABLE_RPC_PATTERNS.some((pattern) => lower.includes(pattern));
@@ -264,16 +338,14 @@ async function fetchChainOrdersAdminInternal(options?: {
       }
     }
     for (const event of page.data) {
-      const parsed = event.parsedJson as {
-        dapp_key?: string;
-        table_id?: string;
-        key_tuple?: number[][];
-        value_tuple?: number[][];
-      } | null;
-      if (!parsed || parsed.table_id !== "order") continue;
-      const dappKey = normalizeDappKey(parsed.dapp_key || "");
-      if (dappKey !== targetKey) continue;
-      const chainOrder = decodeOrderFromTuple(parsed.key_tuple || [], parsed.value_tuple || []);
+      const parsed = event.parsedJson as ParsedStoreEvent | null;
+      const tableId = resolveTableId(parsed);
+      if (!parsed || tableId !== "order") continue;
+      if (!matchesTargetEvent(event.packageId, parsed, targetKey, pkg)) continue;
+      const chainOrder = decodeOrderFromTuple(
+        normalizeKeyTupleForDecode(parsed, tableId),
+        resolveValueTuple(parsed)
+      );
       if (!chainOrder) continue;
       chainOrder.lastUpdatedMs = Number(event.timestampMs || 0);
       if (orderDirection === "ascending" || !orders.has(chainOrder.orderId)) {
@@ -351,16 +423,14 @@ async function fetchDuoChainOrdersAdminInternal(options?: {
       }
     }
     for (const event of page.data) {
-      const parsed = event.parsedJson as {
-        dapp_key?: string;
-        table_id?: string;
-        key_tuple?: number[][];
-        value_tuple?: number[][];
-      } | null;
-      if (!parsed || parsed.table_id !== "duo_order") continue;
-      const dappKey = normalizeDappKey(parsed.dapp_key || "");
-      if (dappKey !== targetKey) continue;
-      const chainOrder = decodeDuoOrderFromTuple(parsed.key_tuple || [], parsed.value_tuple || []);
+      const parsed = event.parsedJson as ParsedStoreEvent | null;
+      const tableId = resolveTableId(parsed);
+      if (!parsed || tableId !== "duo_order") continue;
+      if (!matchesTargetEvent(event.packageId, parsed, targetKey, pkg)) continue;
+      const chainOrder = decodeDuoOrderFromTuple(
+        normalizeKeyTupleForDecode(parsed, tableId),
+        resolveValueTuple(parsed)
+      );
       if (!chainOrder) continue;
       if (orderDirection === "ascending" || !orders.has(chainOrder.orderId)) {
         orders.set(chainOrder.orderId, chainOrder);

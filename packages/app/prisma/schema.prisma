@@ -618,3 +618,36 @@ model CustomerTag {
   @@index([reportedBy])
 }
 
+// 双陪订单 — 两个 companion 平分收入
+model DuoOrder {
+  id                  String   @id
+  user                String
+  userAddress         String?
+  companionAddressA   String?
+  companionAddressB   String?
+  item                String
+  amount              Decimal  @db.Decimal(12, 2)
+  currency            String
+  paymentStatus       String
+  stage               String
+  note                String?
+  assignedTo          String?
+  source              String?
+  chainDigest         String?
+  chainStatus         Int?
+  serviceFee          Decimal? @db.Decimal(12, 2)
+  depositPerCompanion Decimal? @db.Decimal(12, 2)
+  teamStatus          Int?     @default(0)
+  meta                Json?
+  createdAt           DateTime
+  updatedAt           DateTime?
+  deletedAt           DateTime?
+
+  @@index([createdAt])
+  @@index([stage])
+  @@index([userAddress])
+  @@index([companionAddressA])
+  @@index([companionAddressB])
+  @@index([teamStatus])
+  @@index([deletedAt])
+}

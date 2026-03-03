@@ -104,4 +104,94 @@ module qy::events {
   public fun emit_credit_receipt(owner: address, amount: u64, admin: address, timestamp_ms: u64) {
     event::emit(CreditReceiptRecorded { owner, amount, admin, timestamp_ms });
   }
+
+  // ── Duo Order Events ──
+
+  public struct DuoOrderCreated has copy, drop {
+    order_id: u64,
+    user: address,
+    companion_a: address,
+    companion_b: address,
+    rule_set_id: u64,
+    service_fee: u64,
+    deposit_per_companion: u64,
+  }
+
+  public struct DuoSlotClaimed has copy, drop {
+    order_id: u64,
+    companion: address,
+    slot: u8, // 0 = A, 1 = B
+  }
+
+  public struct DuoDepositLocked has copy, drop {
+    order_id: u64,
+    companion: address,
+    deposit: u64,
+    team_status: u8,
+  }
+
+  public struct DuoOrderCompleted has copy, drop {
+    order_id: u64,
+    user: address,
+    finish_at: u64,
+    dispute_deadline: u64,
+  }
+
+  public struct DuoOrderFinalized has copy, drop {
+    order_id: u64,
+  }
+
+  public struct DuoOrderDisputed has copy, drop {
+    order_id: u64,
+    claimant: address,
+    evidence_hash: vector<u8>,
+  }
+
+  public struct DuoOrderResolved has copy, drop {
+    order_id: u64,
+    resolved_by: address,
+    service_refund_bps: u64,
+    deposit_slash_bps: u64,
+  }
+
+  public struct DuoSlotReleased has copy, drop {
+    order_id: u64,
+    companion: address,
+    slot: u8, // 0 = A, 1 = B
+  }
+
+  public fun emit_duo_order_created(
+    order_id: u64, user: address, companion_a: address, companion_b: address,
+    rule_set_id: u64, service_fee: u64, deposit_per_companion: u64
+  ) {
+    event::emit(DuoOrderCreated { order_id, user, companion_a, companion_b, rule_set_id, service_fee, deposit_per_companion });
+  }
+
+  public fun emit_duo_slot_claimed(order_id: u64, companion: address, slot: u8) {
+    event::emit(DuoSlotClaimed { order_id, companion, slot });
+  }
+
+  public fun emit_duo_deposit_locked(order_id: u64, companion: address, deposit: u64, team_status: u8) {
+    event::emit(DuoDepositLocked { order_id, companion, deposit, team_status });
+  }
+
+  public fun emit_duo_order_completed(order_id: u64, user: address, finish_at: u64, dispute_deadline: u64) {
+    event::emit(DuoOrderCompleted { order_id, user, finish_at, dispute_deadline });
+  }
+
+  public fun emit_duo_order_finalized(order_id: u64) {
+    event::emit(DuoOrderFinalized { order_id });
+  }
+
+  public fun emit_duo_order_disputed(order_id: u64, claimant: address, evidence_hash: vector<u8>) {
+    event::emit(DuoOrderDisputed { order_id, claimant, evidence_hash });
+  }
+
+  public fun emit_duo_order_resolved(order_id: u64, resolved_by: address, service_refund_bps: u64, deposit_slash_bps: u64) {
+    event::emit(DuoOrderResolved { order_id, resolved_by, service_refund_bps, deposit_slash_bps });
+  }
+
+  public fun emit_duo_slot_released(order_id: u64, companion: address, slot: u8) {
+    event::emit(DuoSlotReleased { order_id, companion, slot });
+  }
 }
