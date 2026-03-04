@@ -130,7 +130,9 @@ export async function POST(req: Request) {
         !wechat?.data
       ) {
         try {
-          intent = await stripe.paymentIntents.retrieve(intent.id);
+          if (intent.id) {
+            intent = await stripe.paymentIntents.retrieve(intent.id);
+          }
         } catch {
           // ignore refresh errors
         }

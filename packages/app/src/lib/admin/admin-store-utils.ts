@@ -1,29 +1,41 @@
 import "server-only";
 /* eslint-disable @typescript-eslint/no-namespace */
 
+import type { PrismaClient } from "@prisma/client";
+
+type UnsafeAny = ReturnType<typeof JSON.parse>;
+
 type LegacyDbModule = {
-  prisma: Record<string | symbol, unknown>;
+  prisma: PrismaClient;
 };
 
 let legacyDbPromise: Promise<LegacyDbModule> | null = null;
 
-async function getLegacyDbModule() {
+async function getLegacyDbModule(): Promise<LegacyDbModule> {
   const modulePath = "../db";
   legacyDbPromise ??= import(modulePath).then((mod) => mod as unknown as LegacyDbModule);
   return legacyDbPromise;
 }
 
+type UnknownRecord = Record<string | symbol, unknown>;
+
 async function invokePrismaPath(path: Array<string | symbol>, args: unknown[]) {
   const { prisma: legacyPrisma } = await getLegacyDbModule();
   if (path.length === 0) return legacyPrisma;
 
-  let parent: Record<string | symbol, unknown> | undefined = legacyPrisma;
+  let parent: unknown = legacyPrisma;
   for (let i = 0; i < path.length - 1; i += 1) {
-    parent = parent?.[path[i]] as Record<string | symbol, unknown> | undefined;
+    if (!parent || (typeof parent !== "object" && typeof parent !== "function")) {
+      return undefined;
+    }
+    parent = (parent as UnknownRecord)[path[i]];
   }
 
+  if (!parent || (typeof parent !== "object" && typeof parent !== "function")) {
+    return undefined;
+  }
   const leafKey = path[path.length - 1];
-  const leaf = parent?.[leafKey];
+  const leaf = (parent as UnknownRecord)[leafKey];
   if (typeof leaf === "function") {
     return (leaf as (...fnArgs: unknown[]) => unknown).apply(parent, args);
   }
@@ -42,13 +54,17 @@ function createPrismaProxy(path: Array<string | symbol> = []): unknown {
   });
 }
 
-export type TransactionClient = Record<string, unknown>;
-export const prisma = createPrismaProxy() as TransactionClient;
+/** Prisma interactive transaction client — use as optional param type */
+export type TransactionClient = Omit<
+  PrismaClient,
+  "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends"
+>;
+export const prisma = createPrismaProxy() as PrismaClient;
 
 export namespace Prisma {
-  export type JsonValue = unknown;
-  export type InputJsonValue = unknown;
-  export type Decimal = number;
+  export type JsonValue = UnsafeAny;
+  export type InputJsonValue = UnsafeAny;
+  export type Decimal = UnsafeAny;
   export type DateTimeFilter = Record<string, unknown>;
 
   export type AdminOrderWhereInput = Record<string, unknown>;

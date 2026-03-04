@@ -28,7 +28,14 @@ export async function PUT(req: Request) {
   if (!parsed.success) return parsed.response;
   const payload = parsed.data;
 
-  const patch: Parameters<typeof updateReferralConfig>[0] = {};
+  const patch: Partial<{
+    mode: "fixed" | "percent";
+    fixedInviter: number;
+    fixedInvitee: number;
+    percentInviter: number;
+    percentInvitee: number;
+    enabled: boolean;
+  }> = {};
   if (payload.mode !== undefined) patch.mode = payload.mode;
   if (payload.fixedInviter !== undefined) patch.fixedInviter = Math.floor(payload.fixedInviter);
   if (payload.fixedInvitee !== undefined) patch.fixedInvitee = Math.floor(payload.fixedInvitee);

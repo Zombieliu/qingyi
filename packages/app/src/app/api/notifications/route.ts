@@ -42,7 +42,7 @@ export async function GET(req: Request) {
       body: n.body,
       orderId: n.orderId,
       read: n.read,
-      createdAt: n.createdAt.getTime(),
+      createdAt: new Date(n.createdAt ?? Date.now()).getTime(),
     })),
   });
 }

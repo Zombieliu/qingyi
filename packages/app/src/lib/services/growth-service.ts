@@ -6,10 +6,8 @@ import {
   patchEdgeRowsByFilter,
   toEpochMs,
 } from "@/lib/edge-db/client";
-import {
-  getMemberByAddressEdgeRead,
-  listActiveMembershipTiersEdgeRead,
-} from "@/lib/edge-db/user-read-store";
+import { getMemberByAddressEdgeRead } from "@/lib/edge-db/user-read-store";
+import { listActiveMembershipTiersEdgeRead } from "@/lib/edge-db/public-read-store";
 import { randomInt } from "@/lib/shared/runtime-crypto";
 import type { TransactionClient } from "@/lib/admin/admin-store-utils";
 
@@ -21,33 +19,7 @@ export const POINTS_RULES = {
   VIP_MULTIPLIER: 1.5,
 } as const;
 
-type LegacyGrowthService = {
-  addPointsAndUpgrade(params: {
-    userAddress: string;
-    points: number;
-    reason: string;
-    orderId?: string;
-    tx?: TransactionClient;
-  }): Promise<unknown>;
-  onOrderCompleted(params: {
-    userAddress: string;
-    amount: number;
-    orderId: string;
-    tx?: TransactionClient;
-  }): Promise<unknown>;
-  onReviewSubmitted(params: {
-    userAddress: string;
-    orderId: string;
-    tx?: TransactionClient;
-  }): Promise<unknown>;
-  onReferralFirstOrder(params: {
-    referrerAddress: string;
-    refereeAddress: string;
-    orderId: string;
-  }): Promise<unknown>;
-  onDailyCheckin(userAddress: string): Promise<unknown>;
-  getUserLevelProgress(userAddress: string): Promise<unknown>;
-};
+type LegacyGrowthService = typeof import("./growth-service-legacy");
 
 type AdminMemberRow = {
   id: string;

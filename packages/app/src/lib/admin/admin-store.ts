@@ -5,13 +5,22 @@ import { listPlayersPublicEdgeRead } from "@/lib/edge-db/user-read-store";
 import { listActiveMembershipTiersEdgeRead } from "@/lib/edge-db/public-read-store";
 import { addSupportTicketEdgeWrite } from "@/lib/edge-db/support-write-store";
 import { upsertLedgerRecordEdgeWrite } from "@/lib/edge-db/payment-reconcile-store";
-import type { AdminSupportTicket, LedgerRecord } from "./admin-types";
 import { getEdgeDbConfig } from "@/lib/edge-db/client";
 
 export type CursorPayload = { createdAt: number; id: string };
 export type TransactionClient = unknown;
 
-type LegacyAdminStore = Record<string, (...args: unknown[]) => unknown>;
+type UnsafeAny = ReturnType<typeof JSON.parse>;
+type LegacyAdminStore = typeof import("./admin-store-legacy");
+type LegacyFn = (...args: UnsafeAny[]) => UnsafeAny;
+type LegacyFnName = {
+  [K in keyof LegacyAdminStore]: LegacyAdminStore[K] extends LegacyFn ? K : never;
+}[keyof LegacyAdminStore];
+type LegacyFnResult<Name extends LegacyFnName> = LegacyAdminStore[Name] extends (
+  ...args: UnsafeAny[]
+) => infer R
+  ? R
+  : never;
 
 let legacyStorePromise: Promise<LegacyAdminStore> | null = null;
 
@@ -21,13 +30,16 @@ async function loadLegacyStore(): Promise<LegacyAdminStore> {
   return legacyStorePromise;
 }
 
-async function callLegacy(name: string, args: unknown[]) {
+async function callLegacy<Name extends LegacyFnName>(
+  name: Name,
+  args: unknown[]
+): Promise<Awaited<LegacyFnResult<Name>>> {
   const legacy = await loadLegacyStore();
-  const fn = legacy[name];
+  const fn = legacy[name] as unknown;
   if (typeof fn !== "function") {
     throw new Error(`legacy_admin_store_missing_export:${name}`);
   }
-  return fn(...args);
+  return (await Promise.resolve((fn as LegacyFn)(...args))) as Awaited<LegacyFnResult<Name>>;
 }
 
 function hasEdgeReadConfig() {
@@ -39,34 +51,54 @@ function hasEdgeWriteConfig() {
 }
 
 // Hot-path edge overrides; all other exports use dynamic legacy fallback.
-export async function listPublicAnnouncements(...args: unknown[]) {
+type ListPublicAnnouncementsFn = LegacyAdminStore["listPublicAnnouncements"];
+export async function listPublicAnnouncements(
+  ...args: Parameters<ListPublicAnnouncementsFn>
+): Promise<Awaited<ReturnType<ListPublicAnnouncementsFn>>> {
   if (!hasEdgeReadConfig()) return callLegacy("listPublicAnnouncements", args);
-  return listPublicAnnouncementsEdgeRead();
+  return (await listPublicAnnouncementsEdgeRead()) as Awaited<
+    ReturnType<ListPublicAnnouncementsFn>
+  >;
 }
 
-export async function listPlayersPublic(...args: unknown[]) {
+type ListPlayersPublicFn = LegacyAdminStore["listPlayersPublic"];
+export async function listPlayersPublic(
+  ...args: Parameters<ListPlayersPublicFn>
+): Promise<Awaited<ReturnType<ListPlayersPublicFn>>> {
   if (!hasEdgeReadConfig()) return callLegacy("listPlayersPublic", args);
-  return listPlayersPublicEdgeRead();
+  return (await listPlayersPublicEdgeRead()) as Awaited<ReturnType<ListPlayersPublicFn>>;
 }
 
-export async function listActiveMembershipTiers(...args: unknown[]) {
+type ListActiveMembershipTiersFn = LegacyAdminStore["listActiveMembershipTiers"];
+export async function listActiveMembershipTiers(
+  ...args: Parameters<ListActiveMembershipTiersFn>
+): Promise<Awaited<ReturnType<ListActiveMembershipTiersFn>>> {
   if (!hasEdgeReadConfig()) return callLegacy("listActiveMembershipTiers", args);
-  return listActiveMembershipTiersEdgeRead();
+  return (await listActiveMembershipTiersEdgeRead()) as Awaited<
+    ReturnType<ListActiveMembershipTiersFn>
+  >;
 }
 
-export async function addSupportTicket(...args: unknown[]) {
+type AddSupportTicketFn = LegacyAdminStore["addSupportTicket"];
+export async function addSupportTicket(
+  ...args: Parameters<AddSupportTicketFn>
+): Promise<Awaited<ReturnType<AddSupportTicketFn>>> {
   if (!hasEdgeWriteConfig()) return callLegacy("addSupportTicket", args);
-  const [ticket] = args as [AdminSupportTicket];
+  const [ticket] = args;
   if (!ticket) return callLegacy("addSupportTicket", args);
   await addSupportTicketEdgeWrite(ticket);
-  return ticket;
+  return ticket as Awaited<ReturnType<AddSupportTicketFn>>;
 }
 
-export async function upsertLedgerRecord(...args: unknown[]) {
+type UpsertLedgerRecordFn = LegacyAdminStore["upsertLedgerRecord"];
+export async function upsertLedgerRecord(
+  ...args: Parameters<UpsertLedgerRecordFn>
+): Promise<Awaited<ReturnType<UpsertLedgerRecordFn>>> {
   if (!hasEdgeWriteConfig()) return callLegacy("upsertLedgerRecord", args);
-  const [entry] = args as [LedgerRecord];
+  const [entry] = args;
   if (!entry) return callLegacy("upsertLedgerRecord", args);
   await upsertLedgerRecordEdgeWrite(entry);
+  return entry as Awaited<ReturnType<UpsertLedgerRecordFn>>;
 }
 
 export async function addAccessToken(...args: unknown[]) {

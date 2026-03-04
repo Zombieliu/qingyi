@@ -69,7 +69,16 @@ export async function POST(req: Request) {
       paymentIntentId = object.id;
     } else if ("payment_intent" in object) {
       const pi = object.payment_intent;
-      paymentIntentId = typeof pi === "string" ? pi : pi?.id;
+      if (typeof pi === "string") {
+        paymentIntentId = pi;
+      } else if (
+        pi &&
+        typeof pi === "object" &&
+        "id" in pi &&
+        typeof (pi as { id?: unknown }).id === "string"
+      ) {
+        paymentIntentId = (pi as { id: string }).id;
+      }
     }
   }
 
