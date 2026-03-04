@@ -12,7 +12,19 @@ export type CacheEntry<T> = {
 const memoryStore = new Map<string, CacheEntry<unknown>>();
 
 // --- Redis (shared across serverless instances) ---
-const redis = env.UPSTASH_REDIS_REST_URL && env.UPSTASH_REDIS_REST_TOKEN ? Redis.fromEnv() : null;
+// Keep initialization lazy so test/client-like runners can import this module
+// without eagerly touching server env validation.
+let redisClient: ReturnType<typeof Redis.fromEnv> | null | undefined;
+
+function getRedisClient() {
+  if (redisClient !== undefined) return redisClient;
+  if (!env.UPSTASH_REDIS_REST_URL || !env.UPSTASH_REDIS_REST_TOKEN) {
+    redisClient = null;
+    return redisClient;
+  }
+  redisClient = Redis.fromEnv();
+  return redisClient;
+}
 
 const CACHE_PREFIX = "sc:";
 
@@ -36,6 +48,7 @@ export async function getCacheAsync<T>(key: string): Promise<CacheEntry<T> | nul
   const mem = getCache<T>(key);
   if (mem) return mem;
 
+  const redis = getRedisClient();
   if (!redis) return null;
   try {
     const raw = await redis.get<CacheEntry<T>>(CACHE_PREFIX + key);
@@ -58,6 +71,7 @@ export function setCache<T>(key: string, value: T, ttlMs: number, etag?: string)
   memoryStore.set(key, entry as CacheEntry<unknown>);
 
   // Write-through to Redis (fire-and-forget)
+  const redis = getRedisClient();
   if (redis) {
     const ttlSeconds = Math.max(1, Math.ceil(ttlMs / 1000));
     redis

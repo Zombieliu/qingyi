@@ -39,6 +39,8 @@
     "vercel:env:clear": "node scripts/vercel-env-clear.mjs",
     "vercel:env:sync": "node scripts/vercel-env-sync.mjs",
     "sentry:rotate": "node scripts/sentry-token-rotate.mjs",
+    "check:node": "node scripts/check-node-version.mjs",
+    "preinstall": "pnpm run check:node",
     "prepare": "husky"
   },
   "devDependencies": {
