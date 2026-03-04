@@ -2,9 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   requireUserAuth: vi.fn(),
-  aggregate: vi.fn(),
-  count: vi.fn(),
-  findFirst: vi.fn(),
+  getCompanionStatsEdgeRead: vi.fn(),
 }));
 
 vi.mock("next/server", () => {
@@ -28,19 +26,8 @@ vi.mock("next/server", () => {
 });
 
 vi.mock("@/lib/auth/user-auth", () => ({ requireUserAuth: mocks.requireUserAuth }));
-vi.mock("@/lib/db", () => ({
-  prisma: {
-    adminOrder: {
-      aggregate: mocks.aggregate,
-      count: mocks.count,
-    },
-    orderReview: {
-      aggregate: mocks.aggregate,
-    },
-    adminPlayer: {
-      findFirst: mocks.findFirst,
-    },
-  },
+vi.mock("@/lib/edge-db/companion-read-store", () => ({
+  getCompanionStatsEdgeRead: mocks.getCompanionStatsEdgeRead,
 }));
 
 import { GET } from "../route";
@@ -70,18 +57,18 @@ describe("GET /api/companion/stats", () => {
 
   it("returns stats for companion", async () => {
     mocks.requireUserAuth.mockResolvedValue({ ok: true, address: VALID_ADDRESS });
-    const aggResult = {
-      _count: { id: 5 },
-      _sum: { amount: 500, serviceFee: 50 },
-      _avg: { rating: 4.5 },
-    };
-    mocks.aggregate.mockResolvedValue(aggResult);
-    mocks.count.mockResolvedValue(2);
-    mocks.findFirst.mockResolvedValue({
-      id: "P-1",
-      name: "Test",
-      status: "可接单",
-      role: "companion",
+    mocks.getCompanionStatsEdgeRead.mockResolvedValue({
+      totalStats: { _count: { id: 5 }, _sum: { amount: 500, serviceFee: 50 } },
+      monthStats: { _count: { id: 2 }, _sum: { amount: 200, serviceFee: 20 } },
+      todayStats: { _count: { id: 1 }, _sum: { amount: 100 } },
+      activeOrders: 2,
+      reviews: { _avg: { rating: 4.5 }, _count: { id: 6 } },
+      player: {
+        id: "P-1",
+        name: "Test",
+        status: "可接单",
+        role: "companion",
+      },
     });
     const req = new Request(`http://localhost/api/companion/stats?address=${VALID_ADDRESS}`);
     const res = await GET(req);
@@ -94,14 +81,14 @@ describe("GET /api/companion/stats", () => {
 
   it("returns null player when not found", async () => {
     mocks.requireUserAuth.mockResolvedValue({ ok: true, address: VALID_ADDRESS });
-    const aggResult = {
-      _count: { id: 0 },
-      _sum: { amount: null, serviceFee: null },
-      _avg: { rating: null },
-    };
-    mocks.aggregate.mockResolvedValue(aggResult);
-    mocks.count.mockResolvedValue(0);
-    mocks.findFirst.mockResolvedValue(null);
+    mocks.getCompanionStatsEdgeRead.mockResolvedValue({
+      totalStats: { _count: { id: 0 }, _sum: { amount: null, serviceFee: null } },
+      monthStats: { _count: { id: 0 }, _sum: { amount: null, serviceFee: null } },
+      todayStats: { _count: { id: 0 }, _sum: { amount: null } },
+      activeOrders: 0,
+      reviews: { _avg: { rating: null }, _count: { id: 0 } },
+      player: null,
+    });
     const req = new Request(`http://localhost/api/companion/stats?address=${VALID_ADDRESS}`);
     const res = await GET(req);
     expect(res.status).toBe(200);
@@ -116,14 +103,14 @@ describe("GET /api/companion/stats", () => {
 
   it("handles null _count.id values", async () => {
     mocks.requireUserAuth.mockResolvedValue({ ok: true, address: VALID_ADDRESS });
-    const aggResult = {
-      _count: { id: null },
-      _sum: { amount: null, serviceFee: null },
-      _avg: { rating: null },
-    };
-    mocks.aggregate.mockResolvedValue(aggResult);
-    mocks.count.mockResolvedValue(0);
-    mocks.findFirst.mockResolvedValue(null);
+    mocks.getCompanionStatsEdgeRead.mockResolvedValue({
+      totalStats: { _count: { id: null }, _sum: { amount: null, serviceFee: null } },
+      monthStats: { _count: { id: null }, _sum: { amount: null, serviceFee: null } },
+      todayStats: { _count: { id: null }, _sum: { amount: null } },
+      activeOrders: 0,
+      reviews: { _avg: { rating: null }, _count: { id: null } },
+      player: null,
+    });
     const req = new Request(`http://localhost/api/companion/stats?address=${VALID_ADDRESS}`);
     const res = await GET(req);
     expect(res.status).toBe(200);

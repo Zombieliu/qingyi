@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireUserAuth } from "@/lib/auth/user-auth";
-import { prisma } from "@/lib/db";
+import { getCompanionStatsEdgeRead } from "@/lib/edge-db/companion-read-store";
 
 /**
  * GET /api/companion/stats?address=xxx
@@ -16,50 +16,8 @@ export async function GET(req: Request) {
   const auth = await requireUserAuth(req, { intent: "companion:stats:read", address });
   if (!auth.ok) return auth.response;
 
-  const now = new Date();
-  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-
-  const baseWhere = { companionAddress: auth.address, stage: "已完成" as const };
-
-  const [totalStats, monthStats, todayStats, activeOrders, reviews, player] = await Promise.all([
-    // 总计
-    prisma.adminOrder.aggregate({
-      where: baseWhere,
-      _count: { id: true },
-      _sum: { amount: true, serviceFee: true },
-    }),
-    // 本月
-    prisma.adminOrder.aggregate({
-      where: { ...baseWhere, createdAt: { gte: monthStart } },
-      _count: { id: true },
-      _sum: { amount: true, serviceFee: true },
-    }),
-    // 今日
-    prisma.adminOrder.aggregate({
-      where: { ...baseWhere, createdAt: { gte: todayStart } },
-      _count: { id: true },
-      _sum: { amount: true },
-    }),
-    // 进行中订单数
-    prisma.adminOrder.count({
-      where: {
-        companionAddress: auth.address,
-        stage: { in: ["已支付", "进行中", "待结算"] },
-      },
-    }),
-    // 评分
-    prisma.orderReview.aggregate({
-      where: { companionAddress: auth.address },
-      _avg: { rating: true },
-      _count: { id: true },
-    }),
-    // 陪练状态
-    prisma.adminPlayer.findFirst({
-      where: { address: auth.address },
-      select: { id: true, name: true, status: true, role: true },
-    }),
-  ]);
+  const { totalStats, monthStats, todayStats, activeOrders, reviews, player } =
+    await getCompanionStatsEdgeRead(auth.address);
 
   return NextResponse.json({
     player: player

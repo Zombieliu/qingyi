@@ -2,8 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   requireUserAuth: vi.fn(),
-  count: vi.fn(),
-  findMany: vi.fn(),
+  queryCompanionOrdersEdgeRead: vi.fn(),
 }));
 
 vi.mock("next/server", () => {
@@ -27,13 +26,8 @@ vi.mock("next/server", () => {
 });
 
 vi.mock("@/lib/auth/user-auth", () => ({ requireUserAuth: mocks.requireUserAuth }));
-vi.mock("@/lib/db", () => ({
-  prisma: {
-    adminOrder: {
-      count: mocks.count,
-      findMany: mocks.findMany,
-    },
-  },
+vi.mock("@/lib/edge-db/companion-read-store", () => ({
+  queryCompanionOrdersEdgeRead: mocks.queryCompanionOrdersEdgeRead,
 }));
 
 import { GET } from "../route";
@@ -63,24 +57,25 @@ describe("GET /api/companion/orders", () => {
 
   it("returns orders with status=completed filter", async () => {
     mocks.requireUserAuth.mockResolvedValue({ ok: true, address: VALID_ADDRESS });
-    const now = new Date();
-    mocks.count.mockResolvedValue(1);
-    mocks.findMany.mockResolvedValue([
-      {
-        id: "ORD-2",
-        user: "u1",
-        userAddress: "0x1",
-        item: "item1",
-        amount: 100,
-        stage: "已完成",
-        serviceFee: 10,
-        chainStatus: null,
-        createdAt: now,
-        updatedAt: null,
-        note: null,
-        meta: null,
-      },
-    ]);
+    mocks.queryCompanionOrdersEdgeRead.mockResolvedValue({
+      total: 1,
+      rows: [
+        {
+          id: "ORD-2",
+          user: "u1",
+          userAddress: "0x1",
+          item: "item1",
+          amount: 100,
+          stage: "已完成",
+          serviceFee: 10,
+          chainStatus: null,
+          createdAt: 1_700_000_000_000,
+          updatedAt: null,
+          note: null,
+          meta: null,
+        },
+      ],
+    });
     const req = new Request(
       `http://localhost/api/companion/orders?address=${VALID_ADDRESS}&status=completed`
     );
@@ -93,8 +88,7 @@ describe("GET /api/companion/orders", () => {
 
   it("returns orders with status=all (no stage filter)", async () => {
     mocks.requireUserAuth.mockResolvedValue({ ok: true, address: VALID_ADDRESS });
-    mocks.count.mockResolvedValue(0);
-    mocks.findMany.mockResolvedValue([]);
+    mocks.queryCompanionOrdersEdgeRead.mockResolvedValue({ total: 0, rows: [] });
     const req = new Request(
       `http://localhost/api/companion/orders?address=${VALID_ADDRESS}&status=all`
     );
@@ -106,30 +100,38 @@ describe("GET /api/companion/orders", () => {
 
   it("returns orders for companion", async () => {
     mocks.requireUserAuth.mockResolvedValue({ ok: true, address: VALID_ADDRESS });
-    const now = new Date();
-    mocks.count.mockResolvedValue(1);
-    mocks.findMany.mockResolvedValue([
-      {
-        id: "ORD-1",
-        user: "u1",
-        userAddress: "0x1",
-        item: "item1",
-        amount: 100,
-        stage: "进行中",
-        serviceFee: 10,
-        chainStatus: null,
-        createdAt: now,
-        updatedAt: now,
-        note: null,
-        meta: null,
-      },
-    ]);
+    const nowMs = 1_700_000_000_000;
+    mocks.queryCompanionOrdersEdgeRead.mockResolvedValue({
+      total: 1,
+      rows: [
+        {
+          id: "ORD-1",
+          user: "u1",
+          userAddress: "0x1",
+          item: "item1",
+          amount: 100,
+          stage: "进行中",
+          serviceFee: 10,
+          chainStatus: null,
+          createdAt: nowMs,
+          updatedAt: nowMs,
+          note: null,
+          meta: null,
+        },
+      ],
+    });
     const req = new Request(`http://localhost/api/companion/orders?address=${VALID_ADDRESS}`);
     const res = await GET(req);
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.orders).toHaveLength(1);
     expect(body.total).toBe(1);
-    expect(body.orders[0].createdAt).toBe(now.getTime());
+    expect(body.orders[0].createdAt).toBe(nowMs);
+    expect(mocks.queryCompanionOrdersEdgeRead).toHaveBeenCalledWith({
+      address: VALID_ADDRESS,
+      status: "active",
+      page: 1,
+      pageSize: 20,
+    });
   });
 });

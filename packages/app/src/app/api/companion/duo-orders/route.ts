@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireUserAuth } from "@/lib/auth/user-auth";
-import { prisma } from "@/lib/db";
+import { queryCompanionDuoOrdersEdgeRead } from "@/lib/edge-db/companion-read-store";
 
 /**
  * GET /api/companion/duo-orders?address=xxx&status=active|completed|all&page=1&pageSize=20
@@ -19,51 +19,15 @@ export async function GET(req: Request) {
   const status = searchParams.get("status") || "active";
   const page = Math.max(1, Number(searchParams.get("page") || "1"));
   const pageSize = Math.min(50, Math.max(5, Number(searchParams.get("pageSize") || "20")));
-
-  const where: Record<string, unknown> = {
-    OR: [{ companionAddressA: auth.address }, { companionAddressB: auth.address }],
-  };
-
-  if (status === "active") {
-    where.stage = { in: ["待处理", "已确认", "进行中"] };
-  } else if (status === "completed") {
-    where.stage = { in: ["已完成", "已取消"] };
-  }
-
-  const [total, rows] = await Promise.all([
-    prisma.duoOrder.count({ where }),
-    prisma.duoOrder.findMany({
-      where,
-      orderBy: { createdAt: "desc" },
-      skip: (page - 1) * pageSize,
-      take: pageSize,
-      select: {
-        id: true,
-        user: true,
-        userAddress: true,
-        companionAddressA: true,
-        companionAddressB: true,
-        item: true,
-        amount: true,
-        stage: true,
-        serviceFee: true,
-        depositPerCompanion: true,
-        teamStatus: true,
-        chainStatus: true,
-        createdAt: true,
-        updatedAt: true,
-        note: true,
-        meta: true,
-      },
-    }),
-  ]);
+  const { total, rows } = await queryCompanionDuoOrdersEdgeRead({
+    address: auth.address,
+    status,
+    page,
+    pageSize,
+  });
 
   return NextResponse.json({
-    orders: rows.map((r) => ({
-      ...r,
-      createdAt: r.createdAt.getTime(),
-      updatedAt: r.updatedAt?.getTime() || null,
-    })),
+    orders: rows,
     total,
     page,
     pageSize,
