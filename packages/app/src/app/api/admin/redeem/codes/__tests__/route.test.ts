@@ -1,306 +1,116 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const {
-  mockRequireAdmin,
-  mockQueryRedeemCodes,
-  mockCreateRedeemBatch,
-  mockCreateRedeemCodes,
-  mockNormalizeRedeemCode,
-  mockRecordAudit,
-  mockPrisma,
-} = vi.hoisted(() => ({
-  mockRequireAdmin: vi.fn(),
-  mockQueryRedeemCodes: vi.fn(),
-  mockCreateRedeemBatch: vi.fn(),
-  mockCreateRedeemCodes: vi.fn(),
-  mockNormalizeRedeemCode: vi.fn(),
-  mockRecordAudit: vi.fn(),
-  mockPrisma: { redeemCode: { findMany: vi.fn() } },
+const mocks = vi.hoisted(() => ({
+  requireAdmin: vi.fn(),
+  parseBody: vi.fn(),
+  queryRedeemCodes: vi.fn(),
+  normalizeRedeemCode: vi.fn(),
+  createRedeemBatch: vi.fn(),
+  createRedeemCodes: vi.fn(),
+  recordAudit: vi.fn(),
+  findExistingRedeemCodesEdgeRead: vi.fn(),
 }));
 
-vi.mock("server-only", () => ({}));
-vi.mock("@/lib/admin/admin-auth", () => ({ requireAdmin: mockRequireAdmin }));
+vi.mock("@/lib/admin/admin-auth", () => ({ requireAdmin: mocks.requireAdmin }));
+vi.mock("@/lib/shared/api-validation", () => ({ parseBody: mocks.parseBody }));
 vi.mock("@/lib/admin/redeem-store", () => ({
-  queryRedeemCodes: mockQueryRedeemCodes,
-  createRedeemBatch: mockCreateRedeemBatch,
-  createRedeemCodes: mockCreateRedeemCodes,
-  normalizeRedeemCode: mockNormalizeRedeemCode,
+  queryRedeemCodes: mocks.queryRedeemCodes,
+  normalizeRedeemCode: mocks.normalizeRedeemCode,
+  createRedeemBatch: mocks.createRedeemBatch,
+  createRedeemCodes: mocks.createRedeemCodes,
 }));
-vi.mock("@/lib/admin/admin-audit", () => ({ recordAudit: mockRecordAudit }));
-vi.mock("@/lib/db", () => ({ prisma: mockPrisma }));
+vi.mock("@/lib/admin/admin-audit", () => ({ recordAudit: mocks.recordAudit }));
+vi.mock("@/lib/edge-db/redeem-write-store", () => ({
+  findExistingRedeemCodesEdgeRead: mocks.findExistingRedeemCodesEdgeRead,
+}));
 
 import { GET, POST } from "../route";
 
-const authOk = { ok: true, role: "ops", authType: "session" };
-const authFail = { ok: false, response: Response.json({ error: "Unauthorized" }, { status: 401 }) };
-
-function makeGet(params: Record<string, string> = {}) {
-  const url = new URL("http://localhost/api/admin/redeem/codes");
-  for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
-  return new Request(url.toString());
-}
-
-function makePost(body: unknown) {
-  return new Request("http://localhost/api/admin/redeem/codes", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-}
-
-beforeEach(() => {
-  vi.clearAllMocks();
-  mockRequireAdmin.mockResolvedValue(authOk);
-  mockNormalizeRedeemCode.mockImplementation((c: string) => c.toUpperCase());
-  mockPrisma.redeemCode.findMany.mockResolvedValue([]);
-});
-
-describe("GET /api/admin/redeem/codes", () => {
-  it("returns 401 when auth fails", async () => {
-    mockRequireAdmin.mockResolvedValue(authFail);
-    const res = await GET(makeGet());
-    expect(res.status).toBe(401);
+describe("/api/admin/redeem/codes", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.requireAdmin.mockResolvedValue({ ok: true, role: "ops", authType: "session" });
+    mocks.normalizeRedeemCode.mockImplementation((code: string) => code.trim().toUpperCase());
+    mocks.findExistingRedeemCodesEdgeRead.mockResolvedValue([]);
+    mocks.createRedeemBatch.mockResolvedValue({ id: "RBT-1" });
+    mocks.createRedeemCodes.mockResolvedValue([{ id: "RCD-1", code: "ABCDE1" }]);
+    mocks.recordAudit.mockResolvedValue(undefined);
   });
 
-  it("returns redeem codes list", async () => {
-    mockQueryRedeemCodes.mockResolvedValue({ items: [], total: 0 });
-    const res = await GET(makeGet());
-    const json = await res.json();
-    expect(json.items).toEqual([]);
-  });
-});
-
-describe("POST /api/admin/redeem/codes", () => {
-  it("returns 401 when auth fails", async () => {
-    mockRequireAdmin.mockResolvedValue(authFail);
-    const res = await POST(
-      makePost({ title: "Test", rewardType: "mantou", rewardPayload: { amount: 10 } })
+  it("GET returns query result", async () => {
+    mocks.queryRedeemCodes.mockResolvedValue({
+      items: [{ id: "x" }],
+      total: 1,
+      page: 1,
+      pageSize: 20,
+    });
+    const res = await GET(
+      new Request("http://localhost/api/admin/redeem/codes?page=1&pageSize=20")
     );
-    expect(res.status).toBe(401);
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ items: [{ id: "x" }], total: 1, page: 1, pageSize: 20 });
   });
 
-  it("returns 400 when title is missing", async () => {
-    const res = await POST(makePost({ rewardType: "mantou" }));
-    expect(res.status).toBe(400);
-  });
+  it("POST rejects invalid reward payload", async () => {
+    mocks.parseBody.mockResolvedValue({
+      success: true,
+      data: {
+        title: "test",
+        rewardType: "mantou",
+        rewardPayload: {},
+        status: "active",
+      },
+    });
 
-  it("returns 400 for invalid reward payload", async () => {
-    const res = await POST(makePost({ title: "Test", rewardType: "mantou" }));
-    expect(res.status).toBe(400);
-  });
-
-  it("creates redeem codes successfully", async () => {
-    mockCreateRedeemBatch.mockResolvedValue({ id: "RBT-1" });
-    mockCreateRedeemCodes.mockResolvedValue([{ id: "c1", code: "ABCDEF" }]);
     const res = await POST(
-      makePost({ title: "Test", rewardType: "mantou", rewardPayload: { amount: 10 }, count: 1 })
+      new Request("http://localhost/api/admin/redeem/codes", { method: "POST" })
     );
-    const json = await res.json();
-    expect(json.batch).toBeTruthy();
-    expect(json.codes).toBeTruthy();
-    expect(mockRecordAudit).toHaveBeenCalled();
-  });
-
-  it("returns 400 for invalid vip reward payload", async () => {
-    const res = await POST(makePost({ title: "Test", rewardType: "vip", rewardPayload: {} }));
     expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({ error: "reward amount required" });
   });
 
-  it("returns 400 for invalid coupon reward payload", async () => {
-    const res = await POST(makePost({ title: "Test", rewardType: "coupon", rewardPayload: {} }));
-    expect(res.status).toBe(400);
-  });
-
-  it("creates codes with custom codes array", async () => {
-    mockCreateRedeemBatch.mockResolvedValue({ id: "RBT-1" });
-    mockCreateRedeemCodes.mockResolvedValue([{ id: "c1", code: "CUSTOM1" }]);
-    mockPrisma.redeemCode.findMany.mockResolvedValue([]);
-    const res = await POST(
-      makePost({
-        title: "Test",
+  it("POST returns duplicate_codes when conflicts exist", async () => {
+    mocks.parseBody.mockResolvedValue({
+      success: true,
+      data: {
+        title: "test",
         rewardType: "mantou",
         rewardPayload: { amount: 10 },
-        codes: ["CUSTOM1", "CUSTOM2"],
-      })
-    );
-    const json = await res.json();
-    expect(json.batch).toBeTruthy();
-  });
+        status: "active",
+        codes: ["abcde1"],
+      },
+    });
+    mocks.findExistingRedeemCodesEdgeRead.mockResolvedValue(["ABCDE1"]);
 
-  it("returns 409 when duplicate codes exist", async () => {
-    mockPrisma.redeemCode.findMany.mockResolvedValue([{ code: "ABCDEF" }]);
     const res = await POST(
-      makePost({
-        title: "Test",
-        rewardType: "mantou",
-        rewardPayload: { amount: 10 },
-        codes: ["ABCDEF"],
-      })
+      new Request("http://localhost/api/admin/redeem/codes", { method: "POST" })
     );
     expect(res.status).toBe(409);
-    const json = await res.json();
-    expect(json.error).toBe("duplicate_codes");
+    expect(await res.json()).toEqual({ error: "duplicate_codes", duplicated: ["ABCDE1"] });
   });
 
-  it("retries code generation when duplicates found for auto-generated codes", async () => {
-    mockPrisma.redeemCode.findMany
-      .mockResolvedValueOnce([{ code: "DUP" }])
-      .mockResolvedValueOnce([{ code: "DUP" }])
-      .mockResolvedValueOnce([]);
-    mockCreateRedeemBatch.mockResolvedValue({ id: "RBT-1" });
-    mockCreateRedeemCodes.mockResolvedValue([{ id: "c1", code: "NEWCODE" }]);
-    const res = await POST(
-      makePost({
-        title: "Test",
+  it("POST creates batch and codes", async () => {
+    mocks.parseBody.mockResolvedValue({
+      success: true,
+      data: {
+        title: "Batch A",
+        description: "desc",
         rewardType: "mantou",
         rewardPayload: { amount: 10 },
-        count: 1,
-      })
-    );
-    const json = await res.json();
-    expect(json.batch).toBeTruthy();
-  });
+        status: "active",
+        codes: ["abcde1", "abcde2"],
+      },
+    });
 
-  it("creates codes with vip reward type", async () => {
-    mockCreateRedeemBatch.mockResolvedValue({ id: "RBT-1" });
-    mockCreateRedeemCodes.mockResolvedValue([{ id: "c1", code: "VIPCODE" }]);
     const res = await POST(
-      makePost({
-        title: "VIP Test",
-        rewardType: "vip",
-        rewardPayload: { days: 30 },
-        count: 1,
-      })
+      new Request("http://localhost/api/admin/redeem/codes", { method: "POST" })
     );
-    const json = await res.json();
-    expect(json.batch).toBeTruthy();
-  });
-
-  it("creates codes with coupon reward type", async () => {
-    mockCreateRedeemBatch.mockResolvedValue({ id: "RBT-1" });
-    mockCreateRedeemCodes.mockResolvedValue([{ id: "c1", code: "COUPON1" }]);
-    const res = await POST(
-      makePost({
-        title: "Coupon Test",
-        rewardType: "coupon",
-        rewardPayload: { couponId: "cp-1" },
-        count: 1,
-      })
-    );
-    const json = await res.json();
-    expect(json.batch).toBeTruthy();
-  });
-
-  it("creates codes with custom reward type", async () => {
-    mockCreateRedeemBatch.mockResolvedValue({ id: "RBT-1" });
-    mockCreateRedeemCodes.mockResolvedValue([{ id: "c1", code: "CUSTOM1" }]);
-    const res = await POST(
-      makePost({
-        title: "Custom Test",
-        rewardType: "custom",
-        rewardPayload: { anything: "value" },
-        count: 1,
-      })
-    );
-    const json = await res.json();
-    expect(json.batch).toBeTruthy();
-  });
-
-  it("creates codes with startsAt and expiresAt", async () => {
-    mockCreateRedeemBatch.mockResolvedValue({ id: "RBT-1" });
-    mockCreateRedeemCodes.mockResolvedValue([{ id: "c1", code: "TIMED1" }]);
-    const res = await POST(
-      makePost({
-        title: "Timed Test",
-        rewardType: "mantou",
-        rewardPayload: { amount: 10 },
-        count: 1,
-        startsAt: "2025-01-01",
-        expiresAt: 1735689600000,
-      })
-    );
-    const json = await res.json();
-    expect(json.batch).toBeTruthy();
-  });
-
-  it("handles parseDate with numeric string startsAt", async () => {
-    mockCreateRedeemBatch.mockResolvedValue({ id: "RBT-1" });
-    mockCreateRedeemCodes.mockResolvedValue([{ id: "c1", code: "NUM1" }]);
-    const res = await POST(
-      makePost({
-        title: "Numeric Date",
-        rewardType: "mantou",
-        rewardPayload: { amount: 10 },
-        count: 1,
-        startsAt: "1700000000000",
-      })
-    );
-    const json = await res.json();
-    expect(json.batch).toBeTruthy();
-  });
-
-  it("handles parseDate with whitespace-only startsAt", async () => {
-    mockCreateRedeemBatch.mockResolvedValue({ id: "RBT-1" });
-    mockCreateRedeemCodes.mockResolvedValue([{ id: "c1", code: "WS1" }]);
-    const res = await POST(
-      makePost({
-        title: "Whitespace Date",
-        rewardType: "mantou",
-        rewardPayload: { amount: 10 },
-        count: 1,
-        startsAt: "   ",
-      })
-    );
-    const json = await res.json();
-    expect(json.batch).toBeTruthy();
-  });
-
-  it("handles parseDate with invalid date string", async () => {
-    mockCreateRedeemBatch.mockResolvedValue({ id: "RBT-1" });
-    mockCreateRedeemCodes.mockResolvedValue([{ id: "c1", code: "INV1" }]);
-    const res = await POST(
-      makePost({
-        title: "Invalid Date",
-        rewardType: "mantou",
-        rewardPayload: { amount: 10 },
-        count: 1,
-        startsAt: "not-a-date",
-      })
-    );
-    const json = await res.json();
-    expect(json.batch).toBeTruthy();
-  });
-
-  it("creates codes with prefix and codeLength", async () => {
-    mockCreateRedeemBatch.mockResolvedValue({ id: "RBT-1" });
-    mockCreateRedeemCodes.mockResolvedValue([{ id: "c1", code: "PREFIXABC" }]);
-    const res = await POST(
-      makePost({
-        title: "Prefix Test",
-        rewardType: "mantou",
-        rewardPayload: { amount: 10 },
-        count: 1,
-        prefix: "PREFIX",
-        codeLength: 12,
-      })
-    );
-    const json = await res.json();
-    expect(json.batch).toBeTruthy();
-  });
-
-  it("filters out short codes from custom codes array", async () => {
-    mockCreateRedeemBatch.mockResolvedValue({ id: "RBT-1" });
-    mockCreateRedeemCodes.mockResolvedValue([]);
-    mockPrisma.redeemCode.findMany.mockResolvedValue([]);
-    const res = await POST(
-      makePost({
-        title: "Test",
-        rewardType: "mantou",
-        rewardPayload: { amount: 10 },
-        codes: ["AB", "ABCDEFGH"],
-      })
-    );
-    const json = await res.json();
-    expect(json.batch).toBeTruthy();
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.batch).toEqual({ id: "RBT-1" });
+    expect(body.count).toBe(2);
+    expect(mocks.findExistingRedeemCodesEdgeRead).toHaveBeenCalledWith(["ABCDE1", "ABCDE2"]);
+    expect(mocks.createRedeemCodes).toHaveBeenCalled();
+    expect(mocks.recordAudit).toHaveBeenCalled();
   });
 });

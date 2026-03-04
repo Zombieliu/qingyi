@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import crypto from "crypto";
 import { parseBodyRaw } from "@/lib/shared/api-validation";
-import { prisma } from "@/lib/db";
 import {
   createUserSession,
   getUserSessionFromToken,
@@ -10,6 +9,11 @@ import {
 } from "@/lib/auth/user-auth";
 import { getClientIp } from "@/lib/shared/api-utils";
 import { isValidSuiAddress, normalizeSuiAddress } from "@mysten/sui/utils";
+import {
+  getMiniProgramAccountByPlatformOpenidEdgeRead,
+  updateMiniProgramAccountByPlatformOpenidEdgeWrite,
+  upsertMiniProgramAccountEdgeWrite,
+} from "@/lib/edge-db/mini-auth-store";
 
 const miniSchema = z.object({
   platform: z.enum(["wechat", "alipay", "douyin"]),
@@ -49,9 +53,7 @@ export async function POST(req: Request) {
   const sessionKey = buildMockSessionKey(platform, payload.code);
   const now = new Date();
 
-  const existing = await prisma.miniProgramAccount.findUnique({
-    where: { platform_openid: { platform, openid } },
-  });
+  const existing = await getMiniProgramAccountByPlatformOpenidEdgeRead(platform, openid);
 
   if (existing?.userAddress) {
     const boundAddress = normalizeSuiAddress(existing.userAddress);
@@ -61,15 +63,12 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: "address_mismatch" }, { status: 409 });
       }
     }
-    const account = await prisma.miniProgramAccount.update({
-      where: { platform_openid: { platform, openid } },
-      data: {
-        unionid,
-        sessionKey,
-        phone: payload.phone ?? undefined,
-        lastLoginAt: now,
-        updatedAt: now,
-      },
+    const account = await updateMiniProgramAccountByPlatformOpenidEdgeWrite(platform, openid, {
+      unionid,
+      sessionKey,
+      phone: payload.phone ?? undefined,
+      lastLoginAt: now,
+      updatedAt: now,
     });
     const { token, session } = await createUserSession({
       address: boundAddress,
@@ -121,27 +120,17 @@ export async function POST(req: Request) {
     if (!auth.ok) return auth.response;
   }
 
-  const account = await prisma.miniProgramAccount.upsert({
-    where: { platform_openid: { platform, openid } },
-    create: {
-      id: `mp_${Date.now()}_${crypto.randomInt(1000, 9999)}`,
-      platform,
-      openid,
-      unionid,
-      sessionKey,
-      userAddress: normalizedAddress,
-      phone: payload.phone ?? null,
-      createdAt: now,
-      lastLoginAt: now,
-    },
-    update: {
-      unionid,
-      sessionKey,
-      userAddress: normalizedAddress,
-      phone: payload.phone ?? undefined,
-      lastLoginAt: now,
-      updatedAt: now,
-    },
+  const account = await upsertMiniProgramAccountEdgeWrite({
+    id: `mp_${Date.now()}_${crypto.randomInt(1000, 9999)}`,
+    platform,
+    openid,
+    unionid,
+    sessionKey,
+    userAddress: normalizedAddress,
+    phone: payload.phone ?? null,
+    createdAt: now,
+    lastLoginAt: now,
+    updatedAt: now,
   });
 
   const { token, session } = await createUserSession({

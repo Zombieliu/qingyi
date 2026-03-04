@@ -1,11 +1,5 @@
 import { NextResponse } from "next/server";
-import {
-  getOrderById,
-  getReviewByOrderId,
-  createReview,
-  creditMantou,
-} from "@/lib/admin/admin-store";
-import { prisma } from "@/lib/db";
+import { getOrderById, getReviewByOrderId, creditMantou } from "@/lib/admin/admin-store";
 import { requireUserAuth } from "@/lib/auth/user-auth";
 import { requireAdmin } from "@/lib/admin/admin-auth";
 import { isValidSuiAddress, normalizeSuiAddress } from "@mysten/sui/utils";
@@ -14,6 +8,7 @@ import { z } from "zod";
 import { parseBodyRaw } from "@/lib/shared/api-validation";
 import { AdminMessages } from "@/lib/shared/messages";
 import { apiBadRequest, apiForbidden, apiNotFound, apiError } from "@/lib/shared/api-response";
+import { createOrderReviewEdgeWrite } from "@/lib/edge-db/review-write-store";
 
 const reviewSchema = z.object({
   address: z.string().min(1),
@@ -110,43 +105,32 @@ export async function POST(req: Request, { params }: RouteContext) {
     return apiError("already_reviewed", 409);
   }
 
-  // Create review + reward mantou + award growth points in a single transaction
-  const review = await prisma.$transaction(async (tx) => {
-    const rev = await createReview(
-      {
-        orderId,
-        reviewerAddress: address,
-        companionAddress: order.companionAddress || "",
-        rating,
-        content: content?.trim() || undefined,
-        tags,
-      },
-      tx
-    );
-
-    // Reward mantou
-    try {
-      await creditMantou({
-        address,
-        amount: REVIEW_REWARD_MANTOU,
-        orderId: `review:${orderId}`,
-        note: AdminMessages.REVIEW_REWARD_NOTE,
-        tx,
-      });
-    } catch (e) {
-      console.error("review mantou reward failed:", e);
-    }
-
-    // Award growth points for review
-    try {
-      const { onReviewSubmitted } = await import("@/lib/services/growth-service");
-      await onReviewSubmitted({ userAddress: address, orderId, tx });
-    } catch (e) {
-      console.error("review growth points failed:", e);
-    }
-
-    return rev;
+  const review = await createOrderReviewEdgeWrite({
+    orderId,
+    reviewerAddress: address,
+    companionAddress: order.companionAddress || "",
+    rating,
+    content: content?.trim() || undefined,
+    tags,
   });
+
+  try {
+    await creditMantou({
+      address,
+      amount: REVIEW_REWARD_MANTOU,
+      orderId: `review:${orderId}`,
+      note: AdminMessages.REVIEW_REWARD_NOTE,
+    });
+  } catch (e) {
+    console.error("review mantou reward failed:", e);
+  }
+
+  try {
+    const { onReviewSubmitted } = await import("@/lib/services/growth-service");
+    await onReviewSubmitted({ userAddress: address, orderId });
+  } catch (e) {
+    console.error("review growth points failed:", e);
+  }
 
   return NextResponse.json({ review, rewarded: REVIEW_REWARD_MANTOU });
 }

@@ -11,7 +11,7 @@ import {
 } from "@/lib/admin/redeem-store";
 import { recordAudit } from "@/lib/admin/admin-audit";
 import type { RedeemRewardType } from "@/lib/admin/admin-types";
-import { prisma } from "@/lib/db";
+import { findExistingRedeemCodesEdgeRead } from "@/lib/edge-db/redeem-write-store";
 
 const CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
@@ -138,28 +138,19 @@ export async function POST(req: Request) {
     ? inputCodes
     : generateCodes(Math.max(1, count), codeLength, body.prefix);
 
-  let existing = await prisma.redeemCode.findMany({
-    where: { code: { in: codes } },
-    select: { code: true },
-  });
+  let existing = await findExistingRedeemCodesEdgeRead(codes);
 
   if (!inputCodes.length && existing.length) {
     let attempts = 0;
     while (existing.length && attempts < 5) {
       attempts += 1;
       codes = generateCodes(Math.max(1, count), codeLength, body.prefix);
-      existing = await prisma.redeemCode.findMany({
-        where: { code: { in: codes } },
-        select: { code: true },
-      });
+      existing = await findExistingRedeemCodesEdgeRead(codes);
     }
   }
 
   if (existing.length) {
-    return NextResponse.json(
-      { error: "duplicate_codes", duplicated: existing.map((item) => item.code) },
-      { status: 409 }
-    );
+    return NextResponse.json({ error: "duplicate_codes", duplicated: existing }, { status: 409 });
   }
 
   const batchId = `RBT-${Date.now()}-${crypto.randomInt(1000, 9999)}`;

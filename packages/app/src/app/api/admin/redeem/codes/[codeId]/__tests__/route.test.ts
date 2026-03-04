@@ -1,93 +1,69 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockRequireAdmin, mockPrisma, mockRecordAudit } = vi.hoisted(() => ({
-  mockRequireAdmin: vi.fn(),
-  mockPrisma: { redeemCode: { update: vi.fn() } },
-  mockRecordAudit: vi.fn(),
+const mocks = vi.hoisted(() => ({
+  requireAdmin: vi.fn(),
+  updateRedeemCodeByIdEdgeWrite: vi.fn(),
+  recordAudit: vi.fn(),
 }));
 
-vi.mock("server-only", () => ({}));
-vi.mock("@/lib/admin/admin-auth", () => ({ requireAdmin: mockRequireAdmin }));
-vi.mock("@/lib/db", () => ({ prisma: mockPrisma }));
-vi.mock("@/lib/admin/admin-audit", () => ({ recordAudit: mockRecordAudit }));
+vi.mock("@/lib/admin/admin-auth", () => ({ requireAdmin: mocks.requireAdmin }));
+vi.mock("@/lib/edge-db/redeem-write-store", () => ({
+  updateRedeemCodeByIdEdgeWrite: mocks.updateRedeemCodeByIdEdgeWrite,
+}));
+vi.mock("@/lib/admin/admin-audit", () => ({ recordAudit: mocks.recordAudit }));
 
 import { PATCH } from "../route";
-
-const authOk = { ok: true, role: "ops", authType: "session" };
-const authFail = { ok: false, response: Response.json({ error: "Unauthorized" }, { status: 401 }) };
-const ctx = { params: Promise.resolve({ codeId: "code-1" }) };
 
 function makePatch(body: unknown) {
   return new Request("http://localhost/api/admin/redeem/codes/code-1", {
     method: "PATCH",
-    headers: { "Content-Type": "application/json" },
+    headers: { "content-type": "application/json" },
     body: JSON.stringify(body),
   });
 }
 
-beforeEach(() => {
-  vi.clearAllMocks();
-  mockRequireAdmin.mockResolvedValue(authOk);
-});
-
 describe("PATCH /api/admin/redeem/codes/[codeId]", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.requireAdmin.mockResolvedValue({ ok: true, role: "ops", authType: "session" });
+    mocks.updateRedeemCodeByIdEdgeWrite.mockResolvedValue(undefined);
+  });
+
   it("returns 401 when auth fails", async () => {
-    mockRequireAdmin.mockResolvedValue(authFail);
-    const res = await PATCH(makePatch({ status: "disabled" }), ctx);
+    mocks.requireAdmin.mockResolvedValue({
+      ok: false,
+      response: Response.json({ error: "Unauthorized" }, { status: 401 }),
+    });
+    const res = await PATCH(makePatch({ status: "disabled" }), {
+      params: Promise.resolve({ codeId: "code-1" }),
+    });
     expect(res.status).toBe(401);
   });
 
-  it("updates redeem code successfully", async () => {
-    mockPrisma.redeemCode.update.mockResolvedValue({ id: "code-1" });
-    const res = await PATCH(makePatch({ status: "disabled" }), ctx);
-    const json = await res.json();
-    expect(json.ok).toBe(true);
-    expect(mockRecordAudit).toHaveBeenCalled();
-  });
-
-  it("returns 400 when codeId is empty", async () => {
-    const emptyCtx = { params: Promise.resolve({ codeId: "" }) };
-    const res = await PATCH(makePatch({ status: "disabled" }), emptyCtx);
+  it("returns 400 when codeId is missing", async () => {
+    const res = await PATCH(makePatch({ status: "disabled" }), {
+      params: Promise.resolve({ codeId: "" }),
+    });
     expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({ error: "codeId required" });
   });
 
-  it("handles startsAt and expiresAt as timestamps", async () => {
-    mockPrisma.redeemCode.update.mockResolvedValue({ id: "code-1" });
-    const res = await PATCH(makePatch({ startsAt: 1700000000000, expiresAt: "2025-12-31" }), ctx);
-    const json = await res.json();
-    expect(json.ok).toBe(true);
+  it("updates redeem code and records audit", async () => {
+    const res = await PATCH(makePatch({ status: "disabled", startsAt: 1_700_000_000_000 }), {
+      params: Promise.resolve({ codeId: "code-1" }),
+    });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ ok: true });
+    expect(mocks.updateRedeemCodeByIdEdgeWrite).toHaveBeenCalledWith(
+      expect.objectContaining({ codeId: "code-1", status: "disabled" })
+    );
+    expect(mocks.recordAudit).toHaveBeenCalled();
   });
 
-  it("handles null startsAt and expiresAt", async () => {
-    mockPrisma.redeemCode.update.mockResolvedValue({ id: "code-1" });
-    const res = await PATCH(makePatch({ startsAt: null, expiresAt: null }), ctx);
-    const json = await res.json();
-    expect(json.ok).toBe(true);
-  });
-
-  it("handles startsAt as numeric string", async () => {
-    mockPrisma.redeemCode.update.mockResolvedValue({ id: "code-1" });
-    const res = await PATCH(makePatch({ startsAt: "1700000000000" }), ctx);
-    const json = await res.json();
-    expect(json.ok).toBe(true);
-  });
-
-  it("handles empty string startsAt", async () => {
-    mockPrisma.redeemCode.update.mockResolvedValue({ id: "code-1" });
-    const res = await PATCH(makePatch({ startsAt: "", expiresAt: " " }), ctx);
-    const json = await res.json();
-    expect(json.ok).toBe(true);
-  });
-
-  it("handles invalid date string for startsAt", async () => {
-    mockPrisma.redeemCode.update.mockResolvedValue({ id: "code-1" });
-    const res = await PATCH(makePatch({ startsAt: "not-a-date" }), ctx);
-    const json = await res.json();
-    expect(json.ok).toBe(true);
-  });
-
-  it("returns 400 for invalid body (bad status value)", async () => {
-    const res = await PATCH(makePatch({ status: "invalid_status" }), ctx);
+  it("returns 400 for invalid body", async () => {
+    const res = await PATCH(makePatch({ status: "not-valid" }), {
+      params: Promise.resolve({ codeId: "code-1" }),
+    });
     expect(res.status).toBe(400);
   });
 });

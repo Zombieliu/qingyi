@@ -2,8 +2,8 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/admin/admin-auth";
 import { parseBody } from "@/lib/shared/api-validation";
-import { prisma } from "@/lib/db";
 import { recordAudit } from "@/lib/admin/admin-audit";
+import { updateRedeemCodeByIdEdgeWrite } from "@/lib/edge-db/redeem-write-store";
 
 type RouteContext = { params: Promise<{ codeId: string }> };
 
@@ -41,7 +41,8 @@ export async function PATCH(req: Request, { params }: RouteContext) {
   if (!parsed.success) return parsed.response;
   const body = parsed.data;
 
-  const data = {
+  await updateRedeemCodeByIdEdgeWrite({
+    codeId,
     status: body.status,
     note: body.note,
     startsAt:
@@ -57,11 +58,6 @@ export async function PATCH(req: Request, { params }: RouteContext) {
           ? parseDate(body.expiresAt)
           : undefined,
     updatedAt: new Date(),
-  };
-
-  await prisma.redeemCode.update({
-    where: { id: codeId },
-    data,
   });
 
   await recordAudit(req, auth, "redeem.code.update", "redeem-code", codeId, {
