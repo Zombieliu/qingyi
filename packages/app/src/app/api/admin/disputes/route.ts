@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin/admin-auth";
+import {
+  listAdminDisputesEdgeRead,
+  resolveDisputeEdgeWrite,
+} from "@/lib/edge-db/dispute-admin-store";
 import { parseBody } from "@/lib/shared/api-validation";
 import { z } from "zod";
 import { DisputeMessages } from "@/lib/shared/messages";
@@ -28,8 +32,7 @@ export async function GET(req: Request) {
   }
 
   try {
-    const { listAdminDisputes } = await import("@/lib/services/dispute-service");
-    const items = await listAdminDisputes({
+    const items = await listAdminDisputesEdgeRead({
       includeResolved: parsed.data.includeResolved === "1",
       limit: parsed.data.limit ?? 50,
     });
@@ -48,8 +51,7 @@ export async function POST(req: Request) {
   if (!body.success) return body.response;
 
   try {
-    const { resolveDispute } = await import("@/lib/services/dispute-service");
-    const dispute = await resolveDispute({
+    const dispute = await resolveDisputeEdgeWrite({
       ...body.data,
       reviewerRole: auth.role,
     });

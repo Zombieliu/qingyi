@@ -1,18 +1,22 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const { mockRequireAdmin, mockResolveDispute, mockListAdminDisputes, mockCloseDisputeTicket } =
-  vi.hoisted(() => ({
-    mockRequireAdmin: vi.fn(),
-    mockResolveDispute: vi.fn(),
-    mockListAdminDisputes: vi.fn(),
-    mockCloseDisputeTicket: vi.fn(),
-  }));
+const {
+  mockRequireAdmin,
+  mockResolveDisputeEdgeWrite,
+  mockListAdminDisputesEdgeRead,
+  mockCloseDisputeTicket,
+} = vi.hoisted(() => ({
+  mockRequireAdmin: vi.fn(),
+  mockResolveDisputeEdgeWrite: vi.fn(),
+  mockListAdminDisputesEdgeRead: vi.fn(),
+  mockCloseDisputeTicket: vi.fn(),
+}));
 
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/admin/admin-auth", () => ({ requireAdmin: mockRequireAdmin }));
-vi.mock("@/lib/services/dispute-service", () => ({
-  resolveDispute: mockResolveDispute,
-  listAdminDisputes: mockListAdminDisputes,
+vi.mock("@/lib/edge-db/dispute-admin-store", () => ({
+  resolveDisputeEdgeWrite: mockResolveDisputeEdgeWrite,
+  listAdminDisputesEdgeRead: mockListAdminDisputesEdgeRead,
 }));
 vi.mock("@/lib/services/dispute-ticket-service", () => ({
   closeDisputeTicket: mockCloseDisputeTicket,
@@ -49,7 +53,7 @@ describe("POST /api/admin/disputes", () => {
   });
 
   it("resolves dispute successfully", async () => {
-    mockResolveDispute.mockResolvedValue({ id: "d1", status: "resolved" });
+    mockResolveDisputeEdgeWrite.mockResolvedValue({ id: "d1", status: "resolved" });
     mockCloseDisputeTicket.mockResolvedValue(undefined);
     const res = await POST(makePost({ orderId: "1", resolution: "refund" }));
     const json = await res.json();
@@ -60,13 +64,13 @@ describe("POST /api/admin/disputes", () => {
   });
 
   it("returns 400 on dispute error", async () => {
-    mockResolveDispute.mockRejectedValue(new Error("not found"));
+    mockResolveDisputeEdgeWrite.mockRejectedValue(new Error("not found"));
     const res = await POST(makePost({ orderId: "1", resolution: "reject" }));
     expect(res.status).toBe(400);
   });
 
   it("handles non-Error thrown from resolveDispute", async () => {
-    mockResolveDispute.mockRejectedValue("string error");
+    mockResolveDisputeEdgeWrite.mockRejectedValue("string error");
     const res = await POST(makePost({ orderId: "1", resolution: "reject" }));
     expect(res.status).toBe(400);
     const json = await res.json();
@@ -87,7 +91,7 @@ describe("GET /api/admin/disputes", () => {
   });
 
   it("returns disputes list", async () => {
-    mockListAdminDisputes.mockResolvedValue([
+    mockListAdminDisputesEdgeRead.mockResolvedValue([
       {
         order: { id: "ORD-1", item: "test", amount: 10, stage: "争议中", userAddress: "0xuser" },
         dispute: { id: "DSP-1", orderId: "ORD-1", status: "pending" },
@@ -98,26 +102,26 @@ describe("GET /api/admin/disputes", () => {
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(json.items).toHaveLength(1);
-    expect(mockListAdminDisputes).toHaveBeenCalledWith({
+    expect(mockListAdminDisputesEdgeRead).toHaveBeenCalledWith({
       includeResolved: false,
       limit: 20,
     });
   });
 
   it("passes includeResolved=1 to service", async () => {
-    mockListAdminDisputes.mockResolvedValue([]);
+    mockListAdminDisputesEdgeRead.mockResolvedValue([]);
     const res = await GET(
       new Request("http://localhost/api/admin/disputes?includeResolved=1&limit=10")
     );
     expect(res.status).toBe(200);
-    expect(mockListAdminDisputes).toHaveBeenCalledWith({
+    expect(mockListAdminDisputesEdgeRead).toHaveBeenCalledWith({
       includeResolved: true,
       limit: 10,
     });
   });
 
   it("returns 500 when list fails", async () => {
-    mockListAdminDisputes.mockRejectedValue(new Error("db fail"));
+    mockListAdminDisputesEdgeRead.mockRejectedValue(new Error("db fail"));
     const res = await GET(new Request("http://localhost/api/admin/disputes"));
     expect(res.status).toBe(500);
     const json = await res.json();
@@ -125,7 +129,7 @@ describe("GET /api/admin/disputes", () => {
   });
 
   it("handles non-Error thrown from list service", async () => {
-    mockListAdminDisputes.mockRejectedValue("string error");
+    mockListAdminDisputesEdgeRead.mockRejectedValue("string error");
     const res = await GET(new Request("http://localhost/api/admin/disputes"));
     expect(res.status).toBe(500);
     const json = await res.json();
