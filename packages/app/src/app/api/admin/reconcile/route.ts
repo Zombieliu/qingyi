@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin/admin-auth";
 
+function isWorkerRuntime() {
+  return typeof (globalThis as { WebSocketPair?: unknown }).WebSocketPair !== "undefined";
+}
+
 function toReconcileErrorResponse(error: unknown) {
   const message = error instanceof Error ? error.message : String(error || "unknown_error");
   if (message.includes("Code generation from strings disallowed")) {
@@ -18,6 +22,15 @@ function toReconcileErrorResponse(error: unknown) {
 export async function GET(req: Request) {
   const auth = await requireAdmin(req, { role: "finance" });
   if (!auth.ok) return auth.response;
+  if (isWorkerRuntime()) {
+    return NextResponse.json(
+      {
+        error: "edge_runtime_incompatible_db",
+        message: "reconcile currently requires Node runtime database access",
+      },
+      { status: 503 }
+    );
+  }
 
   const { searchParams } = new URL(req.url);
   const days = parseInt(searchParams.get("days") || "7", 10);
@@ -36,6 +49,15 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   const auth = await requireAdmin(req, { role: "admin" });
   if (!auth.ok) return auth.response;
+  if (isWorkerRuntime()) {
+    return NextResponse.json(
+      {
+        error: "edge_runtime_incompatible_db",
+        message: "reconcile currently requires Node runtime database access",
+      },
+      { status: 503 }
+    );
+  }
 
   const { searchParams } = new URL(req.url);
   const days = parseInt(searchParams.get("days") || "7", 10);
