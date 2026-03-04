@@ -1,4 +1,4 @@
-import { listPlayersPublic } from "@/lib/admin/admin-store";
+import { listPlayersPublicEdgeRead } from "@/lib/edge-db/user-read-store";
 import { getCache, setCache, computeJsonEtag } from "@/lib/server-cache";
 import { getIfNoneMatch, jsonWithEtag, notModified } from "@/lib/http-cache";
 import { withApiHandler } from "@/lib/shared/api-handler";
@@ -25,7 +25,7 @@ export const GET = withApiHandler(
       return jsonWithEtag(cached.value, cached.etag, PLAYERS_CACHE_CONTROL);
     }
 
-    const players = await listPlayersPublic();
+    const players = await listPlayersPublicEdgeRead();
     const available = players.filter((player) => {
       if (player.status !== "可接单") return false;
       const base = player.depositBase ?? 0;

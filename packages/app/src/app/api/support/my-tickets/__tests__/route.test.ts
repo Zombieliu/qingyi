@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  findMany: vi.fn(),
+  listSupportTicketsByAddressEdgeRead: vi.fn(),
 }));
 
 vi.mock("next/server", () => {
@@ -24,12 +24,8 @@ vi.mock("next/server", () => {
   return { NextResponse: MockNextResponse };
 });
 
-vi.mock("@/lib/admin/admin-store-utils", () => ({
-  prisma: {
-    adminSupportTicket: {
-      findMany: mocks.findMany,
-    },
-  },
+vi.mock("@/lib/edge-db/user-read-store", () => ({
+  listSupportTicketsByAddressEdgeRead: mocks.listSupportTicketsByAddressEdgeRead,
 }));
 
 import { GET } from "../route";
@@ -49,7 +45,7 @@ describe("GET /api/support/my-tickets", () => {
 
   it("returns tickets for address", async () => {
     const now = new Date();
-    mocks.findMany.mockResolvedValue([
+    mocks.listSupportTicketsByAddressEdgeRead.mockResolvedValue([
       {
         id: "T-1",
         topic: "bug",
@@ -57,7 +53,7 @@ describe("GET /api/support/my-tickets", () => {
         contact: "wechat",
         status: "open",
         reply: null,
-        createdAt: now,
+        createdAt: now.getTime(),
       },
     ]);
     const req = new Request("http://localhost/api/support/my-tickets?address=0xabc");
@@ -70,7 +66,7 @@ describe("GET /api/support/my-tickets", () => {
   });
 
   it("returns empty items when no tickets", async () => {
-    mocks.findMany.mockResolvedValue([]);
+    mocks.listSupportTicketsByAddressEdgeRead.mockResolvedValue([]);
     const req = new Request("http://localhost/api/support/my-tickets?address=0xabc");
     const res = await GET(req);
     expect(res.status).toBe(200);

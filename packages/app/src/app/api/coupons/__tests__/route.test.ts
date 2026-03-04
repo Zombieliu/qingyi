@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  listActiveCoupons: vi.fn(),
+  listActiveCouponsEdgeRead: vi.fn(),
   getCache: vi.fn(),
   setCache: vi.fn(),
   computeJsonEtag: vi.fn(),
@@ -30,8 +30,8 @@ vi.mock("next/server", () => {
   return { NextResponse: MockNextResponse };
 });
 
-vi.mock("@/lib/admin/admin-store", () => ({
-  listActiveCoupons: mocks.listActiveCoupons,
+vi.mock("@/lib/edge-db/user-read-store", () => ({
+  listActiveCouponsEdgeRead: mocks.listActiveCouponsEdgeRead,
 }));
 vi.mock("@/lib/server-cache", () => ({
   getCache: mocks.getCache,
@@ -60,12 +60,12 @@ describe("GET /api/coupons", () => {
 
   it("returns fresh coupons when no cache", async () => {
     const coupons = [{ id: "c1", code: "SAVE10", discount: 10 }];
-    mocks.listActiveCoupons.mockResolvedValue(coupons);
+    mocks.listActiveCouponsEdgeRead.mockResolvedValue(coupons);
     const mockRes = { status: 200, json: async () => coupons };
     mocks.jsonWithEtag.mockReturnValue(mockRes);
     const req = createMockRequest("http://localhost/api/coupons");
     const res = await GET(req);
-    expect(mocks.listActiveCoupons).toHaveBeenCalled();
+    expect(mocks.listActiveCouponsEdgeRead).toHaveBeenCalled();
     expect(mocks.setCache).toHaveBeenCalledWith("api:coupons:active", coupons, 30000, '"etag1"');
     expect(mocks.jsonWithEtag).toHaveBeenCalledWith(coupons, '"etag1"', expect.any(String));
   });
@@ -78,7 +78,7 @@ describe("GET /api/coupons", () => {
     mocks.jsonWithEtag.mockReturnValue(mockRes);
     const req = createMockRequest("http://localhost/api/coupons");
     const res = await GET(req);
-    expect(mocks.listActiveCoupons).not.toHaveBeenCalled();
+    expect(mocks.listActiveCouponsEdgeRead).not.toHaveBeenCalled();
     expect(mocks.jsonWithEtag).toHaveBeenCalledWith(
       cached.value,
       '"cached-etag"',
@@ -103,16 +103,16 @@ describe("GET /api/coupons", () => {
   it("fetches from store when cache has no etag", async () => {
     mocks.getCache.mockReturnValue(null);
     const coupons = [{ id: "c2" }];
-    mocks.listActiveCoupons.mockResolvedValue(coupons);
+    mocks.listActiveCouponsEdgeRead.mockResolvedValue(coupons);
     const mockRes = { status: 200, json: async () => coupons };
     mocks.jsonWithEtag.mockReturnValue(mockRes);
     const req = createMockRequest("http://localhost/api/coupons");
     await GET(req);
-    expect(mocks.listActiveCoupons).toHaveBeenCalled();
+    expect(mocks.listActiveCouponsEdgeRead).toHaveBeenCalled();
   });
 
   it("returns empty array when no active coupons", async () => {
-    mocks.listActiveCoupons.mockResolvedValue([]);
+    mocks.listActiveCouponsEdgeRead.mockResolvedValue([]);
     const mockRes = { status: 200, json: async () => [] };
     mocks.jsonWithEtag.mockReturnValue(mockRes);
     const req = createMockRequest("http://localhost/api/coupons");
@@ -122,7 +122,7 @@ describe("GET /api/coupons", () => {
 
   it("computes etag from fresh data", async () => {
     const coupons = [{ id: "c3", code: "NEW" }];
-    mocks.listActiveCoupons.mockResolvedValue(coupons);
+    mocks.listActiveCouponsEdgeRead.mockResolvedValue(coupons);
     mocks.computeJsonEtag.mockReturnValue('"new-etag"');
     const mockRes = { status: 200 };
     mocks.jsonWithEtag.mockReturnValue(mockRes);
@@ -133,7 +133,7 @@ describe("GET /api/coupons", () => {
   });
 
   it("sets correct cache TTL", async () => {
-    mocks.listActiveCoupons.mockResolvedValue([]);
+    mocks.listActiveCouponsEdgeRead.mockResolvedValue([]);
     mocks.jsonWithEtag.mockReturnValue({ status: 200 });
     const req = createMockRequest("http://localhost/api/coupons");
     await GET(req);
@@ -146,7 +146,7 @@ describe("GET /api/coupons", () => {
   });
 
   it("uses correct cache key", async () => {
-    mocks.listActiveCoupons.mockResolvedValue([]);
+    mocks.listActiveCouponsEdgeRead.mockResolvedValue([]);
     mocks.jsonWithEtag.mockReturnValue({ status: 200 });
     const req = createMockRequest("http://localhost/api/coupons");
     await GET(req);
@@ -162,7 +162,7 @@ describe("GET /api/coupons", () => {
     const req = createMockRequest("http://localhost/api/coupons");
     await GET(req);
     expect(mocks.jsonWithEtag).toHaveBeenCalledWith(cached.value, '"old-etag"', expect.any(String));
-    expect(mocks.listActiveCoupons).not.toHaveBeenCalled();
+    expect(mocks.listActiveCouponsEdgeRead).not.toHaveBeenCalled();
   });
 
   it("handles multiple coupons correctly", async () => {
@@ -171,7 +171,7 @@ describe("GET /api/coupons", () => {
       { id: "c2", code: "B" },
       { id: "c3", code: "C" },
     ];
-    mocks.listActiveCoupons.mockResolvedValue(coupons);
+    mocks.listActiveCouponsEdgeRead.mockResolvedValue(coupons);
     mocks.jsonWithEtag.mockReturnValue({ status: 200 });
     const req = createMockRequest("http://localhost/api/coupons");
     await GET(req);

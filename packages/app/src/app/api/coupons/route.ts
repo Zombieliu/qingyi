@@ -1,4 +1,4 @@
-import { listActiveCoupons } from "@/lib/admin/admin-store";
+import { listActiveCouponsEdgeRead } from "@/lib/edge-db/user-read-store";
 import { getCache, setCache, computeJsonEtag } from "@/lib/server-cache";
 import { getIfNoneMatch, jsonWithEtag, notModified } from "@/lib/http-cache";
 
@@ -16,7 +16,7 @@ export async function GET(req: Request) {
     return jsonWithEtag(cached.value, cached.etag, CACHE_CONTROL);
   }
 
-  const coupons = await listActiveCoupons();
+  const coupons = await listActiveCouponsEdgeRead();
   const etag = computeJsonEtag(coupons);
   setCache(CACHE_KEY, coupons, CACHE_TTL_MS, etag);
   return jsonWithEtag(coupons, etag, CACHE_CONTROL);

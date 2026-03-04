@@ -10,11 +10,9 @@ import type {
   LeaderboardType,
 } from "@/lib/admin/admin-types";
 import { getCache, setCache } from "@/lib/server-cache";
+import { fetchEdgeRows, toEpochMs, toNumber } from "@/lib/edge-db/client";
 
-type EdgeDbConfig = {
-  baseUrl: string;
-  apiKey: string;
-};
+export { getEdgeDbConfig } from "@/lib/edge-db/client";
 
 type AnnouncementRow = {
   id: string;
@@ -60,48 +58,6 @@ const LEADERBOARD_CACHE_TTL_MS = 60_000;
 const EDGE_DB_SCAN_PAGE_SIZE = 1_000;
 const EDGE_DB_SCAN_MAX_ROWS = 20_000;
 
-function getFirstEnv(...keys: string[]): string | null {
-  for (const key of keys) {
-    const value = process.env[key]?.trim();
-    if (value) return value;
-  }
-  return null;
-}
-
-function stripTrailingSlash(url: string): string {
-  return url.endsWith("/") ? url.slice(0, -1) : url;
-}
-
-export function getEdgeDbConfig(): EdgeDbConfig | null {
-  const baseUrl = getFirstEnv("EDGE_DB_REST_URL", "NEXT_PUBLIC_SUPABASE_URL");
-  const apiKey = getFirstEnv(
-    "EDGE_DB_REST_ANON_KEY",
-    "EDGE_DB_REST_KEY",
-    "NEXT_PUBLIC_SUPABASE_ANON_KEY"
-  );
-  if (!baseUrl || !apiKey) return null;
-  return { baseUrl: stripTrailingSlash(baseUrl), apiKey };
-}
-
-function getRestBaseUrl(config: EdgeDbConfig): string {
-  if (config.baseUrl.endsWith("/rest/v1")) return config.baseUrl;
-  return `${config.baseUrl}/rest/v1`;
-}
-
-function toEpochMs(value: string | number | null | undefined): number | undefined {
-  if (value == null) return undefined;
-  if (typeof value === "number") {
-    return Number.isFinite(value) ? value : undefined;
-  }
-  const parsed = Date.parse(value);
-  return Number.isFinite(parsed) ? parsed : undefined;
-}
-
-function toNumber(value: unknown): number {
-  const num = Number(value);
-  return Number.isFinite(num) ? num : 0;
-}
-
 function toNonEmptyString(value: unknown): string {
   return typeof value === "string" ? value : "";
 }
@@ -113,37 +69,6 @@ function getPeriodStart(period: LeaderboardPeriod): Date | null {
     return startOfMonth(now);
   }
   return startOfWeek(now, { weekStartsOn: 1 });
-}
-
-async function fetchEdgeRows<T>(table: string, params: URLSearchParams): Promise<T[]> {
-  const config = getEdgeDbConfig();
-  if (!config) {
-    throw new Error("edge_db_not_configured");
-  }
-
-  const url = new URL(`${getRestBaseUrl(config)}/${table}`);
-  url.search = params.toString();
-
-  const res = await fetch(url.toString(), {
-    headers: {
-      apikey: config.apiKey,
-      authorization: `Bearer ${config.apiKey}`,
-      accept: "application/json",
-    },
-    cache: "no-store",
-  });
-
-  if (!res.ok) {
-    const detail = (await res.text().catch(() => "")).slice(0, 200);
-    throw new Error(`edge_db_request_failed:${table}:${res.status}:${detail}`);
-  }
-
-  const data = await res.json();
-  if (!Array.isArray(data)) {
-    throw new Error(`edge_db_invalid_payload:${table}`);
-  }
-
-  return data as T[];
 }
 
 async function scanEdgeRows<T>(table: string, baseParams: URLSearchParams): Promise<T[]> {

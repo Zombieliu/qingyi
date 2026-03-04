@@ -4,8 +4,8 @@ const mocks = vi.hoisted(() => ({
   requireUserAuth: vi.fn(),
   isValidSuiAddress: vi.fn(),
   normalizeSuiAddress: vi.fn(),
-  getMemberByAddress: vi.fn(),
-  getMembershipTierById: vi.fn(),
+  getMemberByAddressEdgeRead: vi.fn(),
+  getMembershipTierByIdEdgeRead: vi.fn(),
 }));
 
 vi.mock("next/server", () => {
@@ -33,9 +33,9 @@ vi.mock("@mysten/sui/utils", () => ({
   isValidSuiAddress: mocks.isValidSuiAddress,
   normalizeSuiAddress: mocks.normalizeSuiAddress,
 }));
-vi.mock("@/lib/admin/admin-store", () => ({
-  getMemberByAddress: mocks.getMemberByAddress,
-  getMembershipTierById: mocks.getMembershipTierById,
+vi.mock("@/lib/edge-db/user-read-store", () => ({
+  getMemberByAddressEdgeRead: mocks.getMemberByAddressEdgeRead,
+  getMembershipTierByIdEdgeRead: mocks.getMembershipTierByIdEdgeRead,
 }));
 
 import { GET } from "../route";
@@ -82,7 +82,7 @@ describe("GET /api/vip/status", () => {
 
   it("returns null member when not found", async () => {
     mocks.requireUserAuth.mockResolvedValue({ ok: true, address: VALID_ADDRESS });
-    mocks.getMemberByAddress.mockResolvedValue(null);
+    mocks.getMemberByAddressEdgeRead.mockResolvedValue(null);
     const req = makeReq(`http://localhost/api/vip/status?userAddress=${VALID_ADDRESS}`);
     const res = await GET(req);
     expect(res.status).toBe(200);
@@ -94,8 +94,8 @@ describe("GET /api/vip/status", () => {
     const member = { id: "M1", tierId: "T1", address: VALID_ADDRESS, status: "有效" };
     const tier = { id: "T1", name: "Gold", price: 100 };
     mocks.requireUserAuth.mockResolvedValue({ ok: true, address: VALID_ADDRESS });
-    mocks.getMemberByAddress.mockResolvedValue(member);
-    mocks.getMembershipTierById.mockResolvedValue(tier);
+    mocks.getMemberByAddressEdgeRead.mockResolvedValue(member);
+    mocks.getMembershipTierByIdEdgeRead.mockResolvedValue(tier);
     const req = makeReq(`http://localhost/api/vip/status?userAddress=${VALID_ADDRESS}`);
     const res = await GET(req);
     expect(res.status).toBe(200);

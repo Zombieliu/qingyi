@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  getReferralByInvitee: vi.fn(),
-  queryReferralsByInviter: vi.fn(),
+  getReferralByInviteeEdgeRead: vi.fn(),
+  queryReferralsByInviterEdgeRead: vi.fn(),
   requireUserAuth: vi.fn(),
   isValidSuiAddress: vi.fn(),
   normalizeSuiAddress: vi.fn(),
@@ -28,9 +28,9 @@ vi.mock("next/server", () => {
   return { NextResponse: MockNextResponse };
 });
 
-vi.mock("@/lib/admin/admin-store", () => ({
-  getReferralByInvitee: mocks.getReferralByInvitee,
-  queryReferralsByInviter: mocks.queryReferralsByInviter,
+vi.mock("@/lib/edge-db/user-read-store", () => ({
+  getReferralByInviteeEdgeRead: mocks.getReferralByInviteeEdgeRead,
+  queryReferralsByInviterEdgeRead: mocks.queryReferralsByInviterEdgeRead,
 }));
 vi.mock("@/lib/auth/user-auth", () => ({ requireUserAuth: mocks.requireUserAuth }));
 vi.mock("@mysten/sui/utils", () => ({
@@ -81,12 +81,12 @@ describe("GET /api/referral/status", () => {
   });
 
   it("returns referral status with invites", async () => {
-    mocks.getReferralByInvitee.mockResolvedValue({
+    mocks.getReferralByInviteeEdgeRead.mockResolvedValue({
       inviterAddress: "0x" + "b".repeat(64),
       status: "rewarded",
       rewardInvitee: 10,
     });
-    mocks.queryReferralsByInviter.mockResolvedValue([
+    mocks.queryReferralsByInviterEdgeRead.mockResolvedValue([
       {
         inviteeAddress: "0x" + "c".repeat(64),
         status: "rewarded",
@@ -107,8 +107,8 @@ describe("GET /api/referral/status", () => {
   });
 
   it("returns null invitedBy when not invited", async () => {
-    mocks.getReferralByInvitee.mockResolvedValue(null);
-    mocks.queryReferralsByInviter.mockResolvedValue([]);
+    mocks.getReferralByInviteeEdgeRead.mockResolvedValue(null);
+    mocks.queryReferralsByInviterEdgeRead.mockResolvedValue([]);
     const req = createMockRequest(`http://localhost/api/referral/status?address=${VALID_ADDRESS}`);
     const res = await GET(req);
     expect(res.status).toBe(200);

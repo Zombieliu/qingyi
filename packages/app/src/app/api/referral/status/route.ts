@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { isValidSuiAddress, normalizeSuiAddress } from "@mysten/sui/utils";
-import { getReferralByInvitee, queryReferralsByInviter } from "@/lib/admin/admin-store";
+import {
+  getReferralByInviteeEdgeRead,
+  queryReferralsByInviterEdgeRead,
+} from "@/lib/edge-db/user-read-store";
 import { requireUserAuth } from "@/lib/auth/user-auth";
 
 export async function GET(req: Request) {
@@ -15,8 +18,8 @@ export async function GET(req: Request) {
   if (!auth.ok) return auth.response;
 
   const [invitedBy, myInvites] = await Promise.all([
-    getReferralByInvitee(address),
-    queryReferralsByInviter(address),
+    getReferralByInviteeEdgeRead(address),
+    queryReferralsByInviterEdgeRead(address),
   ]);
 
   const totalReward = myInvites

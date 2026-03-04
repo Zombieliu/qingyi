@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  listPlayersPublic: vi.fn(),
+  listPlayersPublicEdgeRead: vi.fn(),
   getCache: vi.fn(),
   setCache: vi.fn(),
   computeJsonEtag: vi.fn(),
@@ -31,8 +31,8 @@ vi.mock("next/server", () => {
 });
 
 vi.mock("server-only", () => ({}));
-vi.mock("@/lib/admin/admin-store", () => ({
-  listPlayersPublic: mocks.listPlayersPublic,
+vi.mock("@/lib/edge-db/user-read-store", () => ({
+  listPlayersPublicEdgeRead: mocks.listPlayersPublicEdgeRead,
 }));
 vi.mock("@/lib/server-cache", () => ({
   getCache: mocks.getCache,
@@ -64,7 +64,7 @@ describe("GET /api/players", () => {
       { id: "P1", name: "Alice", role: "陪玩", status: "可接单", depositBase: 0, depositLocked: 0 },
       { id: "P2", name: "Bob", role: "陪玩", status: "忙碌", depositBase: 0, depositLocked: 0 },
     ];
-    mocks.listPlayersPublic.mockResolvedValue(players);
+    mocks.listPlayersPublicEdgeRead.mockResolvedValue(players);
     const mockRes = {
       status: 200,
       json: async () => [{ id: "P1", name: "Alice", role: "陪玩", status: "可接单" }],
@@ -73,7 +73,7 @@ describe("GET /api/players", () => {
     const req = makeReq("http://localhost/api/players");
     const res = await GET(req);
     expect(res.status).toBe(200);
-    expect(mocks.listPlayersPublic).toHaveBeenCalled();
+    expect(mocks.listPlayersPublicEdgeRead).toHaveBeenCalled();
   });
 
   it("returns cached data when available", async () => {
@@ -84,7 +84,7 @@ describe("GET /api/players", () => {
     const req = makeReq("http://localhost/api/players");
     const res = await GET(req);
     expect(res.status).toBe(200);
-    expect(mocks.listPlayersPublic).not.toHaveBeenCalled();
+    expect(mocks.listPlayersPublicEdgeRead).not.toHaveBeenCalled();
   });
 
   it("returns 304 when etag matches", async () => {
@@ -102,7 +102,7 @@ describe("GET /api/players", () => {
       { id: "P1", name: "Alice", status: "可接单", depositBase: 100, depositLocked: 50 },
       { id: "P2", name: "Bob", status: "可接单", depositBase: 100, depositLocked: 100 },
     ];
-    mocks.listPlayersPublic.mockResolvedValue(players);
+    mocks.listPlayersPublicEdgeRead.mockResolvedValue(players);
     mocks.jsonWithEtag.mockImplementation((data: unknown) => ({
       status: 200,
       json: async () => data,
@@ -115,7 +115,7 @@ describe("GET /api/players", () => {
   });
 
   it("sets cache after fetching from store", async () => {
-    mocks.listPlayersPublic.mockResolvedValue([]);
+    mocks.listPlayersPublicEdgeRead.mockResolvedValue([]);
     mocks.jsonWithEtag.mockReturnValue({ status: 200 });
     const req = makeReq("http://localhost/api/players");
     await GET(req);
@@ -131,7 +131,7 @@ describe("GET /api/players", () => {
     const players = [
       { id: "P1", name: "Alice", status: "可接单", depositBase: 0, depositLocked: 0 },
     ];
-    mocks.listPlayersPublic.mockResolvedValue(players);
+    mocks.listPlayersPublicEdgeRead.mockResolvedValue(players);
     mocks.jsonWithEtag.mockImplementation((data: unknown) => ({
       status: 200,
       json: async () => data,
@@ -146,7 +146,7 @@ describe("GET /api/players", () => {
     const players = [
       { id: "P1", name: "Alice", status: "可接单", depositBase: null, depositLocked: null },
     ];
-    mocks.listPlayersPublic.mockResolvedValue(players);
+    mocks.listPlayersPublicEdgeRead.mockResolvedValue(players);
     mocks.jsonWithEtag.mockImplementation((data: unknown) => ({
       status: 200,
       json: async () => data,
