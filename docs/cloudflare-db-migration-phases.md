@@ -31,7 +31,10 @@ This plan assumes the current goal is:
 
 ### Deliverables
 - Route matrix document with owner + migration status.
+- Generated matrix artifact: `docs/cloudflare-api-route-matrix.md` (`pnpm --filter app run cf:matrix`).
 - Temporary feature flag or routing policy for Node-bound endpoints.
+  - `CF_NODE_BOUND_ROUTE_POLICY=block`
+  - `CF_NODE_BOUND_ROUTE_PREFIXES=/api/announcements,/api/health,/api/vip/tiers` (comma-separated prefixes)
 
 ### Exit Criteria
 - Every API route is tagged with one runtime class.

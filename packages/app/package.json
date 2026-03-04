@@ -27,6 +27,7 @@
     "postinstall": "prisma generate",
     "db:seed": "prisma db seed",
     "opennext:patch": "node scripts/patch-opennext-cloudflare.mjs",
+    "cf:matrix": "node scripts/generate-cf-route-matrix.mjs",
     "preview": "pnpm run opennext:patch && OPEN_NEXT_BUILD=1 opennextjs-cloudflare build && opennextjs-cloudflare preview",
     "deploy": "pnpm run opennext:patch && OPEN_NEXT_BUILD=1 opennextjs-cloudflare build && opennextjs-cloudflare deploy",
     "upload": "pnpm run opennext:patch && OPEN_NEXT_BUILD=1 opennextjs-cloudflare build && opennextjs-cloudflare upload",
