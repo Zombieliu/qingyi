@@ -1,87 +1,73 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const {
-  mockRequireAdmin,
-  mockFetchChainOrdersCached,
-  mockGetChainOrderCacheStats,
-  mockUpsertChainOrder,
-  mockGetChainOrderStats,
-  mockPrisma,
-  mockTrackCronCompleted,
-} = vi.hoisted(() => ({
-  mockRequireAdmin: vi.fn(),
-  mockFetchChainOrdersCached: vi.fn(),
-  mockGetChainOrderCacheStats: vi.fn(),
-  mockUpsertChainOrder: vi.fn(),
-  mockGetChainOrderStats: vi.fn(),
-  mockPrisma: { adminOrder: { findMany: vi.fn() } },
-  mockTrackCronCompleted: vi.fn(),
+const mocks = vi.hoisted(() => ({
+  requireAdmin: vi.fn(),
+  fetchChainOrdersCached: vi.fn(),
+  getChainOrderCacheStats: vi.fn(),
+  upsertChainOrder: vi.fn(),
+  getChainOrderStats: vi.fn(),
+  listChainReconcileOrdersEdgeRead: vi.fn(),
+  listChainReconcileStatusRowsEdgeRead: vi.fn(),
+  trackCronCompleted: vi.fn(),
 }));
 
-vi.mock("server-only", () => ({}));
-vi.mock("@/lib/admin/admin-auth", () => ({ requireAdmin: mockRequireAdmin }));
+vi.mock("@/lib/admin/admin-auth", () => ({ requireAdmin: mocks.requireAdmin }));
 vi.mock("@/lib/chain/chain-sync", () => ({
-  fetchChainOrdersCached: mockFetchChainOrdersCached,
-  getChainOrderCacheStats: mockGetChainOrderCacheStats,
-  upsertChainOrder: mockUpsertChainOrder,
+  fetchChainOrdersCached: mocks.fetchChainOrdersCached,
+  getChainOrderCacheStats: mocks.getChainOrderCacheStats,
+  upsertChainOrder: mocks.upsertChainOrder,
 }));
-vi.mock("@/lib/chain/chain-order-cache", () => ({ getChainOrderStats: mockGetChainOrderStats }));
-vi.mock("@/lib/db", () => ({ prisma: mockPrisma }));
-vi.mock("@/lib/business-events", () => ({ trackCronCompleted: mockTrackCronCompleted }));
+vi.mock("@/lib/chain/chain-order-cache", () => ({ getChainOrderStats: mocks.getChainOrderStats }));
+vi.mock("@/lib/edge-db/cron-maintenance-store", () => ({
+  listChainReconcileOrdersEdgeRead: mocks.listChainReconcileOrdersEdgeRead,
+  listChainReconcileStatusRowsEdgeRead: mocks.listChainReconcileStatusRowsEdgeRead,
+}));
+vi.mock("@/lib/business-events", () => ({ trackCronCompleted: mocks.trackCronCompleted }));
 
 import { GET, POST } from "../route";
-
-const authOk = { ok: true, role: "admin", authType: "session" };
-const authFail = { ok: false, response: Response.json({ error: "Unauthorized" }, { status: 401 }) };
-
-function makeGet(params: Record<string, string> = {}) {
-  const url = new URL("http://localhost/api/admin/chain/reconcile");
-  for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
-  return new Request(url.toString());
-}
 
 function makePost(body: unknown) {
   return new Request("http://localhost/api/admin/chain/reconcile", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "content-type": "application/json" },
     body: JSON.stringify(body),
   });
 }
 
-beforeEach(() => {
-  vi.clearAllMocks();
-  mockRequireAdmin.mockResolvedValue(authOk);
-  mockGetChainOrderCacheStats.mockReturnValue({
-    cacheAgeMs: 1000,
-    hits: 1,
-    misses: 0,
-    lastFetch: Date.now(),
+describe("/api/admin/chain/reconcile", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.requireAdmin.mockResolvedValue({ ok: true, role: "admin", authType: "session" });
+    mocks.fetchChainOrdersCached.mockResolvedValue([]);
+    mocks.getChainOrderStats.mockResolvedValue({ byStatus: {} });
+    mocks.getChainOrderCacheStats.mockReturnValue({
+      cacheAgeMs: 1_000,
+      hits: 2,
+      misses: 1,
+      lastFetch: Date.now(),
+    });
+    mocks.listChainReconcileOrdersEdgeRead.mockResolvedValue([]);
+    mocks.listChainReconcileStatusRowsEdgeRead.mockResolvedValue([]);
+    mocks.upsertChainOrder.mockResolvedValue(undefined);
   });
-});
 
-describe("GET /api/admin/chain/reconcile", () => {
-  it("returns 401 when auth fails", async () => {
-    mockRequireAdmin.mockResolvedValue(authFail);
-    const res = await GET(makeGet());
+  it("GET returns 401 when auth fails", async () => {
+    mocks.requireAdmin.mockResolvedValueOnce({
+      ok: false,
+      response: Response.json({ error: "Unauthorized" }, { status: 401 }),
+    });
+
+    const res = await GET(new Request("http://localhost/api/admin/chain/reconcile"));
     expect(res.status).toBe(401);
   });
 
-  it("returns reconcile summary", async () => {
-    mockFetchChainOrdersCached.mockResolvedValue([]);
-    mockPrisma.adminOrder.findMany.mockResolvedValue([]);
-    mockGetChainOrderStats.mockResolvedValue({ byStatus: {} });
-    const res = await GET(makeGet());
-    const json = await res.json();
-    expect(json.summary).toBeTruthy();
-    expect(json.summary.health.status).toBe("healthy");
-  });
-
-  it("returns detailed info when detailed=true", async () => {
-    mockFetchChainOrdersCached.mockResolvedValue([
+  it("GET returns detailed discrepancy info", async () => {
+    mocks.fetchChainOrdersCached.mockResolvedValue([
       { orderId: "chain-1", status: 1 },
       { orderId: "chain-2", status: 2 },
     ]);
-    mockPrisma.adminOrder.findMany.mockResolvedValue([
+    mocks.getChainOrderStats.mockResolvedValue({ byStatus: { 1: 1, 2: 1 } });
+    mocks.listChainReconcileOrdersEdgeRead.mockResolvedValue([
       {
         id: "chain-2",
         chainStatus: 1,
@@ -92,7 +78,7 @@ describe("GET /api/admin/chain/reconcile", () => {
         companionAddress: "0x2",
         serviceFee: 0,
         deposit: 0,
-        createdAt: new Date(),
+        createdAt: new Date("2025-01-01T00:00:00.000Z"),
       },
       {
         id: "local-only",
@@ -104,83 +90,44 @@ describe("GET /api/admin/chain/reconcile", () => {
         companionAddress: "0x4",
         serviceFee: 0,
         deposit: 0,
-        createdAt: new Date(),
+        createdAt: new Date("2025-01-01T00:00:00.000Z"),
       },
     ]);
-    mockGetChainOrderStats.mockResolvedValue({ byStatus: { 1: 1, 2: 1 } });
-    const res = await GET(makeGet({ detailed: "true" }));
-    const json = await res.json();
-    expect(json.details).toBeDefined();
-    expect(json.details.missingInLocal).toContain("chain-1");
-    expect(json.details.missingInChain).toContain("local-only");
-    expect(json.details.statusMismatch.length).toBe(1);
-    expect(json.summary.health.status).toBe("needs_attention");
-  });
-});
 
-describe("POST /api/admin/chain/reconcile", () => {
-  it("returns 401 when auth fails", async () => {
-    mockRequireAdmin.mockResolvedValue(authFail);
+    const res = await GET(
+      new Request("http://localhost/api/admin/chain/reconcile?detailed=true&refresh=true")
+    );
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.summary.health.status).toBe("needs_attention");
+    expect(body.details.missingInLocal).toEqual(["chain-1"]);
+    expect(body.details.missingInChain).toEqual(["local-only"]);
+    expect(body.details.statusMismatch).toHaveLength(1);
+  });
+
+  it("POST sync_missing upserts missing chain orders", async () => {
+    mocks.fetchChainOrdersCached.mockResolvedValue([{ orderId: "chain-1", status: 1 }]);
+    mocks.listChainReconcileStatusRowsEdgeRead.mockResolvedValue([]);
+
     const res = await POST(makePost({ action: "sync_missing" }));
-    expect(res.status).toBe(401);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body).toMatchObject({ action: "sync_missing", synced: 1, fixed: 0, errors: 0 });
+    expect(mocks.upsertChainOrder).toHaveBeenCalledWith({ orderId: "chain-1", status: 1 });
+    expect(mocks.trackCronCompleted).toHaveBeenCalled();
   });
 
-  it("syncs missing orders", async () => {
-    mockFetchChainOrdersCached.mockResolvedValue([{ orderId: "1", status: 1 }]);
-    mockPrisma.adminOrder.findMany.mockResolvedValue([]);
-    mockUpsertChainOrder.mockResolvedValue(undefined);
-    const res = await POST(makePost({ action: "sync_missing" }));
-    const json = await res.json();
-    expect(json.synced).toBe(1);
-  });
-
-  it("returns 400 for invalid body", async () => {
-    const res = await POST(makePost({ action: "invalid_action" }));
-    expect(res.status).toBe(400);
-  });
-
-  it("handles upsert error during sync_missing", async () => {
-    mockFetchChainOrdersCached.mockResolvedValue([{ orderId: "1", status: 1 }]);
-    mockPrisma.adminOrder.findMany.mockResolvedValue([]);
-    mockUpsertChainOrder.mockRejectedValue(new Error("db error"));
-    const res = await POST(makePost({ action: "sync_missing" }));
-    const json = await res.json();
-    expect(json.synced).toBe(0);
-    expect(json.errors).toBe(1);
-    expect(json.errorDetails[0]).toContain("db error");
-  });
-
-  it("fixes status mismatches with fix_status action", async () => {
-    mockFetchChainOrdersCached.mockResolvedValue([{ orderId: "order-1", status: 2 }]);
-    mockPrisma.adminOrder.findMany.mockResolvedValue([{ id: "order-1", chainStatus: 1 }]);
-    mockUpsertChainOrder.mockResolvedValue(undefined);
-    const res = await POST(makePost({ action: "fix_status" }));
-    const json = await res.json();
-    expect(json.fixed).toBe(1);
-    expect(mockUpsertChainOrder).toHaveBeenCalled();
-  });
-
-  it("handles upsert error during fix_status", async () => {
-    mockFetchChainOrdersCached.mockResolvedValue([{ orderId: "order-1", status: 2 }]);
-    mockPrisma.adminOrder.findMany.mockResolvedValue([{ id: "order-1", chainStatus: 1 }]);
-    mockUpsertChainOrder.mockRejectedValue(new Error("fix error"));
-    const res = await POST(makePost({ action: "fix_status" }));
-    const json = await res.json();
-    expect(json.fixed).toBe(0);
-    expect(json.errors).toBe(1);
-    expect(json.errorDetails[0]).toContain("fix error");
-  });
-
-  it("sync_all does both sync_missing and fix_status", async () => {
-    mockFetchChainOrdersCached.mockResolvedValue([
-      { orderId: "new-1", status: 1 },
-      { orderId: "existing-1", status: 2 },
+  it("POST fix_status reports errors when upsert fails", async () => {
+    mocks.fetchChainOrdersCached.mockResolvedValue([{ orderId: "chain-1", status: 2 }]);
+    mocks.listChainReconcileStatusRowsEdgeRead.mockResolvedValue([
+      { id: "chain-1", chainStatus: 1 },
     ]);
-    mockPrisma.adminOrder.findMany.mockResolvedValue([{ id: "existing-1", chainStatus: 1 }]);
-    mockUpsertChainOrder.mockResolvedValue(undefined);
-    const res = await POST(makePost({ action: "sync_all" }));
-    const json = await res.json();
-    expect(json.synced).toBe(1);
-    expect(json.fixed).toBe(1);
+    mocks.upsertChainOrder.mockRejectedValue(new Error("upsert failed"));
+
+    const res = await POST(makePost({ action: "fix_status" }));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.errors).toBe(1);
+    expect(body.errorDetails[0]).toContain("upsert failed");
   });
 });

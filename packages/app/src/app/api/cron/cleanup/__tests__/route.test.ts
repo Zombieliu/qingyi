@@ -1,26 +1,22 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   isAuthorizedCron: vi.fn(),
   trackCronCompleted: vi.fn(),
   trackCronFailed: vi.fn(),
-  prisma: {
-    growthEvent: { deleteMany: vi.fn() },
-    userSession: { deleteMany: vi.fn() },
-    adminSession: { deleteMany: vi.fn() },
-    notification: { deleteMany: vi.fn() },
-  },
+  deleteGrowthEventsBeforeEdgeWrite: vi.fn(),
+  deleteUserSessionsBeforeEdgeWrite: vi.fn(),
+  deleteAdminSessionsBeforeEdgeWrite: vi.fn(),
+  deleteNotificationsBeforeEdgeWrite: vi.fn(),
 }));
 
 vi.mock("next/server", () => {
   class MockNextResponse {
     body: unknown;
     status: number;
-    headers: Map<string, string>;
     constructor(body: unknown, init?: { status?: number }) {
       this.body = body;
       this.status = init?.status ?? 200;
-      this.headers = new Map();
     }
     async json() {
       return this.body;
@@ -32,76 +28,64 @@ vi.mock("next/server", () => {
   return { NextResponse: MockNextResponse };
 });
 
-vi.mock("server-only", () => ({}));
-vi.mock("@/lib/cron-auth", () => ({
-  isAuthorizedCron: mocks.isAuthorizedCron,
-}));
-vi.mock("@/lib/db", () => ({
-  prisma: mocks.prisma,
-}));
+vi.mock("@/lib/cron-auth", () => ({ isAuthorizedCron: mocks.isAuthorizedCron }));
 vi.mock("@/lib/business-events", () => ({
   trackCronCompleted: mocks.trackCronCompleted,
   trackCronFailed: mocks.trackCronFailed,
 }));
+vi.mock("@/lib/edge-db/cron-maintenance-store", () => ({
+  deleteGrowthEventsBeforeEdgeWrite: mocks.deleteGrowthEventsBeforeEdgeWrite,
+  deleteUserSessionsBeforeEdgeWrite: mocks.deleteUserSessionsBeforeEdgeWrite,
+  deleteAdminSessionsBeforeEdgeWrite: mocks.deleteAdminSessionsBeforeEdgeWrite,
+  deleteNotificationsBeforeEdgeWrite: mocks.deleteNotificationsBeforeEdgeWrite,
+}));
 
 import { GET } from "../route";
-
-function makeReq(url = "http://localhost/api/cron/cleanup") {
-  return new Request(url);
-}
 
 describe("GET /api/cron/cleanup", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.deleteGrowthEventsBeforeEdgeWrite.mockResolvedValue(0);
+    mocks.deleteUserSessionsBeforeEdgeWrite.mockResolvedValue(0);
+    mocks.deleteAdminSessionsBeforeEdgeWrite.mockResolvedValue(0);
+    mocks.deleteNotificationsBeforeEdgeWrite.mockResolvedValue(0);
   });
 
-  it("returns 401 when not authorized", async () => {
+  it("returns 401 when unauthorized", async () => {
     mocks.isAuthorizedCron.mockReturnValue(false);
-    const res = await GET(makeReq());
+    const res = await GET(new Request("http://localhost/api/cron/cleanup"));
     expect(res.status).toBe(401);
-    const body = await res.json();
-    expect(body.error).toBe("unauthorized");
+    expect(await res.json()).toEqual({ error: "unauthorized" });
   });
 
-  it("cleans up data successfully", async () => {
+  it("returns cleanup summary on success", async () => {
     mocks.isAuthorizedCron.mockReturnValue(true);
-    mocks.prisma.growthEvent.deleteMany.mockResolvedValue({ count: 10 });
-    mocks.prisma.userSession.deleteMany.mockResolvedValue({ count: 5 });
-    mocks.prisma.adminSession.deleteMany.mockResolvedValue({ count: 3 });
-    mocks.prisma.notification.deleteMany.mockResolvedValue({ count: 7 });
-    const res = await GET(makeReq());
+    mocks.deleteGrowthEventsBeforeEdgeWrite.mockResolvedValue(10);
+    mocks.deleteUserSessionsBeforeEdgeWrite.mockResolvedValue(5);
+    mocks.deleteAdminSessionsBeforeEdgeWrite.mockResolvedValue(3);
+    mocks.deleteNotificationsBeforeEdgeWrite.mockResolvedValue(7);
+
+    const res = await GET(new Request("http://localhost/api/cron/cleanup"));
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.ok).toBe(true);
-    expect(body.cleaned.growthEvents).toBe(10);
-    expect(body.cleaned.userSessions).toBe(5);
-    expect(body.cleaned.adminSessions).toBe(3);
-    expect(body.cleaned.notifications).toBe(7);
-    expect(body.durationMs).toBeTypeOf("number");
+    expect(body.cleaned).toEqual({
+      growthEvents: 10,
+      userSessions: 5,
+      adminSessions: 3,
+      notifications: 7,
+    });
+    expect(mocks.trackCronCompleted).toHaveBeenCalled();
   });
 
-  it("tracks cron completion on success", async () => {
+  it("returns 500 when edge cleanup fails", async () => {
     mocks.isAuthorizedCron.mockReturnValue(true);
-    mocks.prisma.growthEvent.deleteMany.mockResolvedValue({ count: 0 });
-    mocks.prisma.userSession.deleteMany.mockResolvedValue({ count: 0 });
-    mocks.prisma.adminSession.deleteMany.mockResolvedValue({ count: 0 });
-    mocks.prisma.notification.deleteMany.mockResolvedValue({ count: 0 });
-    await GET(makeReq());
-    expect(mocks.trackCronCompleted).toHaveBeenCalledWith(
-      "cleanup",
-      expect.objectContaining({ growthEvents: 0, userSessions: 0 }),
-      expect.any(Number)
-    );
-  });
+    mocks.deleteGrowthEventsBeforeEdgeWrite.mockRejectedValue(new Error("edge failure"));
 
-  it("returns 500 and tracks failure on error", async () => {
-    mocks.isAuthorizedCron.mockReturnValue(true);
-    mocks.prisma.growthEvent.deleteMany.mockRejectedValue(new Error("db error"));
-    const res = await GET(makeReq());
+    const res = await GET(new Request("http://localhost/api/cron/cleanup"));
     expect(res.status).toBe(500);
     const body = await res.json();
-    expect(body.error).toBe("cleanup_failed");
-    expect(body.message).toBe("db error");
-    expect(mocks.trackCronFailed).toHaveBeenCalledWith("cleanup", "db error");
+    expect(body).toEqual({ error: "cleanup_failed", message: "edge failure" });
+    expect(mocks.trackCronFailed).toHaveBeenCalledWith("cleanup", "edge failure");
   });
 });

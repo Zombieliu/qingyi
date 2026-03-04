@@ -1,7 +1,12 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
 import { isAuthorizedCron } from "@/lib/cron-auth";
 import { trackCronCompleted, trackCronFailed } from "@/lib/business-events";
+import {
+  deleteAdminSessionsBeforeEdgeWrite,
+  deleteGrowthEventsBeforeEdgeWrite,
+  deleteNotificationsBeforeEdgeWrite,
+  deleteUserSessionsBeforeEdgeWrite,
+} from "@/lib/edge-db/cron-maintenance-store";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
@@ -25,30 +30,18 @@ export async function GET(req: Request) {
   try {
     // 1. Clean old growth events (keep 90 days)
     const growthCutoff = new Date(Date.now() - 90 * 86400_000);
-    const growthResult = await prisma.growthEvent.deleteMany({
-      where: { createdAt: { lt: growthCutoff } },
-    });
-    results.growthEvents = growthResult.count;
+    results.growthEvents = await deleteGrowthEventsBeforeEdgeWrite(growthCutoff);
 
     // 2. Clean expired user sessions
     const now = new Date();
-    const userSessionResult = await prisma.userSession.deleteMany({
-      where: { expiresAt: { lt: now } },
-    });
-    results.userSessions = userSessionResult.count;
+    results.userSessions = await deleteUserSessionsBeforeEdgeWrite(now);
 
     // 3. Clean expired admin sessions
-    const adminSessionResult = await prisma.adminSession.deleteMany({
-      where: { expiresAt: { lt: now } },
-    });
-    results.adminSessions = adminSessionResult.count;
+    results.adminSessions = await deleteAdminSessionsBeforeEdgeWrite(now);
 
     // 4. Clean old notifications (keep 30 days)
     const notifCutoff = new Date(Date.now() - 30 * 86400_000);
-    const notifResult = await prisma.notification.deleteMany({
-      where: { createdAt: { lt: notifCutoff } },
-    });
-    results.notifications = notifResult.count;
+    results.notifications = await deleteNotificationsBeforeEdgeWrite(notifCutoff);
 
     const durationMs = Date.now() - start;
     trackCronCompleted("cleanup", results, durationMs);

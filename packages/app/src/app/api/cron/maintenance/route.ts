@@ -1,35 +1,11 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
 import { acquireCronLock } from "@/lib/cron-lock";
 import { env } from "@/lib/env";
 import { isAuthorizedCron } from "@/lib/cron-auth";
-
-type PrunableModel = {
-  count: () => Promise<number>;
-  findMany: (args: {
-    orderBy: { createdAt: "asc" | "desc" };
-    skip: number;
-    take: number;
-    select: { id: true };
-  }) => Promise<Array<{ id: string }>>;
-  deleteMany: (args: { where: { id: { in: string[] } } }) => Promise<unknown>;
-};
-
-async function prune(model: PrunableModel, max: number) {
-  if (!Number.isFinite(max) || max <= 0) return 0;
-  const total = await model.count();
-  const excess = total - max;
-  if (excess <= 0) return 0;
-  const old = await model.findMany({
-    orderBy: { createdAt: "desc" },
-    skip: max,
-    take: excess,
-    select: { id: true },
-  });
-  if (!old.length) return 0;
-  await model.deleteMany({ where: { id: { in: old.map((item) => item.id) } } });
-  return old.length;
-}
+import {
+  deleteAdminOrdersBeforeEdgeWrite,
+  pruneTableByMaxRowsEdgeWrite,
+} from "@/lib/edge-db/cron-maintenance-store";
 
 export async function GET(req: Request) {
   if (!isAuthorizedCron(req)) {
@@ -43,14 +19,13 @@ export async function GET(req: Request) {
   const retentionDays = env.ORDER_RETENTION_DAYS;
 
   const [deletedAudit, deletedPayments] = await Promise.all([
-    prune(prisma.adminAuditLog, maxAudit),
-    prune(prisma.adminPaymentEvent, maxPayments),
+    pruneTableByMaxRowsEdgeWrite("AdminAuditLog", maxAudit),
+    pruneTableByMaxRowsEdgeWrite("AdminPaymentEvent", maxPayments),
   ]);
   let deletedOrders = 0;
   if (Number.isFinite(retentionDays) && retentionDays > 0) {
     const cutoff = new Date(Date.now() - retentionDays * 24 * 60 * 60 * 1000);
-    const result = await prisma.adminOrder.deleteMany({ where: { createdAt: { lt: cutoff } } });
-    deletedOrders = result.count;
+    deletedOrders = await deleteAdminOrdersBeforeEdgeWrite(cutoff);
   }
 
   return NextResponse.json({ ok: true, deletedAudit, deletedPayments, deletedOrders });

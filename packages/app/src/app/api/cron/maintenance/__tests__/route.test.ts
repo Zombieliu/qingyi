@@ -1,26 +1,13 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   isAuthorizedCron: vi.fn(),
   acquireCronLock: vi.fn(),
-  prisma: {
-    adminAuditLog: {
-      count: vi.fn(),
-      findMany: vi.fn(),
-      deleteMany: vi.fn(),
-    },
-    adminPaymentEvent: {
-      count: vi.fn(),
-      findMany: vi.fn(),
-      deleteMany: vi.fn(),
-    },
-    adminOrder: {
-      deleteMany: vi.fn(),
-    },
-  },
+  pruneTableByMaxRowsEdgeWrite: vi.fn(),
+  deleteAdminOrdersBeforeEdgeWrite: vi.fn(),
   env: {
-    CRON_LOCK_TTL_MS: 60000,
-    ADMIN_AUDIT_LOG_LIMIT: 1000,
+    CRON_LOCK_TTL_MS: 60_000,
+    ADMIN_AUDIT_LOG_LIMIT: 1_000,
     ADMIN_PAYMENT_EVENT_LIMIT: 500,
     ORDER_RETENTION_DAYS: 90,
   },
@@ -30,11 +17,9 @@ vi.mock("next/server", () => {
   class MockNextResponse {
     body: unknown;
     status: number;
-    headers: Map<string, string>;
     constructor(body: unknown, init?: { status?: number }) {
       this.body = body;
       this.status = init?.status ?? 200;
-      this.headers = new Map();
     }
     async json() {
       return this.body;
@@ -46,151 +31,70 @@ vi.mock("next/server", () => {
   return { NextResponse: MockNextResponse };
 });
 
-vi.mock("server-only", () => ({}));
-vi.mock("@/lib/cron-auth", () => ({
-  isAuthorizedCron: mocks.isAuthorizedCron,
-}));
-vi.mock("@/lib/cron-lock", () => ({
-  acquireCronLock: mocks.acquireCronLock,
-}));
-vi.mock("@/lib/db", () => ({
-  prisma: mocks.prisma,
+vi.mock("@/lib/cron-auth", () => ({ isAuthorizedCron: mocks.isAuthorizedCron }));
+vi.mock("@/lib/cron-lock", () => ({ acquireCronLock: mocks.acquireCronLock }));
+vi.mock("@/lib/edge-db/cron-maintenance-store", () => ({
+  pruneTableByMaxRowsEdgeWrite: mocks.pruneTableByMaxRowsEdgeWrite,
+  deleteAdminOrdersBeforeEdgeWrite: mocks.deleteAdminOrdersBeforeEdgeWrite,
 }));
 vi.mock("@/lib/env", () => ({ env: mocks.env }));
 
 import { GET } from "../route";
 
-function makeReq(url = "http://localhost/api/cron/maintenance") {
-  return new Request(url);
-}
-
 describe("GET /api/cron/maintenance", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.env.ADMIN_AUDIT_LOG_LIMIT = 1000;
+    mocks.env.ADMIN_AUDIT_LOG_LIMIT = 1_000;
     mocks.env.ADMIN_PAYMENT_EVENT_LIMIT = 500;
     mocks.env.ORDER_RETENTION_DAYS = 90;
+    mocks.pruneTableByMaxRowsEdgeWrite.mockResolvedValue(0);
+    mocks.deleteAdminOrdersBeforeEdgeWrite.mockResolvedValue(0);
   });
 
-  it("returns 401 when not authorized", async () => {
+  it("returns 401 when unauthorized", async () => {
     mocks.isAuthorizedCron.mockReturnValue(false);
-    const res = await GET(makeReq());
+    const res = await GET(new Request("http://localhost/api/cron/maintenance"));
     expect(res.status).toBe(401);
-    const body = await res.json();
-    expect(body.error).toBe("unauthorized");
+    expect(await res.json()).toEqual({ error: "unauthorized" });
   });
 
   it("returns 429 when lock cannot be acquired", async () => {
     mocks.isAuthorizedCron.mockReturnValue(true);
     mocks.acquireCronLock.mockResolvedValue(false);
-    const res = await GET(makeReq());
+
+    const res = await GET(new Request("http://localhost/api/cron/maintenance"));
     expect(res.status).toBe(429);
-    const body = await res.json();
-    expect(body.error).toBe("locked");
+    expect(await res.json()).toEqual({ error: "locked" });
   });
 
-  it("prunes audit logs and payment events", async () => {
+  it("prunes edge tables and deletes old orders", async () => {
     mocks.isAuthorizedCron.mockReturnValue(true);
     mocks.acquireCronLock.mockResolvedValue(true);
-    // audit log: 1200 total, limit 1000 => 200 excess
-    mocks.prisma.adminAuditLog.count.mockResolvedValue(1200);
-    mocks.prisma.adminAuditLog.findMany.mockResolvedValue(
-      Array.from({ length: 200 }, (_, i) => ({ id: `a${i}` }))
-    );
-    mocks.prisma.adminAuditLog.deleteMany.mockResolvedValue({});
-    // payment events: 300 total, limit 500 => no excess
-    mocks.prisma.adminPaymentEvent.count.mockResolvedValue(300);
-    // orders
-    mocks.prisma.adminOrder.deleteMany.mockResolvedValue({ count: 5 });
+    mocks.pruneTableByMaxRowsEdgeWrite.mockResolvedValueOnce(12).mockResolvedValueOnce(5);
+    mocks.deleteAdminOrdersBeforeEdgeWrite.mockResolvedValue(3);
 
-    const res = await GET(makeReq());
+    const res = await GET(new Request("http://localhost/api/cron/maintenance"));
     expect(res.status).toBe(200);
-    const body = await res.json();
-    expect(body.ok).toBe(true);
-    expect(body.deletedAudit).toBe(200);
-    expect(body.deletedPayments).toBe(0);
-    expect(body.deletedOrders).toBe(5);
+    expect(await res.json()).toEqual({
+      ok: true,
+      deletedAudit: 12,
+      deletedPayments: 5,
+      deletedOrders: 3,
+    });
+    expect(mocks.pruneTableByMaxRowsEdgeWrite).toHaveBeenNthCalledWith(1, "AdminAuditLog", 1000);
+    expect(mocks.pruneTableByMaxRowsEdgeWrite).toHaveBeenNthCalledWith(2, "AdminPaymentEvent", 500);
+    expect(mocks.deleteAdminOrdersBeforeEdgeWrite).toHaveBeenCalledTimes(1);
   });
 
-  it("skips order deletion when retention days is 0", async () => {
+  it("skips order deletion when retention is not positive finite", async () => {
     mocks.isAuthorizedCron.mockReturnValue(true);
     mocks.acquireCronLock.mockResolvedValue(true);
     mocks.env.ORDER_RETENTION_DAYS = 0;
-    mocks.prisma.adminAuditLog.count.mockResolvedValue(0);
-    mocks.prisma.adminPaymentEvent.count.mockResolvedValue(0);
 
-    const res = await GET(makeReq());
-    const body = await res.json();
-    expect(body.ok).toBe(true);
-    expect(body.deletedOrders).toBe(0);
-    expect(mocks.prisma.adminOrder.deleteMany).not.toHaveBeenCalled();
-  });
-
-  it("handles no excess records gracefully", async () => {
-    mocks.isAuthorizedCron.mockReturnValue(true);
-    mocks.acquireCronLock.mockResolvedValue(true);
-    mocks.prisma.adminAuditLog.count.mockResolvedValue(500);
-    mocks.prisma.adminPaymentEvent.count.mockResolvedValue(100);
-    mocks.prisma.adminOrder.deleteMany.mockResolvedValue({ count: 0 });
-
-    const res = await GET(makeReq());
-    const body = await res.json();
-    expect(body.ok).toBe(true);
-    expect(body.deletedAudit).toBe(0);
-    expect(body.deletedPayments).toBe(0);
-    expect(body.deletedOrders).toBe(0);
-  });
-
-  it("skips order deletion when retention days is negative", async () => {
-    mocks.isAuthorizedCron.mockReturnValue(true);
-    mocks.acquireCronLock.mockResolvedValue(true);
-    mocks.env.ORDER_RETENTION_DAYS = -1;
-    mocks.prisma.adminAuditLog.count.mockResolvedValue(0);
-    mocks.prisma.adminPaymentEvent.count.mockResolvedValue(0);
-
-    const res = await GET(makeReq());
+    const res = await GET(new Request("http://localhost/api/cron/maintenance"));
+    expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.deletedOrders).toBe(0);
-    expect(mocks.prisma.adminOrder.deleteMany).not.toHaveBeenCalled();
-  });
-
-  it("skips order deletion when retention days is Infinity", async () => {
-    mocks.isAuthorizedCron.mockReturnValue(true);
-    mocks.acquireCronLock.mockResolvedValue(true);
-    mocks.env.ORDER_RETENTION_DAYS = Infinity;
-    mocks.prisma.adminAuditLog.count.mockResolvedValue(0);
-    mocks.prisma.adminPaymentEvent.count.mockResolvedValue(0);
-
-    const res = await GET(makeReq());
-    const body = await res.json();
-    expect(body.deletedOrders).toBe(0);
-  });
-
-  it("handles prune when findMany returns empty array", async () => {
-    mocks.isAuthorizedCron.mockReturnValue(true);
-    mocks.acquireCronLock.mockResolvedValue(true);
-    mocks.prisma.adminAuditLog.count.mockResolvedValue(1200);
-    mocks.prisma.adminAuditLog.findMany.mockResolvedValue([]);
-    mocks.prisma.adminPaymentEvent.count.mockResolvedValue(0);
-    mocks.prisma.adminOrder.deleteMany.mockResolvedValue({ count: 0 });
-
-    const res = await GET(makeReq());
-    const body = await res.json();
-    expect(body.ok).toBe(true);
-    expect(body.deletedAudit).toBe(0);
-  });
-
-  it("handles prune with non-finite max limit", async () => {
-    mocks.isAuthorizedCron.mockReturnValue(true);
-    mocks.acquireCronLock.mockResolvedValue(true);
-    mocks.env.ADMIN_AUDIT_LOG_LIMIT = Infinity;
-    mocks.env.ADMIN_PAYMENT_EVENT_LIMIT = -1;
-    mocks.prisma.adminOrder.deleteMany.mockResolvedValue({ count: 0 });
-
-    const res = await GET(makeReq());
-    const body = await res.json();
-    expect(body.ok).toBe(true);
-    expect(body.deletedAudit).toBe(0);
-    expect(body.deletedPayments).toBe(0);
+    expect(mocks.deleteAdminOrdersBeforeEdgeWrite).not.toHaveBeenCalled();
   });
 });

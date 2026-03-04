@@ -7,9 +7,12 @@ import {
   upsertChainOrder,
 } from "@/lib/chain/chain-sync";
 import { getChainOrderStats } from "@/lib/chain/chain-order-cache";
-import { prisma } from "@/lib/db";
 import { parseBody } from "@/lib/shared/api-validation";
 import { trackCronCompleted } from "@/lib/business-events";
+import {
+  listChainReconcileOrdersEdgeRead,
+  listChainReconcileStatusRowsEdgeRead,
+} from "@/lib/edge-db/cron-maintenance-store";
 
 /**
  * 链上订单对账和诊断 API
@@ -34,23 +37,7 @@ export async function GET(req: Request) {
   const chainOrderMap = new Map(chainOrders.map((o) => [o.orderId, o]));
 
   // 获取本地订单（只获取链上来源的）
-  const localOrders = await prisma.adminOrder.findMany({
-    where: {
-      OR: [{ source: "chain" }, { chainStatus: { not: null } }],
-    },
-    select: {
-      id: true,
-      chainStatus: true,
-      stage: true,
-      paymentStatus: true,
-      source: true,
-      userAddress: true,
-      companionAddress: true,
-      serviceFee: true,
-      deposit: true,
-      createdAt: true,
-    },
-  });
+  const localOrders = await listChainReconcileOrdersEdgeRead();
 
   type LocalOrderType = (typeof localOrders)[number];
 
@@ -210,12 +197,7 @@ export async function POST(req: Request) {
   const chainOrders = await fetchChainOrdersCached(true);
   const chainOrderMap = new Map(chainOrders.map((o) => [o.orderId, o]));
 
-  const localOrders = await prisma.adminOrder.findMany({
-    where: {
-      OR: [{ source: "chain" }, { chainStatus: { not: null } }],
-    },
-    select: { id: true, chainStatus: true },
-  });
+  const localOrders = await listChainReconcileStatusRowsEdgeRead();
   const localOrderMap = new Map(localOrders.map((o) => [o.id, o]));
 
   let synced = 0;
