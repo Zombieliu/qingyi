@@ -1,5 +1,5 @@
 import { requireAdmin } from "@/lib/admin/admin-auth";
-import { prisma } from "@/lib/db";
+import { listRevenueOrdersSinceEdgeRead } from "@/lib/edge-db/admin-report-read-store";
 import { getCache, setCache, computeJsonEtag } from "@/lib/server-cache";
 import { getIfNoneMatch, jsonWithEtag, notModified } from "@/lib/http-cache";
 import { formatDateISO } from "@/lib/shared/date-utils";
@@ -35,18 +35,7 @@ export async function GET(req: Request) {
 
   const since = new Date(Date.now() - days * 86400_000);
 
-  const orders = await prisma.adminOrder.findMany({
-    where: { createdAt: { gte: since } },
-    select: {
-      amount: true,
-      currency: true,
-      stage: true,
-      item: true,
-      source: true,
-      serviceFee: true,
-      createdAt: true,
-    },
-  });
+  const orders = await listRevenueOrdersSinceEdgeRead(since);
 
   // Summary
   const completed = orders.filter((o) => o.stage === "已完成");

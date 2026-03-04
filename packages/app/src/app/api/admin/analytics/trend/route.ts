@@ -1,5 +1,5 @@
 import { requireAdmin } from "@/lib/admin/admin-auth";
-import { prisma } from "@/lib/db";
+import { listGrowthEventsSinceEdgeRead } from "@/lib/edge-db/admin-report-read-store";
 import { getCache, setCache, computeJsonEtag } from "@/lib/server-cache";
 import { getIfNoneMatch, jsonWithEtag, notModified } from "@/lib/http-cache";
 import { formatDateISO } from "@/lib/shared/date-utils";
@@ -32,10 +32,7 @@ export async function GET(req: Request) {
 
   const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
 
-  const rows = await prisma.growthEvent.findMany({
-    where: { createdAt: { gte: since } },
-    select: { event: true, clientId: true, sessionId: true, userAddress: true, createdAt: true },
-  });
+  const rows = await listGrowthEventsSinceEdgeRead(since);
 
   // Build daily buckets
   const dailyMap = new Map<

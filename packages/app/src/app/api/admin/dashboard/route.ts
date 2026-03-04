@@ -1,5 +1,5 @@
 import { requireAdmin } from "@/lib/admin/admin-auth";
-import { prisma } from "@/lib/db";
+import { getDashboardSnapshotEdgeRead } from "@/lib/edge-db/admin-report-read-store";
 import { getCache, setCache, computeJsonEtag } from "@/lib/server-cache";
 import { getIfNoneMatch, jsonWithEtag, notModified } from "@/lib/http-cache";
 import { formatDateISO } from "@/lib/shared/date-utils";
@@ -39,7 +39,7 @@ export async function GET(req: Request) {
   const weekAgo = new Date(now.getTime() - 7 * 86400_000);
   const twoWeeksAgo = new Date(now.getTime() - 14 * 86400_000);
 
-  const [
+  const {
     todayOrders,
     yesterdayOrders,
     weekOrders,
@@ -47,50 +47,7 @@ export async function GET(req: Request) {
     allPlayers,
     stageDistribution,
     todayEvents,
-  ] = await Promise.all([
-    prisma.adminOrder.findMany({
-      where: { createdAt: { gte: todayStart } },
-      select: {
-        amount: true,
-        stage: true,
-        serviceFee: true,
-        createdAt: true,
-        assignedTo: true,
-        userAddress: true,
-      },
-    }),
-    prisma.adminOrder.findMany({
-      where: { createdAt: { gte: yesterdayStart, lt: todayStart } },
-      select: { amount: true, stage: true, serviceFee: true },
-    }),
-    prisma.adminOrder.findMany({
-      where: { createdAt: { gte: weekAgo } },
-      select: {
-        amount: true,
-        stage: true,
-        serviceFee: true,
-        createdAt: true,
-        userAddress: true,
-        assignedTo: true,
-      },
-    }),
-    prisma.adminOrder.findMany({
-      where: { createdAt: { gte: twoWeeksAgo, lt: weekAgo } },
-      select: { amount: true, stage: true },
-    }),
-    prisma.adminPlayer.findMany({
-      where: { status: { not: "停用" } },
-      select: { id: true, name: true },
-    }),
-    prisma.adminOrder.groupBy({
-      by: ["stage"],
-      _count: true,
-    }),
-    prisma.growthEvent.findMany({
-      where: { createdAt: { gte: todayStart } },
-      select: { event: true, userAddress: true },
-    }),
-  ]);
+  } = await getDashboardSnapshotEdgeRead({ todayStart, yesterdayStart, weekAgo, twoWeeksAgo });
 
   // ─── Realtime (today) ───
   const todayCompleted = todayOrders.filter((o) => o.stage === "已完成");
