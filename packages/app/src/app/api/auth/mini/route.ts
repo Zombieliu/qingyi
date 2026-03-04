@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import crypto from "crypto";
 import { parseBodyRaw } from "@/lib/shared/api-validation";
 import {
   createUserSession,
@@ -14,6 +13,7 @@ import {
   updateMiniProgramAccountByPlatformOpenidEdgeWrite,
   upsertMiniProgramAccountEdgeWrite,
 } from "@/lib/edge-db/mini-auth-store";
+import { randomInt, sha256Hex } from "@/lib/shared/runtime-crypto";
 
 const miniSchema = z.object({
   platform: z.enum(["wechat", "alipay", "douyin"]),
@@ -32,13 +32,13 @@ function getBearerToken(req: Request) {
   return match?.[1]?.trim() || "";
 }
 
-function buildMockId(platform: MiniPlatform, code: string, label: string) {
-  const hash = crypto.createHash("sha256").update(`${platform}:${label}:${code}`).digest("hex");
+async function buildMockId(platform: MiniPlatform, code: string, label: string) {
+  const hash = await sha256Hex(`${platform}:${label}:${code}`);
   return `mock_${platform}_${label}_${hash.slice(0, 24)}`;
 }
 
-function buildMockSessionKey(platform: MiniPlatform, code: string) {
-  const hash = crypto.createHash("sha256").update(`${platform}:session:${code}`).digest("hex");
+async function buildMockSessionKey(platform: MiniPlatform, code: string) {
+  const hash = await sha256Hex(`${platform}:session:${code}`);
   return `mock_session_${hash.slice(0, 32)}`;
 }
 
@@ -48,9 +48,9 @@ export async function POST(req: Request) {
   const { data: payload, rawBody } = parsed;
 
   const platform = payload.platform;
-  const openid = payload.openid?.trim() || buildMockId(platform, payload.code, "openid");
-  const unionid = payload.unionid?.trim() || buildMockId(platform, payload.code, "unionid");
-  const sessionKey = buildMockSessionKey(platform, payload.code);
+  const openid = payload.openid?.trim() || (await buildMockId(platform, payload.code, "openid"));
+  const unionid = payload.unionid?.trim() || (await buildMockId(platform, payload.code, "unionid"));
+  const sessionKey = await buildMockSessionKey(platform, payload.code);
   const now = new Date();
 
   const existing = await getMiniProgramAccountByPlatformOpenidEdgeRead(platform, openid);
@@ -121,7 +121,7 @@ export async function POST(req: Request) {
   }
 
   const account = await upsertMiniProgramAccountEdgeWrite({
-    id: `mp_${Date.now()}_${crypto.randomInt(1000, 9999)}`,
+    id: `mp_${Date.now()}_${randomInt(1000, 9999)}`,
     platform,
     openid,
     unionid,

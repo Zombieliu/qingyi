@@ -339,6 +339,61 @@ describe("creditLedgerWithAdmin", () => {
     expect(mockEntry).toHaveBeenCalled();
   });
 
+  it("falls back to raw moveCall when metadata path throws invalid params", async () => {
+    vi.resetModules();
+    vi.doMock("server-only", () => ({}));
+    vi.doMock("@/lib/env", () => ({
+      env: {
+        SUI_RPC_URL: "https://rpc.test.sui.io",
+        SUI_ADMIN_PRIVATE_KEY: "0x" + "ab".repeat(32),
+        SUI_PACKAGE_ID: "0x" + "cc".repeat(32),
+        SUI_DAPP_HUB_ID: "0x" + "dd".repeat(32),
+        SUI_DAPP_HUB_INITIAL_SHARED_VERSION: "1",
+        SUI_NETWORK: "testnet",
+      },
+    }));
+    const mockEntry = vi.fn();
+    const mockSend = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("Invalid params"))
+      .mockResolvedValueOnce(successResult);
+    vi.doMock("@0xobelisk/sui-client", () => {
+      class Dubhe {
+        tx = {
+          ledger_system: {
+            credit_balance_with_receipt: mockEntry,
+          },
+        };
+        signAndSendTxn = mockSend;
+      }
+      class Transaction {
+        moveCall = vi.fn();
+        object = vi.fn((v: unknown) => v);
+        pure = {
+          u64: vi.fn((v: unknown) => v),
+          address: vi.fn((v: unknown) => v),
+          vector: vi.fn((_type: string, v: unknown) => v),
+        };
+      }
+      return { Dubhe, Transaction };
+    });
+    vi.doMock("@mysten/sui/transactions", () => ({
+      Inputs: { SharedObjectRef: vi.fn((v: unknown) => v) },
+    }));
+    vi.doMock("contracts/metadata.json", () => ({
+      default: { some_module: { functions: {} } },
+    }));
+    vi.doMock("@/lib/admin/admin-store", () => ({
+      upsertLedgerRecord: vi.fn().mockResolvedValue({}),
+    }));
+
+    const mod = await import("../ledger-credit");
+    const result = await mod.creditLedgerWithAdmin(baseParams);
+    expect(result.digest).toBe("mock-digest-abc");
+    expect(mockEntry).toHaveBeenCalledTimes(1);
+    expect(mockSend).toHaveBeenCalledTimes(2);
+  });
+
   it("handles retryable error 'wrong epoch'", async () => {
     mockSignAndSendTxn
       .mockRejectedValueOnce(new Error("wrong epoch"))

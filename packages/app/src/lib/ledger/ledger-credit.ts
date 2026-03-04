@@ -57,6 +57,8 @@ type LedgerCreditParams = {
   source?: string;
 };
 
+type TxBuildMode = "metadata" | "raw";
+
 export async function creditLedgerWithAdmin(params: LedgerCreditParams) {
   const { rpcUrl, adminKey, packageId, dappHubId, dappHubInitialVersion, network } = getEnv();
 
@@ -76,7 +78,10 @@ export async function creditLedgerWithAdmin(params: LedgerCreditParams) {
   });
 
   const receiptBytes = Array.from(new TextEncoder().encode(params.receiptId));
-  const buildTx = () => {
+  const entry = (dubhe.tx as DubheTx).ledger_system?.credit_balance_with_receipt;
+  const canUseMetadataPath = hasMetadata && !!entry;
+
+  const buildTx = (mode: TxBuildMode) => {
     const tx = new Transaction();
     const args = [
       tx.object(
@@ -92,8 +97,7 @@ export async function creditLedgerWithAdmin(params: LedgerCreditParams) {
       tx.object("0x6"),
     ];
 
-    const entry = (dubhe.tx as DubheTx).ledger_system?.credit_balance_with_receipt;
-    if (hasMetadata && entry) {
+    if (mode === "metadata" && entry) {
       entry({ tx, params: args, isRaw: true });
     } else {
       tx.moveCall({
@@ -109,25 +113,54 @@ export async function creditLedgerWithAdmin(params: LedgerCreditParams) {
     message.includes("wrong epoch") ||
     message.includes("temporarily unavailable");
 
-  let result;
-  let lastError: Error | null = null;
-  for (let attempt = 0; attempt < 3; attempt += 1) {
-    try {
-      const tx = buildTx();
-      result = await dubhe.signAndSendTxn({ tx });
-      lastError = null;
-      break;
-    } catch (e) {
-      lastError = e as Error;
-      if (attempt < 2 && retryable(lastError.message || "")) {
-        await new Promise((resolve) => setTimeout(resolve, 600 + attempt * 600));
-        continue;
+  const isInvalidParamsError = (message: string) =>
+    message.toLowerCase().includes("invalid params");
+
+  const sendWithRetry = async (mode: TxBuildMode) => {
+    let result;
+    let lastError: Error | null = null;
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      try {
+        const tx = buildTx(mode);
+        result = await dubhe.signAndSendTxn({ tx });
+        lastError = null;
+        break;
+      } catch (e) {
+        lastError = e as Error;
+        if (attempt < 2 && retryable(lastError.message || "")) {
+          await new Promise((resolve) => setTimeout(resolve, 600 + attempt * 600));
+          continue;
+        }
+        throw lastError;
       }
-      throw lastError;
     }
-  }
-  if (!result) {
-    throw lastError || new Error("credit failed");
+    if (!result) {
+      throw lastError || new Error("credit failed");
+    }
+    return result;
+  };
+
+  let result;
+  if (canUseMetadataPath) {
+    try {
+      result = await sendWithRetry("metadata");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (!isInvalidParamsError(message)) {
+        throw error;
+      }
+      console.warn(
+        "[ledger-credit] metadata path failed with invalid params, retrying raw moveCall",
+        {
+          receiptId: params.receiptId,
+          userAddress: params.userAddress,
+          error: message,
+        }
+      );
+      result = await sendWithRetry("raw");
+    }
+  } else {
+    result = await sendWithRetry("raw");
   }
 
   const recordId = params.orderId?.trim() || params.receiptId;

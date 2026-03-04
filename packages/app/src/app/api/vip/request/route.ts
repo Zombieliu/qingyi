@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import crypto from "crypto";
+import { randomInt } from "@/lib/shared/runtime-crypto";
 import {
   addMembershipRequest,
   getMembershipTierById,
@@ -50,7 +50,7 @@ export async function POST(req: Request) {
   }
 
   const request: AdminMembershipRequest = {
-    id: `VIP-${Date.now()}-${crypto.randomInt(1000, 9999)}`,
+    id: `VIP-${Date.now()}-${randomInt(1000, 9999)}`,
     userAddress: auth.address,
     userName: body.userName,
     contact: body.contact,

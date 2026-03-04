@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import crypto from "crypto";
+import { randomInt } from "@/lib/shared/runtime-crypto";
 import { z } from "zod";
 import { isValidSuiAddress, normalizeSuiAddress } from "@mysten/sui/utils";
 import { requireAdmin } from "@/lib/admin/admin-auth";
@@ -48,7 +48,7 @@ export async function PATCH(req: Request, { params }: RouteContext) {
         if (updated.note) noteParts.push(`申请备注：${updated.note}`);
         const notes = noteParts.length > 0 ? noteParts.join("\n") : undefined;
         await addPlayer({
-          id: `PLY-${Date.now()}-${crypto.randomInt(1000, 9999)}`,
+          id: `PLY-${Date.now()}-${randomInt(1000, 9999)}`,
           name,
           role: updated.games || undefined,
           contact: updated.contact || undefined,

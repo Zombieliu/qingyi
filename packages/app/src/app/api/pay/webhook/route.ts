@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { after } from "next/server";
-import Stripe from "stripe";
 import { recordAudit } from "@/lib/admin/admin-audit";
 import { env } from "@/lib/env";
+import { getStripeClient, type StripeRuntimeEvent } from "@/lib/pay/stripe-runtime";
 import { apiBadRequest, apiUnauthorized, apiError } from "@/lib/shared/api-response";
 import { publishOrderEvent } from "@/lib/realtime";
 import { DIAMOND_RATE } from "@/lib/shared/constants";
@@ -13,9 +13,6 @@ import {
   upsertLedgerRecordEdgeWrite,
 } from "@/lib/edge-db/payment-reconcile-store";
 
-const stripeSecretKey = env.STRIPE_SECRET_KEY;
-const stripe = stripeSecretKey ? new Stripe(stripeSecretKey) : null;
-
 export async function POST(req: Request) {
   const rawBody = await req.text();
   const signature = req.headers.get("stripe-signature") || "";
@@ -24,10 +21,11 @@ export async function POST(req: Request) {
     return apiError("webhook_secret_required", 503);
   }
 
-  let event: Stripe.Event;
+  let event: StripeRuntimeEvent;
   let verified = false;
 
   if (webhookSecret) {
+    const stripe = await getStripeClient();
     if (!stripe) {
       return apiError("STRIPE_SECRET_KEY not set", 503);
     }
@@ -39,15 +37,14 @@ export async function POST(req: Request) {
     }
   } else {
     try {
-      event = JSON.parse(rawBody || "{}") as Stripe.Event;
+      event = JSON.parse(rawBody || "{}") as StripeRuntimeEvent;
     } catch {
       return apiBadRequest("invalid_json");
     }
   }
 
   const eventType = event?.type || "unknown";
-  const object = (event?.data as { object?: Stripe.PaymentIntent | Stripe.Charge } | undefined)
-    ?.object;
+  const object = event?.data?.object;
 
   let orderId: string | undefined;
   let userAddress: string | undefined;

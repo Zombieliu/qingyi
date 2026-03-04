@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import crypto from "crypto";
+import { randomInt } from "@/lib/shared/runtime-crypto";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/admin/admin-auth";
 import {
@@ -93,7 +93,7 @@ export async function POST(req: Request) {
 
   const perks = normalizePerks(body.perks);
   const tier = {
-    id: body.id || `TIER-${Date.now()}-${crypto.randomInt(1000, 9999)}`,
+    id: body.id || `TIER-${Date.now()}-${randomInt(1000, 9999)}`,
     name: body.name,
     level: body.level,
     badge: body.badge,

@@ -1,11 +1,10 @@
 import { NextResponse } from "next/server";
-import Stripe from "stripe";
 import { upsertLedgerRecord } from "@/lib/admin/admin-store";
 import { isValidSuiAddress, normalizeSuiAddress } from "@mysten/sui/utils";
 import { requireUserAuth } from "@/lib/auth/user-auth";
 import { z } from "zod";
 import { parseBodyRaw } from "@/lib/shared/api-validation";
-import { env } from "@/lib/env";
+import { getStripeClient } from "@/lib/pay/stripe-runtime";
 import { apiBadRequest, apiError, apiInternalError } from "@/lib/shared/api-response";
 import { stripeCircuit, CircuitBreakerError } from "@/lib/shared/circuit-breaker";
 import { DIAMOND_RATE } from "@/lib/shared/constants";
@@ -21,9 +20,6 @@ const paySchema = z.object({
   returnUrl: z.string().optional(),
 });
 
-const stripeSecretKey = env.STRIPE_SECRET_KEY;
-const stripe = stripeSecretKey ? new Stripe(stripeSecretKey) : null;
-
 export async function POST(req: Request) {
   const parsed = await parseBodyRaw(req, paySchema);
   if (!parsed.success) return parsed.response;
@@ -32,6 +28,7 @@ export async function POST(req: Request) {
   const { amount, subject, body, channel, orderId, userAddress, diamondAmount, returnUrl } =
     payload;
 
+  const stripe = await getStripeClient();
   if (!stripe) {
     return apiError("stripe_unavailable", 503);
   }
@@ -79,7 +76,7 @@ export async function POST(req: Request) {
 
   try {
     let intent = await stripeCircuit.execute(() =>
-      stripe!.paymentIntents.create(
+      stripe.paymentIntents.create(
         {
           amount: Math.round(expectedAmount * 100),
           currency: "cny",

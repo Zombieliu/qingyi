@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
-import crypto from "crypto";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/admin/admin-auth";
-import { addAccessToken, listAccessTokens } from "@/lib/admin/admin-store";
+import { addAccessToken, listAccessTokens } from "@/lib/admin/session-store-edge";
 import { recordAudit } from "@/lib/admin/admin-audit";
 import type { AdminAccessToken } from "@/lib/admin/admin-types";
 import { parseBody } from "@/lib/shared/api-validation";
+import { randomHex, randomInt, sha256Hex } from "@/lib/shared/runtime-crypto";
 
 const postSchema = z.object({
   role: z.enum(["admin", "ops", "finance", "viewer"]),
@@ -26,8 +26,8 @@ function toPublicToken(token: AdminAccessToken) {
   };
 }
 
-function hashToken(raw: string) {
-  return crypto.createHash("sha256").update(raw).digest("hex");
+async function hashToken(raw: string) {
+  return sha256Hex(raw);
 }
 
 export async function GET(req: Request) {
@@ -46,11 +46,11 @@ export async function POST(req: Request) {
   const { role, status, label: rawLabel } = parsed.data;
   const label = rawLabel ?? "";
 
-  const plainToken = crypto.randomBytes(24).toString("hex");
+  const plainToken = randomHex(24);
   const now = Date.now();
   const entry: AdminAccessToken = {
-    id: `ATK-${now}-${crypto.randomInt(1000, 9999)}`,
-    tokenHash: hashToken(plainToken),
+    id: `ATK-${now}-${randomInt(1000, 9999)}`,
+    tokenHash: await hashToken(plainToken),
     tokenPrefix: plainToken.slice(0, 6),
     role,
     label: label || undefined,

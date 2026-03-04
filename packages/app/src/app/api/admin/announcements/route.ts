@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import crypto from "crypto";
+import { randomInt } from "@/lib/shared/runtime-crypto";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/admin/admin-auth";
 import { addAnnouncement, listAnnouncements } from "@/lib/admin/admin-store";
@@ -31,7 +31,7 @@ export async function POST(req: Request) {
   const body = parsed.data;
 
   const announcement: AdminAnnouncement = {
-    id: body.id || `ANN-${Date.now()}-${crypto.randomInt(1000, 9999)}`,
+    id: body.id || `ANN-${Date.now()}-${randomInt(1000, 9999)}`,
     title: body.title,
     tag: body.tag,
     content: body.content,

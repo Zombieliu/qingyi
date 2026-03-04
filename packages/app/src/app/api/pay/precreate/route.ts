@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import crypto from "crypto";
 import { parseBodyRaw } from "@/lib/shared/api-validation";
 import { requireUserAuth } from "@/lib/auth/user-auth";
 import { isValidSuiAddress, normalizeSuiAddress } from "@mysten/sui/utils";
+import { randomHex, randomInt, sha256Hex } from "@/lib/shared/runtime-crypto";
 
 const precreateSchema = z.object({
   platform: z.enum(["wechat", "alipay", "douyin"]),
@@ -14,13 +14,10 @@ const precreateSchema = z.object({
   body: z.string().default("diamond.topup_title"),
 });
 
-function buildMockParams(platform: "wechat" | "alipay" | "douyin", orderId: string) {
-  const nonce = crypto.randomBytes(8).toString("hex");
+async function buildMockParams(platform: "wechat" | "alipay" | "douyin", orderId: string) {
+  const nonce = randomHex(8);
   const timestamp = Math.floor(Date.now() / 1000).toString();
-  const signature = crypto
-    .createHash("sha256")
-    .update(`${platform}:${orderId}:${nonce}`)
-    .digest("hex");
+  const signature = await sha256Hex(`${platform}:${orderId}:${nonce}`);
 
   if (platform === "wechat") {
     return {
@@ -62,8 +59,8 @@ export async function POST(req: Request) {
   });
   if (!auth.ok) return auth.response;
 
-  const paymentId = `mock_pay_${payload.orderId}_${crypto.randomInt(1000, 9999)}`;
-  const paymentParams = buildMockParams(payload.platform, payload.orderId);
+  const paymentId = `mock_pay_${payload.orderId}_${randomInt(1000, 9999)}`;
+  const paymentParams = await buildMockParams(payload.platform, payload.orderId);
   const expiresAt = Date.now() + 15 * 60 * 1000;
 
   return NextResponse.json({

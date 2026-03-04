@@ -36,7 +36,7 @@ vi.mock("next/server", () => ({
   },
 }));
 
-vi.mock("../user-session-store", () => mockSessionStore);
+vi.mock("../user-session-store-edge", () => mockSessionStore);
 
 vi.mock("../../rate-limit", () => ({ consumeNonce: mockConsumeNonce }));
 

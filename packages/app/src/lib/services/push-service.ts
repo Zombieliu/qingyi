@@ -1,12 +1,43 @@
 import "server-only";
-import webpush from "web-push";
 
 const VAPID_PUBLIC = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || "";
 const VAPID_PRIVATE = process.env.VAPID_PRIVATE_KEY || "";
 const VAPID_EMAIL = process.env.VAPID_EMAIL || "mailto:admin@qingyi.gg";
 
-if (VAPID_PUBLIC && VAPID_PRIVATE) {
-  webpush.setVapidDetails(VAPID_EMAIL, VAPID_PUBLIC, VAPID_PRIVATE);
+type WebPushClient = {
+  setVapidDetails(contactEmail: string, publicKey: string, privateKey: string): void;
+  sendNotification(
+    subscription: PushSubscriptionData,
+    payload: string,
+    options?: { TTL?: number }
+  ): Promise<unknown>;
+};
+
+let webPushClientPromise: Promise<WebPushClient | null> | null = null;
+
+async function loadWebPushClient(): Promise<WebPushClient | null> {
+  if (!VAPID_PUBLIC || !VAPID_PRIVATE) {
+    return null;
+  }
+
+  if (!webPushClientPromise) {
+    const modulePath = "web-push";
+    webPushClientPromise = import(modulePath)
+      .then((mod) => {
+        const candidate = mod as { default?: WebPushClient };
+        const client =
+          candidate.default || (mod as unknown as WebPushClient | undefined) || undefined;
+        if (!client) return null;
+        client.setVapidDetails(VAPID_EMAIL, VAPID_PUBLIC, VAPID_PRIVATE);
+        return client;
+      })
+      .catch((error) => {
+        console.error("[Push] Failed to load web-push", error);
+        return null;
+      });
+  }
+
+  return webPushClientPromise;
 }
 
 export type PushSubscriptionData = {
@@ -57,7 +88,8 @@ export async function sendPushNotification(
   userAddress: string,
   payload: { title: string; body: string; url?: string; icon?: string }
 ): Promise<boolean> {
-  if (!VAPID_PUBLIC || !VAPID_PRIVATE) {
+  const webpush = await loadWebPushClient();
+  if (!webpush) {
     console.warn("[Push] VAPID keys not configured, skipping push");
     return false;
   }

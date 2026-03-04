@@ -10,7 +10,7 @@ const { mockRequireAdmin, mockUpdateAccessToken, mockRemoveAccessToken, mockReco
 
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/admin/admin-auth", () => ({ requireAdmin: mockRequireAdmin }));
-vi.mock("@/lib/admin/admin-store", () => ({
+vi.mock("@/lib/admin/session-store-edge", () => ({
   updateAccessToken: mockUpdateAccessToken,
   removeAccessToken: mockRemoveAccessToken,
 }));

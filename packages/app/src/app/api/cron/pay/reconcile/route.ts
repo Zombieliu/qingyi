@@ -1,9 +1,13 @@
 import { isAuthorizedCron } from "@/lib/cron-auth";
 import { NextResponse } from "next/server";
-import Stripe from "stripe";
 import { recordAudit } from "@/lib/admin/admin-audit";
 import { acquireCronLock } from "@/lib/cron-lock";
 import { env } from "@/lib/env";
+import {
+  getStripeClient,
+  isStripeConfigured,
+  type StripeRuntimeClient,
+} from "@/lib/pay/stripe-runtime";
 import { formatFullDateTime } from "@/lib/shared/date-utils";
 import {
   listLedgerRecordsByOrderIdsEdgeRead,
@@ -12,9 +16,6 @@ import {
   markLedgerRecordPaidEdgeWrite,
   upsertLedgerRecordEdgeWrite,
 } from "@/lib/edge-db/payment-reconcile-store";
-
-const stripeSecretKey = env.STRIPE_SECRET_KEY;
-const stripe = stripeSecretKey ? new Stripe(stripeSecretKey) : null;
 
 function parseNumber(
   value: string | null | undefined,
@@ -75,10 +76,10 @@ type StripeSuccessRecord = StripeMeta & {
 };
 
 async function fetchStripeSuccessRecords(
+  stripe: StripeRuntimeClient,
   since: Date,
   limit: number
 ): Promise<StripeSuccessRecord[]> {
-  if (!stripe) return [];
   const results: StripeSuccessRecord[] = [];
   let startingAfter: string | undefined;
   let hasMore = true;
@@ -159,7 +160,7 @@ export async function GET(req: Request) {
   const apply = url.searchParams.get("apply") === "1";
   const useStripe = parseFlag(
     url.searchParams.get("useStripe"),
-    parseFlag(env.PAYMENT_RECONCILE_USE_STRIPE, Boolean(stripe))
+    parseFlag(env.PAYMENT_RECONCILE_USE_STRIPE, isStripeConfigured())
   );
   const sinceHours = parseNumber(url.searchParams.get("sinceHours"), 48, 1, 720);
   const limit = parseNumber(url.searchParams.get("limit"), 200, 1, 1000);
@@ -190,6 +191,8 @@ export async function GET(req: Request) {
   const since = new Date(now - sinceHours * 60 * 60 * 1000);
   const pendingBefore = new Date(now - pendingHours * 60 * 60 * 1000);
 
+  const stripe = await getStripeClient();
+
   const events = await listStripeSucceededPaymentEventsEdgeRead(since, limit);
 
   const successMap = new Map<string, StripeSuccessRecord>();
@@ -212,7 +215,7 @@ export async function GET(req: Request) {
   }
   if (useStripe && stripe) {
     try {
-      stripeRecords = await fetchStripeSuccessRecords(since, limit);
+      stripeRecords = await fetchStripeSuccessRecords(stripe, since, limit);
       for (const record of stripeRecords) {
         const existing = successMap.get(record.orderId);
         if (!existing) {

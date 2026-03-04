@@ -10,14 +10,6 @@ vi.mock("next/server", () => ({
   },
 }));
 
-vi.mock("crypto", () => ({
-  default: {
-    randomBytes: () => ({
-      toString: () => "abcdef0123456789",
-    }),
-  },
-}));
-
 import {
   apiError,
   apiBadRequest,
@@ -37,9 +29,9 @@ describe("api-response", () => {
         headers: Record<string, string>;
       };
       expect(res.body.error).toBe("something went wrong");
-      expect(res.body.traceId).toBe("abcdef0123456789");
+      expect(res.body.traceId).toMatch(/^[0-9a-f]{16}$/);
       expect(res.status).toBe(500);
-      expect(res.headers["x-trace-id"]).toBe("abcdef0123456789");
+      expect(res.headers["x-trace-id"]).toBe(res.body.traceId);
     });
 
     it("includes code when provided", () => {

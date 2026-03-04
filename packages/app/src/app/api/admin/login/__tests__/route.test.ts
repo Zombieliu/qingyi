@@ -26,7 +26,7 @@ vi.mock("@/lib/admin/admin-auth", () => ({
   createAdminSession: mockCreateAdminSession,
 }));
 
-vi.mock("@/lib/admin/admin-store", () => ({
+vi.mock("@/lib/admin/session-store-edge", () => ({
   touchAccessTokenByHash: mockTouchAccessTokenByHash,
 }));
 

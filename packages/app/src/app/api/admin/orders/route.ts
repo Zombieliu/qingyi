@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import crypto from "crypto";
+import { randomInt } from "@/lib/shared/runtime-crypto";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/admin/admin-auth";
 import { addOrder, queryOrders, queryOrdersCursor } from "@/lib/admin/admin-store";
@@ -61,7 +61,7 @@ export async function POST(req: Request) {
   const body = parsed.data;
 
   const order: AdminOrder = {
-    id: body.id || `ORD-${Date.now()}-${crypto.randomInt(1000, 9999)}`,
+    id: body.id || `ORD-${Date.now()}-${randomInt(1000, 9999)}`,
     user: body.user,
     item: body.item,
     amount: body.amount,

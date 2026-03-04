@@ -7,7 +7,7 @@ import {
   enforceLoginRateLimit,
   getAdminRoleForToken,
 } from "@/lib/admin/admin-auth";
-import { touchAccessTokenByHash } from "@/lib/admin/admin-store";
+import { touchAccessTokenByHash } from "@/lib/admin/session-store-edge";
 import { recordAudit } from "@/lib/admin/admin-audit";
 import { parseBody } from "@/lib/shared/api-validation";
 import { env } from "@/lib/env";

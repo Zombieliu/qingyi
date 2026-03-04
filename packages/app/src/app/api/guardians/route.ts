@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import crypto from "crypto";
+import { randomInt } from "@/lib/shared/runtime-crypto";
 import { z } from "zod";
 import { addGuardianApplication } from "@/lib/admin/admin-store";
 import type { AdminGuardianApplication, GuardianStatus } from "@/lib/admin/admin-types";
@@ -39,7 +39,7 @@ export async function POST(req: Request) {
   if (!auth.ok) return auth.response;
 
   const application: AdminGuardianApplication = {
-    id: `GUA-${Date.now()}-${crypto.randomInt(1000, 9999)}`,
+    id: `GUA-${Date.now()}-${randomInt(1000, 9999)}`,
     user: body.name,
     userAddress: body.userAddress,
     contact: body.contact,

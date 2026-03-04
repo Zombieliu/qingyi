@@ -1,5 +1,5 @@
 import "server-only";
-import crypto from "crypto";
+import { randomInt } from "@/lib/shared/runtime-crypto";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import {
@@ -52,11 +52,24 @@ class RedeemError extends Error {
   }
 }
 
+type LoggedRedeemError = Error & { __redeemLogged?: boolean };
+
 function parsePositiveInt(value: unknown) {
   const num = typeof value === "string" ? Number(value) : value;
   if (typeof num !== "number" || !Number.isFinite(num)) return null;
   const rounded = Math.floor(num);
   return rounded > 0 ? rounded : null;
+}
+
+function toErrorLog(error: unknown) {
+  if (error instanceof Error) {
+    return {
+      name: error.name,
+      message: error.message,
+      stack: error.stack,
+    };
+  }
+  return { message: String(error) };
 }
 
 function resolveRewardPayload(
@@ -159,7 +172,7 @@ async function applyReward(params: {
       });
     } else {
       await addMember({
-        id: `MBR-${Date.now()}-${crypto.randomInt(1000, 9999)}`,
+        id: `MBR-${Date.now()}-${randomInt(1000, 9999)}`,
         userAddress: params.address,
         tierId: tier.id,
         tierName: tier.name,
@@ -312,7 +325,7 @@ export async function redeemCodeForUser(params: {
       }
     }
 
-    const recordId = `RDM-${Date.now()}-${crypto.randomInt(1000, 9999)}`;
+    const recordId = `RDM-${Date.now()}-${randomInt(1000, 9999)}`;
     let reservedRecordId = "";
 
     await prisma.$transaction(async (tx) => {
@@ -387,6 +400,18 @@ export async function redeemCodeForUser(params: {
         recordId: reservedRecordId,
       });
     } catch (err) {
+      if (!(err instanceof RedeemError)) {
+        console.error("[redeem] apply reward failed", {
+          codeId: codeRow.id,
+          recordId: reservedRecordId,
+          rewardType,
+          address,
+          ...toErrorLog(err),
+        });
+        if (err instanceof Error) {
+          (err as LoggedRedeemError).__redeemLogged = true;
+        }
+      }
       const failNow = new Date();
       const message = err instanceof Error ? err.message : "reward_failed";
       await prisma.redeemRecord.update({
@@ -453,6 +478,14 @@ export async function redeemCodeForUser(params: {
       reward: rewardResult.reward,
     };
   } catch (error) {
+    const alreadyLogged = error instanceof Error && (error as LoggedRedeemError).__redeemLogged;
+    if (!(error instanceof RedeemError) && !alreadyLogged) {
+      console.error("[redeem] unexpected error", {
+        code: params.code,
+        address: params.address,
+        ...toErrorLog(error),
+      });
+    }
     const err = error as RedeemError;
     const status = err instanceof RedeemError ? err.status : 500;
     const message = err instanceof RedeemError ? err.message : "redeem_failed";

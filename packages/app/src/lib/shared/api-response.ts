@@ -1,6 +1,6 @@
 import "server-only";
 import { NextResponse } from "next/server";
-import crypto from "crypto";
+import { randomHex } from "@/lib/shared/runtime-crypto";
 
 /**
  * 统一 API 错误响应格式
@@ -10,7 +10,7 @@ import crypto from "crypto";
  */
 
 export function apiError(error: string, status: number, opts?: { code?: string }): NextResponse {
-  const traceId = crypto.randomBytes(8).toString("hex");
+  const traceId = randomHex(8);
   return NextResponse.json(
     {
       error,

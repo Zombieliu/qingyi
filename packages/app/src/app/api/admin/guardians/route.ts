@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import crypto from "crypto";
+import { randomInt } from "@/lib/shared/runtime-crypto";
 import { requireAdmin } from "@/lib/admin/admin-auth";
 import {
   addGuardianApplication,
@@ -55,7 +55,7 @@ export async function POST(req: Request) {
   }
 
   const application: AdminGuardianApplication = {
-    id: body.id || `GUA-${Date.now()}-${crypto.randomInt(1000, 9999)}`,
+    id: body.id || `GUA-${Date.now()}-${randomInt(1000, 9999)}`,
     user: body.user,
     userAddress: body.userAddress,
     contact: body.contact,

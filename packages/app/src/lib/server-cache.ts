@@ -1,5 +1,4 @@
 import "server-only";
-import crypto from "crypto";
 import { Redis } from "@upstash/redis";
 import { env } from "@/lib/env";
 
@@ -71,8 +70,14 @@ export function setCache<T>(key: string, value: T, ttlMs: number, etag?: string)
 
 export function computeJsonEtag(value: unknown): string {
   const json = JSON.stringify(value);
-  const hash = crypto.createHash("sha1").update(json).digest("hex");
-  return `"${hash}"`;
+  // Fast non-cryptographic hash for cache validators.
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < json.length; i += 1) {
+    hash ^= json.charCodeAt(i);
+    hash += (hash << 1) + (hash << 4) + (hash << 7) + (hash << 8) + (hash << 24);
+  }
+  const digest = (hash >>> 0).toString(16).padStart(8, "0");
+  return `"${digest}"`;
 }
 
 /**

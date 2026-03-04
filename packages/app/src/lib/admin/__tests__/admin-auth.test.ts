@@ -55,7 +55,7 @@ vi.mock("next/server", () => ({
   },
 }));
 
-vi.mock("../admin-store", () => ({
+vi.mock("../session-store-edge", () => ({
   createSession: mockCreateSession,
   getSessionByHash: mockGetSessionByHash,
   removeSessionByHash: mockRemoveSessionByHash,
@@ -370,7 +370,7 @@ describe("requireAdmin", () => {
         }),
       },
     }));
-    vi.doMock("../admin-store", () => ({
+    vi.doMock("../session-store-edge", () => ({
       createSession: mockCreateSession,
       getSessionByHash: mockGetSessionByHash,
       removeSessionByHash: mockRemoveSessionByHash,
@@ -784,7 +784,7 @@ describe("parseAdminTokens (via getAdminTokensSummary)", () => {
         }),
       },
     }));
-    vi.doMock("../admin-store", () => ({
+    vi.doMock("../session-store-edge", () => ({
       createSession: mockCreateSession,
       getSessionByHash: mockGetSessionByHash,
       removeSessionByHash: mockRemoveSessionByHash,
@@ -836,7 +836,7 @@ describe("parseAdminTokens (via getAdminTokensSummary)", () => {
         }),
       },
     }));
-    vi.doMock("../admin-store", () => ({
+    vi.doMock("../session-store-edge", () => ({
       createSession: mockCreateSession,
       getSessionByHash: mockGetSessionByHash,
       removeSessionByHash: mockRemoveSessionByHash,
@@ -886,7 +886,7 @@ describe("parseAdminTokens (via getAdminTokensSummary)", () => {
         }),
       },
     }));
-    vi.doMock("../admin-store", () => ({
+    vi.doMock("../session-store-edge", () => ({
       createSession: mockCreateSession,
       getSessionByHash: mockGetSessionByHash,
       removeSessionByHash: mockRemoveSessionByHash,
@@ -935,7 +935,7 @@ describe("parseAdminTokens (via getAdminTokensSummary)", () => {
         }),
       },
     }));
-    vi.doMock("../admin-store", () => ({
+    vi.doMock("../session-store-edge", () => ({
       createSession: mockCreateSession,
       getSessionByHash: mockGetSessionByHash,
       removeSessionByHash: mockRemoveSessionByHash,
@@ -982,7 +982,7 @@ describe("parseAdminTokens (via getAdminTokensSummary)", () => {
         }),
       },
     }));
-    vi.doMock("../admin-store", () => ({
+    vi.doMock("../session-store-edge", () => ({
       createSession: mockCreateSession,
       getSessionByHash: mockGetSessionByHash,
       removeSessionByHash: mockRemoveSessionByHash,
@@ -1031,7 +1031,7 @@ describe("parseAdminTokens (via getAdminTokensSummary)", () => {
         }),
       },
     }));
-    vi.doMock("../admin-store", () => ({
+    vi.doMock("../session-store-edge", () => ({
       createSession: mockCreateSession,
       getSessionByHash: mockGetSessionByHash,
       removeSessionByHash: mockRemoveSessionByHash,

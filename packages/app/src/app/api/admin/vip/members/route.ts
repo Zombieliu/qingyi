@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import crypto from "crypto";
+import { randomInt } from "@/lib/shared/runtime-crypto";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/admin/admin-auth";
 import { addMember, queryMembers, queryMembersCursor } from "@/lib/admin/admin-store";
@@ -60,7 +60,7 @@ export async function POST(req: Request) {
   const body = parsed.data;
 
   const member = {
-    id: body.id || `MBR-${Date.now()}-${crypto.randomInt(1000, 9999)}`,
+    id: body.id || `MBR-${Date.now()}-${randomInt(1000, 9999)}`,
     userAddress: body.userAddress,
     userName: body.userName,
     tierId: body.tierId,

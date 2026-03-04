@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import crypto from "crypto";
+import { randomInt } from "@/lib/shared/runtime-crypto";
 import {
   addDuoOrder,
   queryDuoOrders,
@@ -106,7 +106,7 @@ export async function POST(req: Request) {
   if (!parsed.success) return parsed.response;
   const { data: payload, rawBody } = parsed;
 
-  const orderId = payload.orderId || `DUO-${Date.now()}-${crypto.randomInt(1000, 9999)}`;
+  const orderId = payload.orderId || `DUO-${Date.now()}-${randomInt(1000, 9999)}`;
   let userAddress: string | undefined;
   if (payload.userAddress) {
     const normalized = normalizeSuiAddress(payload.userAddress);

@@ -1,8 +1,8 @@
 import "server-only";
-import crypto from "crypto";
 import { prisma } from "./db";
 import { Prisma } from "@prisma/client";
 import type { GrowthEvent } from "./admin/admin-types";
+import { randomUuid } from "./shared/runtime-crypto";
 
 export type GrowthEventInput = {
   event: string;
@@ -20,7 +20,7 @@ export async function recordGrowthEvent(input: GrowthEventInput): Promise<Growth
   const createdAt = new Date(input.createdAt ?? Date.now());
   const row = await prisma.growthEvent.create({
     data: {
-      id: crypto.randomUUID(),
+      id: randomUuid(),
       event: input.event,
       clientId: input.clientId ?? null,
       sessionId: input.sessionId ?? null,

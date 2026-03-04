@@ -1,5 +1,3 @@
-import net from "net";
-
 function normalizeClientIp(raw) {
   let ip = String(raw || "").trim();
   if (!ip) return "unknown";
@@ -12,6 +10,26 @@ function normalizeClientIp(raw) {
     ip = ip.split(":")[0];
   }
   return ip;
+}
+
+function isIpv4(ip) {
+  const parts = ip.split(".");
+  if (parts.length !== 4) return false;
+  return parts.every((part) => {
+    const num = Number(part);
+    return Number.isInteger(num) && num >= 0 && num <= 255;
+  });
+}
+
+function isIpv6(ip) {
+  // Minimal validation for allowlist checks; full RFC parsing is unnecessary here.
+  return ip.includes(":") && /^[0-9a-fA-F:]+$/.test(ip);
+}
+
+function detectIpVersion(ip) {
+  if (isIpv4(ip)) return 4;
+  if (isIpv6(ip)) return 6;
+  return 0;
 }
 
 function parseAllowlist(raw) {
@@ -45,7 +63,7 @@ function isIpAllowed(ip, rawAllowlist) {
   const entries = parseAllowlist(rawAllowlist);
   if (entries.length === 0) return true;
   if (!ip || ip === "unknown") return false;
-  const version = net.isIP(ip);
+  const version = detectIpVersion(ip);
   for (const entry of entries) {
     if (entry === "*") return true;
     if (entry.includes("/")) {

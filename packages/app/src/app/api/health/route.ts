@@ -5,7 +5,6 @@ import { env } from "@/lib/env";
 import { withApiHandler } from "@/lib/shared/api-handler";
 
 export const dynamic = "force-dynamic";
-export const runtime = "nodejs";
 
 const redis = env.UPSTASH_REDIS_REST_URL && env.UPSTASH_REDIS_REST_TOKEN ? Redis.fromEnv() : null;
 

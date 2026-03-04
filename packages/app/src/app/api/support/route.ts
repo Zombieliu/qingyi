@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import crypto from "crypto";
+import { randomInt } from "@/lib/shared/runtime-crypto";
 import { z } from "zod";
 import { addSupportTicketEdgeWrite } from "@/lib/edge-db/support-write-store";
 import type { AdminSupportTicket, SupportStatus } from "@/lib/admin/admin-types";
@@ -31,7 +31,7 @@ export const POST = withApiHandler(
     const body = parsed.data;
 
     const ticket: AdminSupportTicket = {
-      id: `SUP-${Date.now()}-${crypto.randomInt(1000, 9999)}`,
+      id: `SUP-${Date.now()}-${randomInt(1000, 9999)}`,
       userName: body.name || body.userName,
       userAddress: body.userAddress,
       contact: body.contact,

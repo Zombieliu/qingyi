@@ -1,5 +1,5 @@
 import { after, NextResponse } from "next/server";
-import crypto from "crypto";
+import { randomInt } from "@/lib/shared/runtime-crypto";
 import {
   addOrder,
   getPlayerById,
@@ -264,7 +264,7 @@ export async function POST(req: Request) {
 
   const { user, item, amount, currency, status, note } = payload;
 
-  const orderId = payload.orderId || `ORD-${Date.now()}-${crypto.randomInt(1000, 9999)}`;
+  const orderId = payload.orderId || `ORD-${Date.now()}-${randomInt(1000, 9999)}`;
   const createdAt = Date.now();
   let userAddress: string | undefined;
   if (payload.userAddress) {

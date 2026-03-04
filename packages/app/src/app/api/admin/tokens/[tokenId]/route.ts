@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/admin/admin-auth";
 import { recordAudit } from "@/lib/admin/admin-audit";
-import { removeAccessToken, updateAccessToken } from "@/lib/admin/admin-store";
+import { removeAccessToken, updateAccessToken } from "@/lib/admin/session-store-edge";
 import type { AdminAccessToken } from "@/lib/admin/admin-types";
 import { parseBody } from "@/lib/shared/api-validation";
 

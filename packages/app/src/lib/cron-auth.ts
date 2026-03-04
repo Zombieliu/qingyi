@@ -1,13 +1,12 @@
 import "server-only";
-import crypto from "crypto";
 import { env } from "@/lib/env";
+import { timingSafeEqualString } from "@/lib/shared/runtime-crypto";
 
 /**
  * Timing-safe string comparison to prevent timing attacks.
  */
 function safeEqual(a: string, b: string): boolean {
-  if (a.length !== b.length) return false;
-  return crypto.timingSafeEqual(Buffer.from(a), Buffer.from(b));
+  return timingSafeEqualString(a, b);
 }
 
 /**

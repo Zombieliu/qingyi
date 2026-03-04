@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import crypto from "crypto";
+import { randomInt } from "@/lib/shared/runtime-crypto";
 import { requireAdmin } from "@/lib/admin/admin-auth";
 import {
   addSupportTicket,
@@ -55,7 +55,7 @@ export async function POST(req: Request) {
   }
 
   const ticket: AdminSupportTicket = {
-    id: body.id || `SUP-${Date.now()}-${crypto.randomInt(1000, 9999)}`,
+    id: body.id || `SUP-${Date.now()}-${randomInt(1000, 9999)}`,
     userName: body.userName,
     userAddress: body.userAddress,
     contact: body.contact,

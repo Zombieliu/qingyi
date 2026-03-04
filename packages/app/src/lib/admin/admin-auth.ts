@@ -1,5 +1,4 @@
 import "server-only";
-import crypto from "crypto";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import type { AdminRole } from "./admin-types";
@@ -10,10 +9,11 @@ import {
   removeSessionByHash,
   touchAccessTokenByHash,
   updateSessionByHash,
-} from "./admin-store";
+} from "./session-store-edge";
 import { rateLimit } from "../rate-limit";
 import { isIpAllowed, normalizeClientIp } from "./admin-ip-utils";
 import { env } from "@/lib/env";
+import { randomHex, randomInt, sha256Hex } from "@/lib/shared/runtime-crypto";
 
 export const ADMIN_SESSION_COOKIE = "admin_session";
 export const LEGACY_ADMIN_COOKIE = "admin_token";
@@ -49,8 +49,8 @@ type RequireResult =
     }
   | { ok: false; response: NextResponse };
 
-function hashToken(token: string): string {
-  return crypto.createHash("sha256").update(token).digest("hex");
+async function hashToken(token: string): Promise<string> {
+  return sha256Hex(token);
 }
 
 function roleRank(role: AdminRole): number {
@@ -132,7 +132,7 @@ function parseAdminTokens(): AdminTokenEntry[] {
 
 async function getRoleForToken(token?: string | null): Promise<AdminTokenEntry | null> {
   if (!token) return null;
-  const tokenHash = hashToken(token);
+  const tokenHash = await hashToken(token);
   const dbEntry = await getAccessTokenByHash(tokenHash);
   if (dbEntry && dbEntry.status === "active") {
     return {
@@ -193,11 +193,11 @@ export async function createAdminSession(params: {
   ip?: string;
   userAgent?: string;
 }) {
-  const token = crypto.randomBytes(32).toString("hex");
-  const tokenHash = hashToken(token);
+  const token = randomHex(32);
+  const tokenHash = await hashToken(token);
   const now = Date.now();
   const session = {
-    id: `sess_${now}_${crypto.randomInt(1000, 9999)}`,
+    id: `sess_${now}_${randomInt(1000, 9999)}`,
     tokenHash,
     role: params.role,
     label: params.label,
@@ -212,7 +212,7 @@ export async function createAdminSession(params: {
 }
 
 export async function rotateAdminSession(token: string) {
-  const tokenHash = hashToken(token);
+  const tokenHash = await hashToken(token);
   const existing = await getSessionByHash(tokenHash);
   if (!existing) return null;
   await removeSessionByHash(tokenHash);
@@ -226,14 +226,14 @@ export async function rotateAdminSession(token: string) {
 }
 
 export async function revokeAdminSession(token: string) {
-  const tokenHash = hashToken(token);
+  const tokenHash = await hashToken(token);
   return removeSessionByHash(tokenHash);
 }
 
 export async function getAdminSession() {
   const sessionToken = await getAdminSessionTokenFromCookies();
   if (sessionToken) {
-    const sessionHash = hashToken(sessionToken);
+    const sessionHash = await hashToken(sessionToken);
     const session = await getSessionByHash(sessionHash);
     if (session) {
       if (session.expiresAt > Date.now()) {
@@ -249,7 +249,7 @@ export async function getAdminSession() {
     if (entry) {
       return {
         id: "legacy",
-        tokenHash: hashToken(legacyToken),
+        tokenHash: await hashToken(legacyToken),
         role: entry.role,
         label: entry.label,
         createdAt: Date.now(),
@@ -287,7 +287,7 @@ export async function requireAdmin(
 
   const sessionToken = await getAdminSessionTokenFromCookies();
   if (sessionToken) {
-    const sessionHash = hashToken(sessionToken);
+    const sessionHash = await hashToken(sessionToken);
     const session = await getSessionByHash(sessionHash);
     if (session) {
       if (session.expiresAt <= Date.now()) {

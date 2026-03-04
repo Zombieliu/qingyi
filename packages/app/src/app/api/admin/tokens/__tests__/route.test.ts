@@ -15,7 +15,7 @@ vi.mock("@/lib/admin/admin-auth", () => ({
   requireAdmin: mockRequireAdmin,
 }));
 
-vi.mock("@/lib/admin/admin-store", () => ({
+vi.mock("@/lib/admin/session-store-edge", () => ({
   addAccessToken: mockAddAccessToken,
   listAccessTokens: mockListAccessTokens,
 }));

@@ -11,9 +11,9 @@ import {
   removeUserSessionByHash,
   updateUserSessionByHash,
   type UserSessionRecord,
-} from "./user-session-store";
-import crypto from "crypto";
+} from "./user-session-store-edge";
 import { env } from "@/lib/env";
+import { randomHex, randomInt, sha256Base64, sha256Hex } from "@/lib/shared/runtime-crypto";
 
 const AUTH_MAX_SKEW_MS = env.AUTH_MAX_SKEW_MS;
 const AUTH_NONCE_TTL_MS = env.AUTH_NONCE_TTL_MS;
@@ -31,12 +31,12 @@ function getBearerToken(req: Request) {
   return match?.[1]?.trim() || "";
 }
 
-function hashBody(body: string) {
-  return crypto.createHash("sha256").update(body).digest("base64");
+async function hashBody(body: string) {
+  return sha256Base64(body);
 }
 
-function hashToken(token: string) {
-  return crypto.createHash("sha256").update(token).digest("hex");
+async function hashToken(token: string) {
+  return sha256Hex(token);
 }
 
 function ensureSameOrigin(req: Request, requirePresence = false) {
@@ -60,7 +60,7 @@ async function getUserSessionTokenFromCookies() {
 
 export async function getUserSessionFromToken(token: string) {
   if (!token) return null;
-  const sessionHash = hashToken(token);
+  const sessionHash = await hashToken(token);
   const session = await getUserSessionByHash(sessionHash);
   if (!session) return null;
   if (session.expiresAt <= Date.now()) {
@@ -74,7 +74,7 @@ export async function getUserSessionFromToken(token: string) {
 /** Like getUserSessionFromToken but allows recently-expired sessions (within grace period). */
 export async function getUserSessionFromTokenAllowExpired(token: string) {
   if (!token) return null;
-  const sessionHash = hashToken(token);
+  const sessionHash = await hashToken(token);
   const session = await getUserSessionByHash(sessionHash);
   if (!session) return null;
   // P2 FIX: Reduced grace period from 30 days to 7 days to limit session reuse window
@@ -104,11 +104,11 @@ export async function createUserSession(params: {
   ip?: string;
   userAgent?: string;
 }) {
-  const token = crypto.randomBytes(32).toString("hex");
-  const tokenHash = hashToken(token);
+  const token = randomHex(32);
+  const tokenHash = await hashToken(token);
   const now = Date.now();
   const session: UserSessionRecord = {
-    id: `us_${now}_${crypto.randomInt(1000, 9999)}`,
+    id: `us_${now}_${randomInt(1000, 9999)}`,
     tokenHash,
     address: normalizeSuiAddress(params.address),
     createdAt: now,
@@ -123,7 +123,7 @@ export async function createUserSession(params: {
 
 export async function revokeUserSession(token: string) {
   if (!token) return false;
-  return removeUserSessionByHash(hashToken(token));
+  return removeUserSessionByHash(await hashToken(token));
 }
 
 export function setUserSessionCookie(res: NextResponse, token: string, expiresAt: number) {
@@ -153,7 +153,7 @@ export function clearUserSessionCookie(res: NextResponse) {
 export async function getUserSessionFromCookies() {
   const sessionToken = await getUserSessionTokenFromCookies();
   if (!sessionToken) return null;
-  const sessionHash = hashToken(sessionToken);
+  const sessionHash = await hashToken(sessionToken);
   const session = await getUserSessionByHash(sessionHash);
   if (!session) return null;
   if (session.expiresAt <= Date.now()) {
@@ -225,7 +225,7 @@ export async function requireUserSignature(
         response: NextResponse.json({ error: "body_hash_required" }, { status: 401 }),
       };
     }
-    const expected = hashBody(params.body);
+    const expected = await hashBody(params.body);
     if (expected !== bodyHashHeader) {
       return {
         ok: false,

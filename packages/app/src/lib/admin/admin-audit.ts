@@ -1,6 +1,6 @@
-import crypto from "crypto";
+import { randomInt } from "@/lib/shared/runtime-crypto";
 import type { AdminAuditLog, AdminRole } from "./admin-types";
-import { addAuditLog } from "./admin-store";
+import { getEdgeDbConfig, insertEdgeRow } from "@/lib/edge-db/client";
 
 type AuditActor = {
   role: AdminRole;
@@ -8,6 +8,42 @@ type AuditActor = {
   authType?: string;
   tokenLabel?: string;
 };
+
+type LegacyAuditStore = {
+  addAuditLog(entry: AdminAuditLog): Promise<unknown>;
+};
+
+let legacyAuditStorePromise: Promise<LegacyAuditStore> | null = null;
+
+async function loadLegacyAuditStore() {
+  const modulePath = "./admin-store";
+  legacyAuditStorePromise ??= import(modulePath).then((mod) => mod as LegacyAuditStore);
+  return legacyAuditStorePromise;
+}
+
+function hasEdgeAuditWriteConfig() {
+  return Boolean(getEdgeDbConfig("write"));
+}
+
+async function writeAuditLog(entry: AdminAuditLog) {
+  if (hasEdgeAuditWriteConfig()) {
+    await insertEdgeRow("AdminAuditLog", {
+      id: entry.id,
+      actorRole: entry.actorRole,
+      actorSessionId: entry.actorSessionId ?? null,
+      action: entry.action,
+      targetType: entry.targetType ?? null,
+      targetId: entry.targetId ?? null,
+      meta: entry.meta ?? null,
+      ip: entry.ip ?? null,
+      createdAt: new Date(entry.createdAt).toISOString(),
+    });
+    return;
+  }
+
+  const legacy = await loadLegacyAuditStore();
+  await legacy.addAuditLog(entry);
+}
 
 function getClientIp(req: Request): string {
   const forwarded = req.headers.get("x-forwarded-for");
@@ -24,7 +60,7 @@ export async function recordAudit(
   meta?: Record<string, unknown>
 ) {
   const entry: AdminAuditLog = {
-    id: `audit_${Date.now()}_${crypto.randomInt(1000, 9999)}`,
+    id: `audit_${Date.now()}_${randomInt(1000, 9999)}`,
     actorRole: actor.role,
     actorSessionId: actor.sessionId,
     action,
@@ -39,7 +75,7 @@ export async function recordAudit(
     createdAt: Date.now(),
   };
   try {
-    await addAuditLog(entry);
+    await writeAuditLog(entry);
   } catch {
     // ignore audit write failures
   }

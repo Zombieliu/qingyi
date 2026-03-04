@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import crypto from "crypto";
+import { randomInt } from "@/lib/shared/runtime-crypto";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/admin/admin-auth";
 import { addPlayer, getPlayerByAddress, listPlayers } from "@/lib/admin/admin-store";
@@ -61,7 +61,7 @@ export async function POST(req: Request) {
   }
 
   const player = {
-    id: body.id || `PLY-${Date.now()}-${crypto.randomInt(1000, 9999)}`,
+    id: body.id || `PLY-${Date.now()}-${randomInt(1000, 9999)}`,
     name: body.name,
     role: body.role,
     contact: body.contact,

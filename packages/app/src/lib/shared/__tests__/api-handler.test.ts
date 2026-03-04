@@ -30,14 +30,6 @@ vi.mock("next/server", () => ({
   },
 }));
 
-vi.mock("crypto", () => ({
-  default: {
-    randomBytes: () => ({
-      toString: () => "a1b2c3d4",
-    }),
-  },
-}));
-
 import { withApiHandler } from "../api-handler";
 import { NextResponse } from "next/server";
 
@@ -64,7 +56,7 @@ describe("api-handler", () => {
 
     const res = await wrapped(req);
 
-    expect(res.headers.get("x-trace-id")).toBe("a1b2c3d4");
+    expect(res.headers.get("x-trace-id")).toMatch(/^[0-9a-f]{8}$/);
   });
 
   it("preserves original response body and status", async () => {
@@ -97,10 +89,10 @@ describe("api-handler", () => {
 
     expect(res.status).toBe(500);
     expect(res.body.error).toBe("internal_error");
-    expect(res.body.traceId).toBe("a1b2c3d4");
-    expect(res.headers.get("x-trace-id")).toBe("a1b2c3d4");
+    expect(res.body.traceId).toMatch(/^[0-9a-f]{8}$/);
+    expect(res.headers.get("x-trace-id")).toBe(res.body.traceId);
     expect(consoleError).toHaveBeenCalledWith(
-      expect.stringContaining("[a1b2c3d4] Unhandled error:"),
+      expect.stringContaining(`[${res.body.traceId}] Unhandled error:`),
       expect.any(Error)
     );
     consoleError.mockRestore();
@@ -122,6 +114,27 @@ describe("api-handler", () => {
     consoleError.mockRestore();
   });
 
+  it("maps edge-incompatible db errors to 503", async () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+    const handler = vi
+      .fn()
+      .mockRejectedValue(new Error("Code generation from strings disallowed for this context"));
+    const wrapped = withApiHandler(handler);
+    const req = new Request("https://example.com/api/test");
+
+    const res = (await wrapped(req)) as unknown as {
+      body: { error: string; traceId: string };
+      status: number;
+      headers: { get: (k: string) => string | undefined };
+    };
+
+    expect(res.status).toBe(503);
+    expect(res.body.error).toBe("edge_runtime_incompatible_db");
+    expect(res.body.traceId).toMatch(/^[0-9a-f]{8}$/);
+    expect(res.headers.get("x-trace-id")).toBe(res.body.traceId);
+    consoleError.mockRestore();
+  });
+
   it("accepts options without affecting behavior", async () => {
     const handler = vi.fn().mockResolvedValue(NextResponse.json({ ok: true }));
     const wrapped = withApiHandler(handler, {
@@ -132,7 +145,7 @@ describe("api-handler", () => {
 
     const res = await wrapped(req);
 
-    expect(res.headers.get("x-trace-id")).toBe("a1b2c3d4");
+    expect(res.headers.get("x-trace-id")).toMatch(/^[0-9a-f]{8}$/);
   });
 
   it("works without context parameter", async () => {

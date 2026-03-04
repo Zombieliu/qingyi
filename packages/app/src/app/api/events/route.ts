@@ -2,7 +2,6 @@ import { getUserSessionFromToken } from "@/lib/auth/user-auth";
 import { getLatestEvent, getLatestNotificationEvent } from "@/lib/realtime";
 
 export const dynamic = "force-dynamic";
-export const runtime = "nodejs";
 
 function getBearerToken(req: Request): string | null {
   const auth = req.headers.get("authorization");

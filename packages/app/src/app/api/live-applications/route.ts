@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import crypto from "crypto";
+import { randomInt } from "@/lib/shared/runtime-crypto";
 import { z } from "zod";
 import { addLiveApplication, getPlayerByAddress } from "@/lib/admin/admin-store";
 import type { AdminLiveApplication, LiveStatus } from "@/lib/admin/admin-types";
@@ -47,7 +47,7 @@ export async function POST(req: Request) {
   }
 
   const application: AdminLiveApplication = {
-    id: `LIV-${Date.now()}-${crypto.randomInt(1000, 9999)}`,
+    id: `LIV-${Date.now()}-${randomInt(1000, 9999)}`,
     user: body.name,
     userAddress: body.userAddress,
     contact: body.contact,

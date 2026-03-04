@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import crypto from "crypto";
+import { randomInt } from "@/lib/shared/runtime-crypto";
 import { z } from "zod";
 import { addInvoiceRequest } from "@/lib/admin/admin-store";
 import type { AdminInvoiceRequest, InvoiceStatus } from "@/lib/admin/admin-types";
@@ -29,7 +29,7 @@ export async function POST(req: Request) {
   const body = parsed.data;
 
   const request: AdminInvoiceRequest = {
-    id: `INV-${Date.now()}-${crypto.randomInt(1000, 9999)}`,
+    id: `INV-${Date.now()}-${randomInt(1000, 9999)}`,
     title: body.title,
     taxId: body.taxId,
     email: body.email,
