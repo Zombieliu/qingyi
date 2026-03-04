@@ -113,4 +113,38 @@ describe("/api/admin/redeem/codes", () => {
     expect(mocks.createRedeemCodes).toHaveBeenCalled();
     expect(mocks.recordAudit).toHaveBeenCalled();
   });
+
+  it("POST normalizes startsAt and expiresAt inputs", async () => {
+    mocks.parseBody.mockResolvedValue({
+      success: true,
+      data: {
+        title: "Batch B",
+        rewardType: "mantou",
+        rewardPayload: { amount: 5 },
+        status: "active",
+        codes: ["abcde3"],
+        startsAt: "1700000000000",
+        expiresAt: "not-a-date",
+      },
+    });
+
+    const res = await POST(
+      new Request("http://localhost/api/admin/redeem/codes", { method: "POST" })
+    );
+
+    expect(res.status).toBe(200);
+    const createBatchArg = mocks.createRedeemBatch.mock.calls[0]?.[0] as {
+      startsAt: Date | null;
+      expiresAt: Date | null;
+    };
+    const createCodesArg = mocks.createRedeemCodes.mock.calls[0]?.[0] as {
+      startsAt: Date | null;
+      expiresAt: Date | null;
+    };
+
+    expect(createBatchArg.startsAt?.getTime()).toBe(1_700_000_000_000);
+    expect(createBatchArg.expiresAt).toBeNull();
+    expect(createCodesArg.startsAt?.getTime()).toBe(1_700_000_000_000);
+    expect(createCodesArg.expiresAt).toBeNull();
+  });
 });

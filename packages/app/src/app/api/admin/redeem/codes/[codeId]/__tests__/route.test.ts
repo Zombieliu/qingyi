@@ -60,6 +60,20 @@ describe("PATCH /api/admin/redeem/codes/[codeId]", () => {
     expect(mocks.recordAudit).toHaveBeenCalled();
   });
 
+  it("normalizes startsAt and expiresAt before patching", async () => {
+    const res = await PATCH(makePatch({ startsAt: "1700000000000", expiresAt: "not-a-date" }), {
+      params: Promise.resolve({ codeId: "code-1" }),
+    });
+
+    expect(res.status).toBe(200);
+    const args = mocks.updateRedeemCodeByIdEdgeWrite.mock.calls[0]?.[0] as {
+      startsAt: Date | null;
+      expiresAt: Date | null;
+    };
+    expect(args.startsAt?.getTime()).toBe(1_700_000_000_000);
+    expect(args.expiresAt).toBeNull();
+  });
+
   it("returns 400 for invalid body", async () => {
     const res = await PATCH(makePatch({ status: "not-valid" }), {
       params: Promise.resolve({ codeId: "code-1" }),
