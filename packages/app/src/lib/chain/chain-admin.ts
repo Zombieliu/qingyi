@@ -1,6 +1,5 @@
 import "server-only";
 import { SuiClient, getFullnodeUrl, type EventId } from "@mysten/sui/client";
-import { bcs } from "@mysten/sui/bcs";
 import { Transaction, Inputs } from "@mysten/sui/transactions";
 import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
 import { isValidSuiAddress, normalizeSuiAddress, toHex } from "@mysten/sui/utils";
@@ -8,6 +7,7 @@ import { DAPP_HUB_ID, DAPP_HUB_INITIAL_SHARED_VERSION, PACKAGE_ID } from "contra
 import { env } from "@/lib/env";
 import { ChainMessages } from "@/lib/shared/messages";
 import type { DuoChainOrder } from "./duo-chain";
+import { decodeDuoOrderFromTuple, decodeOrderFromTuple } from "./chain-codec";
 
 export type ChainOrder = {
   orderId: string;
@@ -149,83 +149,6 @@ async function retryRpc<T>(
     }
   }
   throw lastError || new Error("rpc failed");
-}
-
-// TODO(P3): decodeOrderFromTuple, decodeU64, decodeU8, decodeAddress, decodeVecU8
-// are duplicated between chain-admin.ts (server) and qy-chain.ts (client).
-// Extract to a shared chain-codec.ts module.
-function decodeU64(bytes: number[]): string {
-  return bcs.u64().parse(Uint8Array.from(bytes));
-}
-
-function decodeU8(bytes: number[]): number {
-  return bcs.u8().parse(Uint8Array.from(bytes));
-}
-
-function decodeAddress(bytes: number[]): string {
-  const hex = toHex(Uint8Array.from(bytes));
-  return normalizeSuiAddress(`0x${hex}`);
-}
-
-function decodeVecU8(bytes: number[]): string {
-  const raw = bcs.vector(bcs.u8()).parse(Uint8Array.from(bytes)) as number[];
-  return `0x${toHex(Uint8Array.from(raw))}`;
-}
-
-function decodeOrderFromTuple(keyTuple: number[][], valueTuple: number[][]): ChainOrder | null {
-  if (!Array.isArray(keyTuple) || keyTuple.length < 1) return null;
-  if (!Array.isArray(valueTuple) || valueTuple.length < 16) return null;
-  const orderId = decodeU64(keyTuple[0]);
-  return {
-    orderId,
-    user: decodeAddress(valueTuple[0]),
-    companion: decodeAddress(valueTuple[1]),
-    ruleSetId: decodeU64(valueTuple[2]),
-    serviceFee: decodeU64(valueTuple[3]),
-    deposit: decodeU64(valueTuple[4]),
-    platformFeeBps: decodeU64(valueTuple[5]),
-    status: decodeU8(valueTuple[6]),
-    createdAt: decodeU64(valueTuple[7]),
-    finishAt: decodeU64(valueTuple[8]),
-    disputeDeadline: decodeU64(valueTuple[9]),
-    vaultService: decodeU64(valueTuple[10]),
-    vaultDeposit: decodeU64(valueTuple[11]),
-    evidenceHash: decodeVecU8(valueTuple[12]),
-    disputeStatus: decodeU8(valueTuple[13]),
-    resolvedBy: decodeAddress(valueTuple[14]),
-    resolvedAt: decodeU64(valueTuple[15]),
-  };
-}
-
-function decodeDuoOrderFromTuple(
-  keyTuple: number[][],
-  valueTuple: number[][]
-): DuoChainOrder | null {
-  if (!Array.isArray(keyTuple) || keyTuple.length < 1) return null;
-  if (!Array.isArray(valueTuple) || valueTuple.length < 19) return null;
-  const orderId = decodeU64(keyTuple[0]);
-  return {
-    orderId,
-    user: decodeAddress(valueTuple[0]),
-    companionA: decodeAddress(valueTuple[1]),
-    companionB: decodeAddress(valueTuple[2]),
-    ruleSetId: decodeU64(valueTuple[3]),
-    serviceFee: decodeU64(valueTuple[4]),
-    depositPerCompanion: decodeU64(valueTuple[5]),
-    platformFeeBps: decodeU64(valueTuple[6]),
-    status: decodeU8(valueTuple[7]),
-    teamStatus: decodeU8(valueTuple[8]),
-    createdAt: decodeU64(valueTuple[9]),
-    finishAt: decodeU64(valueTuple[10]),
-    disputeDeadline: decodeU64(valueTuple[11]),
-    vaultService: decodeU64(valueTuple[12]),
-    vaultDepositA: decodeU64(valueTuple[13]),
-    vaultDepositB: decodeU64(valueTuple[14]),
-    evidenceHash: decodeVecU8(valueTuple[15]),
-    disputeStatus: decodeU8(valueTuple[16]),
-    resolvedBy: decodeAddress(valueTuple[17]),
-    resolvedAt: decodeU64(valueTuple[18]),
-  };
 }
 
 function ensureChainEnv() {

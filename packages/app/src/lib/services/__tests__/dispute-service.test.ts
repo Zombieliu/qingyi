@@ -1,18 +1,59 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const { mockFindUnique, mockUpdate, mockFindMany, mockPrisma } = vi.hoisted(() => {
-  const mockFindUnique = vi.fn();
-  const mockUpdate = vi.fn();
-  const mockFindMany = vi.fn();
-  const mockPrisma: Record<string, unknown> = {
+const {
+  mockOrderFindUnique,
+  mockOrderUpdate,
+  mockOrderFindMany,
+  mockDisputeFindUnique,
+  mockDisputeCreate,
+  mockDisputeUpsert,
+  mockDisputeFindMany,
+  mockPrisma,
+} = vi.hoisted(() => {
+  const mockOrderFindUnique = vi.fn();
+  const mockOrderUpdate = vi.fn();
+  const mockOrderFindMany = vi.fn();
+
+  const mockDisputeFindUnique = vi.fn();
+  const mockDisputeCreate = vi.fn();
+  const mockDisputeUpsert = vi.fn();
+  const mockDisputeFindMany = vi.fn();
+
+  const tx = {
     adminOrder: {
-      findUnique: (...args: unknown[]) => mockFindUnique(...args),
-      update: (...args: unknown[]) => mockUpdate(...args),
-      findMany: (...args: unknown[]) => mockFindMany(...args),
+      update: (...args: unknown[]) => mockOrderUpdate(...args),
+    },
+    dispute: {
+      create: (...args: unknown[]) => mockDisputeCreate(...args),
+      upsert: (...args: unknown[]) => mockDisputeUpsert(...args),
     },
   };
-  mockPrisma.$transaction = vi.fn(async (fn: (tx: unknown) => Promise<unknown>) => fn(mockPrisma));
-  return { mockFindUnique, mockUpdate, mockFindMany, mockPrisma };
+
+  const mockPrisma: Record<string, unknown> = {
+    adminOrder: {
+      findUnique: (...args: unknown[]) => mockOrderFindUnique(...args),
+      update: (...args: unknown[]) => mockOrderUpdate(...args),
+      findMany: (...args: unknown[]) => mockOrderFindMany(...args),
+    },
+    dispute: {
+      findUnique: (...args: unknown[]) => mockDisputeFindUnique(...args),
+      findMany: (...args: unknown[]) => mockDisputeFindMany(...args),
+      create: (...args: unknown[]) => mockDisputeCreate(...args),
+      upsert: (...args: unknown[]) => mockDisputeUpsert(...args),
+    },
+    $transaction: vi.fn(async (fn: (ctx: unknown) => Promise<unknown>) => fn(tx)),
+  };
+
+  return {
+    mockOrderFindUnique,
+    mockOrderUpdate,
+    mockOrderFindMany,
+    mockDisputeFindUnique,
+    mockDisputeCreate,
+    mockDisputeUpsert,
+    mockDisputeFindMany,
+    mockPrisma,
+  };
 });
 
 vi.mock("@/lib/db", () => ({
@@ -51,10 +92,28 @@ const baseOrder = {
   paymentStatus: "已支付",
 };
 
+const tableDispute = {
+  id: "DSP-1",
+  orderId: "ORD-1",
+  userAddress: "0xuser",
+  reason: "service_quality",
+  description: "差",
+  evidence: null,
+  status: "pending",
+  resolution: null,
+  refundAmount: null,
+  reviewerRole: null,
+  createdAt: new Date("2026-03-01T00:00:00.000Z"),
+  updatedAt: new Date("2026-03-01T00:00:00.000Z"),
+  resolvedAt: null,
+};
+
 describe("createDispute", () => {
   it("creates a dispute for a valid order", async () => {
-    mockFindUnique.mockResolvedValue(baseOrder);
-    mockUpdate.mockResolvedValue({});
+    mockOrderFindUnique.mockResolvedValue(baseOrder);
+    mockDisputeFindUnique.mockResolvedValue(null);
+    mockDisputeCreate.mockResolvedValue(tableDispute);
+    mockOrderUpdate.mockResolvedValue({});
 
     const result = await createDispute({
       orderId: "ORD-1",
@@ -66,7 +125,8 @@ describe("createDispute", () => {
     expect(result.orderId).toBe("ORD-1");
     expect(result.status).toBe("pending");
     expect(result.reason).toBe("service_quality");
-    expect(mockUpdate).toHaveBeenCalledTimes(1); // single update inside transaction
+    expect(mockDisputeCreate).toHaveBeenCalledTimes(1);
+    expect(mockOrderUpdate).toHaveBeenCalledTimes(1);
   });
 
   it("throws when feature flag is disabled", async () => {
@@ -83,7 +143,8 @@ describe("createDispute", () => {
   });
 
   it("throws when order does not exist", async () => {
-    mockFindUnique.mockResolvedValue(null);
+    mockOrderFindUnique.mockResolvedValue(null);
+    mockDisputeFindUnique.mockResolvedValue(null);
 
     await expect(
       createDispute({
@@ -96,7 +157,8 @@ describe("createDispute", () => {
   });
 
   it("throws when user does not own the order", async () => {
-    mockFindUnique.mockResolvedValue({ ...baseOrder, userAddress: "0xother" });
+    mockOrderFindUnique.mockResolvedValue({ ...baseOrder, userAddress: "0xother" });
+    mockDisputeFindUnique.mockResolvedValue(null);
 
     await expect(
       createDispute({
@@ -109,7 +171,8 @@ describe("createDispute", () => {
   });
 
   it("throws when order stage is not eligible", async () => {
-    mockFindUnique.mockResolvedValue({ ...baseOrder, stage: "已取消" });
+    mockOrderFindUnique.mockResolvedValue({ ...baseOrder, stage: "已取消" });
+    mockDisputeFindUnique.mockResolvedValue(null);
 
     await expect(
       createDispute({
@@ -121,9 +184,25 @@ describe("createDispute", () => {
     ).rejects.toThrow("当前订单状态不支持发起争议");
   });
 
+  it("throws when dispute already exists", async () => {
+    mockOrderFindUnique.mockResolvedValue(baseOrder);
+    mockDisputeFindUnique.mockResolvedValue(tableDispute);
+
+    await expect(
+      createDispute({
+        orderId: "ORD-1",
+        userAddress: "0xuser",
+        reason: "service_quality",
+        description: "重复提交",
+      })
+    ).rejects.toThrow("该订单已存在争议记录");
+  });
+
   it("allows dispute for 进行中 orders", async () => {
-    mockFindUnique.mockResolvedValue({ ...baseOrder, stage: "进行中" });
-    mockUpdate.mockResolvedValue({});
+    mockOrderFindUnique.mockResolvedValue({ ...baseOrder, stage: "进行中" });
+    mockDisputeFindUnique.mockResolvedValue(null);
+    mockDisputeCreate.mockResolvedValue(tableDispute);
+    mockOrderUpdate.mockResolvedValue({});
 
     const result = await createDispute({
       orderId: "ORD-1",
@@ -136,8 +215,10 @@ describe("createDispute", () => {
   });
 
   it("creates dispute with evidence", async () => {
-    mockFindUnique.mockResolvedValue(baseOrder);
-    mockUpdate.mockResolvedValue({});
+    mockOrderFindUnique.mockResolvedValue(baseOrder);
+    mockDisputeFindUnique.mockResolvedValue(null);
+    mockDisputeCreate.mockResolvedValue(tableDispute);
+    mockOrderUpdate.mockResolvedValue({});
 
     const result = await createDispute({
       orderId: "ORD-1",
@@ -151,8 +232,10 @@ describe("createDispute", () => {
   });
 
   it("creates dispute when companion address is null", async () => {
-    mockFindUnique.mockResolvedValue({ ...baseOrder, companionAddress: null });
-    mockUpdate.mockResolvedValue({});
+    mockOrderFindUnique.mockResolvedValue({ ...baseOrder, companionAddress: null });
+    mockDisputeFindUnique.mockResolvedValue(null);
+    mockDisputeCreate.mockResolvedValue(tableDispute);
+    mockOrderUpdate.mockResolvedValue({});
 
     const result = await createDispute({
       orderId: "ORD-1",
@@ -166,25 +249,11 @@ describe("createDispute", () => {
 });
 
 describe("resolveDispute", () => {
-  const orderWithDispute = {
-    ...baseOrder,
-    stage: "争议中",
-    meta: {
-      dispute: {
-        id: "DSP-1",
-        orderId: "ORD-1",
-        userAddress: "0xuser",
-        reason: "service_quality",
-        description: "差",
-        status: "pending",
-        createdAt: new Date(),
-      },
-    },
-  };
-
   it("resolves dispute with refund", async () => {
-    mockFindUnique.mockResolvedValue(orderWithDispute);
-    mockUpdate.mockResolvedValue({});
+    mockOrderFindUnique.mockResolvedValue(baseOrder);
+    mockDisputeFindUnique.mockResolvedValue(tableDispute);
+    mockDisputeUpsert.mockResolvedValue({ ...tableDispute, status: "resolved_refund" });
+    mockOrderUpdate.mockResolvedValue({});
 
     const result = await resolveDispute({
       orderId: "ORD-1",
@@ -198,8 +267,10 @@ describe("resolveDispute", () => {
   });
 
   it("resolves dispute with reject (refundAmount = 0)", async () => {
-    mockFindUnique.mockResolvedValue(orderWithDispute);
-    mockUpdate.mockResolvedValue({});
+    mockOrderFindUnique.mockResolvedValue(baseOrder);
+    mockDisputeFindUnique.mockResolvedValue(tableDispute);
+    mockDisputeUpsert.mockResolvedValue({ ...tableDispute, status: "resolved_reject" });
+    mockOrderUpdate.mockResolvedValue({});
 
     const result = await resolveDispute({
       orderId: "ORD-1",
@@ -211,8 +282,10 @@ describe("resolveDispute", () => {
   });
 
   it("resolves dispute with partial refund", async () => {
-    mockFindUnique.mockResolvedValue(orderWithDispute);
-    mockUpdate.mockResolvedValue({});
+    mockOrderFindUnique.mockResolvedValue(baseOrder);
+    mockDisputeFindUnique.mockResolvedValue(tableDispute);
+    mockDisputeUpsert.mockResolvedValue({ ...tableDispute, status: "resolved_partial" });
+    mockOrderUpdate.mockResolvedValue({});
 
     const result = await resolveDispute({
       orderId: "ORD-1",
@@ -224,8 +297,40 @@ describe("resolveDispute", () => {
     expect(result.refundAmount).toBe(50);
   });
 
+  it("falls back to legacy meta dispute when table record is missing", async () => {
+    mockOrderFindUnique.mockResolvedValue({
+      ...baseOrder,
+      meta: {
+        dispute: {
+          id: "DSP-legacy",
+          orderId: "ORD-1",
+          userAddress: "0xuser",
+          reason: "service_quality",
+          description: "legacy",
+          status: "pending",
+          createdAt: new Date().toISOString(),
+        },
+      },
+    });
+    mockDisputeFindUnique.mockResolvedValue(null);
+    mockDisputeUpsert.mockResolvedValue({
+      ...tableDispute,
+      id: "DSP-legacy",
+      status: "resolved_refund",
+    });
+    mockOrderUpdate.mockResolvedValue({});
+
+    const result = await resolveDispute({
+      orderId: "ORD-1",
+      resolution: "refund",
+    });
+
+    expect(result.status).toBe("resolved_refund");
+  });
+
   it("throws when order has no dispute", async () => {
-    mockFindUnique.mockResolvedValue(baseOrder);
+    mockOrderFindUnique.mockResolvedValue(baseOrder);
+    mockDisputeFindUnique.mockResolvedValue(null);
 
     await expect(resolveDispute({ orderId: "ORD-1", resolution: "refund" })).rejects.toThrow(
       "该订单没有争议记录"
@@ -233,7 +338,7 @@ describe("resolveDispute", () => {
   });
 
   it("throws when order not found", async () => {
-    mockFindUnique.mockResolvedValue(null);
+    mockOrderFindUnique.mockResolvedValue(null);
 
     await expect(resolveDispute({ orderId: "ORD-999", resolution: "refund" })).rejects.toThrow(
       "订单不存在"
@@ -241,8 +346,10 @@ describe("resolveDispute", () => {
   });
 
   it("resolves dispute with reviewerRole", async () => {
-    mockFindUnique.mockResolvedValue(orderWithDispute);
-    mockUpdate.mockResolvedValue({});
+    mockOrderFindUnique.mockResolvedValue(baseOrder);
+    mockDisputeFindUnique.mockResolvedValue(tableDispute);
+    mockDisputeUpsert.mockResolvedValue({ ...tableDispute, status: "resolved_refund" });
+    mockOrderUpdate.mockResolvedValue({});
 
     const result = await resolveDispute({
       orderId: "ORD-1",
@@ -255,8 +362,10 @@ describe("resolveDispute", () => {
   });
 
   it("resolves partial without explicit refundAmount (uses order amount)", async () => {
-    mockFindUnique.mockResolvedValue(orderWithDispute);
-    mockUpdate.mockResolvedValue({});
+    mockOrderFindUnique.mockResolvedValue(baseOrder);
+    mockDisputeFindUnique.mockResolvedValue(tableDispute);
+    mockDisputeUpsert.mockResolvedValue({ ...tableDispute, status: "resolved_partial" });
+    mockOrderUpdate.mockResolvedValue({});
 
     const result = await resolveDispute({
       orderId: "ORD-1",
@@ -268,16 +377,17 @@ describe("resolveDispute", () => {
   });
 
   it("sets stage to 已完成 when reject", async () => {
-    mockFindUnique.mockResolvedValue(orderWithDispute);
-    mockUpdate.mockResolvedValue({});
+    mockOrderFindUnique.mockResolvedValue(baseOrder);
+    mockDisputeFindUnique.mockResolvedValue(tableDispute);
+    mockDisputeUpsert.mockResolvedValue({ ...tableDispute, status: "resolved_reject" });
+    mockOrderUpdate.mockResolvedValue({});
 
     await resolveDispute({
       orderId: "ORD-1",
       resolution: "reject",
     });
 
-    // Verify the update was called with stage: "已完成"
-    expect(mockUpdate).toHaveBeenCalledWith(
+    expect(mockOrderUpdate).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({ stage: "已完成" }),
       })
@@ -285,15 +395,17 @@ describe("resolveDispute", () => {
   });
 
   it("sets stage to 已退款 when refund", async () => {
-    mockFindUnique.mockResolvedValue(orderWithDispute);
-    mockUpdate.mockResolvedValue({});
+    mockOrderFindUnique.mockResolvedValue(baseOrder);
+    mockDisputeFindUnique.mockResolvedValue(tableDispute);
+    mockDisputeUpsert.mockResolvedValue({ ...tableDispute, status: "resolved_refund" });
+    mockOrderUpdate.mockResolvedValue({});
 
     await resolveDispute({
       orderId: "ORD-1",
       resolution: "refund",
     });
 
-    expect(mockUpdate).toHaveBeenCalledWith(
+    expect(mockOrderUpdate).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({ stage: "已退款" }),
       })
@@ -302,17 +414,39 @@ describe("resolveDispute", () => {
 });
 
 describe("getDispute", () => {
-  it("returns dispute from order meta", async () => {
-    const dispute = { id: "DSP-1", status: "pending" };
-    mockFindUnique.mockResolvedValue({ ...baseOrder, meta: { dispute } });
+  it("returns dispute from dedicated table", async () => {
+    mockDisputeFindUnique.mockResolvedValue(tableDispute);
 
     const result = await getDispute("ORD-1");
 
-    expect(result).toEqual(dispute);
+    expect(result).toMatchObject({ id: "DSP-1", status: "pending" });
+  });
+
+  it("falls back to order meta when table record missing", async () => {
+    mockDisputeFindUnique.mockResolvedValue(null);
+    mockOrderFindUnique.mockResolvedValue({
+      ...baseOrder,
+      meta: {
+        dispute: {
+          id: "DSP-legacy",
+          status: "pending",
+          reason: "service_quality",
+          description: "legacy",
+          userAddress: "0xuser",
+          createdAt: new Date().toISOString(),
+        },
+      },
+    });
+    mockDisputeUpsert.mockResolvedValue({ ...tableDispute, id: "DSP-legacy" });
+
+    const result = await getDispute("ORD-1");
+
+    expect(result).toMatchObject({ id: "DSP-legacy", status: "pending" });
   });
 
   it("returns null when order not found", async () => {
-    mockFindUnique.mockResolvedValue(null);
+    mockDisputeFindUnique.mockResolvedValue(null);
+    mockOrderFindUnique.mockResolvedValue(null);
 
     const result = await getDispute("ORD-999");
 
@@ -320,15 +454,8 @@ describe("getDispute", () => {
   });
 
   it("returns null when order has no dispute in meta", async () => {
-    mockFindUnique.mockResolvedValue({ ...baseOrder, meta: {} });
-
-    const result = await getDispute("ORD-1");
-
-    expect(result).toBeNull();
-  });
-
-  it("returns null when meta is null", async () => {
-    mockFindUnique.mockResolvedValue({ ...baseOrder, meta: null });
+    mockDisputeFindUnique.mockResolvedValue(null);
+    mockOrderFindUnique.mockResolvedValue({ ...baseOrder, meta: {} });
 
     const result = await getDispute("ORD-1");
 
@@ -337,21 +464,53 @@ describe("getDispute", () => {
 });
 
 describe("listUserDisputes", () => {
-  it("returns disputes from user orders", async () => {
-    const dispute = { id: "DSP-1", status: "pending" };
-    mockFindMany.mockResolvedValue([
-      { ...baseOrder, meta: { dispute } },
-      { ...baseOrder, id: "ORD-2", meta: {} },
+  it("returns disputes from dedicated table", async () => {
+    mockDisputeFindMany.mockResolvedValue([
+      tableDispute,
+      {
+        ...tableDispute,
+        id: "DSP-2",
+        orderId: "ORD-2",
+        status: "resolved_refund",
+      },
+    ]);
+    mockOrderFindMany.mockResolvedValue([]);
+
+    const result = await listUserDisputes("0xuser");
+
+    expect(result).toHaveLength(2);
+    expect(result[0]).toMatchObject({ id: "DSP-1" });
+  });
+
+  it("includes legacy meta disputes not yet migrated", async () => {
+    mockDisputeFindMany.mockResolvedValue([]);
+    mockOrderFindMany.mockResolvedValue([
+      {
+        ...baseOrder,
+        id: "ORD-9",
+        meta: {
+          dispute: {
+            id: "DSP-legacy",
+            orderId: "ORD-9",
+            userAddress: "0xuser",
+            reason: "other",
+            description: "legacy",
+            status: "pending",
+            createdAt: new Date("2026-03-01T00:00:00.000Z").toISOString(),
+          },
+        },
+      },
     ]);
 
     const result = await listUserDisputes("0xuser");
 
     expect(result).toHaveLength(1);
-    expect(result[0]).toEqual(dispute);
+    expect(result[0]).toMatchObject({ id: "DSP-legacy", orderId: "ORD-9" });
   });
 
   it("returns empty array when no disputes", async () => {
-    mockFindMany.mockResolvedValue([]);
+    mockDisputeFindMany.mockResolvedValue([]);
+    mockOrderFindMany.mockResolvedValue([]);
 
     const result = await listUserDisputes("0xuser");
 

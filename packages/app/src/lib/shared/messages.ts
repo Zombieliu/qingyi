@@ -174,6 +174,7 @@ export const KookMessages = {
 
 export const DisputeMessages = {
   FEATURE_DISABLED: "争议功能暂未开放",
+  ALREADY_EXISTS: "该订单已存在争议记录",
   NO_DISPUTE_RECORD: "该订单没有争议记录",
   CREATE_FAILED: "创建争议失败",
   RESOLVE_FAILED: "处理争议失败",

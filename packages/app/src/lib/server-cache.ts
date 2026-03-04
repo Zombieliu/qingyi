@@ -18,7 +18,17 @@ let redisClient: ReturnType<typeof Redis.fromEnv> | null | undefined;
 
 function getRedisClient() {
   if (redisClient !== undefined) return redisClient;
-  if (!env.UPSTASH_REDIS_REST_URL || !env.UPSTASH_REDIS_REST_TOKEN) {
+  let redisUrl = "";
+  let redisToken = "";
+  try {
+    redisUrl = env.UPSTASH_REDIS_REST_URL || "";
+    redisToken = env.UPSTASH_REDIS_REST_TOKEN || "";
+  } catch {
+    // Client-side / jsdom imports cannot read server env. Treat Redis as unavailable.
+    redisClient = null;
+    return redisClient;
+  }
+  if (!redisUrl || !redisToken) {
     redisClient = null;
     return redisClient;
   }
@@ -27,6 +37,18 @@ function getRedisClient() {
 }
 
 const CACHE_PREFIX = "sc:";
+
+function buildCacheEntry<T>(value: T, ttlMs: number, etag?: string): CacheEntry<T> {
+  return {
+    value,
+    expiresAt: Date.now() + Math.max(0, ttlMs),
+    etag,
+  };
+}
+
+export function isRedisCacheAvailable(): boolean {
+  return Boolean(getRedisClient());
+}
 
 export function getCache<T>(key: string): CacheEntry<T> | null {
   // Sync path: memory only (keeps existing call sites sync)
@@ -63,11 +85,7 @@ export async function getCacheAsync<T>(key: string): Promise<CacheEntry<T> | nul
 }
 
 export function setCache<T>(key: string, value: T, ttlMs: number, etag?: string): CacheEntry<T> {
-  const entry: CacheEntry<T> = {
-    value,
-    expiresAt: Date.now() + Math.max(0, ttlMs),
-    etag,
-  };
+  const entry = buildCacheEntry(value, ttlMs, etag);
   memoryStore.set(key, entry as CacheEntry<unknown>);
 
   // Write-through to Redis (fire-and-forget)
@@ -79,6 +97,27 @@ export function setCache<T>(key: string, value: T, ttlMs: number, etag?: string)
       .catch((e) => console.warn("[cache] redis write-through failed", e));
   }
 
+  return entry;
+}
+
+export async function setCacheAsync<T>(
+  key: string,
+  value: T,
+  ttlMs: number,
+  etag?: string
+): Promise<CacheEntry<T>> {
+  const entry = buildCacheEntry(value, ttlMs, etag);
+  memoryStore.set(key, entry as CacheEntry<unknown>);
+
+  const redis = getRedisClient();
+  if (redis) {
+    const ttlSeconds = Math.max(1, Math.ceil(ttlMs / 1000));
+    try {
+      await redis.set(CACHE_PREFIX + key, entry, { ex: ttlSeconds });
+    } catch (e) {
+      console.warn("[cache] redis async write failed", e);
+    }
+  }
   return entry;
 }
 

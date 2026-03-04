@@ -1,3 +1,5 @@
+import { getCacheAsync, isRedisCacheAvailable, setCacheAsync } from "@/lib/server-cache";
+
 /**
  * Lightweight Circuit Breaker pattern implementation.
  *
@@ -5,10 +7,6 @@
  *   CLOSED  - Normal operation, requests pass through
  *   OPEN    - Failures exceeded threshold, requests are rejected immediately
  *   HALF_OPEN - After reset timeout, one probe request is allowed through
- *
- * TODO(P3): Circuit breaker state is per-process. In serverless/multi-instance
- * deployments, each instance has independent state, reducing protection effectiveness.
- * Consider using Redis-backed state for cross-instance coordination.
  */
 
 export enum CircuitState {
@@ -16,6 +14,13 @@ export enum CircuitState {
   OPEN = "OPEN",
   HALF_OPEN = "HALF_OPEN",
 }
+
+type CircuitSharedState = {
+  state: CircuitState;
+  failureCount: number;
+  lastFailureTime: number;
+  updatedAt: number;
+};
 
 export type CircuitBreakerOptions = {
   /** Name for logging / identification */
@@ -26,6 +31,13 @@ export type CircuitBreakerOptions = {
   resetTimeoutMs?: number;
   /** Optional callback when state changes */
   onStateChange?: (from: CircuitState, to: CircuitState, name: string) => void;
+  /**
+   * Enable Redis-backed shared state for multi-instance deployments.
+   * Defaults to true when Upstash Redis is configured.
+   */
+  enableSharedState?: boolean;
+  /** Minimum sync interval for shared state pulls (default: 1000ms) */
+  sharedSyncIntervalMs?: number;
 };
 
 export class CircuitBreaker {
@@ -33,15 +45,26 @@ export class CircuitBreaker {
   private state: CircuitState = CircuitState.CLOSED;
   private failureCount = 0;
   private lastFailureTime = 0;
+  private stateUpdatedAt = 0;
+  private lastSyncAt = 0;
+
   private readonly failureThreshold: number;
   private readonly resetTimeoutMs: number;
   private readonly onStateChange?: CircuitBreakerOptions["onStateChange"];
+  private readonly sharedStateEnabled: boolean;
+  private readonly sharedSyncIntervalMs: number;
+  private readonly sharedStateKey: string;
+  private readonly sharedStateTtlMs: number;
 
   constructor(options: CircuitBreakerOptions) {
     this.name = options.name;
     this.failureThreshold = options.failureThreshold ?? 5;
     this.resetTimeoutMs = options.resetTimeoutMs ?? 30_000;
     this.onStateChange = options.onStateChange;
+    this.sharedStateEnabled = options.enableSharedState ?? isRedisCacheAvailable();
+    this.sharedSyncIntervalMs = Math.max(0, options.sharedSyncIntervalMs ?? 1000);
+    this.sharedStateKey = `cb:${this.name}`;
+    this.sharedStateTtlMs = Math.max(this.resetTimeoutMs * 4, 60_000);
   }
 
   getState(): CircuitState {
@@ -51,6 +74,7 @@ export class CircuitBreaker {
       Date.now() - this.lastFailureTime >= this.resetTimeoutMs
     ) {
       this.transition(CircuitState.HALF_OPEN);
+      void this.persistSharedState();
     }
     return this.state;
   }
@@ -61,6 +85,7 @@ export class CircuitBreaker {
 
   /** Execute an async function through the circuit breaker */
   async execute<T>(fn: () => Promise<T>): Promise<T> {
+    await this.syncSharedState();
     const current = this.getState();
 
     if (current === CircuitState.OPEN) {
@@ -73,10 +98,10 @@ export class CircuitBreaker {
 
     try {
       const result = await fn();
-      this.onSuccess();
+      await this.onSuccess();
       return result;
     } catch (error) {
-      this.onFailure();
+      await this.onFailure();
       throw error;
     }
   }
@@ -85,24 +110,29 @@ export class CircuitBreaker {
   reset(): void {
     this.failureCount = 0;
     this.lastFailureTime = 0;
+    this.stateUpdatedAt = Date.now();
     if (this.state !== CircuitState.CLOSED) {
       this.transition(CircuitState.CLOSED);
     }
+    void this.persistSharedState();
   }
 
-  private onSuccess(): void {
+  private async onSuccess(): Promise<void> {
     // Any success in HALF_OPEN means the service recovered
     if (this.state === CircuitState.HALF_OPEN) {
       this.failureCount = 0;
       this.transition(CircuitState.CLOSED);
     } else if (this.state === CircuitState.CLOSED) {
       this.failureCount = 0;
+      this.stateUpdatedAt = Date.now();
     }
+    await this.persistSharedState();
   }
 
-  private onFailure(): void {
+  private async onFailure(): Promise<void> {
     this.failureCount += 1;
     this.lastFailureTime = Date.now();
+    this.stateUpdatedAt = this.lastFailureTime;
 
     if (this.state === CircuitState.HALF_OPEN) {
       // Probe failed — go back to OPEN
@@ -110,12 +140,52 @@ export class CircuitBreaker {
     } else if (this.state === CircuitState.CLOSED && this.failureCount >= this.failureThreshold) {
       this.transition(CircuitState.OPEN);
     }
+
+    await this.persistSharedState();
   }
 
   private transition(to: CircuitState): void {
     const from = this.state;
     this.state = to;
+    this.stateUpdatedAt = Date.now();
     this.onStateChange?.(from, to, this.name);
+  }
+
+  private toSharedState(): CircuitSharedState {
+    return {
+      state: this.state,
+      failureCount: this.failureCount,
+      lastFailureTime: this.lastFailureTime,
+      updatedAt: this.stateUpdatedAt,
+    };
+  }
+
+  private applySharedState(next: CircuitSharedState): void {
+    this.state = next.state;
+    this.failureCount = next.failureCount;
+    this.lastFailureTime = next.lastFailureTime;
+    this.stateUpdatedAt = next.updatedAt;
+  }
+
+  private async syncSharedState(force = false): Promise<void> {
+    if (!this.sharedStateEnabled) return;
+    const now = Date.now();
+    if (!force && now - this.lastSyncAt < this.sharedSyncIntervalMs) return;
+
+    this.lastSyncAt = now;
+    const entry = await getCacheAsync<CircuitSharedState>(this.sharedStateKey);
+    const remote = entry?.value;
+    if (!remote) return;
+
+    if (!this.stateUpdatedAt || remote.updatedAt > this.stateUpdatedAt) {
+      this.applySharedState(remote);
+    }
+  }
+
+  private async persistSharedState(): Promise<void> {
+    if (!this.sharedStateEnabled) return;
+    const snapshot = this.toSharedState();
+    await setCacheAsync(this.sharedStateKey, snapshot, this.sharedStateTtlMs);
   }
 }
 

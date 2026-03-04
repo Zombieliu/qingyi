@@ -115,7 +115,9 @@ export const env = createEnv({
     NEXT_PUBLIC_QY_DEFAULT_COMPANION: z.string().optional(),
     NEXT_PUBLIC_ORDER_SOURCE: z.string().optional(),
     NEXT_PUBLIC_CHAIN_ORDERS: z.enum(["0", "1"]).default("0"),
-    NEXT_PUBLIC_CHAIN_SPONSOR: z.enum(["0", "1"]).default("0"),
+    NEXT_PUBLIC_CHAIN_SPONSOR: z
+      .enum(["0", "1", "auto", "on", "off", "true", "false"])
+      .default("auto"),
     NEXT_PUBLIC_VISUAL_TEST: z.enum(["0", "1"]).default("0"),
     NEXT_PUBLIC_PASSKEY_AUTOMATION: z.enum(["0", "1"]).default("0"),
     NEXT_PUBLIC_QY_EVENT_LIMIT: z.coerce.number().default(100),

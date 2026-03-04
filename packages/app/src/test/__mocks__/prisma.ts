@@ -64,6 +64,7 @@ export function createMockPrisma() {
     supportTicket: createMockModel(),
     supportReply: createMockModel(),
     pushSubscription: createMockModel(),
+    dispute: createMockModel(),
     disputeCase: createMockModel(),
     customerTag: createMockModel(),
     webVital: createMockModel(),

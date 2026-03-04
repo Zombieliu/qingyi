@@ -41,8 +41,11 @@ describe("SwControl", () => {
     }
   });
 
-  it("renders SW label", () => {
+  it("renders SW label", async () => {
     render(<SwControl />);
+    await waitFor(() => {
+      expect(screen.getByText(/components.sw_control.i171/)).toBeInTheDocument();
+    });
     expect(screen.getByText(/SW/)).toBeInTheDocument();
   });
 
@@ -175,18 +178,27 @@ describe("SwControl", () => {
     });
   });
 
-  it("renders check update button", () => {
+  it("renders check update button", async () => {
     render(<SwControl />);
+    await waitFor(() => {
+      expect(screen.getByText(/components.sw_control.i171/)).toBeInTheDocument();
+    });
     expect(screen.getByText("comp.sw_control.009")).toBeInTheDocument();
   });
 
-  it("renders force update button", () => {
+  it("renders force update button", async () => {
     render(<SwControl />);
+    await waitFor(() => {
+      expect(screen.getByText(/components.sw_control.i171/)).toBeInTheDocument();
+    });
     expect(screen.getByText("comp.sw_control.010")).toBeInTheDocument();
   });
 
-  it("renders clear cache button", () => {
+  it("renders clear cache button", async () => {
     render(<SwControl />);
+    await waitFor(() => {
+      expect(screen.getByText(/components.sw_control.i171/)).toBeInTheDocument();
+    });
     expect(screen.getByText("comp.sw_control.011")).toBeInTheDocument();
   });
 

@@ -26,6 +26,7 @@ model AdminOrder {
   serviceFee    Decimal? @db.Decimal(12, 2)
   deposit       Decimal? @db.Decimal(12, 2)
   meta          Json?
+  dispute       Dispute?
   createdAt     DateTime
   updatedAt     DateTime?
   deletedAt     DateTime?
@@ -41,6 +42,28 @@ model AdminOrder {
   @@index([companionAddress, createdAt, id])  // public orders cursor query
   @@index([userAddress, createdAt])            // user order history
   @@index([deletedAt])
+}
+
+model Dispute {
+  id           String   @id
+  orderId      String   @unique
+  userAddress  String
+  reason       String
+  description  String
+  evidence     Json?
+  status       String
+  resolution   String?
+  refundAmount Decimal? @db.Decimal(12, 2)
+  reviewerRole String?
+  createdAt    DateTime
+  updatedAt    DateTime?
+  resolvedAt   DateTime?
+
+  order AdminOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([userAddress, createdAt])
+  @@index([status])
+  @@index([createdAt])
 }
 
 model AdminPlayer {

@@ -1,15 +1,8 @@
 "use client";
 
 import { SuiClient, getFullnodeUrl, type EventId } from "@mysten/sui/client";
-import { bcs } from "@mysten/sui/bcs";
 import { Transaction, Inputs } from "@mysten/sui/transactions";
-import {
-  fromBase64,
-  isValidSuiAddress,
-  normalizeSuiAddress,
-  toBase64,
-  toHex,
-} from "@mysten/sui/utils";
+import { fromBase64, isValidSuiAddress, normalizeSuiAddress, toBase64 } from "@mysten/sui/utils";
 import {
   PasskeyKeypair,
   BrowserPasskeyProvider,
@@ -18,6 +11,14 @@ import {
 import { DAPP_HUB_ID, DAPP_HUB_INITIAL_SHARED_VERSION, PACKAGE_ID } from "contracts/deployment";
 import { buildAuthMessage } from "../auth/auth-message";
 import { ChainMessages, BrandName } from "@/lib/shared/messages";
+import {
+  decodeAddress,
+  decodeOrderFromTuple,
+  decodeU64,
+  decodeU8,
+  decodeVecU8,
+} from "./chain-codec";
+import { getChainSponsorPolicy } from "./chain-sponsor-mode";
 
 // Re-export lightweight utilities so existing `import { getCurrentAddress } from "qy-chain"` still works
 // but new code should import from qy-chain-lite directly to avoid pulling SUI SDK
@@ -55,7 +56,8 @@ export type ChainOrder = {
 const RP_NAME = BrandName.RP_NAME;
 const EVENT_LIMIT = Number(process.env.NEXT_PUBLIC_QY_EVENT_LIMIT || "200");
 const EVENT_MIN_INTERVAL_MS = Number(process.env.NEXT_PUBLIC_QY_EVENT_MIN_INTERVAL_MS || "60000");
-const CHAIN_SPONSOR_MODE = (process.env.NEXT_PUBLIC_CHAIN_SPONSOR || "auto").toLowerCase();
+const CHAIN_SPONSOR_POLICY = getChainSponsorPolicy(process.env.NEXT_PUBLIC_CHAIN_SPONSOR);
+const CHAIN_SPONSOR_MODE = CHAIN_SPONSOR_POLICY.mode;
 
 let cachedDubhePackageId: string | null = null;
 let cachedOrders: ChainOrder[] | null = null;
@@ -63,11 +65,11 @@ let lastFetchMs = 0;
 let inFlightFetch: Promise<ChainOrder[]> | null = null;
 
 function isSponsorEnabled() {
-  return !["0", "off", "false"].includes(CHAIN_SPONSOR_MODE);
+  return CHAIN_SPONSOR_POLICY.enabled;
 }
 
 function isSponsorStrict() {
-  return ["1", "on", "true"].includes(CHAIN_SPONSOR_MODE);
+  return CHAIN_SPONSOR_POLICY.strict;
 }
 
 function getProviderOptions(): BrowserPasswordProviderOptions {
@@ -311,49 +313,6 @@ function matchesTargetEvent(
   const accountKey = normalizeDappKey(parsed.account || "");
   const matchesDappKey = dappKey === targetKey || accountKey === targetKey;
   return matchesPackage || matchesDappKey;
-}
-
-function decodeU64(bytes: number[]): string {
-  return bcs.u64().parse(Uint8Array.from(bytes));
-}
-
-function decodeU8(bytes: number[]): number {
-  return bcs.u8().parse(Uint8Array.from(bytes));
-}
-
-function decodeAddress(bytes: number[]): string {
-  const hex = toHex(Uint8Array.from(bytes));
-  return normalizeSuiAddress(`0x${hex}`);
-}
-
-function decodeVecU8(bytes: number[]): string {
-  const raw = bcs.vector(bcs.u8()).parse(Uint8Array.from(bytes)) as number[];
-  return `0x${toHex(Uint8Array.from(raw))}`;
-}
-
-function decodeOrderFromTuple(keyTuple: number[][], valueTuple: number[][]): ChainOrder | null {
-  if (!Array.isArray(keyTuple) || keyTuple.length < 1) return null;
-  if (!Array.isArray(valueTuple) || valueTuple.length < 16) return null;
-  const orderId = decodeU64(keyTuple[0]);
-  return {
-    orderId,
-    user: decodeAddress(valueTuple[0]),
-    companion: decodeAddress(valueTuple[1]),
-    ruleSetId: decodeU64(valueTuple[2]),
-    serviceFee: decodeU64(valueTuple[3]),
-    deposit: decodeU64(valueTuple[4]),
-    platformFeeBps: decodeU64(valueTuple[5]),
-    status: decodeU8(valueTuple[6]),
-    createdAt: decodeU64(valueTuple[7]),
-    finishAt: decodeU64(valueTuple[8]),
-    disputeDeadline: decodeU64(valueTuple[9]),
-    vaultService: decodeU64(valueTuple[10]),
-    vaultDeposit: decodeU64(valueTuple[11]),
-    evidenceHash: decodeVecU8(valueTuple[12]),
-    disputeStatus: decodeU8(valueTuple[13]),
-    resolvedBy: decodeAddress(valueTuple[14]),
-    resolvedAt: decodeU64(valueTuple[15]),
-  };
 }
 
 function getSignerAndClient() {
@@ -768,8 +727,7 @@ export async function fetchChainOrderById(orderId: string): Promise<ChainOrder |
       u8: (b) => decodeU8(b),
       vecU8: (b) => {
         try {
-          const raw = bcs.vector(bcs.u8()).parse(Uint8Array.from(b)) as number[];
-          return `0x${toHex(Uint8Array.from(raw))}`;
+          return decodeVecU8(b);
         } catch {
           return "0x";
         }

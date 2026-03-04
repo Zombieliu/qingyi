@@ -36,15 +36,16 @@ import {
 } from "@mysten/sui/keypairs/passkey";
 import { SuiClient, getFullnodeUrl } from "@mysten/sui/client";
 import { fromBase64, normalizeSuiAddress, toBase64 } from "@mysten/sui/utils";
+import { getChainSponsorPolicy } from "./chain-sponsor-mode";
 
-const CHAIN_SPONSOR_MODE = (process.env.NEXT_PUBLIC_CHAIN_SPONSOR || "auto").toLowerCase();
+const CHAIN_SPONSOR_POLICY = getChainSponsorPolicy(process.env.NEXT_PUBLIC_CHAIN_SPONSOR);
 
 function isSponsorEnabled() {
-  return !["0", "off", "false"].includes(CHAIN_SPONSOR_MODE);
+  return CHAIN_SPONSOR_POLICY.enabled;
 }
 
 function isSponsorStrict() {
-  return ["1", "on", "true"].includes(CHAIN_SPONSOR_MODE);
+  return CHAIN_SPONSOR_POLICY.strict;
 }
 
 function getRpcUrl(): string {

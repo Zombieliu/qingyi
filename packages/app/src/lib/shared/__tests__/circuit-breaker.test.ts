@@ -14,6 +14,7 @@ function createBreaker(overrides?: Partial<CircuitBreakerOptions>) {
     name: "test",
     failureThreshold: 3,
     resetTimeoutMs: 1000,
+    enableSharedState: false,
     ...overrides,
   });
 }
@@ -29,6 +30,27 @@ describe("CircuitBreaker", () => {
     const cb = createBreaker();
     expect(cb.getState()).toBe(CircuitState.CLOSED);
     expect(cb.getFailureCount()).toBe(0);
+  });
+
+  it("syncs shared OPEN state across breaker instances when enabled", async () => {
+    const name = `shared-${Date.now()}`;
+    const source = createBreaker({
+      name,
+      failureThreshold: 1,
+      enableSharedState: true,
+      sharedSyncIntervalMs: 0,
+    });
+    const follower = createBreaker({
+      name,
+      failureThreshold: 1,
+      enableSharedState: true,
+      sharedSyncIntervalMs: 0,
+    });
+
+    await expect(source.execute(() => Promise.reject(new Error("x")))).rejects.toThrow("x");
+    await expect(follower.execute(() => Promise.resolve("ok"))).rejects.toThrow(
+      CircuitBreakerError
+    );
   });
 
   // ---- CLOSED -> OPEN ----
