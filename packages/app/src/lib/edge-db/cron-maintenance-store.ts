@@ -1,9 +1,12 @@
 import "server-only";
 
-import { fetchEdgeRows, getEdgeDbConfig, toEpochMs, toNumber } from "@/lib/edge-db/client";
-
-const EDGE_DB_PAGE_SIZE = 1_000;
-const EDGE_DB_MAX_SCAN_ROWS = 50_000;
+import { getEdgeDbConfig, toNumber } from "@/lib/edge-db/client";
+import { toEdgeDate } from "@/lib/edge-db/date-normalization";
+import {
+  EDGE_DB_DEFAULT_SCAN_MAX_ROWS,
+  EDGE_DB_DEFAULT_SCAN_PAGE_SIZE,
+  scanEdgeTableRows,
+} from "@/lib/edge-db/scan-utils";
 
 function getRestBaseUrl(baseUrl: string): string {
   if (baseUrl.endsWith("/rest/v1")) return baseUrl;
@@ -48,43 +51,26 @@ async function deleteRowsByFilterEdgeWrite(
 }
 
 async function scanReadRows<T>(table: string, baseParams: URLSearchParams): Promise<T[]> {
-  const rows: T[] = [];
-
-  for (let offset = 0; offset < EDGE_DB_MAX_SCAN_ROWS; offset += EDGE_DB_PAGE_SIZE) {
-    const params = new URLSearchParams(baseParams);
-    params.set("limit", String(EDGE_DB_PAGE_SIZE));
-    params.set("offset", String(offset));
-    const batch = await fetchEdgeRows<T>(table, params);
-    rows.push(...batch);
-    if (batch.length < EDGE_DB_PAGE_SIZE) {
-      break;
-    }
-  }
-
-  return rows;
+  return scanEdgeTableRows<T>({
+    table,
+    baseParams,
+    pageSize: EDGE_DB_DEFAULT_SCAN_PAGE_SIZE,
+    maxRows: EDGE_DB_DEFAULT_SCAN_MAX_ROWS,
+  });
 }
 
 async function listRowsAfterOffset(table: string, offset: number): Promise<Array<{ id: string }>> {
-  const rows: Array<{ id: string }> = [];
-
-  for (let cursor = offset; cursor < EDGE_DB_MAX_SCAN_ROWS; cursor += EDGE_DB_PAGE_SIZE) {
-    const batch = await fetchEdgeRows<{ id: string }>(
-      table,
-      new URLSearchParams({
-        select: "id",
-        order: "createdAt.desc",
-        limit: String(EDGE_DB_PAGE_SIZE),
-        offset: String(cursor),
-      }),
-      "write"
-    );
-    rows.push(...batch);
-    if (batch.length < EDGE_DB_PAGE_SIZE) {
-      break;
-    }
-  }
-
-  return rows;
+  return scanEdgeTableRows<{ id: string }>({
+    table,
+    baseParams: new URLSearchParams({
+      select: "id",
+      order: "createdAt.desc",
+    }),
+    authMode: "write",
+    startOffset: offset,
+    pageSize: EDGE_DB_DEFAULT_SCAN_PAGE_SIZE,
+    maxRows: EDGE_DB_DEFAULT_SCAN_MAX_ROWS,
+  });
 }
 
 async function deleteRowsByIds(table: string, ids: string[]): Promise<number> {
@@ -203,7 +189,7 @@ export async function listChainReconcileOrdersEdgeRead(): Promise<
     companionAddress: row.companionAddress,
     serviceFee: toNumber(row.serviceFee),
     deposit: toNumber(row.deposit),
-    createdAt: new Date(toEpochMs(row.createdAt) ?? 0),
+    createdAt: toEdgeDate(row.createdAt),
   }));
 }
 

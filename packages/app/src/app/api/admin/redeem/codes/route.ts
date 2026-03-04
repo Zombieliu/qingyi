@@ -11,23 +11,10 @@ import {
 } from "@/lib/admin/redeem-store";
 import { recordAudit } from "@/lib/admin/admin-audit";
 import type { RedeemRewardType } from "@/lib/admin/admin-types";
+import { parseOptionalDateInput } from "@/lib/edge-db/date-normalization";
 import { findExistingRedeemCodesEdgeRead } from "@/lib/edge-db/redeem-write-store";
 
 const CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-
-function parseDate(value?: string | number | null) {
-  if (value === null || value === undefined || value === "") return null;
-  if (typeof value === "number" && Number.isFinite(value)) return new Date(value);
-  if (typeof value === "string") {
-    const trimmed = value.trim();
-    if (!trimmed) return null;
-    const asNumber = Number(trimmed);
-    if (Number.isFinite(asNumber)) return new Date(asNumber);
-    const parsed = new Date(trimmed);
-    if (!Number.isNaN(parsed.getTime())) return parsed;
-  }
-  return null;
-}
 
 function randomCode(length: number) {
   let out = "";
@@ -118,8 +105,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: invalid }, { status: 400 });
   }
 
-  const startsAt = parseDate(body.startsAt);
-  const expiresAt = parseDate(body.expiresAt);
+  const startsAt = parseOptionalDateInput(body.startsAt);
+  const expiresAt = parseOptionalDateInput(body.expiresAt);
 
   const count = body.codes?.length ? body.codes.length : body.count || 1;
   const codeLength = body.codeLength || 10;

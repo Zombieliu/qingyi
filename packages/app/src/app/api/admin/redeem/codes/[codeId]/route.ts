@@ -3,23 +3,10 @@ import { z } from "zod";
 import { requireAdmin } from "@/lib/admin/admin-auth";
 import { parseBody } from "@/lib/shared/api-validation";
 import { recordAudit } from "@/lib/admin/admin-audit";
+import { parseOptionalDateInput } from "@/lib/edge-db/date-normalization";
 import { updateRedeemCodeByIdEdgeWrite } from "@/lib/edge-db/redeem-write-store";
 
 type RouteContext = { params: Promise<{ codeId: string }> };
-
-function parseDate(value?: string | number | null) {
-  if (value === null || value === undefined || value === "") return null;
-  if (typeof value === "number" && Number.isFinite(value)) return new Date(value);
-  if (typeof value === "string") {
-    const trimmed = value.trim();
-    if (!trimmed) return null;
-    const asNumber = Number(trimmed);
-    if (Number.isFinite(asNumber)) return new Date(asNumber);
-    const parsed = new Date(trimmed);
-    if (!Number.isNaN(parsed.getTime())) return parsed;
-  }
-  return null;
-}
 
 const patchSchema = z.object({
   status: z.enum(["active", "disabled", "exhausted", "expired"]).optional(),
@@ -49,13 +36,13 @@ export async function PATCH(req: Request, { params }: RouteContext) {
       body.startsAt === null
         ? null
         : body.startsAt !== undefined
-          ? parseDate(body.startsAt)
+          ? parseOptionalDateInput(body.startsAt)
           : undefined,
     expiresAt:
       body.expiresAt === null
         ? null
         : body.expiresAt !== undefined
-          ? parseDate(body.expiresAt)
+          ? parseOptionalDateInput(body.expiresAt)
           : undefined,
     updatedAt: new Date(),
   });

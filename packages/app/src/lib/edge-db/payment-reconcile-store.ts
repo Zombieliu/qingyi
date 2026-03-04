@@ -1,12 +1,7 @@
 import "server-only";
 
-import {
-  fetchEdgeRows,
-  getEdgeDbConfig,
-  insertEdgeRow,
-  toEpochMs,
-  toNumber,
-} from "@/lib/edge-db/client";
+import { fetchEdgeRows, getEdgeDbConfig, insertEdgeRow, toNumber } from "@/lib/edge-db/client";
+import { toEdgeDate } from "@/lib/edge-db/date-normalization";
 
 type PaymentEventRow = {
   id: string;
@@ -110,7 +105,7 @@ export async function listStripeSucceededPaymentEventsEdgeRead(
       id: row.id,
       orderNo: row.orderNo,
       raw: row.raw,
-      createdAt: new Date(toEpochMs(row.createdAt) ?? 0),
+      createdAt: toEdgeDate(row.createdAt),
       status: row.status,
     }));
 }
@@ -142,7 +137,7 @@ export async function listLedgerRecordsByOrderIdsEdgeRead(
         status: row.status,
         meta: row.meta,
         note: row.note,
-        createdAt: new Date(toEpochMs(row.createdAt) ?? 0),
+        createdAt: toEdgeDate(row.createdAt),
       });
     }
   }
@@ -171,7 +166,7 @@ export async function listPendingLedgerRowsBeforeEdgeRead(
     status: row.status,
     meta: row.meta,
     note: row.note,
-    createdAt: new Date(toEpochMs(row.createdAt) ?? 0),
+    createdAt: toEdgeDate(row.createdAt),
   }));
 }
 

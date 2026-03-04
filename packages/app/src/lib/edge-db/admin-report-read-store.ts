@@ -1,9 +1,8 @@
 import "server-only";
 
-import { fetchEdgeRows, toEpochMs, toNumber } from "@/lib/edge-db/client";
-
-const EDGE_DB_SCAN_PAGE_SIZE = 1_000;
-const EDGE_DB_SCAN_MAX_ROWS = 50_000;
+import { toNumber } from "@/lib/edge-db/client";
+import { toEdgeDate } from "@/lib/edge-db/date-normalization";
+import { scanEdgeTableRows } from "@/lib/edge-db/scan-utils";
 
 type TimeValue = string | number | null | undefined;
 
@@ -143,39 +142,17 @@ export type AdminDashboardSnapshotEdgeRead = {
   todayEvents: Array<{ event: string; userAddress: string | null }>;
 };
 
-function toDate(value: TimeValue): Date {
-  const epoch = toEpochMs(value);
-  return new Date(epoch ?? 0);
-}
-
-async function scanEdgeRows<T>(table: string, baseParams: URLSearchParams): Promise<T[]> {
-  const allRows: T[] = [];
-
-  for (let offset = 0; offset < EDGE_DB_SCAN_MAX_ROWS; offset += EDGE_DB_SCAN_PAGE_SIZE) {
-    const params = new URLSearchParams(baseParams);
-    params.set("limit", String(EDGE_DB_SCAN_PAGE_SIZE));
-    params.set("offset", String(offset));
-    const rows = await fetchEdgeRows<T>(table, params);
-    allRows.push(...rows);
-    if (rows.length < EDGE_DB_SCAN_PAGE_SIZE) {
-      break;
-    }
-  }
-
-  return allRows;
-}
-
 export async function listGrowthEventsSinceEdgeRead(
   since: Date
 ): Promise<AdminGrowthEventEdgeRead[]> {
-  const rows = await scanEdgeRows<GrowthEventRow>(
-    "GrowthEvent",
-    new URLSearchParams({
+  const rows = await scanEdgeTableRows<GrowthEventRow>({
+    table: "GrowthEvent",
+    baseParams: new URLSearchParams({
       select: "event,clientId,sessionId,userAddress,path,createdAt",
       createdAt: `gte.${since.toISOString()}`,
       order: "createdAt.asc",
-    })
-  );
+    }),
+  });
 
   return rows.map((row) => ({
     event: row.event,
@@ -183,21 +160,21 @@ export async function listGrowthEventsSinceEdgeRead(
     sessionId: row.sessionId,
     userAddress: row.userAddress,
     path: row.path,
-    createdAt: toDate(row.createdAt),
+    createdAt: toEdgeDate(row.createdAt),
   }));
 }
 
 export async function listRevenueOrdersSinceEdgeRead(
   since: Date
 ): Promise<AdminRevenueOrderEdgeRead[]> {
-  const rows = await scanEdgeRows<RevenueOrderRow>(
-    "AdminOrder",
-    new URLSearchParams({
+  const rows = await scanEdgeTableRows<RevenueOrderRow>({
+    table: "AdminOrder",
+    baseParams: new URLSearchParams({
       select: "amount,currency,stage,item,source,serviceFee,createdAt",
       createdAt: `gte.${since.toISOString()}`,
       order: "createdAt.asc",
-    })
-  );
+    }),
+  });
 
   return rows.map((row) => ({
     amount: toNumber(row.amount),
@@ -206,7 +183,7 @@ export async function listRevenueOrdersSinceEdgeRead(
     item: row.item,
     source: row.source,
     serviceFee: row.serviceFee == null ? null : toNumber(row.serviceFee),
-    createdAt: toDate(row.createdAt),
+    createdAt: toEdgeDate(row.createdAt),
   }));
 }
 
@@ -216,28 +193,28 @@ export async function getPerformanceSnapshotEdgeRead(
   const sinceIso = since.toISOString();
 
   const [ordersRows, reviewsRows, playersRows] = await Promise.all([
-    scanEdgeRows<PerformanceOrderRow>(
-      "AdminOrder",
-      new URLSearchParams({
+    scanEdgeTableRows<PerformanceOrderRow>({
+      table: "AdminOrder",
+      baseParams: new URLSearchParams({
         select: "assignedTo,companionAddress,stage,amount,id",
         createdAt: `gte.${sinceIso}`,
         assignedTo: "not.is.null",
-      })
-    ),
-    scanEdgeRows<PerformanceReviewRow>(
-      "OrderReview",
-      new URLSearchParams({
+      }),
+    }),
+    scanEdgeTableRows<PerformanceReviewRow>({
+      table: "OrderReview",
+      baseParams: new URLSearchParams({
         select: "companionAddress,rating",
         createdAt: `gte.${sinceIso}`,
-      })
-    ),
-    scanEdgeRows<PerformancePlayerRow>(
-      "AdminPlayer",
-      new URLSearchParams({
+      }),
+    }),
+    scanEdgeTableRows<PerformancePlayerRow>({
+      table: "AdminPlayer",
+      baseParams: new URLSearchParams({
         select: "id,name,address",
         status: "neq.停用",
-      })
-    ),
+      }),
+    }),
   ]);
 
   return {
@@ -282,56 +259,56 @@ export async function getDashboardSnapshotEdgeRead(args: {
     stageRows,
     todayEventsRows,
   ] = await Promise.all([
-    scanEdgeRows<DashboardTodayOrderRow>(
-      "AdminOrder",
-      new URLSearchParams({
+    scanEdgeTableRows<DashboardTodayOrderRow>({
+      table: "AdminOrder",
+      baseParams: new URLSearchParams({
         select: "amount,stage,serviceFee,createdAt,assignedTo,userAddress",
         createdAt: `gte.${todayIso}`,
-      })
-    ),
-    scanEdgeRows<DashboardYesterdayOrderRow>(
-      "AdminOrder",
-      new URLSearchParams({
+      }),
+    }),
+    scanEdgeTableRows<DashboardYesterdayOrderRow>({
+      table: "AdminOrder",
+      baseParams: new URLSearchParams({
         select: "amount,stage,serviceFee",
         createdAt: `gte.${yesterdayIso}`,
         "createdAt.lt": todayIso,
-      })
-    ),
-    scanEdgeRows<DashboardWeekOrderRow>(
-      "AdminOrder",
-      new URLSearchParams({
+      }),
+    }),
+    scanEdgeTableRows<DashboardWeekOrderRow>({
+      table: "AdminOrder",
+      baseParams: new URLSearchParams({
         select: "amount,stage,serviceFee,createdAt,userAddress,assignedTo",
         createdAt: `gte.${weekAgoIso}`,
-      })
-    ),
-    scanEdgeRows<DashboardPrevWeekOrderRow>(
-      "AdminOrder",
-      new URLSearchParams({
+      }),
+    }),
+    scanEdgeTableRows<DashboardPrevWeekOrderRow>({
+      table: "AdminOrder",
+      baseParams: new URLSearchParams({
         select: "amount,stage",
         createdAt: `gte.${twoWeeksAgoIso}`,
         "createdAt.lt": weekAgoIso,
-      })
-    ),
-    scanEdgeRows<DashboardPlayerRow>(
-      "AdminPlayer",
-      new URLSearchParams({
+      }),
+    }),
+    scanEdgeTableRows<DashboardPlayerRow>({
+      table: "AdminPlayer",
+      baseParams: new URLSearchParams({
         select: "id,name",
         status: "neq.停用",
-      })
-    ),
-    scanEdgeRows<StageRow>(
-      "AdminOrder",
-      new URLSearchParams({
+      }),
+    }),
+    scanEdgeTableRows<StageRow>({
+      table: "AdminOrder",
+      baseParams: new URLSearchParams({
         select: "stage",
-      })
-    ),
-    scanEdgeRows<DashboardEventRow>(
-      "GrowthEvent",
-      new URLSearchParams({
+      }),
+    }),
+    scanEdgeTableRows<DashboardEventRow>({
+      table: "GrowthEvent",
+      baseParams: new URLSearchParams({
         select: "event,userAddress",
         createdAt: `gte.${todayIso}`,
-      })
-    ),
+      }),
+    }),
   ]);
 
   const stageCounts = new Map<string, number>();
@@ -345,7 +322,7 @@ export async function getDashboardSnapshotEdgeRead(args: {
       amount: toNumber(row.amount),
       stage: row.stage,
       serviceFee: row.serviceFee == null ? null : toNumber(row.serviceFee),
-      createdAt: toDate(row.createdAt),
+      createdAt: toEdgeDate(row.createdAt),
       assignedTo: row.assignedTo,
       userAddress: row.userAddress,
     })),
@@ -358,7 +335,7 @@ export async function getDashboardSnapshotEdgeRead(args: {
       amount: toNumber(row.amount),
       stage: row.stage,
       serviceFee: row.serviceFee == null ? null : toNumber(row.serviceFee),
-      createdAt: toDate(row.createdAt),
+      createdAt: toEdgeDate(row.createdAt),
       userAddress: row.userAddress,
       assignedTo: row.assignedTo,
     })),
