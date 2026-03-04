@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
+import {
+  getPlayerByIdOrAddressEdgeRead,
+  getPlayerReviewStatsEdgeRead,
+  listPlayerReviewsByAddressEdgeRead,
+} from "@/lib/edge-db/user-read-store";
 import { getCache, setCache, computeJsonEtag } from "@/lib/server-cache";
 import { getIfNoneMatch, jsonWithEtag, notModified } from "@/lib/http-cache";
 
@@ -13,10 +17,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ playerId
   const { playerId } = await params;
 
   // Find player by id or address
-  const player = await prisma.adminPlayer.findFirst({
-    where: { OR: [{ id: playerId }, { address: playerId }] },
-    select: { id: true, name: true, address: true, role: true, status: true },
-  });
+  const player = await getPlayerByIdOrAddressEdgeRead(playerId);
 
   if (!player || !player.address) {
     return NextResponse.json({ error: "player_not_found" }, { status: 404 });
@@ -31,16 +32,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ playerId
   }
 
   const [reviews, stats] = await Promise.all([
-    prisma.orderReview.findMany({
-      where: { companionAddress: player.address },
-      orderBy: { createdAt: "desc" },
-      take: 50,
-    }),
-    prisma.orderReview.aggregate({
-      where: { companionAddress: player.address },
-      _avg: { rating: true },
-      _count: { id: true },
-    }),
+    listPlayerReviewsByAddressEdgeRead(player.address, 50),
+    getPlayerReviewStatsEdgeRead(player.address),
   ]);
 
   // Tag stats
@@ -69,12 +62,12 @@ export async function GET(req: Request, { params }: { params: Promise<{ playerId
       status: player.status,
     },
     stats: {
-      avgRating: stats._avg.rating ? Math.round(stats._avg.rating * 10) / 10 : null,
-      totalReviews: stats._count.id ?? 0,
+      avgRating: stats.avgRating != null ? Math.round(stats.avgRating * 10) / 10 : null,
+      totalReviews: stats.totalReviews,
       ratingDistribution: ratingDist,
       positiveRate:
-        stats._count.id > 0
-          ? Math.round(((ratingDist[3] + ratingDist[4]) / stats._count.id) * 100)
+        stats.totalReviews > 0
+          ? Math.round(((ratingDist[3] + ratingDist[4]) / stats.totalReviews) * 100)
           : 0,
       topTags: Object.entries(tagCounts)
         .sort((a, b) => b[1] - a[1])
@@ -85,8 +78,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ playerId
       id: r.id,
       rating: r.rating,
       content: r.content,
-      tags: r.tags as string[] | null,
-      createdAt: r.createdAt.getTime(),
+      tags: r.tags,
+      createdAt: r.createdAt,
     })),
   };
 

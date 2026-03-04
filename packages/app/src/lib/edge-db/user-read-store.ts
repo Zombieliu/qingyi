@@ -9,6 +9,9 @@ import type {
 } from "@/lib/admin/admin-types";
 import { fetchEdgeRows, toEpochMs, toNumber } from "@/lib/edge-db/client";
 
+const EDGE_DB_SCAN_PAGE_SIZE = 1_000;
+const EDGE_DB_SCAN_MAX_ROWS = 20_000;
+
 type CouponRow = {
   id: string;
   title: string;
@@ -30,6 +33,27 @@ type PlayerRow = {
   status: string;
   depositBase: string | number | null;
   depositLocked: string | number | null;
+};
+
+type PlayerProfileRow = {
+  id: string;
+  name: string;
+  address: string | null;
+  role: string | null;
+  status: string;
+};
+
+type PlayerReviewRow = {
+  id: string;
+  rating: number | string | null;
+  content: string | null;
+  tags: unknown;
+  createdAt: string | number | null;
+};
+
+type PlayerReviewMetricRow = {
+  id: string;
+  rating: number | string | null;
 };
 
 type ReferralRow = {
@@ -91,6 +115,41 @@ type PublicSupportTicket = {
   reply: string | null;
   createdAt: number;
 };
+
+export type PlayerProfileEdgeRead = Pick<
+  AdminPlayer,
+  "id" | "name" | "address" | "role" | "status"
+>;
+
+export type PlayerReviewEdgeRead = {
+  id: string;
+  rating: number;
+  content: string | null;
+  tags: string[] | null;
+  createdAt: number;
+};
+
+export type PlayerReviewStatsEdgeRead = {
+  avgRating: number | null;
+  totalReviews: number;
+};
+
+async function scanEdgeRows<T>(table: string, baseParams: URLSearchParams): Promise<T[]> {
+  const allRows: T[] = [];
+
+  for (let offset = 0; offset < EDGE_DB_SCAN_MAX_ROWS; offset += EDGE_DB_SCAN_PAGE_SIZE) {
+    const params = new URLSearchParams(baseParams);
+    params.set("limit", String(EDGE_DB_SCAN_PAGE_SIZE));
+    params.set("offset", String(offset));
+    const rows = await fetchEdgeRows<T>(table, params);
+    allRows.push(...rows);
+    if (rows.length < EDGE_DB_SCAN_PAGE_SIZE) {
+      break;
+    }
+  }
+
+  return allRows;
+}
 
 function mapCoupon(row: CouponRow): AdminCoupon {
   return {
@@ -167,6 +226,28 @@ function mapMembershipTier(row: MembershipTierRow): AdminMembershipTier {
   };
 }
 
+function mapPlayerProfile(row: PlayerProfileRow): PlayerProfileEdgeRead {
+  return {
+    id: row.id,
+    name: row.name,
+    address: row.address || undefined,
+    role: row.role || undefined,
+    status: row.status as AdminPlayer["status"],
+  };
+}
+
+function mapPlayerReview(row: PlayerReviewRow): PlayerReviewEdgeRead {
+  return {
+    id: row.id,
+    rating: toNumber(row.rating),
+    content: row.content,
+    tags: Array.isArray(row.tags)
+      ? row.tags.filter((value): value is string => typeof value === "string")
+      : null,
+    createdAt: toEpochMs(row.createdAt) ?? 0,
+  };
+}
+
 export async function listActiveCouponsEdgeRead(nowMs = Date.now()): Promise<AdminCoupon[]> {
   const params = new URLSearchParams({
     select:
@@ -194,6 +275,60 @@ export async function listPlayersPublicEdgeRead(): Promise<
   });
   const rows = await fetchEdgeRows<PlayerRow>("AdminPlayer", params);
   return rows.map(mapPlayer);
+}
+
+export async function getPlayerByIdOrAddressEdgeRead(
+  playerId: string
+): Promise<PlayerProfileEdgeRead | null> {
+  const params = new URLSearchParams({
+    select: "id,name,address,role,status",
+    or: `(id.eq.${playerId},address.eq.${playerId})`,
+    limit: "1",
+  });
+  const rows = await fetchEdgeRows<PlayerProfileRow>("AdminPlayer", params);
+  return rows.length > 0 ? mapPlayerProfile(rows[0]) : null;
+}
+
+export async function listPlayerReviewsByAddressEdgeRead(
+  companionAddress: string,
+  limit = 50
+): Promise<PlayerReviewEdgeRead[]> {
+  const params = new URLSearchParams({
+    select: "id,rating,content,tags,createdAt",
+    companionAddress: `eq.${companionAddress}`,
+    order: "createdAt.desc",
+    limit: String(limit),
+  });
+  const rows = await fetchEdgeRows<PlayerReviewRow>("OrderReview", params);
+  return rows.map(mapPlayerReview);
+}
+
+export async function getPlayerReviewStatsEdgeRead(
+  companionAddress: string
+): Promise<PlayerReviewStatsEdgeRead> {
+  const rows = await scanEdgeRows<PlayerReviewMetricRow>(
+    "OrderReview",
+    new URLSearchParams({
+      select: "id,rating",
+      companionAddress: `eq.${companionAddress}`,
+      order: "createdAt.desc",
+    })
+  );
+
+  const totalReviews = rows.length;
+  let ratingCount = 0;
+  let ratingSum = 0;
+
+  for (const row of rows) {
+    if (row.rating == null) continue;
+    ratingCount += 1;
+    ratingSum += toNumber(row.rating);
+  }
+
+  return {
+    avgRating: ratingCount > 0 ? ratingSum / ratingCount : null,
+    totalReviews,
+  };
 }
 
 export async function getReferralByInviteeEdgeRead(

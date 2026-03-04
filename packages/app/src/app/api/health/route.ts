@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
+import { checkEdgeDatabaseHealthRead } from "@/lib/edge-db/health-read-store";
 import { Redis } from "@upstash/redis";
 import { env } from "@/lib/env";
 import { withApiHandler } from "@/lib/shared/api-handler";
@@ -26,7 +26,7 @@ export const GET = withApiHandler(
     // Database check
     try {
       const dbStart = Date.now();
-      await prisma.$queryRaw`SELECT 1`;
+      await checkEdgeDatabaseHealthRead();
       checks.database = { ok: true, ms: Date.now() - dbStart };
     } catch (e) {
       checks.database = { ok: false, error: (e as Error).message };

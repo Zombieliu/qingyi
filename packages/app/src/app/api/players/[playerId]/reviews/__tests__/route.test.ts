@@ -7,9 +7,9 @@ const mocks = vi.hoisted(() => ({
   getIfNoneMatch: vi.fn(),
   jsonWithEtag: vi.fn(),
   notModified: vi.fn(),
-  findFirst: vi.fn(),
-  findMany: vi.fn(),
-  aggregate: vi.fn(),
+  getPlayerByIdOrAddressEdgeRead: vi.fn(),
+  listPlayerReviewsByAddressEdgeRead: vi.fn(),
+  getPlayerReviewStatsEdgeRead: vi.fn(),
 }));
 
 vi.mock("next/server", () => {
@@ -32,11 +32,10 @@ vi.mock("next/server", () => {
   return { NextResponse: MockNextResponse };
 });
 
-vi.mock("@/lib/db", () => ({
-  prisma: {
-    adminPlayer: { findFirst: mocks.findFirst },
-    orderReview: { findMany: mocks.findMany, aggregate: mocks.aggregate },
-  },
+vi.mock("@/lib/edge-db/user-read-store", () => ({
+  getPlayerByIdOrAddressEdgeRead: mocks.getPlayerByIdOrAddressEdgeRead,
+  listPlayerReviewsByAddressEdgeRead: mocks.listPlayerReviewsByAddressEdgeRead,
+  getPlayerReviewStatsEdgeRead: mocks.getPlayerReviewStatsEdgeRead,
 }));
 vi.mock("@/lib/server-cache", () => ({
   getCache: mocks.getCache,
@@ -60,25 +59,25 @@ describe("GET /api/players/:playerId/reviews", () => {
   });
 
   it("returns 404 when player not found", async () => {
-    mocks.findFirst.mockResolvedValue(null);
+    mocks.getPlayerByIdOrAddressEdgeRead.mockResolvedValue(null);
     const req = new Request("http://localhost/api/players/P-MISSING/reviews");
     const res = await GET(req, { params: Promise.resolve({ playerId: "P-MISSING" }) });
     expect(res.status).toBe(404);
   });
 
   it("returns reviews for player", async () => {
-    mocks.findFirst.mockResolvedValue({
+    mocks.getPlayerByIdOrAddressEdgeRead.mockResolvedValue({
       id: "P-1",
       name: "Test",
       address: "0xabc",
       role: "companion",
       status: "可接单",
     });
-    const now = new Date();
-    mocks.findMany.mockResolvedValue([
+    const now = Date.parse("2026-03-01T00:00:00.000Z");
+    mocks.listPlayerReviewsByAddressEdgeRead.mockResolvedValue([
       { id: "R-1", rating: 5, content: "Great", tags: ["friendly"], createdAt: now },
     ]);
-    mocks.aggregate.mockResolvedValue({ _avg: { rating: 5 }, _count: { id: 1 } });
+    mocks.getPlayerReviewStatsEdgeRead.mockResolvedValue({ avgRating: 5, totalReviews: 1 });
     const mockRes = {
       status: 200,
       json: async () => ({ player: {}, stats: {}, reviews: [] }),
@@ -91,7 +90,7 @@ describe("GET /api/players/:playerId/reviews", () => {
   });
 
   it("returns 304 when etag matches", async () => {
-    mocks.findFirst.mockResolvedValue({
+    mocks.getPlayerByIdOrAddressEdgeRead.mockResolvedValue({
       id: "P-1",
       name: "Test",
       address: "0xabc",
@@ -108,10 +107,10 @@ describe("GET /api/players/:playerId/reviews", () => {
   });
 
   it("returns 404 when player has no address", async () => {
-    mocks.findFirst.mockResolvedValue({
+    mocks.getPlayerByIdOrAddressEdgeRead.mockResolvedValue({
       id: "P-1",
       name: "Test",
-      address: null,
+      address: undefined,
       role: "companion",
       status: "可接单",
     });
@@ -121,7 +120,7 @@ describe("GET /api/players/:playerId/reviews", () => {
   });
 
   it("returns cached data when etag does not match", async () => {
-    mocks.findFirst.mockResolvedValue({
+    mocks.getPlayerByIdOrAddressEdgeRead.mockResolvedValue({
       id: "P-1",
       name: "Test",
       address: "0xabc",
@@ -138,20 +137,20 @@ describe("GET /api/players/:playerId/reviews", () => {
   });
 
   it("computes tag counts and rating distribution", async () => {
-    mocks.findFirst.mockResolvedValue({
+    mocks.getPlayerByIdOrAddressEdgeRead.mockResolvedValue({
       id: "P-1",
       name: "Test",
       address: "0xabc",
       role: "companion",
       status: "可接单",
     });
-    const now = new Date();
-    mocks.findMany.mockResolvedValue([
+    const now = Date.parse("2026-03-01T00:00:00.000Z");
+    mocks.listPlayerReviewsByAddressEdgeRead.mockResolvedValue([
       { id: "R-1", rating: 5, content: "Great", tags: ["friendly", "skilled"], createdAt: now },
       { id: "R-2", rating: 4, content: "Good", tags: ["friendly"], createdAt: now },
       { id: "R-3", rating: 2, content: "OK", tags: null, createdAt: now },
     ]);
-    mocks.aggregate.mockResolvedValue({ _avg: { rating: 3.67 }, _count: { id: 3 } });
+    mocks.getPlayerReviewStatsEdgeRead.mockResolvedValue({ avgRating: 3.67, totalReviews: 3 });
     mocks.jsonWithEtag.mockImplementation((data: unknown) => ({
       status: 200,
       json: async () => data,
@@ -168,15 +167,15 @@ describe("GET /api/players/:playerId/reviews", () => {
   });
 
   it("handles null avg rating", async () => {
-    mocks.findFirst.mockResolvedValue({
+    mocks.getPlayerByIdOrAddressEdgeRead.mockResolvedValue({
       id: "P-1",
       name: "Test",
       address: "0xabc",
       role: "companion",
       status: "可接单",
     });
-    mocks.findMany.mockResolvedValue([]);
-    mocks.aggregate.mockResolvedValue({ _avg: { rating: null }, _count: { id: 0 } });
+    mocks.listPlayerReviewsByAddressEdgeRead.mockResolvedValue([]);
+    mocks.getPlayerReviewStatsEdgeRead.mockResolvedValue({ avgRating: null, totalReviews: 0 });
     mocks.jsonWithEtag.mockImplementation((data: unknown) => ({
       status: 200,
       json: async () => data,

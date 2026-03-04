@@ -9,8 +9,11 @@ vi.stubGlobal("fetch", mocks.fetch);
 import {
   getMemberByAddressEdgeRead,
   getMembershipTierByIdEdgeRead,
+  getPlayerByIdOrAddressEdgeRead,
+  getPlayerReviewStatsEdgeRead,
   getReferralByInviteeEdgeRead,
   listActiveCouponsEdgeRead,
+  listPlayerReviewsByAddressEdgeRead,
   listPlayersPublicEdgeRead,
   listSupportTicketsByAddressEdgeRead,
   queryReferralsByInviterEdgeRead,
@@ -117,6 +120,86 @@ describe("edge db user read store", () => {
         depositLocked: 120,
       },
     ]);
+  });
+
+  it("reads player profile by id or address", async () => {
+    setEdgeEnv();
+    mocks.fetch.mockResolvedValue({
+      ok: true,
+      json: async () => [
+        {
+          id: "P-2",
+          name: "Bob",
+          address: "0xbbb",
+          role: "陪玩",
+          status: "可接单",
+        },
+      ],
+    });
+
+    const row = await getPlayerByIdOrAddressEdgeRead("P-2");
+
+    expect(row).toEqual({
+      id: "P-2",
+      name: "Bob",
+      address: "0xbbb",
+      role: "陪玩",
+      status: "可接单",
+    });
+    const [url] = mocks.fetch.mock.calls[0] as [string];
+    expect(url).toContain("or=%28id.eq.P-2%2Caddress.eq.P-2%29");
+  });
+
+  it("maps player review list and computes aggregate stats", async () => {
+    setEdgeEnv();
+    mocks.fetch
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => [
+          {
+            id: "R-1",
+            rating: "5",
+            content: "great",
+            tags: ["friendly", 42, "skilled"],
+            createdAt: "2026-03-01T00:00:00.000Z",
+          },
+          {
+            id: "R-2",
+            rating: 4,
+            content: "good",
+            tags: null,
+            createdAt: "2026-03-02T00:00:00.000Z",
+          },
+        ],
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => [
+          { id: "R-2", rating: 4 },
+          { id: "R-1", rating: "5" },
+        ],
+      });
+
+    const reviews = await listPlayerReviewsByAddressEdgeRead("0xbbb", 2);
+    const stats = await getPlayerReviewStatsEdgeRead("0xbbb");
+
+    expect(reviews).toEqual([
+      {
+        id: "R-1",
+        rating: 5,
+        content: "great",
+        tags: ["friendly", "skilled"],
+        createdAt: Date.parse("2026-03-01T00:00:00.000Z"),
+      },
+      {
+        id: "R-2",
+        rating: 4,
+        content: "good",
+        tags: null,
+        createdAt: Date.parse("2026-03-02T00:00:00.000Z"),
+      },
+    ]);
+    expect(stats).toEqual({ avgRating: 4.5, totalReviews: 2 });
   });
 
   it("returns referral status and inviter list", async () => {

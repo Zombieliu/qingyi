@@ -1,12 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  queryRaw: vi.fn(),
+  checkEdgeDatabaseHealthRead: vi.fn(),
   redisPing: vi.fn(),
 }));
 
-vi.mock("@/lib/db", () => ({
-  prisma: { $queryRaw: mocks.queryRaw },
+vi.mock("@/lib/edge-db/health-read-store", () => ({
+  checkEdgeDatabaseHealthRead: mocks.checkEdgeDatabaseHealthRead,
 }));
 
 vi.mock("@/lib/env", () => ({
@@ -51,7 +51,7 @@ describe("GET /api/health", () => {
   });
 
   it("returns healthy status when database is reachable", async () => {
-    mocks.queryRaw.mockResolvedValue([{ "?column?": 1 }]);
+    mocks.checkEdgeDatabaseHealthRead.mockResolvedValue(undefined);
 
     const res = await GET(new Request("http://localhost/api/health"));
     const body = await res.json();
@@ -65,7 +65,7 @@ describe("GET /api/health", () => {
   });
 
   it("returns unhealthy status when database is unreachable", async () => {
-    mocks.queryRaw.mockRejectedValue(new Error("Connection refused"));
+    mocks.checkEdgeDatabaseHealthRead.mockRejectedValue(new Error("Connection refused"));
 
     const res = await GET(new Request("http://localhost/api/health"));
     const body = await res.json();
@@ -77,7 +77,7 @@ describe("GET /api/health", () => {
   });
 
   it("returns degraded when Redis fails but DB is ok", async () => {
-    mocks.queryRaw.mockResolvedValue([{ "?column?": 1 }]);
+    mocks.checkEdgeDatabaseHealthRead.mockResolvedValue(undefined);
     mocks.redisPing.mockRejectedValue(new Error("Redis timeout"));
 
     const res = await GET(new Request("http://localhost/api/health"));
@@ -91,7 +91,7 @@ describe("GET /api/health", () => {
   });
 
   it("returns healthy when both DB and Redis are ok", async () => {
-    mocks.queryRaw.mockResolvedValue([{ "?column?": 1 }]);
+    mocks.checkEdgeDatabaseHealthRead.mockResolvedValue(undefined);
     mocks.redisPing.mockResolvedValue("PONG");
 
     const res = await GET(new Request("http://localhost/api/health"));
@@ -103,7 +103,7 @@ describe("GET /api/health", () => {
   });
 
   it("includes version and environment info", async () => {
-    mocks.queryRaw.mockResolvedValue([{ "?column?": 1 }]);
+    mocks.checkEdgeDatabaseHealthRead.mockResolvedValue(undefined);
 
     const res = await GET(new Request("http://localhost/api/health"));
     const body = await res.json();
