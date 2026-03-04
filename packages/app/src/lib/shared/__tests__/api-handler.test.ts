@@ -114,7 +114,7 @@ describe("api-handler", () => {
     consoleError.mockRestore();
   });
 
-  it("maps edge-incompatible db errors to 503", async () => {
+  it("returns 500 for edge-incompatible db errors", async () => {
     const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
     const handler = vi
       .fn()
@@ -128,8 +128,8 @@ describe("api-handler", () => {
       headers: { get: (k: string) => string | undefined };
     };
 
-    expect(res.status).toBe(503);
-    expect(res.body.error).toBe("edge_runtime_incompatible_db");
+    expect(res.status).toBe(500);
+    expect(res.body.error).toBe("internal_error");
     expect(res.body.traceId).toMatch(/^[0-9a-f]{8}$/);
     expect(res.headers.get("x-trace-id")).toBe(res.body.traceId);
     consoleError.mockRestore();

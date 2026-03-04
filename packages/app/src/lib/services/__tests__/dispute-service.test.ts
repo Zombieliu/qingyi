@@ -73,6 +73,7 @@ import {
   resolveDispute,
   getDispute,
   listUserDisputes,
+  listAdminDisputes,
 } from "@/lib/services/dispute-service";
 import { isFeatureEnabled } from "@/lib/feature-flags";
 
@@ -515,5 +516,100 @@ describe("listUserDisputes", () => {
     const result = await listUserDisputes("0xuser");
 
     expect(result).toHaveLength(0);
+  });
+});
+
+describe("listAdminDisputes", () => {
+  it("returns unresolved disputes from dedicated table with order summary", async () => {
+    mockDisputeFindMany.mockResolvedValue([
+      {
+        ...tableDispute,
+        order: {
+          id: "ORD-1",
+          item: "陪玩",
+          amount: "88",
+          stage: "争议中",
+          userAddress: "0xuser",
+          companionAddress: "0xcomp",
+        },
+      },
+    ]);
+    mockOrderFindMany.mockResolvedValue([]);
+
+    const result = await listAdminDisputes({ limit: 20 });
+
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
+      source: "table",
+      order: { id: "ORD-1", amount: 88 },
+      dispute: { id: "DSP-1", orderId: "ORD-1" },
+    });
+    expect(mockDisputeFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { status: { in: ["pending", "reviewing"] } },
+        take: 20,
+      })
+    );
+  });
+
+  it("falls back to legacy meta disputes when table rows are missing", async () => {
+    mockDisputeFindMany.mockResolvedValue([]);
+    mockOrderFindMany.mockResolvedValue([
+      {
+        ...baseOrder,
+        id: "ORD-9",
+        item: "legacy item",
+        amount: "66",
+        stage: "争议中",
+        meta: {
+          dispute: {
+            id: "DSP-legacy",
+            orderId: "ORD-9",
+            userAddress: "0xuser",
+            reason: "other",
+            description: "legacy",
+            status: "pending",
+            createdAt: new Date("2026-03-01T00:00:00.000Z").toISOString(),
+          },
+        },
+      },
+    ]);
+
+    const result = await listAdminDisputes({ limit: 10 });
+
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
+      source: "legacy",
+      order: { id: "ORD-9", amount: 66 },
+      dispute: { id: "DSP-legacy", orderId: "ORD-9" },
+    });
+  });
+
+  it("includes resolved disputes when includeResolved=true", async () => {
+    mockDisputeFindMany.mockResolvedValue([
+      {
+        ...tableDispute,
+        status: "resolved_refund",
+        order: {
+          id: "ORD-1",
+          item: "陪玩",
+          amount: "88",
+          stage: "已退款",
+          userAddress: "0xuser",
+          companionAddress: "0xcomp",
+        },
+      },
+    ]);
+    mockOrderFindMany.mockResolvedValue([]);
+
+    const result = await listAdminDisputes({ includeResolved: true, limit: 5 });
+
+    expect(result).toHaveLength(1);
+    expect(mockDisputeFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: undefined,
+        take: 5,
+      })
+    );
   });
 });

@@ -34,6 +34,7 @@
     "db:seed": "prisma db seed",
     "opennext:patch": "node scripts/patch-opennext-cloudflare.mjs",
     "cf:matrix": "node scripts/generate-cf-route-matrix.mjs",
+    "cf:guard": "node scripts/check-api-edge-imports.mjs",
     "prepreview": "pnpm run check:node",
     "preview": "pnpm run opennext:patch && OPEN_NEXT_BUILD=1 opennextjs-cloudflare build && opennextjs-cloudflare preview",
     "predeploy": "pnpm run check:node",

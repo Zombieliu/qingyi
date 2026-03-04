@@ -38,6 +38,19 @@ export type DisputeRecord = {
   resolvedAt?: Date;
 };
 
+export type AdminDisputeItem = {
+  order: {
+    id: string;
+    item: string;
+    amount: number;
+    stage: string;
+    userAddress?: string;
+    companionAddress?: string;
+  };
+  dispute: DisputeRecord;
+  source: "table" | "legacy";
+};
+
 const RESOLUTION_TO_STATUS: Record<"refund" | "reject" | "partial", DisputeStatus> = {
   refund: "resolved_refund",
   reject: "resolved_reject",
@@ -189,6 +202,24 @@ function parseLegacyDispute(order: {
 
 function createDisputeId() {
   return `DSP-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+}
+
+function toAdminOrderSummary(order: {
+  id: string;
+  item: string;
+  amount: unknown;
+  stage: string;
+  userAddress?: string | null;
+  companionAddress?: string | null;
+}) {
+  return {
+    id: order.id,
+    item: order.item,
+    amount: Number(order.amount),
+    stage: order.stage,
+    userAddress: parseOptionalString(order.userAddress) || undefined,
+    companionAddress: parseOptionalString(order.companionAddress) || undefined,
+  };
 }
 
 /** Create a dispute for an order */
@@ -386,4 +417,64 @@ export async function listUserDisputes(userAddress: string): Promise<DisputeReco
   return Array.from(merged.values())
     .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
     .slice(0, 50);
+}
+
+/** List disputes for admin panel */
+export async function listAdminDisputes(params?: {
+  includeResolved?: boolean;
+  limit?: number;
+}): Promise<AdminDisputeItem[]> {
+  const includeResolved = params?.includeResolved ?? false;
+  const limit = Math.max(1, Math.min(params?.limit ?? 50, 200));
+  const unresolvedStatuses: DisputeStatus[] = ["pending", "reviewing"];
+
+  const rows = await prisma.dispute.findMany({
+    where: includeResolved ? undefined : { status: { in: unresolvedStatuses } },
+    orderBy: { createdAt: "desc" },
+    take: limit,
+    include: {
+      order: {
+        select: {
+          id: true,
+          item: true,
+          amount: true,
+          stage: true,
+          userAddress: true,
+          companionAddress: true,
+        },
+      },
+    },
+  });
+
+  const merged = new Map<string, AdminDisputeItem>();
+  for (const row of rows) {
+    if (!row.order) continue;
+    merged.set(row.orderId, {
+      order: toAdminOrderSummary(row.order),
+      dispute: toDisputeRecord(row),
+      source: "table",
+    });
+  }
+
+  const legacyOrders = await prisma.adminOrder.findMany({
+    where: includeResolved ? undefined : { stage: "争议中" },
+    orderBy: { updatedAt: "desc" },
+    take: limit,
+  });
+
+  for (const order of legacyOrders) {
+    if (merged.has(order.id)) continue;
+    const legacy = parseLegacyDispute(order);
+    if (!legacy) continue;
+    if (!includeResolved && !unresolvedStatuses.includes(legacy.status)) continue;
+    merged.set(order.id, {
+      order: toAdminOrderSummary(order),
+      dispute: legacy,
+      source: "legacy",
+    });
+  }
+
+  return Array.from(merged.values())
+    .sort((a, b) => b.dispute.createdAt.getTime() - a.dispute.createdAt.getTime())
+    .slice(0, limit);
 }

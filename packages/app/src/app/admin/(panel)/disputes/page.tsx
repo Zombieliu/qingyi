@@ -25,14 +25,17 @@ type LocalDispute = {
   createdAt: string;
 };
 
-type AdminOrder = {
-  id: string;
-  item: string;
-  amount: number;
-  stage: string;
-  userAddress?: string;
-  companionAddress?: string;
-  meta?: Record<string, unknown>;
+type LocalDisputeItem = {
+  order: {
+    id: string;
+    item: string;
+    amount: number;
+    stage: string;
+    userAddress?: string;
+    companionAddress?: string;
+  };
+  dispute: LocalDispute;
+  source: "table" | "legacy";
 };
 
 const formatAmount = (v: string) => {
@@ -42,7 +45,7 @@ const formatAmount = (v: string) => {
 };
 export default function DisputesPage() {
   const [chainDisputes, setChainDisputes] = useState<ChainDispute[]>([]);
-  const [localDisputes, setLocalDisputes] = useState<AdminOrder[]>([]);
+  const [localDisputes, setLocalDisputes] = useState<LocalDisputeItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [action, setAction] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
@@ -56,7 +59,7 @@ export default function DisputesPage() {
     try {
       const [chainRes, ordersRes] = await Promise.all([
         fetch("/api/admin/chain/orders"),
-        fetch("/api/admin/orders?stage=争议中&pageSize=50"),
+        fetch("/api/admin/disputes?limit=50"),
       ]);
       if (chainRes.ok) {
         const data = await chainRes.json();
@@ -251,10 +254,9 @@ export default function DisputesPage() {
           />
         ) : (
           <div className="admin-stack">
-            {localDisputes.map((order) => {
-              const dispute = (order.meta as Record<string, unknown>)?.dispute as
-                | LocalDispute
-                | undefined;
+            {localDisputes.map((entry) => {
+              const order = entry.order;
+              const dispute = entry.dispute;
               const form = resolveForm[order.id] || { resolution: "reject", amount: "0", note: "" };
               return (
                 <div key={order.id} className="admin-card admin-card--subtle">
@@ -267,11 +269,9 @@ export default function DisputesPage() {
                       <div className="admin-meta">
                         {order.item} · ¥{order.amount}
                       </div>
-                      {dispute && (
-                        <div className="admin-meta" style={{ marginTop: 4 }}>
-                          原因：{dispute.reason} · {dispute.description}
-                        </div>
-                      )}
+                      <div className="admin-meta" style={{ marginTop: 4 }}>
+                        原因：{dispute.reason} · {dispute.description}
+                      </div>
                       {order.userAddress && (
                         <div className="admin-meta" style={{ marginTop: 2 }}>
                           用户 {order.userAddress.slice(0, 6)}...{order.userAddress.slice(-4)}

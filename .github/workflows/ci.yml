@@ -27,6 +27,8 @@ jobs:
         run: pnpm --filter app exec eslint --config packages/app/eslint.config.mjs packages/app/src
       - name: Type check
         run: pnpm --filter app exec tsc --noEmit
+      - name: Cloudflare edge import guard
+        run: pnpm --filter app run cf:guard
 
   unit-tests:
     runs-on: ubuntu-latest

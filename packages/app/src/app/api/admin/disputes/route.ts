@@ -12,6 +12,34 @@ const resolveSchema = z.object({
   note: z.string().max(500).optional(),
 });
 
+const listQuerySchema = z.object({
+  includeResolved: z.enum(["0", "1"]).optional(),
+  limit: z.coerce.number().int().min(1).max(200).optional(),
+});
+
+export async function GET(req: Request) {
+  const auth = await requireAdmin(req, { role: "ops" });
+  if (!auth.ok) return auth.response;
+
+  const query = Object.fromEntries(new URL(req.url).searchParams.entries());
+  const parsed = listQuerySchema.safeParse(query);
+  if (!parsed.success) {
+    return NextResponse.json({ error: "invalid query" }, { status: 400 });
+  }
+
+  try {
+    const { listAdminDisputes } = await import("@/lib/services/dispute-service");
+    const items = await listAdminDisputes({
+      includeResolved: parsed.data.includeResolved === "1",
+      limit: parsed.data.limit ?? 50,
+    });
+    return NextResponse.json({ items });
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : DisputeMessages.RESOLVE_FAILED;
+    return NextResponse.json({ error: msg }, { status: 500 });
+  }
+}
+
 export async function POST(req: Request) {
   const auth = await requireAdmin(req, { role: "ops" });
   if (!auth.ok) return auth.response;
