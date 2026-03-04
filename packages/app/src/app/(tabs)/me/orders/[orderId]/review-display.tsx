@@ -1,20 +1,5 @@
 "use client";
-import { t } from "@/lib/i18n/t";
-import { useState } from "react";
-import { fetchWithUserAuth } from "@/lib/auth/user-auth-client";
-import { getCurrentAddress } from "@/lib/chain/qy-chain-lite";
 import { StarRating } from "./star-rating";
-
-const REVIEW_TAG_OPTIONS = [
-  t("tabs.me.orders.i059"),
-  t("tabs.me.orders.i060"),
-  t("tabs.me.orders.i061"),
-  t("tabs.me.orders.i062"),
-  t("tabs.me.orders.i063"),
-  t("tabs.me.orders.i064"),
-  t("tabs.me.orders.i065"),
-  t("tabs.me.orders.i066"),
-];
 
 export type Review = {
   id: string;

@@ -5,7 +5,7 @@ import { requireUserAuth } from "@/lib/auth/user-auth";
 import { requireAdmin } from "@/lib/admin/admin-auth";
 import { z } from "zod";
 import { parseBodyRaw } from "@/lib/shared/api-validation";
-import { apiBadRequest, apiForbidden, apiNotFound, apiError } from "@/lib/shared/api-response";
+import { apiBadRequest, apiNotFound, apiError } from "@/lib/shared/api-response";
 import { publishOrderEvent } from "@/lib/realtime";
 import { adminReleaseDuoSlot } from "@/lib/chain/duo-chain-admin";
 

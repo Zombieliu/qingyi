@@ -5,13 +5,7 @@ import { isValidSuiAddress, normalizeSuiAddress } from "@mysten/sui/utils";
 import { requireUserAuth } from "@/lib/auth/user-auth";
 import { z } from "zod";
 import { parseBodyRaw } from "@/lib/shared/api-validation";
-import {
-  apiBadRequest,
-  apiUnauthorized,
-  apiForbidden,
-  apiNotFound,
-  apiError,
-} from "@/lib/shared/api-response";
+import { apiBadRequest, apiForbidden, apiNotFound, apiError } from "@/lib/shared/api-response";
 import { publishOrderEvent } from "@/lib/realtime";
 
 const claimSchema = z.object({

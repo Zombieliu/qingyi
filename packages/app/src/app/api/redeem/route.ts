@@ -33,8 +33,7 @@ export async function POST(req: Request) {
   });
   if (!auth.ok) return auth.response;
 
-  const redeemServicePath = "@/lib/redeem/redeem-service";
-  const { redeemCodeForUser } = await import(redeemServicePath);
+  const { redeemCodeForUser } = await import("@/lib/redeem/redeem-service");
   const result = await redeemCodeForUser({
     address: auth.address,
     code: body.code,

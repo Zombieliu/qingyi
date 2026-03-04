@@ -20,8 +20,7 @@ export async function POST(req: Request) {
   if (!body.success) return body.response;
 
   try {
-    const disputeServicePath = "@/lib/services/dispute-service";
-    const { resolveDispute } = await import(disputeServicePath);
+    const { resolveDispute } = await import("@/lib/services/dispute-service");
     const dispute = await resolveDispute({
       ...body.data,
       reviewerRole: auth.role,

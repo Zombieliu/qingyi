@@ -1,7 +1,6 @@
 "use client";
 import { t } from "@/lib/i18n/t";
 import { StateBlock } from "@/app/components/state-block";
-import { useGuardianStatus } from "@/app/components/guardian-role";
 import { PLAYER_STATUS_OPTIONS, type PlayerStatus } from "@/lib/admin/admin-types";
 
 export function PlayerStatusSection({

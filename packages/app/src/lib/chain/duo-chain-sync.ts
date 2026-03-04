@@ -9,12 +9,7 @@ import type { DuoOrder } from "../admin/admin-types";
 import { isValidSuiAddress, normalizeSuiAddress } from "@mysten/sui/utils";
 import { publishOrderEvent } from "../realtime";
 import { env } from "@/lib/env";
-import {
-  mapStage,
-  mapPaymentStatus,
-  resolveEffectiveChainStatus,
-  deriveOrderStatus,
-} from "./chain-status";
+import { resolveEffectiveChainStatus, deriveOrderStatus } from "./chain-status";
 import type { DuoChainOrder } from "./duo-chain";
 import type { DuoChainOrderFromDigest } from "./chain-admin";
 

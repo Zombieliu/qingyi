@@ -1,7 +1,6 @@
 "use client";
 import { t } from "@/lib/i18n/t";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { type LocalOrder } from "@/lib/services/order-store";
+import { useEffect, useRef, useState } from "react";
 import { createOrder, deleteOrder, patchOrder, syncChainOrder } from "@/lib/services/order-service";
 import { createDuoOrder } from "@/lib/services/duo-order-service";
 import { createDuoOrderOnChain } from "@/lib/chain/duo-chain";
@@ -350,17 +349,17 @@ export default function Schedule() {
       refreshBalance();
       refreshVip();
     }
-  }, [feeOpen]);
+  }, [feeOpen, refreshBalance, refreshVip]);
 
   useEffect(() => {
     if (!feeOpen) return;
-    if (balanceLoading) return;
-    if (!balanceReady) return;
     const addr = getCurrentAddress();
     if (!addr) {
       setToast(t("auth.login_for_diamond"));
       return;
     }
+    if (balanceLoading) return;
+    if (!balanceReady) return;
     if (!hasEnoughDiamonds && !redirectRef.current) {
       redirectRef.current = true;
       setToast(t("diamond.insufficient_redirecting"));

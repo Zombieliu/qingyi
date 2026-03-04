@@ -1,21 +1,34 @@
 type NoopOptions = Record<string, unknown> | undefined;
 
-export function init(_options?: NoopOptions): void {}
+export function init(options?: NoopOptions): void {
+  void options;
+}
 
-export function captureException(_error: unknown, _context?: NoopOptions): void {}
+export function captureException(error: unknown, context?: NoopOptions): void {
+  void error;
+  void context;
+}
 
 export function captureMessage(
-  _message: string,
-  _levelOrContext?: string | NoopOptions,
-  _context?: NoopOptions
-): void {}
+  message: string,
+  levelOrContext?: string | NoopOptions,
+  context?: NoopOptions
+): void {
+  void message;
+  void levelOrContext;
+  void context;
+}
 
-export function addBreadcrumb(_breadcrumb: NoopOptions): void {}
+export function addBreadcrumb(breadcrumb: NoopOptions): void {
+  void breadcrumb;
+}
 
-export function replayIntegration(_options?: NoopOptions): Record<string, never> {
+export function replayIntegration(options?: NoopOptions): Record<string, never> {
+  void options;
   return {};
 }
 
-export function withSentryConfig<T>(config: T, _options?: NoopOptions): T {
+export function withSentryConfig<T>(config: T, options?: NoopOptions): T {
+  void options;
   return config;
 }

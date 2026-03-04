@@ -25,8 +25,7 @@ export async function GET(req: Request) {
   const start = Date.now();
 
   try {
-    const backupUtilsPath = "@/lib/shared/backup-utils";
-    const { exportCriticalData } = await import(backupUtilsPath);
+    const { exportCriticalData } = await import("@/lib/shared/backup-utils");
     const data = await exportCriticalData();
 
     const summary = {

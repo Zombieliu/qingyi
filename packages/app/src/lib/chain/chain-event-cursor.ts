@@ -36,8 +36,9 @@ type LegacyChainEventCursor = {
 let legacyStorePromise: Promise<LegacyChainEventCursor> | null = null;
 
 async function loadLegacyStore(): Promise<LegacyChainEventCursor> {
-  const modulePath = "./chain-event-cursor-legacy";
-  legacyStorePromise ??= import(modulePath).then((mod) => mod as unknown as LegacyChainEventCursor);
+  legacyStorePromise ??= import("./chain-event-cursor-legacy").then(
+    (mod) => mod as unknown as LegacyChainEventCursor
+  );
   return legacyStorePromise;
 }
 

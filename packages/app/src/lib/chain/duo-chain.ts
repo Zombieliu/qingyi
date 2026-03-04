@@ -2,7 +2,7 @@
 
 import { Transaction, Inputs } from "@mysten/sui/transactions";
 import { DAPP_HUB_ID, DAPP_HUB_INITIAL_SHARED_VERSION, PACKAGE_ID } from "contracts/deployment";
-import { isChainOrdersEnabled, getStoredWallet, createChainOrderId } from "./qy-chain-lite";
+import { getStoredWallet, createChainOrderId } from "./qy-chain-lite";
 
 export { createChainOrderId };
 
@@ -35,7 +35,7 @@ import {
   type BrowserPasswordProviderOptions,
 } from "@mysten/sui/keypairs/passkey";
 import { SuiClient, getFullnodeUrl } from "@mysten/sui/client";
-import { fromBase64, isValidSuiAddress, normalizeSuiAddress, toBase64 } from "@mysten/sui/utils";
+import { fromBase64, normalizeSuiAddress, toBase64 } from "@mysten/sui/utils";
 
 const CHAIN_SPONSOR_MODE = (process.env.NEXT_PUBLIC_CHAIN_SPONSOR || "auto").toLowerCase();
 

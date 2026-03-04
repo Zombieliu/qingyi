@@ -12,19 +12,12 @@ import { useBackoffPoll } from "@/app/components/use-backoff-poll";
 import { useOrderEvents } from "@/app/components/use-order-events";
 import { useAutoToast } from "@/app/components/use-auto-toast";
 import { useChainState } from "./use-chain-state";
-import {
-  type ChainOrder,
-  fetchChainOrders,
-  getCurrentAddress,
-  isChainOrdersEnabled,
-} from "@/lib/chain/qy-chain";
+import { getCurrentAddress, isChainOrdersEnabled } from "@/lib/chain/qy-chain";
 import { resolveDisputePolicy } from "@/lib/risk-policy";
 import { formatErrorMessage } from "@/lib/shared/error-utils";
 import {
   type Mode,
   type PublicPlayer,
-  sections,
-  FIRST_ORDER_DISCOUNT,
   PLAYER_SECTION_TITLE,
   MATCH_RATE,
   readDiscountUsage,
@@ -56,25 +49,7 @@ export function useScheduleOrders() {
   const [active, setActive] = useState(t("schedule.001"));
 
   const chainState = useChainState();
-  const {
-    chainOrders,
-    setChainOrders,
-    chainLoading,
-    chainError,
-    chainToast,
-    setChainToast,
-    chainAction,
-    setChainAction,
-    chainAddress,
-    chainUpdatedAt,
-    chainSyncRetries,
-    setChainSyncRetries,
-    chainSyncLastAttemptAt,
-    setChainSyncLastAttemptAt,
-    chainSyncing,
-    setChainSyncing,
-    loadChain,
-  } = chainState;
+  const { chainOrders, chainAddress, loadChain } = chainState;
 
   // ─── Data fetching hooks ───
 
@@ -134,7 +109,7 @@ export function useScheduleOrders() {
     setFirstOrderEligible(!used && eligibleList.length === 0);
   }, [orders, userAddress]);
 
-  const refreshVip = async () => {
+  const refreshVip = useCallback(async () => {
     const addr = getCurrentAddress();
     if (!addr) {
       setVipTier(null);
@@ -167,14 +142,16 @@ export function useScheduleOrders() {
     } finally {
       setVipLoading(false);
     }
-  };
+  }, [cacheTtlMs]);
 
   useEffect(() => {
     refreshVip();
-    const handle = () => refreshVip();
+    const handle = () => {
+      void refreshVip();
+    };
     window.addEventListener("passkey-updated", handle);
     return () => window.removeEventListener("passkey-updated", handle);
-  }, []);
+  }, [refreshVip]);
 
   useEffect(() => {
     if (isChainOrdersEnabled()) loadChain();
@@ -310,7 +287,7 @@ export function useScheduleOrders() {
   const diamondRate = DIAMOND_RATE;
   const disputePolicy = useMemo(() => resolveDisputePolicy(vipTier?.level), [vipTier]);
 
-  const refreshBalance = async () => {
+  const refreshBalance = useCallback(async () => {
     const addr = getCurrentAddress();
     if (!addr) return;
     const cacheKey = `cache:diamond-balance:${addr}`;
@@ -332,7 +309,7 @@ export function useScheduleOrders() {
     } finally {
       setBalanceLoading(false);
     }
-  };
+  }, [cacheTtlMs]);
 
   // ─── Chain order sync effect ───
 

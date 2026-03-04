@@ -68,8 +68,9 @@ type LegacyUserSessionStore = {
 let legacyStorePromise: Promise<LegacyUserSessionStore> | null = null;
 
 async function loadLegacyStore() {
-  const modulePath = "./user-session-store";
-  legacyStorePromise ??= import(modulePath).then((mod) => mod as LegacyUserSessionStore);
+  legacyStorePromise ??= import("./user-session-store").then(
+    (mod) => mod as LegacyUserSessionStore
+  );
   return legacyStorePromise;
 }
 

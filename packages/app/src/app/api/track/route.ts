@@ -38,8 +38,7 @@ export async function POST(req: Request) {
   }
 
   try {
-    const analyticsStorePath = "@/lib/analytics-store";
-    const { recordGrowthEvent } = await import(analyticsStorePath);
+    const { recordGrowthEvent } = await import("@/lib/analytics-store");
     await recordGrowthEvent({
       event: payload.event,
       clientId: payload.clientId?.trim() || undefined,

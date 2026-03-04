@@ -211,7 +211,7 @@ export function LevelCard() {
         <div
           style={{ display: "flex", gap: 6, marginBottom: 14, overflowX: "auto", paddingBottom: 2 }}
         >
-          {data.allTiers.map((tier, i) => {
+          {data.allTiers.map((tier) => {
             const reached = tier.reached;
             const isCurrent = currentTier?.id === tier.id;
             return (

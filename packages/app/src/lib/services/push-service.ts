@@ -21,8 +21,7 @@ async function loadWebPushClient(): Promise<WebPushClient | null> {
   }
 
   if (!webPushClientPromise) {
-    const modulePath = "web-push";
-    webPushClientPromise = import(modulePath)
+    webPushClientPromise = import("web-push")
       .then((mod) => {
         const candidate = mod as { default?: WebPushClient };
         const client =

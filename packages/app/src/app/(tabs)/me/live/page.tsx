@@ -1,6 +1,7 @@
 "use client";
 import { t } from "@/lib/i18n/t";
 
+import Image from "next/image";
 import Link from "next/link";
 import { ArrowLeft, ImagePlus, Radio, Send, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -225,7 +226,14 @@ export default function LiveApplyPage() {
                     key={i}
                     className="relative w-20 h-20 rounded-xl overflow-hidden border border-slate-200"
                   >
-                    <img src={src} alt="" className="w-full h-full object-cover" />
+                    <Image
+                      src={src}
+                      alt=""
+                      fill
+                      unoptimized
+                      sizes="80px"
+                      className="object-cover"
+                    />
                     <button
                       type="button"
                       onClick={() => setAttachments((prev) => prev.filter((_, idx) => idx !== i))}

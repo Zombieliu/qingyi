@@ -48,10 +48,9 @@ export async function getStripeClient(): Promise<StripeRuntimeClient | null> {
   if (!stripeSecretKey) return null;
 
   if (!stripeClientPromise) {
-    const modulePath = "stripe";
-    stripeClientPromise = import(modulePath)
+    stripeClientPromise = import("stripe")
       .then((mod) => {
-        const candidate = mod as {
+        const candidate = mod as unknown as {
           default?: new (secretKey: string) => StripeRuntimeClient;
         };
         const StripeCtor =

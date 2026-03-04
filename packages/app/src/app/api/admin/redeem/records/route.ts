@@ -14,8 +14,7 @@ export async function GET(req: Request) {
   const codeId = searchParams.get("codeId") || undefined;
   const address = searchParams.get("address") || undefined;
 
-  const redeemStorePath = "@/lib/admin/redeem-store";
-  const { queryRedeemRecords } = await import(redeemStorePath);
+  const { queryRedeemRecords } = await import("@/lib/admin/redeem-store");
   const result = await queryRedeemRecords({
     page,
     pageSize,

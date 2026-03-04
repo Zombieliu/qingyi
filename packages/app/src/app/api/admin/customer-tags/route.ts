@@ -23,8 +23,8 @@ export async function GET(req: NextRequest) {
   const auth = await requireAdmin(req, { role: "viewer" });
   if (!auth.ok) return auth.response;
 
-  const customerTagServicePath = "@/lib/services/customer-tag-service";
-  const { getCustomerTags, listTaggedCustomers } = await import(customerTagServicePath);
+  const { getCustomerTags, listTaggedCustomers } =
+    await import("@/lib/services/customer-tag-service");
 
   const userAddress = req.nextUrl.searchParams.get("userAddress");
 
@@ -44,8 +44,7 @@ export async function POST(req: NextRequest) {
   const auth = await requireAdmin(req, { role: "ops" });
   if (!auth.ok) return auth.response;
 
-  const customerTagServicePath = "@/lib/services/customer-tag-service";
-  const { addCustomerTag } = await import(customerTagServicePath);
+  const { addCustomerTag } = await import("@/lib/services/customer-tag-service");
   const parsed = await parseBody(req, addTagSchema);
   if (!parsed.success) return parsed.response;
   const { userAddress, tag, note, severity } = parsed.data;
@@ -67,8 +66,7 @@ export async function DELETE(req: NextRequest) {
   const auth = await requireAdmin(req, { role: "ops" });
   if (!auth.ok) return auth.response;
 
-  const customerTagServicePath = "@/lib/services/customer-tag-service";
-  const { removeCustomerTag } = await import(customerTagServicePath);
+  const { removeCustomerTag } = await import("@/lib/services/customer-tag-service");
   const id = req.nextUrl.searchParams.get("id");
   if (!id) return NextResponse.json({ error: "id required" }, { status: 400 });
 

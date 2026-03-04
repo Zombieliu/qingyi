@@ -1,6 +1,7 @@
 "use client";
 import { t } from "@/lib/i18n/t";
 
+import Image from "next/image";
 import { useCallback, useEffect, useState } from "react";
 import { Check, Copy, RefreshCw, Search } from "lucide-react";
 import type { AdminExaminerApplication, ExaminerStatus } from "@/lib/admin/admin-types";
@@ -383,9 +384,12 @@ export default function ExaminersPage() {
                       <div className="flex gap-1 flex-wrap">
                         {(item.meta?.attachments as string[] | undefined)?.map((src, i) => (
                           <a key={i} href={src} target="_blank" rel="noopener noreferrer">
-                            <img
+                            <Image
                               src={src}
                               alt=""
+                              width={40}
+                              height={40}
+                              unoptimized
                               className="w-10 h-10 rounded object-cover border border-slate-200"
                             />
                           </a>

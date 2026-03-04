@@ -1,6 +1,7 @@
 "use client";
 import { t } from "@/lib/i18n/t";
 
+import Image from "next/image";
 import { useCallback, useEffect, useState } from "react";
 import { RefreshCw, Search } from "lucide-react";
 import type { AdminSupportTicket, SupportStatus } from "@/lib/admin/admin-types";
@@ -240,9 +241,12 @@ export default function SupportPage() {
                       <div className="flex gap-1 flex-wrap">
                         {(ticket.meta?.screenshots as string[] | undefined)?.map((src, i) => (
                           <a key={i} href={src} target="_blank" rel="noopener noreferrer">
-                            <img
+                            <Image
                               src={src}
                               alt=""
+                              width={40}
+                              height={40}
+                              unoptimized
                               className="w-10 h-10 rounded object-cover border border-slate-200"
                             />
                           </a>

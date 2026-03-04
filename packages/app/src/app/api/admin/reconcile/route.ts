@@ -10,8 +10,7 @@ export async function GET(req: Request) {
   const from = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
   const to = new Date();
 
-  const reconcileServicePath = "@/lib/services/reconcile-service";
-  const { reconcileOrders } = await import(reconcileServicePath);
+  const { reconcileOrders } = await import("@/lib/services/reconcile-service");
   const report = await reconcileOrders({ from, to });
   return NextResponse.json(report);
 }
@@ -25,8 +24,7 @@ export async function POST(req: Request) {
   const from = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
   const to = new Date();
 
-  const reconcileServicePath = "@/lib/services/reconcile-service";
-  const { reconcileOrders, autoFixReconcile } = await import(reconcileServicePath);
+  const { reconcileOrders, autoFixReconcile } = await import("@/lib/services/reconcile-service");
   const report = await reconcileOrders({ from, to });
   const result = await autoFixReconcile(report);
   return NextResponse.json({ report, autoFix: result });

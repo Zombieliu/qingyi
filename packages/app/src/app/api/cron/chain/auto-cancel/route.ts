@@ -14,7 +14,7 @@ export async function GET(req: Request) {
   try {
     const result = await autoCancelChainOrders();
     return NextResponse.json({ ok: true, ...result });
-  } catch (e) {
+  } catch {
     return NextResponse.json({ error: "auto cancel failed" }, { status: 500 });
   }
 }

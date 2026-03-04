@@ -11,7 +11,6 @@ import {
   apiUnauthorized,
   apiForbidden,
   apiNotFound,
-  apiError,
 } from "@/lib/shared/api-response";
 import { publishOrderEvent } from "@/lib/realtime";
 

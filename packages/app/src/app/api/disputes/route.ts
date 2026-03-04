@@ -21,8 +21,7 @@ export async function POST(req: Request) {
   if (!body.success) return body.response;
 
   try {
-    const disputeServicePath = "@/lib/services/dispute-service";
-    const { createDispute } = await import(disputeServicePath);
+    const { createDispute } = await import("@/lib/services/dispute-service");
     const dispute = await createDispute({
       ...body.data,
       userAddress: auth.address,
@@ -44,15 +43,13 @@ export async function GET(req: Request) {
 
   // If orderId provided, return single dispute; otherwise list all
   if (orderId) {
-    const disputeServicePath = "@/lib/services/dispute-service";
-    const { getDispute } = await import(disputeServicePath);
+    const { getDispute } = await import("@/lib/services/dispute-service");
     const dispute = await getDispute(orderId);
     if (!dispute) return apiNotFound("not found");
     return NextResponse.json(dispute);
   }
 
-  const disputeServicePath = "@/lib/services/dispute-service";
-  const { listUserDisputes } = await import(disputeServicePath);
+  const { listUserDisputes } = await import("@/lib/services/dispute-service");
   const disputes = await listUserDisputes(auth.address);
   return NextResponse.json({ disputes });
 }

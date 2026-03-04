@@ -16,8 +16,7 @@ export async function GET(req: Request) {
   if (!auth.ok) return auth.response;
 
   const status = searchParams.get("status") || "unused";
-  const couponServicePath = "@/lib/services/coupon-service";
-  const { getUserCoupons } = await import(couponServicePath);
+  const { getUserCoupons } = await import("@/lib/services/coupon-service");
   const coupons = await getUserCoupons(auth.address, status);
   return NextResponse.json({ coupons });
 }
@@ -34,8 +33,7 @@ export async function POST(req: Request) {
   const auth = await requireUserAuth(req, { intent: "coupons:claim", address });
   if (!auth.ok) return auth.response;
 
-  const couponServicePath = "@/lib/services/coupon-service";
-  const { claimCoupon } = await import(couponServicePath);
+  const { claimCoupon } = await import("@/lib/services/coupon-service");
   const result = await claimCoupon(auth.address, couponId);
   if ("error" in result) {
     const statusCode = result.error === "already_claimed" ? 409 : 400;

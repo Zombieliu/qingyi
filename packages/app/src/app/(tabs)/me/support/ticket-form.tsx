@@ -1,5 +1,6 @@
 "use client";
 import { t } from "@/lib/i18n/t";
+import Image from "next/image";
 import { Send, ImagePlus, X } from "lucide-react";
 import { topics } from "./support-data";
 
@@ -94,7 +95,7 @@ export function TicketForm({
                 key={i}
                 className="relative w-20 h-20 rounded-xl overflow-hidden border border-slate-200"
               >
-                <img src={src} alt="" className="w-full h-full object-cover" />
+                <Image src={src} alt="" fill unoptimized sizes="80px" className="object-cover" />
                 <button
                   type="button"
                   onClick={() => setScreenshots((prev) => prev.filter((_, idx) => idx !== i))}

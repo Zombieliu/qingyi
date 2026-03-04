@@ -14,7 +14,7 @@ export async function GET(req: Request) {
   try {
     const result = await checkSponsorBalance();
     return NextResponse.json({ ok: true, ...result });
-  } catch (e) {
+  } catch {
     return NextResponse.json({ error: "sponsor check failed" }, { status: 500 });
   }
 }

@@ -5,8 +5,10 @@ export function isatty() {
 export class WriteStream {}
 export class ReadStream {}
 
-export default {
+const ttyShim = {
   isatty,
   WriteStream,
   ReadStream,
 };
+
+export default ttyShim;

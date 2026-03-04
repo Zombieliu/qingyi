@@ -50,8 +50,7 @@ export async function POST(req: Request) {
     // Persist to database (non-blocking)
     after(async () => {
       try {
-        const vitalsStorePath = "@/lib/services/vitals-store";
-        const { persistVitals } = await import(vitalsStorePath);
+        const { persistVitals } = await import("@/lib/services/vitals-store");
         await persistVitals([vital]);
       } catch {
         /* DB write failure is non-critical */
@@ -79,8 +78,7 @@ export async function GET(req: Request) {
       const page = url.searchParams.get("page") ?? undefined;
       const days = Math.min(Number(url.searchParams.get("days")) || 7, 90);
 
-      const vitalsStorePath = "@/lib/services/vitals-store";
-      const { getVitalsTrend, getVitalsPageSummary } = await import(vitalsStorePath);
+      const { getVitalsTrend, getVitalsPageSummary } = await import("@/lib/services/vitals-store");
 
       if (page) {
         const summary = await getVitalsPageSummary(page);

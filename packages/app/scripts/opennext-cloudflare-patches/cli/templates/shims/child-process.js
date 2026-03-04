@@ -30,7 +30,7 @@ export function fork() {
   unsupported("fork");
 }
 
-export default {
+const childProcessShim = {
   spawn,
   spawnSync,
   exec,
@@ -39,3 +39,5 @@ export default {
   execFileSync,
   fork,
 };
+
+export default childProcessShim;

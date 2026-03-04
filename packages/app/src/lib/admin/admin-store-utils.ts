@@ -12,8 +12,7 @@ type LegacyDbModule = {
 let legacyDbPromise: Promise<LegacyDbModule> | null = null;
 
 async function getLegacyDbModule(): Promise<LegacyDbModule> {
-  const modulePath = "../db";
-  legacyDbPromise ??= import(modulePath).then((mod) => mod as unknown as LegacyDbModule);
+  legacyDbPromise ??= import("../db").then((mod) => mod as unknown as LegacyDbModule);
   return legacyDbPromise;
 }
 

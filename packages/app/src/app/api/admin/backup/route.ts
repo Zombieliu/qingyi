@@ -14,8 +14,7 @@ export async function GET(req: Request) {
   if (!auth.ok) return auth.response;
 
   try {
-    const backupUtilsPath = "@/lib/shared/backup-utils";
-    const { getBackupStats } = await import(backupUtilsPath);
+    const { getBackupStats } = await import("@/lib/shared/backup-utils");
     const cached = await getCacheAsync<{
       exportedAt: string;
       stats: Record<string, number>;

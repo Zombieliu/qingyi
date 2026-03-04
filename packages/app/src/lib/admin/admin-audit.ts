@@ -16,8 +16,7 @@ type LegacyAuditStore = {
 let legacyAuditStorePromise: Promise<LegacyAuditStore> | null = null;
 
 async function loadLegacyAuditStore() {
-  const modulePath = "./admin-store";
-  legacyAuditStorePromise ??= import(modulePath).then((mod) => mod as LegacyAuditStore);
+  legacyAuditStorePromise ??= import("./admin-store").then((mod) => mod as LegacyAuditStore);
   return legacyAuditStorePromise;
 }
 

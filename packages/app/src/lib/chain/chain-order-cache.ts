@@ -73,15 +73,6 @@ function isCacheValid(): boolean {
 }
 
 /**
- * 检查缓存是否过期需要强制刷新
- */
-function isCacheStale(): boolean {
-  if (!cache) return true;
-  const age = Date.now() - cache.fetchedAt;
-  return age > MAX_CACHE_AGE_MS;
-}
-
-/**
  * 从区块链刷新缓存
  */
 async function refreshCache(force = false): Promise<CacheEntry> {

@@ -22,7 +22,6 @@ import {
   loadWalletList,
   removeWalletFromList,
   getPasskeyProviderOptions,
-  createPasskeyProvider,
   isMissingCredential,
   type StoredWallet,
 } from "./passkey-wallet-utils";

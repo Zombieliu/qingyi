@@ -88,8 +88,7 @@ export async function GET(req: Request) {
   const q = searchParams.get("q") || undefined;
   const batchId = searchParams.get("batchId") || undefined;
 
-  const redeemStorePath = "@/lib/admin/redeem-store";
-  const { queryRedeemCodes } = await import(redeemStorePath);
+  const { queryRedeemCodes } = await import("@/lib/admin/redeem-store");
   const result = await queryRedeemCodes({ page, pageSize, status, q, batchId });
   return NextResponse.json(result);
 }
@@ -98,8 +97,7 @@ export async function POST(req: Request) {
   const auth = await requireAdmin(req, { role: "ops" });
   if (!auth.ok) return auth.response;
 
-  const redeemStorePath = "@/lib/admin/redeem-store";
-  const { createRedeemBatch, createRedeemCodes } = await import(redeemStorePath);
+  const { createRedeemBatch, createRedeemCodes } = await import("@/lib/admin/redeem-store");
   const parsed = await parseBody(req, createSchema);
   if (!parsed.success) return parsed.response;
   const body = parsed.data;

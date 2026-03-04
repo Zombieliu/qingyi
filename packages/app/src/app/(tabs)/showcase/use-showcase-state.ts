@@ -225,6 +225,7 @@ export function useShowcaseState() {
 
   const refreshDuoOrders = useCallback(
     async (force = false) => {
+      void force;
       if (!canAccessShowcase) return;
       setDuoLoading(true);
       try {

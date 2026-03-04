@@ -66,8 +66,7 @@ type LegacyNotificationStore = {
 let legacyStorePromise: Promise<LegacyNotificationStore> | null = null;
 
 async function loadLegacyStore(): Promise<LegacyNotificationStore> {
-  const modulePath = "./notification-service-legacy";
-  legacyStorePromise ??= import(modulePath).then(
+  legacyStorePromise ??= import("./notification-service-legacy").then(
     (mod) => mod as unknown as LegacyNotificationStore
   );
   return legacyStorePromise;

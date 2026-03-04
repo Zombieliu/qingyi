@@ -34,8 +34,9 @@ type AdminMemberRow = {
 let legacyServicePromise: Promise<LegacyGrowthService> | null = null;
 
 async function loadLegacyService(): Promise<LegacyGrowthService> {
-  const modulePath = "./growth-service-legacy";
-  legacyServicePromise ??= import(modulePath).then((mod) => mod as unknown as LegacyGrowthService);
+  legacyServicePromise ??= import("./growth-service-legacy").then(
+    (mod) => mod as unknown as LegacyGrowthService
+  );
   return legacyServicePromise;
 }
 

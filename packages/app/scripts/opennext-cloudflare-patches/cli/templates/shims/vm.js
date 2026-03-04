@@ -3,6 +3,8 @@ export function runInNewContext(code, context = {}) {
   return fn(context);
 }
 
-export default {
+const vmShim = {
   runInNewContext,
 };
+
+export default vmShim;

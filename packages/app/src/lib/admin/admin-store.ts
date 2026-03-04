@@ -25,8 +25,9 @@ type LegacyFnResult<Name extends LegacyFnName> = LegacyAdminStore[Name] extends 
 let legacyStorePromise: Promise<LegacyAdminStore> | null = null;
 
 async function loadLegacyStore(): Promise<LegacyAdminStore> {
-  const modulePath = "./admin-store-legacy";
-  legacyStorePromise ??= import(modulePath).then((mod) => mod as unknown as LegacyAdminStore);
+  legacyStorePromise ??= import("./admin-store-legacy").then(
+    (mod) => mod as unknown as LegacyAdminStore
+  );
   return legacyStorePromise;
 }
 

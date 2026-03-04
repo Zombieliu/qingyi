@@ -35,6 +35,7 @@ export function withApiHandler(
   handler: (req: Request, ctx?: unknown) => Promise<NextResponse>,
   options?: ApiHandlerOptions
 ) {
+  void options;
   return async (req: Request, ctx?: unknown): Promise<NextResponse> => {
     const traceId = randomHex(4);
     try {
