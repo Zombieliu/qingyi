@@ -2,8 +2,8 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   requireUserAuth: vi.fn(),
-  findFirst: vi.fn(),
-  update: vi.fn(),
+  getCompanionScheduleByAddressEdgeRead: vi.fn(),
+  updateCompanionScheduleByAddressEdgeWrite: vi.fn(),
 }));
 
 vi.mock("next/server", () => {
@@ -27,13 +27,9 @@ vi.mock("next/server", () => {
 });
 
 vi.mock("@/lib/auth/user-auth", () => ({ requireUserAuth: mocks.requireUserAuth }));
-vi.mock("@/lib/db", () => ({
-  prisma: {
-    adminPlayer: {
-      findFirst: mocks.findFirst,
-      update: mocks.update,
-    },
-  },
+vi.mock("@/lib/edge-db/companion-schedule-store", () => ({
+  getCompanionScheduleByAddressEdgeRead: mocks.getCompanionScheduleByAddressEdgeRead,
+  updateCompanionScheduleByAddressEdgeWrite: mocks.updateCompanionScheduleByAddressEdgeWrite,
 }));
 
 import { GET, PUT } from "../route";
@@ -63,9 +59,9 @@ describe("GET /api/companion/schedule", () => {
 
   it("returns schedule slots", async () => {
     mocks.requireUserAuth.mockResolvedValue({ ok: true, address: VALID_ADDRESS });
-    mocks.findFirst.mockResolvedValue({
-      schedule: { slots: [{ day: 1, start: "09:00", end: "17:00" }] },
-    });
+    mocks.getCompanionScheduleByAddressEdgeRead.mockResolvedValue([
+      { day: 1, start: "09:00", end: "17:00" },
+    ]);
     const req = new Request(`http://localhost/api/companion/schedule?address=${VALID_ADDRESS}`);
     const res = await GET(req);
     expect(res.status).toBe(200);
@@ -75,7 +71,7 @@ describe("GET /api/companion/schedule", () => {
 
   it("returns empty slots when no schedule", async () => {
     mocks.requireUserAuth.mockResolvedValue({ ok: true, address: VALID_ADDRESS });
-    mocks.findFirst.mockResolvedValue(null);
+    mocks.getCompanionScheduleByAddressEdgeRead.mockResolvedValue([]);
     const req = new Request(`http://localhost/api/companion/schedule?address=${VALID_ADDRESS}`);
     const res = await GET(req);
     expect(res.status).toBe(200);
@@ -127,7 +123,7 @@ describe("PUT /api/companion/schedule", () => {
 
   it("returns 404 when player not found", async () => {
     mocks.requireUserAuth.mockResolvedValue({ ok: true, address: VALID_ADDRESS });
-    mocks.findFirst.mockResolvedValue(null);
+    mocks.updateCompanionScheduleByAddressEdgeWrite.mockResolvedValue(false);
     const req = new Request("http://localhost/api/companion/schedule", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
@@ -142,8 +138,7 @@ describe("PUT /api/companion/schedule", () => {
 
   it("updates schedule successfully", async () => {
     mocks.requireUserAuth.mockResolvedValue({ ok: true, address: VALID_ADDRESS });
-    mocks.findFirst.mockResolvedValue({ id: "P-1" });
-    mocks.update.mockResolvedValue({});
+    mocks.updateCompanionScheduleByAddressEdgeWrite.mockResolvedValue(true);
     const slots = [{ day: 1, start: "09:00", end: "17:00" }];
     const req = new Request("http://localhost/api/companion/schedule", {
       method: "PUT",

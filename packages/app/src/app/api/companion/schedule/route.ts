@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { requireUserAuth } from "@/lib/auth/user-auth";
-import { prisma } from "@/lib/db";
+import {
+  getCompanionScheduleByAddressEdgeRead,
+  updateCompanionScheduleByAddressEdgeWrite,
+} from "@/lib/edge-db/companion-schedule-store";
 import { z } from "zod";
 
 const slotSchema = z.object({
@@ -28,12 +31,7 @@ export async function GET(req: Request) {
   const auth = await requireUserAuth(req, { intent: "companion:schedule:read", address });
   if (!auth.ok) return auth.response;
 
-  const player = await prisma.adminPlayer.findFirst({
-    where: { address: auth.address },
-    select: { schedule: true },
-  });
-
-  const schedule = (player?.schedule as { slots?: unknown[] } | null)?.slots || [];
+  const schedule = await getCompanionScheduleByAddressEdgeRead(auth.address);
   return NextResponse.json({ slots: schedule });
 }
 
@@ -51,18 +49,10 @@ export async function PUT(req: Request) {
   const auth = await requireUserAuth(req, { intent: "companion:schedule:update", address });
   if (!auth.ok) return auth.response;
 
-  const player = await prisma.adminPlayer.findFirst({ where: { address: auth.address } });
-  if (!player) {
+  const updated = await updateCompanionScheduleByAddressEdgeWrite(auth.address, slots);
+  if (!updated) {
     return NextResponse.json({ error: "player_not_found" }, { status: 404 });
   }
-
-  await prisma.adminPlayer.update({
-    where: { id: player.id },
-    data: {
-      schedule: { slots },
-      updatedAt: new Date(),
-    },
-  });
 
   return NextResponse.json({ ok: true, slots });
 }
