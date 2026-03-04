@@ -1,12 +1,17 @@
 import { isAuthorizedCron } from "@/lib/cron-auth";
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
-import { prisma, Prisma } from "@/lib/db";
-import { upsertLedgerRecord } from "@/lib/admin/admin-store";
 import { recordAudit } from "@/lib/admin/admin-audit";
 import { acquireCronLock } from "@/lib/cron-lock";
 import { env } from "@/lib/env";
 import { formatFullDateTime } from "@/lib/shared/date-utils";
+import {
+  listLedgerRecordsByOrderIdsEdgeRead,
+  listPendingLedgerRowsBeforeEdgeRead,
+  listStripeSucceededPaymentEventsEdgeRead,
+  markLedgerRecordPaidEdgeWrite,
+  upsertLedgerRecordEdgeWrite,
+} from "@/lib/edge-db/payment-reconcile-store";
 
 const stripeSecretKey = env.STRIPE_SECRET_KEY;
 const stripe = stripeSecretKey ? new Stripe(stripeSecretKey) : null;
@@ -185,16 +190,7 @@ export async function GET(req: Request) {
   const since = new Date(now - sinceHours * 60 * 60 * 1000);
   const pendingBefore = new Date(now - pendingHours * 60 * 60 * 1000);
 
-  const events = await prisma.adminPaymentEvent.findMany({
-    where: {
-      provider: "stripe",
-      event: "payment_intent.succeeded",
-      orderNo: { not: null },
-      createdAt: { gte: since },
-    },
-    orderBy: { createdAt: "desc" },
-    take: limit,
-  });
+  const events = await listStripeSucceededPaymentEventsEdgeRead(since, limit);
 
   const successMap = new Map<string, StripeSuccessRecord>();
   for (const event of events) {
@@ -238,13 +234,7 @@ export async function GET(req: Request) {
   }
 
   const orderNos = Array.from(successMap.keys());
-  const ledgerRows = orderNos.length
-    ? await prisma.ledgerRecord.findMany({
-        where: {
-          OR: [{ id: { in: orderNos } }, { orderId: { in: orderNos } }],
-        },
-      })
-    : [];
+  const ledgerRows = orderNos.length ? await listLedgerRecordsByOrderIdsEdgeRead(orderNos) : [];
   const ledgerById = new Map(ledgerRows.map((row) => [row.id, row]));
   const ledgerByOrderId = new Map(
     ledgerRows.filter((row) => row.orderId).map((row) => [row.orderId as string, row])
@@ -287,64 +277,50 @@ export async function GET(req: Request) {
 
   // Apply all ledger changes in a single transaction
   if (apply && (upsertItems.length > 0 || patchItems.length > 0)) {
-    await prisma.$transaction(async (tx) => {
-      for (const { orderId, record } of upsertItems) {
-        await upsertLedgerRecord(
-          {
-            id: orderId,
-            userAddress: record.userAddress!,
-            diamondAmount: record.diamondAmount!,
-            amount: record.amountCny,
-            currency: record.currency || "CNY",
-            channel: record.channel || "stripe",
-            status: "paid",
-            orderId,
-            receiptId: record.paymentIntentId ? `stripe_pi_${record.paymentIntentId}` : undefined,
-            source: "stripe",
-            note: "reconciled_from_event",
-            meta: {
-              reconciledAt: now,
-              reconcileSource: record.source,
-              eventId: record.eventId,
-              paymentIntentId: record.paymentIntentId,
-            },
-          },
-          tx
-        );
-        reconciled.push(orderId);
-      }
-      for (const { orderId, record, existing } of patchItems) {
-        const existingMeta =
-          existing.meta && typeof existing.meta === "object"
-            ? (existing.meta as Record<string, unknown>)
-            : {};
-        await tx.ledgerRecord.update({
-          where: { id: existing.id },
-          data: {
-            status: "paid",
-            updatedAt: new Date(now),
-            note: existing.note || "reconciled_from_event",
-            meta: {
-              ...existingMeta,
-              reconciledAt: now,
-              reconcileSource: record.source,
-              eventId: record.eventId,
-            } as Prisma.InputJsonValue,
-          },
-        });
-        reconciled.push(orderId);
-      }
-    });
+    for (const { orderId, record } of upsertItems) {
+      await upsertLedgerRecordEdgeWrite({
+        id: orderId,
+        userAddress: record.userAddress!,
+        diamondAmount: record.diamondAmount!,
+        amount: record.amountCny,
+        currency: record.currency || "CNY",
+        channel: record.channel || "stripe",
+        status: "paid",
+        orderId,
+        receiptId: record.paymentIntentId ? `stripe_pi_${record.paymentIntentId}` : undefined,
+        source: "stripe",
+        note: "reconciled_from_event",
+        meta: {
+          reconciledAt: now,
+          reconcileSource: record.source,
+          eventId: record.eventId,
+          paymentIntentId: record.paymentIntentId,
+        },
+      });
+      reconciled.push(orderId);
+    }
+
+    for (const { orderId, record, existing } of patchItems) {
+      const existingMeta =
+        existing.meta && typeof existing.meta === "object"
+          ? (existing.meta as Record<string, unknown>)
+          : {};
+      await markLedgerRecordPaidEdgeWrite({
+        id: existing.id,
+        updatedAt: new Date(now),
+        note: existing.note || "reconciled_from_event",
+        meta: {
+          ...existingMeta,
+          reconciledAt: now,
+          reconcileSource: record.source,
+          eventId: record.eventId,
+        },
+      });
+      reconciled.push(orderId);
+    }
   }
 
-  const stalePendingRows = await prisma.ledgerRecord.findMany({
-    where: {
-      status: "pending",
-      createdAt: { lt: pendingBefore },
-    },
-    orderBy: { createdAt: "asc" },
-    take: limit,
-  });
+  const stalePendingRows = await listPendingLedgerRowsBeforeEdgeRead(pendingBefore, limit);
   const successOrders = new Set(orderNos);
   const stalePending = stalePendingRows
     .filter(

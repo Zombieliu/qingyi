@@ -1,18 +1,17 @@
 import { NextResponse } from "next/server";
 import { after } from "next/server";
 import Stripe from "stripe";
-import {
-  addPaymentEvent,
-  getOrderById,
-  updateOrder,
-  upsertLedgerRecord,
-} from "@/lib/admin/admin-store";
-import { prisma } from "@/lib/db";
 import { recordAudit } from "@/lib/admin/admin-audit";
 import { env } from "@/lib/env";
 import { apiBadRequest, apiUnauthorized, apiError } from "@/lib/shared/api-response";
 import { publishOrderEvent } from "@/lib/realtime";
 import { DIAMOND_RATE } from "@/lib/shared/constants";
+import {
+  createPaymentEventEdgeWrite,
+  getOrderExistsByIdEdgeRead,
+  updateOrderPaymentStatusEdgeWrite,
+  upsertLedgerRecordEdgeWrite,
+} from "@/lib/edge-db/payment-reconcile-store";
 
 const stripeSecretKey = env.STRIPE_SECRET_KEY;
 const stripe = stripeSecretKey ? new Stripe(stripeSecretKey) : null;
@@ -93,57 +92,46 @@ export async function POST(req: Request) {
   // Unverified or mismatched pricing events are logged but never trigger credit or status changes.
   const shouldMutate = verified && isPaid && pricingMatch;
 
-  // Wrap addPaymentEvent + updateOrder + upsertLedgerRecord in a single transaction
   try {
-    await prisma.$transaction(async (tx) => {
-      await addPaymentEvent(
-        {
-          id: event?.id || `pay_${Date.now()}_${Math.floor(Math.random() * 9000 + 1000)}`,
-          provider: "stripe",
-          event: eventType,
-          orderNo: orderId,
-          amount: amountRaw,
-          status,
-          verified,
-          createdAt: Date.now(),
-          raw: event as unknown as Record<string, unknown>,
-        },
-        tx
-      );
-
-      if (!shouldMutate) return;
-
-      if (orderId) {
-        const exists = await getOrderById(orderId);
-        if (exists) {
-          await updateOrder(orderId, { paymentStatus: "已支付" }, tx);
-        }
-      }
-
-      if (userAddress && diamondAmount && orderId) {
-        if (Number.isFinite(parsedDiamondAmount) && parsedDiamondAmount > 0) {
-          await upsertLedgerRecord(
-            {
-              id: orderId,
-              userAddress,
-              diamondAmount: parsedDiamondAmount,
-              amount: typeof amountRaw === "number" ? amountRaw / 100 : undefined,
-              currency: "CNY",
-              status: "paid",
-              orderId,
-              receiptId: paymentIntentId ? `stripe_pi_${paymentIntentId}` : undefined,
-              source: "stripe",
-              meta: {
-                eventType,
-                paymentIntentId,
-                status,
-              },
-            },
-            tx
-          );
-        }
-      }
+    await createPaymentEventEdgeWrite({
+      id: event?.id || `pay_${Date.now()}_${Math.floor(Math.random() * 9000 + 1000)}`,
+      provider: "stripe",
+      event: eventType,
+      orderNo: orderId,
+      amount: amountRaw,
+      status,
+      verified,
+      createdAt: Date.now(),
+      raw: event as unknown as Record<string, unknown>,
     });
+
+    if (shouldMutate && orderId) {
+      const exists = await getOrderExistsByIdEdgeRead(orderId);
+      if (exists) {
+        await updateOrderPaymentStatusEdgeWrite(orderId, "已支付");
+      }
+    }
+
+    if (shouldMutate && userAddress && diamondAmount && orderId) {
+      if (Number.isFinite(parsedDiamondAmount) && parsedDiamondAmount > 0) {
+        await upsertLedgerRecordEdgeWrite({
+          id: orderId,
+          userAddress,
+          diamondAmount: parsedDiamondAmount,
+          amount: typeof amountRaw === "number" ? amountRaw / 100 : undefined,
+          currency: "CNY",
+          status: "paid",
+          orderId,
+          receiptId: paymentIntentId ? `stripe_pi_${paymentIntentId}` : undefined,
+          source: "stripe",
+          meta: {
+            eventType,
+            paymentIntentId,
+            status,
+          },
+        });
+      }
+    }
   } catch (e) {
     console.error("webhook transaction failed:", e);
   }
