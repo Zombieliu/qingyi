@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  addSupportTicket: vi.fn(),
+  addSupportTicketEdgeWrite: vi.fn(),
   rateLimit: vi.fn(),
   getClientIp: vi.fn(),
   parseBody: vi.fn(),
@@ -27,8 +27,8 @@ vi.mock("next/server", () => {
   return { NextResponse: MockNextResponse };
 });
 
-vi.mock("@/lib/admin/admin-store", () => ({
-  addSupportTicket: mocks.addSupportTicket,
+vi.mock("@/lib/edge-db/support-write-store", () => ({
+  addSupportTicketEdgeWrite: mocks.addSupportTicketEdgeWrite,
 }));
 vi.mock("@/lib/rate-limit", () => ({ rateLimit: mocks.rateLimit }));
 vi.mock("@/lib/shared/api-utils", () => ({ getClientIp: mocks.getClientIp }));
@@ -45,7 +45,7 @@ describe("POST /api/support", () => {
     vi.clearAllMocks();
     mocks.rateLimit.mockResolvedValue(true);
     mocks.getClientIp.mockReturnValue("127.0.0.1");
-    mocks.addSupportTicket.mockResolvedValue(undefined);
+    mocks.addSupportTicketEdgeWrite.mockResolvedValue(undefined);
   });
 
   it("returns 429 when rate limited", async () => {
@@ -92,7 +92,7 @@ describe("POST /api/support", () => {
     const body = await res.json();
     expect(body.id).toMatch(/^SUP-/);
     expect(body.status).toBe("待处理");
-    expect(mocks.addSupportTicket).toHaveBeenCalled();
+    expect(mocks.addSupportTicketEdgeWrite).toHaveBeenCalled();
   });
 
   it("uses default topic when not provided", async () => {
@@ -105,7 +105,7 @@ describe("POST /api/support", () => {
       body: "{}",
     });
     await POST(req);
-    const call = mocks.addSupportTicket.mock.calls[0][0];
+    const call = mocks.addSupportTicketEdgeWrite.mock.calls[0][0];
     expect(call.topic).toBe("其他");
   });
 
@@ -122,7 +122,7 @@ describe("POST /api/support", () => {
       body: "{}",
     });
     await POST(req);
-    const call = mocks.addSupportTicket.mock.calls[0][0];
+    const call = mocks.addSupportTicketEdgeWrite.mock.calls[0][0];
     expect(call.meta).toEqual({
       screenshots: ["data:image/png;base64,abc", "data:image/png;base64,def"],
     });
@@ -138,7 +138,7 @@ describe("POST /api/support", () => {
       body: "{}",
     });
     await POST(req);
-    const call = mocks.addSupportTicket.mock.calls[0][0];
+    const call = mocks.addSupportTicketEdgeWrite.mock.calls[0][0];
     expect(call.meta).toEqual({});
   });
 
@@ -156,7 +156,7 @@ describe("POST /api/support", () => {
       body: "{}",
     });
     await POST(req);
-    const call = mocks.addSupportTicket.mock.calls[0][0];
+    const call = mocks.addSupportTicketEdgeWrite.mock.calls[0][0];
     expect(call.meta).toEqual({
       type: "chain_dispute",
       orderId: "ORD-1",
@@ -177,7 +177,7 @@ describe("POST /api/support", () => {
       body: "{}",
     });
     await POST(req);
-    const call = mocks.addSupportTicket.mock.calls[0][0];
+    const call = mocks.addSupportTicketEdgeWrite.mock.calls[0][0];
     expect(call.meta).toEqual({ type: "chain_dispute", orderId: "ORD-2" });
   });
 
@@ -204,7 +204,7 @@ describe("POST /api/support", () => {
       body: "{}",
     });
     await POST(req);
-    const call = mocks.addSupportTicket.mock.calls[0][0];
+    const call = mocks.addSupportTicketEdgeWrite.mock.calls[0][0];
     // name takes priority over userName
     expect(call.userName).toBe("Alice");
   });

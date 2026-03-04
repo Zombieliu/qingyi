@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import crypto from "crypto";
 import { z } from "zod";
-import { addSupportTicket } from "@/lib/admin/admin-store";
+import { addSupportTicketEdgeWrite } from "@/lib/edge-db/support-write-store";
 import type { AdminSupportTicket, SupportStatus } from "@/lib/admin/admin-types";
 import { rateLimit } from "@/lib/rate-limit";
 import { getClientIp } from "@/lib/shared/api-utils";
@@ -45,7 +45,7 @@ export const POST = withApiHandler(
       createdAt: Date.now(),
     };
 
-    await addSupportTicket(ticket);
+    await addSupportTicketEdgeWrite(ticket);
     return NextResponse.json({ id: ticket.id, status: ticket.status });
   },
   { auth: "public" }
