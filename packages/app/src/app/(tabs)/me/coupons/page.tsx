@@ -21,6 +21,8 @@ type Coupon = {
   expiresAt?: number | null;
 };
 
+type RedeemHintTone = "success" | "error";
+
 const STORAGE_KEY = "qy_coupon_claims_v1";
 
 function loadClaims(): string[] {
@@ -54,6 +56,7 @@ export default function CouponsPage() {
   const [redeemCode, setRedeemCode] = useState("");
   const [redeemLoading, setRedeemLoading] = useState(false);
   const [redeemHint, setRedeemHint] = useState<string | null>(null);
+  const [redeemHintTone, setRedeemHintTone] = useState<RedeemHintTone>("success");
   const [redeemReward, setRedeemReward] = useState<{
     type: string;
     amount?: number;
@@ -117,19 +120,25 @@ export default function CouponsPage() {
   }, [redeemReward]);
 
   const handleRedeem = async () => {
+    const setRedeemNotice = (message: string, tone: RedeemHintTone) => {
+      setRedeemHint(message);
+      setRedeemHintTone(tone);
+    };
+
     const raw = redeemCode.trim();
     if (!raw) {
-      setRedeemHint("form.card_code_required");
+      setRedeemNotice("form.card_code_required", "error");
       return;
     }
     const address = getCurrentAddress();
     if (!address) {
-      setRedeemHint("auth.please_login");
+      setRedeemNotice("auth.please_login", "error");
       return;
     }
     if (redeemLoading) return;
     setRedeemLoading(true);
     setRedeemHint(null);
+    setRedeemReward(null);
     try {
       const res = await fetchWithUserAuth(
         "/api/redeem",
@@ -142,14 +151,15 @@ export default function CouponsPage() {
       );
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setRedeemHint(data?.error || t("tabs.me.coupons.i028"));
+        const errorKey = typeof data?.error === "string" ? data.error : "tabs.me.coupons.i028";
+        setRedeemNotice(errorKey, "error");
         return;
       }
       setRedeemReward(data?.reward || null);
       setRedeemCode("");
-      setRedeemHint(data?.duplicated ? t("tabs.me.coupons.i029") : t("me.coupons.001"));
+      setRedeemNotice(data?.duplicated ? "tabs.me.coupons.i029" : "me.coupons.001", "success");
     } catch {
-      setRedeemHint("diamond.redeem_failed");
+      setRedeemNotice("diamond.redeem_failed", "error");
     } finally {
       setRedeemLoading(false);
     }
@@ -204,7 +214,13 @@ export default function CouponsPage() {
             {redeemLoading ? t("tabs.me.coupons.i030") : t("me.coupons.004")}
           </button>
         </div>
-        {redeemHint && <div className="mt-2 text-xs text-emerald-600">{redeemHint}</div>}
+        {redeemHint && (
+          <div
+            className={`mt-2 text-xs ${redeemHintTone === "error" ? "text-rose-600" : "text-emerald-600"}`}
+          >
+            {t(redeemHint)}
+          </div>
+        )}
         {redeemSummary && <div className="mt-1 text-xs text-slate-500">{redeemSummary}</div>}
       </section>
 
