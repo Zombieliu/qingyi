@@ -249,6 +249,17 @@ export async function getDashboardSnapshotEdgeRead(args: {
   const yesterdayIso = args.yesterdayStart.toISOString();
   const weekAgoIso = args.weekAgo.toISOString();
   const twoWeeksAgoIso = args.twoWeeksAgo.toISOString();
+  const yesterdayOrderParams = new URLSearchParams({
+    select: "amount,stage,serviceFee",
+  });
+  yesterdayOrderParams.append("createdAt", `gte.${yesterdayIso}`);
+  yesterdayOrderParams.append("createdAt", `lt.${todayIso}`);
+
+  const prevWeekOrderParams = new URLSearchParams({
+    select: "amount,stage",
+  });
+  prevWeekOrderParams.append("createdAt", `gte.${twoWeeksAgoIso}`);
+  prevWeekOrderParams.append("createdAt", `lt.${weekAgoIso}`);
 
   const [
     todayOrdersRows,
@@ -268,11 +279,7 @@ export async function getDashboardSnapshotEdgeRead(args: {
     }),
     scanEdgeTableRows<DashboardYesterdayOrderRow>({
       table: "AdminOrder",
-      baseParams: new URLSearchParams({
-        select: "amount,stage,serviceFee",
-        createdAt: `gte.${yesterdayIso}`,
-        "createdAt.lt": todayIso,
-      }),
+      baseParams: yesterdayOrderParams,
     }),
     scanEdgeTableRows<DashboardWeekOrderRow>({
       table: "AdminOrder",
@@ -283,11 +290,7 @@ export async function getDashboardSnapshotEdgeRead(args: {
     }),
     scanEdgeTableRows<DashboardPrevWeekOrderRow>({
       table: "AdminOrder",
-      baseParams: new URLSearchParams({
-        select: "amount,stage",
-        createdAt: `gte.${twoWeeksAgoIso}`,
-        "createdAt.lt": weekAgoIso,
-      }),
+      baseParams: prevWeekOrderParams,
     }),
     scanEdgeTableRows<DashboardPlayerRow>({
       table: "AdminPlayer",

@@ -5,6 +5,30 @@ import { listPlayersPublicEdgeRead } from "@/lib/edge-db/user-read-store";
 import { listActiveMembershipTiersEdgeRead } from "@/lib/edge-db/public-read-store";
 import { addSupportTicketEdgeWrite } from "@/lib/edge-db/support-write-store";
 import { upsertLedgerRecordEdgeWrite } from "@/lib/edge-db/payment-reconcile-store";
+import {
+  getCompanionEarningsEdgeRead,
+  getOrderByIdEdgeRead,
+  getPlayerByAddressEdgeRead,
+  getReferralConfigEdgeRead,
+  listChainOrdersForAdminEdgeRead,
+  listChainOrdersForAutoFinalizeEdgeRead,
+  listChainOrdersForCleanupEdgeRead,
+  listE2eOrderIdsEdgeRead,
+  listOrdersEdgeRead,
+  listPlayersEdgeRead,
+  queryMembersCursorEdgeRead,
+  queryMembersEdgeRead,
+  queryMembershipTiersCursorEdgeRead,
+  queryMembershipTiersEdgeRead,
+  queryOrdersCursorEdgeRead,
+  queryOrdersEdgeRead,
+  queryPaymentEventsCursorEdgeRead,
+  queryPaymentEventsEdgeRead,
+  queryReferralsEdgeRead,
+  querySupportTicketsCursorEdgeRead,
+  querySupportTicketsEdgeRead,
+  updateReferralConfigEdgeWrite,
+} from "@/lib/edge-db/admin-read-store";
 import { getEdgeDbConfig } from "@/lib/edge-db/client";
 
 export type CursorPayload = { createdAt: number; id: string };
@@ -163,7 +187,9 @@ export async function getAdminStats(...args: unknown[]) {
   return callLegacy("getAdminStats", args);
 }
 export async function getCompanionEarnings(...args: unknown[]) {
-  return callLegacy("getCompanionEarnings", args);
+  if (!hasEdgeReadConfig()) return callLegacy("getCompanionEarnings", args);
+  const [params] = args as [Parameters<typeof getCompanionEarningsEdgeRead>[0] | undefined];
+  return getCompanionEarningsEdgeRead(params);
 }
 export async function getCouponByCode(...args: unknown[]) {
   return callLegacy("getCouponByCode", args);
@@ -184,10 +210,16 @@ export async function getMembershipTierById(...args: unknown[]) {
   return callLegacy("getMembershipTierById", args);
 }
 export async function getOrderById(...args: unknown[]) {
-  return callLegacy("getOrderById", args);
+  if (!hasEdgeReadConfig()) return callLegacy("getOrderById", args);
+  const [orderId] = args as [string | undefined];
+  if (!orderId) return callLegacy("getOrderById", args);
+  return getOrderByIdEdgeRead(orderId);
 }
 export async function getPlayerByAddress(...args: unknown[]) {
-  return callLegacy("getPlayerByAddress", args);
+  if (!hasEdgeReadConfig()) return callLegacy("getPlayerByAddress", args);
+  const [address] = args as [string | undefined];
+  if (!address) return callLegacy("getPlayerByAddress", args);
+  return getPlayerByAddressEdgeRead(address);
 }
 export async function getPlayerById(...args: unknown[]) {
   return callLegacy("getPlayerById", args);
@@ -196,7 +228,8 @@ export async function getReferralByInvitee(...args: unknown[]) {
   return callLegacy("getReferralByInvitee", args);
 }
 export async function getReferralConfig(...args: unknown[]) {
-  return callLegacy("getReferralConfig", args);
+  if (!hasEdgeReadConfig()) return callLegacy("getReferralConfig", args);
+  return getReferralConfigEdgeRead();
 }
 export async function getReviewByOrderId(...args: unknown[]) {
   return callLegacy("getReviewByOrderId", args);
@@ -223,22 +256,33 @@ export async function listAnnouncements(...args: unknown[]) {
   return callLegacy("listAnnouncements", args);
 }
 export async function listChainOrdersForAdmin(...args: unknown[]) {
-  return callLegacy("listChainOrdersForAdmin", args);
+  if (!hasEdgeReadConfig()) return callLegacy("listChainOrdersForAdmin", args);
+  const [limit] = args as [number | undefined];
+  return listChainOrdersForAdminEdgeRead(limit);
 }
 export async function listChainOrdersForAutoFinalize(...args: unknown[]) {
-  return callLegacy("listChainOrdersForAutoFinalize", args);
+  if (!hasEdgeReadConfig()) return callLegacy("listChainOrdersForAutoFinalize", args);
+  const [limit] = args as [number | undefined];
+  return listChainOrdersForAutoFinalizeEdgeRead(limit);
 }
 export async function listChainOrdersForCleanup(...args: unknown[]) {
-  return callLegacy("listChainOrdersForCleanup", args);
+  if (!hasEdgeReadConfig()) return callLegacy("listChainOrdersForCleanup", args);
+  const [limit] = args as [number | undefined];
+  return listChainOrdersForCleanupEdgeRead(limit);
 }
 export async function listE2eOrderIds(...args: unknown[]) {
-  return callLegacy("listE2eOrderIds", args);
+  if (!hasEdgeReadConfig()) return callLegacy("listE2eOrderIds", args);
+  return listE2eOrderIdsEdgeRead();
 }
 export async function listOrders(...args: unknown[]) {
-  return callLegacy("listOrders", args);
+  if (!hasEdgeReadConfig()) return callLegacy("listOrders", args);
+  const [limit] = args as [number | undefined];
+  return listOrdersEdgeRead(limit);
 }
 export async function listPlayers(...args: unknown[]) {
-  return callLegacy("listPlayers", args);
+  if (!hasEdgeReadConfig()) return callLegacy("listPlayers", args);
+  const [limit] = args as [number | undefined];
+  return listPlayersEdgeRead(limit);
 }
 export async function mapMantouTransaction(...args: unknown[]) {
   return callLegacy("mapMantouTransaction", args);
@@ -301,10 +345,16 @@ export async function queryMantouWithdrawsCursor(...args: unknown[]) {
   return callLegacy("queryMantouWithdrawsCursor", args);
 }
 export async function queryMembers(...args: unknown[]) {
-  return callLegacy("queryMembers", args);
+  if (!hasEdgeReadConfig()) return callLegacy("queryMembers", args);
+  const [params] = args as [Parameters<typeof queryMembersEdgeRead>[0] | undefined];
+  if (!params) return callLegacy("queryMembers", args);
+  return queryMembersEdgeRead(params);
 }
 export async function queryMembersCursor(...args: unknown[]) {
-  return callLegacy("queryMembersCursor", args);
+  if (!hasEdgeReadConfig()) return callLegacy("queryMembersCursor", args);
+  const [params] = args as [Parameters<typeof queryMembersCursorEdgeRead>[0] | undefined];
+  if (!params) return callLegacy("queryMembersCursor", args);
+  return queryMembersCursorEdgeRead(params);
 }
 export async function queryMembershipRequests(...args: unknown[]) {
   return callLegacy("queryMembershipRequests", args);
@@ -313,37 +363,64 @@ export async function queryMembershipRequestsCursor(...args: unknown[]) {
   return callLegacy("queryMembershipRequestsCursor", args);
 }
 export async function queryMembershipTiers(...args: unknown[]) {
-  return callLegacy("queryMembershipTiers", args);
+  if (!hasEdgeReadConfig()) return callLegacy("queryMembershipTiers", args);
+  const [params] = args as [Parameters<typeof queryMembershipTiersEdgeRead>[0] | undefined];
+  if (!params) return callLegacy("queryMembershipTiers", args);
+  return queryMembershipTiersEdgeRead(params);
 }
 export async function queryMembershipTiersCursor(...args: unknown[]) {
-  return callLegacy("queryMembershipTiersCursor", args);
+  if (!hasEdgeReadConfig()) return callLegacy("queryMembershipTiersCursor", args);
+  const [params] = args as [Parameters<typeof queryMembershipTiersCursorEdgeRead>[0] | undefined];
+  if (!params) return callLegacy("queryMembershipTiersCursor", args);
+  return queryMembershipTiersCursorEdgeRead(params);
 }
 export async function queryOrders(...args: unknown[]) {
-  return callLegacy("queryOrders", args);
+  if (!hasEdgeReadConfig()) return callLegacy("queryOrders", args);
+  const [params] = args as [Parameters<typeof queryOrdersEdgeRead>[0] | undefined];
+  if (!params) return callLegacy("queryOrders", args);
+  return queryOrdersEdgeRead(params);
 }
 export async function queryOrdersCursor(...args: unknown[]) {
-  return callLegacy("queryOrdersCursor", args);
+  if (!hasEdgeReadConfig()) return callLegacy("queryOrdersCursor", args);
+  const [params] = args as [Parameters<typeof queryOrdersCursorEdgeRead>[0] | undefined];
+  if (!params) return callLegacy("queryOrdersCursor", args);
+  return queryOrdersCursorEdgeRead(params);
 }
 export async function queryPaymentEvents(...args: unknown[]) {
-  return callLegacy("queryPaymentEvents", args);
+  if (!hasEdgeReadConfig()) return callLegacy("queryPaymentEvents", args);
+  const [params] = args as [Parameters<typeof queryPaymentEventsEdgeRead>[0] | undefined];
+  if (!params) return callLegacy("queryPaymentEvents", args);
+  return queryPaymentEventsEdgeRead(params);
 }
 export async function queryPaymentEventsCursor(...args: unknown[]) {
-  return callLegacy("queryPaymentEventsCursor", args);
+  if (!hasEdgeReadConfig()) return callLegacy("queryPaymentEventsCursor", args);
+  const [params] = args as [Parameters<typeof queryPaymentEventsCursorEdgeRead>[0] | undefined];
+  if (!params) return callLegacy("queryPaymentEventsCursor", args);
+  return queryPaymentEventsCursorEdgeRead(params);
 }
 export async function queryPublicOrdersCursor(...args: unknown[]) {
   return callLegacy("queryPublicOrdersCursor", args);
 }
 export async function queryReferrals(...args: unknown[]) {
-  return callLegacy("queryReferrals", args);
+  if (!hasEdgeReadConfig()) return callLegacy("queryReferrals", args);
+  const [params] = args as [Parameters<typeof queryReferralsEdgeRead>[0] | undefined];
+  if (!params) return callLegacy("queryReferrals", args);
+  return queryReferralsEdgeRead(params);
 }
 export async function queryReferralsByInviter(...args: unknown[]) {
   return callLegacy("queryReferralsByInviter", args);
 }
 export async function querySupportTickets(...args: unknown[]) {
-  return callLegacy("querySupportTickets", args);
+  if (!hasEdgeReadConfig()) return callLegacy("querySupportTickets", args);
+  const [params] = args as [Parameters<typeof querySupportTicketsEdgeRead>[0] | undefined];
+  if (!params) return callLegacy("querySupportTickets", args);
+  return querySupportTicketsEdgeRead(params);
 }
 export async function querySupportTicketsCursor(...args: unknown[]) {
-  return callLegacy("querySupportTicketsCursor", args);
+  if (!hasEdgeReadConfig()) return callLegacy("querySupportTicketsCursor", args);
+  const [params] = args as [Parameters<typeof querySupportTicketsCursorEdgeRead>[0] | undefined];
+  if (!params) return callLegacy("querySupportTicketsCursor", args);
+  return querySupportTicketsCursorEdgeRead(params);
 }
 export async function removeAccessToken(...args: unknown[]) {
   return callLegacy("removeAccessToken", args);
@@ -445,7 +522,9 @@ export async function updatePlayerStatusByAddress(...args: unknown[]) {
   return callLegacy("updatePlayerStatusByAddress", args);
 }
 export async function updateReferralConfig(...args: unknown[]) {
-  return callLegacy("updateReferralConfig", args);
+  if (!hasEdgeWriteConfig()) return callLegacy("updateReferralConfig", args);
+  const [patch] = args as [Parameters<typeof updateReferralConfigEdgeWrite>[0] | undefined];
+  return updateReferralConfigEdgeWrite(patch || {});
 }
 export async function updateSessionByHash(...args: unknown[]) {
   return callLegacy("updateSessionByHash", args);
