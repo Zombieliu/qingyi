@@ -2,8 +2,8 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   requireUserAuth: vi.fn(),
-  getPlayerByAddress: vi.fn(),
-  updatePlayerStatusByAddress: vi.fn(),
+  getPlayerByAddressEdgeRead: vi.fn(),
+  updatePlayerStatusByAddressEdgeWrite: vi.fn(),
   recordAudit: vi.fn(),
   isValidSuiAddress: vi.fn(),
   normalizeSuiAddress: vi.fn(),
@@ -31,9 +31,9 @@ vi.mock("next/server", () => {
 });
 
 vi.mock("@/lib/auth/user-auth", () => ({ requireUserAuth: mocks.requireUserAuth }));
-vi.mock("@/lib/admin/admin-store", () => ({
-  getPlayerByAddress: mocks.getPlayerByAddress,
-  updatePlayerStatusByAddress: mocks.updatePlayerStatusByAddress,
+vi.mock("@/lib/edge-db/player-status-store", () => ({
+  getPlayerByAddressEdgeRead: mocks.getPlayerByAddressEdgeRead,
+  updatePlayerStatusByAddressEdgeWrite: mocks.updatePlayerStatusByAddressEdgeWrite,
 }));
 vi.mock("@/lib/admin/admin-audit", () => ({ recordAudit: mocks.recordAudit }));
 vi.mock("@mysten/sui/utils", () => ({
@@ -73,7 +73,7 @@ describe("GET /api/players/me/status", () => {
 
   it("returns 409 on address conflict", async () => {
     mocks.requireUserAuth.mockResolvedValue({ ok: true, address: VALID_ADDRESS });
-    mocks.getPlayerByAddress.mockResolvedValue({ conflict: true, player: null });
+    mocks.getPlayerByAddressEdgeRead.mockResolvedValue({ conflict: true, player: null });
     const req = new Request(`http://localhost/api/players/me/status?address=${VALID_ADDRESS}`);
     const res = await GET(req);
     expect(res.status).toBe(409);
@@ -81,7 +81,7 @@ describe("GET /api/players/me/status", () => {
 
   it("returns 404 when player not found", async () => {
     mocks.requireUserAuth.mockResolvedValue({ ok: true, address: VALID_ADDRESS });
-    mocks.getPlayerByAddress.mockResolvedValue({ conflict: false, player: null });
+    mocks.getPlayerByAddressEdgeRead.mockResolvedValue({ conflict: false, player: null });
     const req = new Request(`http://localhost/api/players/me/status?address=${VALID_ADDRESS}`);
     const res = await GET(req);
     expect(res.status).toBe(404);
@@ -89,7 +89,7 @@ describe("GET /api/players/me/status", () => {
 
   it("returns player status", async () => {
     mocks.requireUserAuth.mockResolvedValue({ ok: true, address: VALID_ADDRESS });
-    mocks.getPlayerByAddress.mockResolvedValue({
+    mocks.getPlayerByAddressEdgeRead.mockResolvedValue({
       conflict: false,
       player: { id: "P-1", status: "可接单" },
     });
@@ -125,7 +125,7 @@ describe("PATCH /api/players/me/status", () => {
       rawBody: "{}",
     });
     mocks.requireUserAuth.mockResolvedValue({ ok: true, address: VALID_ADDRESS });
-    mocks.getPlayerByAddress.mockResolvedValue({
+    mocks.getPlayerByAddressEdgeRead.mockResolvedValue({
       conflict: false,
       player: { id: "P-1", status: "停用" },
     });
@@ -141,11 +141,11 @@ describe("PATCH /api/players/me/status", () => {
       rawBody: "{}",
     });
     mocks.requireUserAuth.mockResolvedValue({ ok: true, address: VALID_ADDRESS });
-    mocks.getPlayerByAddress.mockResolvedValue({
+    mocks.getPlayerByAddressEdgeRead.mockResolvedValue({
       conflict: false,
       player: { id: "P-1", status: "可接单" },
     });
-    mocks.updatePlayerStatusByAddress.mockResolvedValue({
+    mocks.updatePlayerStatusByAddressEdgeWrite.mockResolvedValue({
       conflict: false,
       player: { id: "P-1", status: "忙碌" },
     });
@@ -187,14 +187,14 @@ describe("PATCH /api/players/me/status", () => {
     expect(res.status).toBe(401);
   });
 
-  it("returns 409 on address conflict in PATCH getPlayerByAddress", async () => {
+  it("returns 409 on address conflict in PATCH read", async () => {
     mocks.parseBodyRaw.mockResolvedValue({
       success: true,
       data: { address: VALID_ADDRESS, status: "可接单" },
       rawBody: "{}",
     });
     mocks.requireUserAuth.mockResolvedValue({ ok: true, address: VALID_ADDRESS });
-    mocks.getPlayerByAddress.mockResolvedValue({ conflict: true, player: null });
+    mocks.getPlayerByAddressEdgeRead.mockResolvedValue({ conflict: true, player: null });
     const req = new Request("http://localhost/api/players/me/status", { method: "PATCH" });
     const res = await PATCH(req);
     expect(res.status).toBe(409);
@@ -209,7 +209,7 @@ describe("PATCH /api/players/me/status", () => {
       rawBody: "{}",
     });
     mocks.requireUserAuth.mockResolvedValue({ ok: true, address: VALID_ADDRESS });
-    mocks.getPlayerByAddress.mockResolvedValue({ conflict: false, player: null });
+    mocks.getPlayerByAddressEdgeRead.mockResolvedValue({ conflict: false, player: null });
     const req = new Request("http://localhost/api/players/me/status", { method: "PATCH" });
     const res = await PATCH(req);
     expect(res.status).toBe(404);
@@ -217,18 +217,18 @@ describe("PATCH /api/players/me/status", () => {
     expect(body.error).toBe("player_not_found");
   });
 
-  it("returns 409 on address conflict in updatePlayerStatusByAddress", async () => {
+  it("returns 409 on address conflict in update write", async () => {
     mocks.parseBodyRaw.mockResolvedValue({
       success: true,
       data: { address: VALID_ADDRESS, status: "忙碌" },
       rawBody: "{}",
     });
     mocks.requireUserAuth.mockResolvedValue({ ok: true, address: VALID_ADDRESS });
-    mocks.getPlayerByAddress.mockResolvedValue({
+    mocks.getPlayerByAddressEdgeRead.mockResolvedValue({
       conflict: false,
       player: { id: "P-1", status: "可接单" },
     });
-    mocks.updatePlayerStatusByAddress.mockResolvedValue({ conflict: true, player: null });
+    mocks.updatePlayerStatusByAddressEdgeWrite.mockResolvedValue({ conflict: true, player: null });
     const req = new Request("http://localhost/api/players/me/status", { method: "PATCH" });
     const res = await PATCH(req);
     expect(res.status).toBe(409);
@@ -236,18 +236,21 @@ describe("PATCH /api/players/me/status", () => {
     expect(body.error).toBe("address_conflict");
   });
 
-  it("returns 404 when updatePlayerStatusByAddress returns no player", async () => {
+  it("returns 404 when update write returns no player", async () => {
     mocks.parseBodyRaw.mockResolvedValue({
       success: true,
       data: { address: VALID_ADDRESS, status: "忙碌" },
       rawBody: "{}",
     });
     mocks.requireUserAuth.mockResolvedValue({ ok: true, address: VALID_ADDRESS });
-    mocks.getPlayerByAddress.mockResolvedValue({
+    mocks.getPlayerByAddressEdgeRead.mockResolvedValue({
       conflict: false,
       player: { id: "P-1", status: "可接单" },
     });
-    mocks.updatePlayerStatusByAddress.mockResolvedValue({ conflict: false, player: null });
+    mocks.updatePlayerStatusByAddressEdgeWrite.mockResolvedValue({
+      conflict: false,
+      player: null,
+    });
     const req = new Request("http://localhost/api/players/me/status", { method: "PATCH" });
     const res = await PATCH(req);
     expect(res.status).toBe(404);

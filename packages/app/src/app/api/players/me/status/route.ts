@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 import { isValidSuiAddress, normalizeSuiAddress } from "@mysten/sui/utils";
 import { requireUserAuth } from "@/lib/auth/user-auth";
-import { getPlayerByAddress, updatePlayerStatusByAddress } from "@/lib/admin/admin-store";
+import {
+  getPlayerByAddressEdgeRead,
+  updatePlayerStatusByAddressEdgeWrite,
+} from "@/lib/edge-db/player-status-store";
 import { recordAudit } from "@/lib/admin/admin-audit";
 import { z } from "zod";
 import { parseBodyRaw } from "@/lib/shared/api-validation";
@@ -28,7 +31,7 @@ export async function GET(req: Request) {
   const auth = await requireUserAuth(req, { intent: "players:status:read", address });
   if (!auth.ok) return auth.response;
 
-  const result = await getPlayerByAddress(address);
+  const result = await getPlayerByAddressEdgeRead(address);
   if (result.conflict) {
     return NextResponse.json({ error: "address_conflict" }, { status: 409 });
   }
@@ -59,7 +62,7 @@ export async function PATCH(req: Request) {
   });
   if (!auth.ok) return auth.response;
 
-  const current = await getPlayerByAddress(address);
+  const current = await getPlayerByAddressEdgeRead(address);
   if (current.conflict) {
     return NextResponse.json({ error: "address_conflict" }, { status: 409 });
   }
@@ -70,7 +73,7 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ error: "player_disabled" }, { status: 403 });
   }
 
-  const result = await updatePlayerStatusByAddress(address, status);
+  const result = await updatePlayerStatusByAddressEdgeWrite(address, status);
   if (result.conflict) {
     return NextResponse.json({ error: "address_conflict" }, { status: 409 });
   }

@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  getPlayerByAddress: vi.fn(),
+  getPlayerByAddressEdgeRead: vi.fn(),
   isValidSuiAddress: vi.fn(),
   normalizeSuiAddress: vi.fn(),
 }));
@@ -26,8 +26,8 @@ vi.mock("next/server", () => {
   return { NextResponse: MockNextResponse };
 });
 
-vi.mock("@/lib/admin/admin-store", () => ({
-  getPlayerByAddress: mocks.getPlayerByAddress,
+vi.mock("@/lib/edge-db/player-status-store", () => ({
+  getPlayerByAddressEdgeRead: mocks.getPlayerByAddressEdgeRead,
 }));
 vi.mock("@mysten/sui/utils", () => ({
   isValidSuiAddress: mocks.isValidSuiAddress,
@@ -59,7 +59,7 @@ describe("GET /api/guardians/status", () => {
   });
 
   it("returns isGuardian true for active player", async () => {
-    mocks.getPlayerByAddress.mockResolvedValue({
+    mocks.getPlayerByAddressEdgeRead.mockResolvedValue({
       player: { id: "P-1", status: "可接单" },
       conflict: false,
     });
@@ -71,7 +71,7 @@ describe("GET /api/guardians/status", () => {
   });
 
   it("returns isGuardian false for disabled player", async () => {
-    mocks.getPlayerByAddress.mockResolvedValue({
+    mocks.getPlayerByAddressEdgeRead.mockResolvedValue({
       player: { id: "P-1", status: "停用" },
       conflict: false,
     });
@@ -83,7 +83,16 @@ describe("GET /api/guardians/status", () => {
   });
 
   it("returns isGuardian false when player not found", async () => {
-    mocks.getPlayerByAddress.mockResolvedValue({ player: null, conflict: false });
+    mocks.getPlayerByAddressEdgeRead.mockResolvedValue({ player: null, conflict: false });
+    const req = new Request(`http://localhost/api/guardians/status?address=${VALID_ADDRESS}`);
+    const res = await GET(req);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.isGuardian).toBe(false);
+  });
+
+  it("returns isGuardian false when address has conflict", async () => {
+    mocks.getPlayerByAddressEdgeRead.mockResolvedValue({ player: null, conflict: true });
     const req = new Request(`http://localhost/api/guardians/status?address=${VALID_ADDRESS}`);
     const res = await GET(req);
     expect(res.status).toBe(200);
