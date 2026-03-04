@@ -24,6 +24,10 @@ function getRestBaseUrl(config: EdgeDbConfig): string {
   return `${config.baseUrl}/rest/v1`;
 }
 
+export function getEdgeRestBaseUrl(config: EdgeDbConfig): string {
+  return getRestBaseUrl(config);
+}
+
 export function getEdgeDbConfig(authMode: EdgeDbAuthMode = "read"): EdgeDbConfig | null {
   const baseUrl = getFirstEnv("EDGE_DB_REST_URL", "NEXT_PUBLIC_SUPABASE_URL", "SUPABASE_URL");
   const apiKey =
@@ -117,6 +121,73 @@ export async function insertEdgeRow(
     const detail = await parseEdgeErrorDetail(res);
     throw new Error(`edge_db_request_failed:${table}:${res.status}:${detail}`);
   }
+}
+
+export async function patchEdgeRowsByFilter<T>(
+  table: string,
+  filter: URLSearchParams,
+  data: Record<string, unknown>
+): Promise<T[]> {
+  const config = getEdgeDbConfig("write");
+  if (!config) {
+    throw new Error("edge_db_not_configured");
+  }
+
+  const url = new URL(`${getRestBaseUrl(config)}/${table}`);
+  url.search = filter.toString();
+
+  const res = await fetch(url.toString(), {
+    method: "PATCH",
+    headers: {
+      apikey: config.apiKey,
+      authorization: `Bearer ${config.apiKey}`,
+      accept: "application/json",
+      "content-type": "application/json",
+      prefer: "return=representation",
+    },
+    body: JSON.stringify(data),
+    cache: "no-store",
+  });
+
+  if (!res.ok) {
+    const detail = await parseEdgeErrorDetail(res);
+    throw new Error(`edge_db_request_failed:${table}:${res.status}:${detail}`);
+  }
+
+  const payload = (await res.json().catch(() => [])) as unknown;
+  return Array.isArray(payload) ? (payload as T[]) : [];
+}
+
+export async function deleteEdgeRowsByFilter<T = unknown>(
+  table: string,
+  filter: URLSearchParams
+): Promise<T[]> {
+  const config = getEdgeDbConfig("write");
+  if (!config) {
+    throw new Error("edge_db_not_configured");
+  }
+
+  const url = new URL(`${getRestBaseUrl(config)}/${table}`);
+  url.search = filter.toString();
+
+  const res = await fetch(url.toString(), {
+    method: "DELETE",
+    headers: {
+      apikey: config.apiKey,
+      authorization: `Bearer ${config.apiKey}`,
+      accept: "application/json",
+      prefer: "return=representation",
+    },
+    cache: "no-store",
+  });
+
+  if (!res.ok) {
+    const detail = await parseEdgeErrorDetail(res);
+    throw new Error(`edge_db_request_failed:${table}:${res.status}:${detail}`);
+  }
+
+  const payload = (await res.json().catch(() => [])) as unknown;
+  return Array.isArray(payload) ? (payload as T[]) : [];
 }
 
 export function toEpochMs(value: string | number | null | undefined): number | undefined {

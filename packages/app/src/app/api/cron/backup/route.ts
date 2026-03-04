@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { isAuthorizedCron } from "@/lib/cron-auth";
-import { exportCriticalData } from "@/lib/shared/backup-utils";
 import { setCache } from "@/lib/server-cache";
 import { trackCronCompleted, trackCronFailed } from "@/lib/business-events";
 
@@ -26,6 +25,8 @@ export async function GET(req: Request) {
   const start = Date.now();
 
   try {
+    const backupUtilsPath = "@/lib/shared/backup-utils";
+    const { exportCriticalData } = await import(backupUtilsPath);
     const data = await exportCriticalData();
 
     const summary = {

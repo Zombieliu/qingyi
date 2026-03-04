@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin/admin-auth";
-import { getBackupStats } from "@/lib/shared/backup-utils";
 import { getCacheAsync } from "@/lib/server-cache";
 
 export const dynamic = "force-dynamic";
@@ -15,6 +14,8 @@ export async function GET(req: Request) {
   if (!auth.ok) return auth.response;
 
   try {
+    const backupUtilsPath = "@/lib/shared/backup-utils";
+    const { getBackupStats } = await import(backupUtilsPath);
     const cached = await getCacheAsync<{
       exportedAt: string;
       stats: Record<string, number>;

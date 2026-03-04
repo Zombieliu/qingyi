@@ -1,12 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { parseBody } from "@/lib/shared/api-validation";
-import {
-  getCustomerTags,
-  addCustomerTag,
-  removeCustomerTag,
-  listTaggedCustomers,
-} from "@/lib/services/customer-tag-service";
 import { requireAdmin } from "@/lib/admin/admin-auth";
 
 const addTagSchema = z.object({
@@ -29,6 +23,9 @@ export async function GET(req: NextRequest) {
   const auth = await requireAdmin(req, { role: "viewer" });
   if (!auth.ok) return auth.response;
 
+  const customerTagServicePath = "@/lib/services/customer-tag-service";
+  const { getCustomerTags, listTaggedCustomers } = await import(customerTagServicePath);
+
   const userAddress = req.nextUrl.searchParams.get("userAddress");
 
   if (userAddress) {
@@ -47,6 +44,8 @@ export async function POST(req: NextRequest) {
   const auth = await requireAdmin(req, { role: "ops" });
   if (!auth.ok) return auth.response;
 
+  const customerTagServicePath = "@/lib/services/customer-tag-service";
+  const { addCustomerTag } = await import(customerTagServicePath);
   const parsed = await parseBody(req, addTagSchema);
   if (!parsed.success) return parsed.response;
   const { userAddress, tag, note, severity } = parsed.data;
@@ -68,6 +67,8 @@ export async function DELETE(req: NextRequest) {
   const auth = await requireAdmin(req, { role: "ops" });
   if (!auth.ok) return auth.response;
 
+  const customerTagServicePath = "@/lib/services/customer-tag-service";
+  const { removeCustomerTag } = await import(customerTagServicePath);
   const id = req.nextUrl.searchParams.get("id");
   if (!id) return NextResponse.json({ error: "id required" }, { status: 400 });
 

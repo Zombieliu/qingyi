@@ -1,42 +1,173 @@
-import { prisma } from "@/lib/db";
-import type { TransactionClient } from "@/lib/admin/admin-store-utils";
 import { logBusinessEvent } from "@/lib/business-events";
-
-/**
- * 用户成长体系 — 基于现有 VIP 积分自动升级
- *
- * 积分规则：
- * - 完成订单：订单金额 × 1 (1元=1积分)
- * - 评价订单：+20
- * - 邀请好友（被邀请人首单）：+200
- * - 每日签到：+10
- *
- * VIP 会员加成：积分 × 1.5
- *
- * 自动升级：积分达到 tier.minPoints 自动升级到对应等级
- */
-
-// ─── Points rules ───
+import {
+  fetchEdgeRows,
+  getEdgeDbConfig,
+  insertEdgeRow,
+  patchEdgeRowsByFilter,
+  toEpochMs,
+} from "@/lib/edge-db/client";
+import {
+  getMemberByAddressEdgeRead,
+  listActiveMembershipTiersEdgeRead,
+} from "@/lib/edge-db/user-read-store";
+import { randomInt } from "@/lib/shared/runtime-crypto";
+import type { TransactionClient } from "@/lib/admin/admin-store-utils";
 
 export const POINTS_RULES = {
-  /** 完成订单：1元 = 1积分 */
   ORDER_COMPLETE_RATE: 1,
-  /** 评价订单 */
   REVIEW: 20,
-  /** 邀请好友首单 */
   REFERRAL: 200,
-  /** 每日签到 */
   DAILY_CHECKIN: 10,
-  /** VIP 会员积分加成倍率 */
   VIP_MULTIPLIER: 1.5,
 } as const;
 
-// ─── Core functions ───
+type LegacyGrowthService = {
+  addPointsAndUpgrade(params: {
+    userAddress: string;
+    points: number;
+    reason: string;
+    orderId?: string;
+    tx?: TransactionClient;
+  }): Promise<unknown>;
+  onOrderCompleted(params: {
+    userAddress: string;
+    amount: number;
+    orderId: string;
+    tx?: TransactionClient;
+  }): Promise<unknown>;
+  onReviewSubmitted(params: {
+    userAddress: string;
+    orderId: string;
+    tx?: TransactionClient;
+  }): Promise<unknown>;
+  onReferralFirstOrder(params: {
+    referrerAddress: string;
+    refereeAddress: string;
+    orderId: string;
+  }): Promise<unknown>;
+  onDailyCheckin(userAddress: string): Promise<unknown>;
+  getUserLevelProgress(userAddress: string): Promise<unknown>;
+};
 
-/**
- * 给用户加积分并检查是否需要升级
- * @returns 更新后的 member 信息，如果用户不存在则自动创建
- */
+type AdminMemberRow = {
+  id: string;
+  userAddress: string | null;
+  points: string | number | null;
+  tierId: string | null;
+  tierName: string | null;
+  status: string;
+  expiresAt: string | number | null;
+};
+
+let legacyServicePromise: Promise<LegacyGrowthService> | null = null;
+
+async function loadLegacyService(): Promise<LegacyGrowthService> {
+  const modulePath = "./growth-service-legacy";
+  legacyServicePromise ??= import(modulePath).then((mod) => mod as unknown as LegacyGrowthService);
+  return legacyServicePromise;
+}
+
+function hasEdgeReadConfig() {
+  return Boolean(getEdgeDbConfig("read"));
+}
+
+function hasEdgeWriteConfig() {
+  return Boolean(getEdgeDbConfig("write"));
+}
+
+function asNumber(value: unknown, fallback = 0) {
+  const num = Number(value);
+  return Number.isFinite(num) ? num : fallback;
+}
+
+async function getOrCreateMemberForEdge(userAddress: string) {
+  const existing = await fetchEdgeRows<AdminMemberRow>(
+    "AdminMember",
+    new URLSearchParams({
+      select: "id,userAddress,points,tierId,tierName,status,expiresAt",
+      userAddress: `eq.${userAddress}`,
+      limit: "1",
+    })
+  );
+  if (existing[0]) return existing[0];
+
+  const id = `MBR-${Date.now()}-${randomInt(1000, 9999)}`;
+  const nowIso = new Date().toISOString();
+  await insertEdgeRow("AdminMember", {
+    id,
+    userAddress,
+    points: 0,
+    status: "active",
+    createdAt: nowIso,
+    updatedAt: nowIso,
+  });
+  return {
+    id,
+    userAddress,
+    points: 0,
+    tierId: null,
+    tierName: null,
+    status: "active",
+    expiresAt: null,
+  } satisfies AdminMemberRow;
+}
+
+async function maybeUpgradeMemberEdge(args: {
+  memberId: string;
+  userAddress: string;
+  points: number;
+}) {
+  const tiers = await listActiveMembershipTiersEdgeRead();
+  if (tiers.length === 0) return null;
+
+  const sorted = [...tiers]
+    .filter((tier) => tier.minPoints !== null && tier.minPoints !== undefined)
+    .sort((a, b) => b.level - a.level);
+  const qualified = sorted.find((tier) => args.points >= Number(tier.minPoints));
+  if (!qualified) return null;
+
+  const memberRows = await fetchEdgeRows<AdminMemberRow>(
+    "AdminMember",
+    new URLSearchParams({
+      select: "id,tierId,userAddress",
+      id: `eq.${args.memberId}`,
+      limit: "1",
+    })
+  );
+  const member = memberRows[0];
+  if (!member) return null;
+  if (member.tierId === qualified.id) return null;
+
+  await patchEdgeRowsByFilter<AdminMemberRow>(
+    "AdminMember",
+    new URLSearchParams({ select: "id", id: `eq.${args.memberId}` }),
+    {
+      tierId: qualified.id,
+      tierName: qualified.name,
+      updatedAt: new Date().toISOString(),
+    }
+  );
+
+  if (member.userAddress) {
+    try {
+      const { notifyLevelUp } = await import("@/lib/services/notification-service");
+      await notifyLevelUp({
+        userAddress: member.userAddress,
+        tierName: qualified.name,
+        level: qualified.level,
+      });
+    } catch {
+      // non-critical
+    }
+  }
+
+  return {
+    tierId: qualified.id,
+    tierName: qualified.name,
+    level: qualified.level,
+  };
+}
+
 export async function addPointsAndUpgrade(params: {
   userAddress: string;
   points: number;
@@ -44,140 +175,54 @@ export async function addPointsAndUpgrade(params: {
   orderId?: string;
   tx?: TransactionClient;
 }) {
-  const { userAddress, points, reason, orderId } = params;
-  const db = params.tx || prisma;
-  if (points <= 0 || !userAddress) return null;
-
-  // 查找或创建 member
-  let member = await db.adminMember.findFirst({ where: { userAddress } });
-
-  if (!member) {
-    // 自动创建 member 记录
-    member = await db.adminMember.create({
-      data: {
-        id: `MBR-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
-        userAddress,
-        points: 0,
-        status: "active",
-        createdAt: new Date(),
-      },
-    });
+  if (!params.userAddress || params.points <= 0 || !hasEdgeReadConfig() || !hasEdgeWriteConfig()) {
+    const legacy = await loadLegacyService();
+    return legacy.addPointsAndUpgrade(params);
   }
 
-  // 检查是否 VIP，应用加成
+  const member = await getOrCreateMemberForEdge(params.userAddress);
   const isVip =
     member.tierId &&
     member.status === "active" &&
-    (!member.expiresAt || member.expiresAt > new Date());
+    (!member.expiresAt || (toEpochMs(member.expiresAt) ?? 0) > Date.now());
   const multiplier = isVip ? POINTS_RULES.VIP_MULTIPLIER : 1;
-  const actualPoints = Math.round(points * multiplier);
-  const newTotal = (member.points || 0) + actualPoints;
+  const earned = Math.round(params.points * multiplier);
+  const newTotal = asNumber(member.points) + earned;
 
-  // 更新积分
-  const updated = await db.adminMember.update({
-    where: { id: member.id },
-    data: {
+  await patchEdgeRowsByFilter<AdminMemberRow>(
+    "AdminMember",
+    new URLSearchParams({ select: "id", id: `eq.${member.id}` }),
+    {
       points: newTotal,
-      updatedAt: new Date(),
-    },
+      updatedAt: new Date().toISOString(),
+    }
+  );
+
+  const upgraded = await maybeUpgradeMemberEdge({
+    memberId: member.id,
+    userAddress: params.userAddress,
+    points: newTotal,
   });
 
   logBusinessEvent("growth.points_earned", {
-    userAddress,
-    points: actualPoints,
-    basePoints: points,
+    userAddress: params.userAddress,
+    points: earned,
+    basePoints: params.points,
     multiplier,
-    reason,
-    orderId,
+    reason: params.reason,
+    orderId: params.orderId,
     newTotal,
   });
 
-  // 检查自动升级
-  const upgraded = await checkAndUpgrade(updated.id, newTotal, db);
-
   return {
-    memberId: updated.id,
+    memberId: member.id,
     points: newTotal,
-    earned: actualPoints,
+    earned,
     multiplier,
     upgraded,
   };
 }
 
-/**
- * 检查积分是否达到更高等级门槛，自动升级
- */
-async function checkAndUpgrade(
-  memberId: string,
-  currentPoints: number,
-  db: TransactionClient | typeof prisma = prisma
-) {
-  // 获取所有上架的等级，按 level 降序（从高到低匹配）
-  const tiers = await db.adminMembershipTier.findMany({
-    where: { status: "上架" },
-    orderBy: { level: "desc" },
-  });
-
-  if (tiers.length === 0) return null;
-
-  // 找到用户能达到的最高等级
-  const qualifiedTier = tiers.find((t) => t.minPoints !== null && currentPoints >= t.minPoints);
-
-  if (!qualifiedTier) return null;
-
-  // 获取当前 member
-  const member = await db.adminMember.findUnique({ where: { id: memberId } });
-  if (!member) return null;
-
-  // 如果已经是这个等级或更高，不降级
-  if (member.tierId) {
-    const currentTier = tiers.find((t) => t.id === member.tierId);
-    if (currentTier && currentTier.level >= qualifiedTier.level) return null;
-  }
-
-  // 升级
-  await db.adminMember.update({
-    where: { id: memberId },
-    data: {
-      tierId: qualifiedTier.id,
-      tierName: qualifiedTier.name,
-      updatedAt: new Date(),
-    },
-  });
-
-  logBusinessEvent("growth.auto_upgraded", {
-    memberId,
-    newTierId: qualifiedTier.id,
-    newTierName: qualifiedTier.name,
-    newLevel: qualifiedTier.level,
-    points: currentPoints,
-    minPoints: qualifiedTier.minPoints,
-  });
-
-  // Notify user of level up (non-blocking)
-  try {
-    const { notifyLevelUp } = await import("@/lib/services/notification-service");
-    if (member.userAddress) {
-      await notifyLevelUp({
-        userAddress: member.userAddress,
-        tierName: qualifiedTier.name,
-        level: qualifiedTier.level,
-      });
-    }
-  } catch {
-    // non-critical
-  }
-
-  return {
-    tierId: qualifiedTier.id,
-    tierName: qualifiedTier.name,
-    level: qualifiedTier.level,
-  };
-}
-
-/**
- * 订单完成时调用 — 按金额加积分
- */
 export async function onOrderCompleted(params: {
   userAddress: string;
   amount: number;
@@ -194,9 +239,6 @@ export async function onOrderCompleted(params: {
   });
 }
 
-/**
- * 用户评价时调用
- */
 export async function onReviewSubmitted(params: {
   userAddress: string;
   orderId: string;
@@ -211,9 +253,6 @@ export async function onReviewSubmitted(params: {
   });
 }
 
-/**
- * 邀请好友首单时调用
- */
 export async function onReferralFirstOrder(params: {
   referrerAddress: string;
   refereeAddress: string;
@@ -227,32 +266,33 @@ export async function onReferralFirstOrder(params: {
   });
 }
 
-/**
- * 每日签到
- */
 export async function onDailyCheckin(userAddress: string) {
-  // Dedup: check if already checked in today
-  const todayStart = new Date();
-  todayStart.setHours(0, 0, 0, 0);
-  const existing = await prisma.growthEvent.findFirst({
-    where: {
-      userAddress,
-      event: "daily_checkin",
-      createdAt: { gte: todayStart },
-    },
-  });
-  if (existing) {
+  if (!hasEdgeReadConfig() || !hasEdgeWriteConfig()) {
+    const legacy = await loadLegacyService();
+    return legacy.onDailyCheckin(userAddress);
+  }
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const existingRows = await fetchEdgeRows<{ id: string }>(
+    "GrowthEvent",
+    new URLSearchParams({
+      select: "id",
+      userAddress: `eq.${userAddress}`,
+      event: "eq.daily_checkin",
+      createdAt: `gte.${today.toISOString()}`,
+      limit: "1",
+    })
+  );
+  if (existingRows[0]) {
     return { points: 0, earned: 0, multiplier: 1, upgraded: null, alreadyCheckedIn: true };
   }
 
-  // Record checkin event
-  await prisma.growthEvent.create({
-    data: {
-      id: `GE-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
-      event: "daily_checkin",
-      userAddress,
-      createdAt: new Date(),
-    },
+  await insertEdgeRow("GrowthEvent", {
+    id: `GE-${Date.now()}-${randomInt(1000, 9999)}`,
+    event: "daily_checkin",
+    userAddress,
+    createdAt: new Date().toISOString(),
   });
 
   return addPointsAndUpgrade({
@@ -262,23 +302,25 @@ export async function onDailyCheckin(userAddress: string) {
   });
 }
 
-/**
- * 获取用户等级进度信息
- */
 export async function getUserLevelProgress(userAddress: string) {
-  const member = await prisma.adminMember.findFirst({ where: { userAddress } });
-  const tiers = await prisma.adminMembershipTier.findMany({
-    where: { status: "上架" },
-    orderBy: { level: "asc" },
-  });
+  if (!hasEdgeReadConfig()) {
+    const legacy = await loadLegacyService();
+    return legacy.getUserLevelProgress(userAddress);
+  }
 
+  const [member, tiers] = await Promise.all([
+    getMemberByAddressEdgeRead(userAddress),
+    listActiveMembershipTiersEdgeRead(),
+  ]);
+
+  const sorted = [...tiers].sort((a, b) => a.level - b.level);
   const points = member?.points || 0;
-  const currentTier = member?.tierId ? tiers.find((t) => t.id === member.tierId) || null : null;
+  const currentTier = member?.tierId
+    ? sorted.find((tier) => tier.id === member.tierId) || null
+    : null;
+  const nextTier =
+    sorted.find((tier) => tier.minPoints !== null && points < Number(tier.minPoints)) || null;
 
-  // 找下一个等级
-  const nextTier = tiers.find((t) => t.minPoints !== null && t.minPoints > points) || null;
-
-  // 计算进度
   const currentMin = currentTier?.minPoints || 0;
   const nextMin = nextTier?.minPoints || (currentTier ? currentMin * 2 : 100);
   const progress =
@@ -304,16 +346,16 @@ export async function getUserLevelProgress(userAddress: string) {
           minPoints: nextTier.minPoints,
         }
       : null,
-    pointsToNext: nextTier?.minPoints ? Math.max(0, nextTier.minPoints - points) : 0,
+    pointsToNext: nextTier?.minPoints ? Math.max(0, Number(nextTier.minPoints) - points) : 0,
     progress,
     isVip: Boolean(currentTier),
-    allTiers: tiers.map((t) => ({
-      id: t.id,
-      name: t.name,
-      level: t.level,
-      badge: t.badge,
-      minPoints: t.minPoints,
-      reached: t.minPoints !== null && points >= t.minPoints,
+    allTiers: sorted.map((tier) => ({
+      id: tier.id,
+      name: tier.name,
+      level: tier.level,
+      badge: tier.badge,
+      minPoints: tier.minPoints,
+      reached: tier.minPoints !== null && points >= Number(tier.minPoints),
     })),
   };
 }

@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin/admin-auth";
-import { queryRedeemRecords } from "@/lib/admin/redeem-store";
 
 export async function GET(req: Request) {
   const auth = await requireAdmin(req, { role: "ops" });
@@ -15,6 +14,8 @@ export async function GET(req: Request) {
   const codeId = searchParams.get("codeId") || undefined;
   const address = searchParams.get("address") || undefined;
 
+  const redeemStorePath = "@/lib/admin/redeem-store";
+  const { queryRedeemRecords } = await import(redeemStorePath);
   const result = await queryRedeemRecords({
     page,
     pageSize,

@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { requireUserAuth } from "@/lib/auth/user-auth";
-import { createDispute, getDispute, listUserDisputes } from "@/lib/services/dispute-service";
 import { parseBody } from "@/lib/shared/api-validation";
 import { z } from "zod";
 import { apiBadRequest, apiNotFound } from "@/lib/shared/api-response";
@@ -22,6 +21,8 @@ export async function POST(req: Request) {
   if (!body.success) return body.response;
 
   try {
+    const disputeServicePath = "@/lib/services/dispute-service";
+    const { createDispute } = await import(disputeServicePath);
     const dispute = await createDispute({
       ...body.data,
       userAddress: auth.address,
@@ -43,11 +44,15 @@ export async function GET(req: Request) {
 
   // If orderId provided, return single dispute; otherwise list all
   if (orderId) {
+    const disputeServicePath = "@/lib/services/dispute-service";
+    const { getDispute } = await import(disputeServicePath);
     const dispute = await getDispute(orderId);
     if (!dispute) return apiNotFound("not found");
     return NextResponse.json(dispute);
   }
 
+  const disputeServicePath = "@/lib/services/dispute-service";
+  const { listUserDisputes } = await import(disputeServicePath);
   const disputes = await listUserDisputes(auth.address);
   return NextResponse.json({ disputes });
 }

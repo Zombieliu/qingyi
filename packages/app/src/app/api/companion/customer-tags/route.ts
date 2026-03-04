@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import {
-  getCustomerTags,
-  addCustomerTag,
-  type CustomerTagType,
-} from "@/lib/services/customer-tag-service";
+type CustomerTagType =
+  | "difficult"
+  | "slow_pay"
+  | "rude"
+  | "no_show"
+  | "frequent_dispute"
+  | "vip_treat"
+  | "other";
 
 const VALID_TAGS: CustomerTagType[] = [
   "difficult",
@@ -17,6 +20,8 @@ const VALID_TAGS: CustomerTagType[] = [
 
 /** GET /api/companion/customer-tags?userAddress=xxx — get tags for a customer */
 export async function GET(req: NextRequest) {
+  const customerTagServicePath = "@/lib/services/customer-tag-service";
+  const { getCustomerTags } = await import(customerTagServicePath);
   const userAddress = req.nextUrl.searchParams.get("userAddress");
   if (!userAddress) return NextResponse.json({ error: "userAddress required" }, { status: 400 });
 
@@ -26,6 +31,8 @@ export async function GET(req: NextRequest) {
 
 /** POST /api/companion/customer-tags — add a tag */
 export async function POST(req: NextRequest) {
+  const customerTagServicePath = "@/lib/services/customer-tag-service";
+  const { addCustomerTag } = await import(customerTagServicePath);
   const body = await req.json();
   const { userAddress, tag, note, severity, reportedBy } = body;
 

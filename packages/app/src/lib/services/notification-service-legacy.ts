@@ -1,0 +1,213 @@
+import { prisma } from "@/lib/db";
+import { publishNotificationEvent } from "@/lib/realtime";
+import { NotificationMessages } from "@/lib/shared/messages";
+
+export type NotificationType = "order_status" | "referral" | "system" | "growth";
+
+/**
+ * 创建通知并通过 SSE 实时推送
+ * 自动去重：同一 userAddress + orderId + title 在 60 秒内不重复创建
+ */
+export async function createNotification(params: {
+  userAddress: string;
+  type: NotificationType;
+  title: string;
+  body: string;
+  orderId?: string;
+}) {
+  const { userAddress, type, title, body, orderId } = params;
+  if (!userAddress) return null;
+
+  // Dedup: skip if identical notification was created within last 60s
+  if (orderId) {
+    const recent = await prisma.notification.findFirst({
+      where: {
+        userAddress,
+        orderId,
+        title,
+        createdAt: { gte: new Date(Date.now() - 60_000) },
+      },
+      select: { id: true },
+    });
+    if (recent) return null;
+  }
+
+  const notification = await prisma.notification.create({
+    data: {
+      id: `NTF-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
+      userAddress,
+      type,
+      title,
+      body,
+      orderId: orderId || null,
+      read: false,
+      createdAt: new Date(),
+    },
+  });
+
+  // Push via SSE (non-blocking)
+  publishNotificationEvent(userAddress, {
+    type: "notification",
+    id: notification.id,
+    title,
+    body,
+    notifType: type,
+    orderId,
+    timestamp: Date.now(),
+  }).catch((e) => console.warn("[notify] SSE publish failed", e));
+  import("@/lib/services/push-service")
+    .then(({ sendPushNotification }) =>
+      sendPushNotification(userAddress, {
+        title,
+        body,
+        url: orderId ? `/me/orders/${orderId}` : "/me/notifications",
+        icon: "/icons/icon-192x192.png",
+      })
+    )
+    .catch((e) => console.warn("[notify] web push failed", e));
+
+  return notification;
+}
+
+/**
+ * 获取用户未读通知列表
+ */
+export async function getUnreadNotifications(userAddress: string, limit = 50) {
+  return prisma.notification.findMany({
+    where: { userAddress, read: false },
+    orderBy: { createdAt: "desc" },
+    take: limit,
+  });
+}
+
+/**
+ * 获取用户全部通知（分页）
+ */
+export async function getNotifications(userAddress: string, page = 1, pageSize = 20) {
+  const where = { userAddress };
+  const [total, items] = await Promise.all([
+    prisma.notification.count({ where }),
+    prisma.notification.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+    }),
+  ]);
+  return {
+    items,
+    total,
+    page,
+    pageSize,
+    totalPages: Math.max(1, Math.ceil(total / pageSize)),
+  };
+}
+
+/**
+ * 获取未读数
+ */
+export async function getUnreadCount(userAddress: string) {
+  return prisma.notification.count({
+    where: { userAddress, read: false },
+  });
+}
+
+/**
+ * 标记单条已读
+ */
+export async function markAsRead(id: string) {
+  try {
+    return await prisma.notification.update({
+      where: { id },
+      data: { read: true },
+    });
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * 全部标记已读
+ */
+export async function markAllAsRead(userAddress: string) {
+  const result = await prisma.notification.updateMany({
+    where: { userAddress, read: false },
+    data: { read: true },
+  });
+  return result.count;
+}
+
+/**
+ * 清空用户全部通知
+ */
+export async function deleteAllNotifications(userAddress: string) {
+  const result = await prisma.notification.deleteMany({
+    where: { userAddress },
+  });
+  return result.count;
+}
+
+// ─── 便捷方法：业务场景通知 ───
+
+export function notifyOrderStatusChange(params: {
+  userAddress: string;
+  orderId: string;
+  stage: string;
+  item: string;
+}) {
+  const stageLabels = NotificationMessages.STAGE_LABELS;
+
+  // Kook notification (best-effort, non-blocking)
+  import("@/lib/services/kook-service")
+    .then(({ isKookEnabled, notifyKookOrderStatus }) => {
+      if (isKookEnabled()) {
+        notifyKookOrderStatus({
+          orderId: params.orderId,
+          item: params.item,
+          stage: params.stage,
+        });
+      }
+    })
+    .catch((e) => console.warn("[notify] kook notification failed", e));
+
+  return createNotification({
+    userAddress: params.userAddress,
+    type: "order_status",
+    title: NotificationMessages.ORDER_STATUS_TITLE,
+    body: `${params.item} — ${stageLabels[params.stage] || params.stage}`,
+    orderId: params.orderId,
+  });
+}
+
+export function notifyCompanionNewOrder(params: {
+  companionAddress: string;
+  orderId: string;
+  item: string;
+  amount: number;
+}) {
+  return createNotification({
+    userAddress: params.companionAddress,
+    type: "order_status",
+    title: NotificationMessages.COMPANION_NEW_ORDER_TITLE,
+    body: NotificationMessages.COMPANION_NEW_ORDER_BODY(params.item, params.amount),
+    orderId: params.orderId,
+  });
+}
+
+export function notifyReferralReward(params: { userAddress: string; reward: number }) {
+  return createNotification({
+    userAddress: params.userAddress,
+    type: "referral",
+    title: NotificationMessages.REFERRAL_REWARD_TITLE,
+    body: NotificationMessages.REFERRAL_REWARD_BODY(params.reward),
+  });
+}
+
+export function notifyLevelUp(params: { userAddress: string; tierName: string; level: number }) {
+  return createNotification({
+    userAddress: params.userAddress,
+    type: "growth",
+    title: NotificationMessages.LEVEL_UP_TITLE,
+    body: NotificationMessages.LEVEL_UP_BODY(params.tierName),
+  });
+}

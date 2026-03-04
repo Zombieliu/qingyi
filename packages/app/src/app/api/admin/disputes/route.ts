@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin/admin-auth";
-import { resolveDispute } from "@/lib/services/dispute-service";
 import { parseBody } from "@/lib/shared/api-validation";
 import { z } from "zod";
 import { DisputeMessages } from "@/lib/shared/messages";
@@ -21,6 +20,8 @@ export async function POST(req: Request) {
   if (!body.success) return body.response;
 
   try {
+    const disputeServicePath = "@/lib/services/dispute-service";
+    const { resolveDispute } = await import(disputeServicePath);
     const dispute = await resolveDispute({
       ...body.data,
       reviewerRole: auth.role,

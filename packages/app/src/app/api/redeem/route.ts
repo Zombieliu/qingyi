@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { parseBodyRaw } from "@/lib/shared/api-validation";
 import { requireUserAuth } from "@/lib/auth/user-auth";
-import { redeemCodeForUser } from "@/lib/redeem/redeem-service";
 import { isValidSuiAddress, normalizeSuiAddress } from "@mysten/sui/utils";
 import { apiBadRequest, apiError } from "@/lib/shared/api-response";
 
@@ -34,6 +33,8 @@ export async function POST(req: Request) {
   });
   if (!auth.ok) return auth.response;
 
+  const redeemServicePath = "@/lib/redeem/redeem-service";
+  const { redeemCodeForUser } = await import(redeemServicePath);
   const result = await redeemCodeForUser({
     address: auth.address,
     code: body.code,

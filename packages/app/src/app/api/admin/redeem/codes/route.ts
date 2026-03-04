@@ -1,14 +1,8 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import crypto from "crypto";
+import { randomInt } from "@/lib/shared/runtime-crypto";
 import { requireAdmin } from "@/lib/admin/admin-auth";
 import { parseBody } from "@/lib/shared/api-validation";
-import {
-  createRedeemBatch,
-  createRedeemCodes,
-  normalizeRedeemCode,
-  queryRedeemCodes,
-} from "@/lib/admin/redeem-store";
 import { recordAudit } from "@/lib/admin/admin-audit";
 import type { RedeemRewardType } from "@/lib/admin/admin-types";
 import { parseOptionalDateInput } from "@/lib/edge-db/date-normalization";
@@ -19,10 +13,17 @@ const CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 function randomCode(length: number) {
   let out = "";
   for (let i = 0; i < length; i += 1) {
-    const idx = crypto.randomInt(0, CODE_CHARS.length);
+    const idx = randomInt(0, CODE_CHARS.length);
     out += CODE_CHARS[idx];
   }
   return out;
+}
+
+function normalizeRedeemCode(raw: string): string {
+  return raw
+    .replace(/[\s-]+/g, "")
+    .trim()
+    .toUpperCase();
 }
 
 function generateCodes(count: number, length: number, prefix?: string) {
@@ -87,6 +88,8 @@ export async function GET(req: Request) {
   const q = searchParams.get("q") || undefined;
   const batchId = searchParams.get("batchId") || undefined;
 
+  const redeemStorePath = "@/lib/admin/redeem-store";
+  const { queryRedeemCodes } = await import(redeemStorePath);
   const result = await queryRedeemCodes({ page, pageSize, status, q, batchId });
   return NextResponse.json(result);
 }
@@ -95,6 +98,8 @@ export async function POST(req: Request) {
   const auth = await requireAdmin(req, { role: "ops" });
   if (!auth.ok) return auth.response;
 
+  const redeemStorePath = "@/lib/admin/redeem-store";
+  const { createRedeemBatch, createRedeemCodes } = await import(redeemStorePath);
   const parsed = await parseBody(req, createSchema);
   if (!parsed.success) return parsed.response;
   const body = parsed.data;
@@ -140,7 +145,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "duplicate_codes", duplicated: existing }, { status: 409 });
   }
 
-  const batchId = `RBT-${Date.now()}-${crypto.randomInt(1000, 9999)}`;
+  const batchId = `RBT-${Date.now()}-${randomInt(1000, 9999)}`;
   const batch = await createRedeemBatch({
     id: batchId,
     title: body.title.trim(),

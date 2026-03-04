@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { recordGrowthEvent } from "@/lib/analytics-store";
 import { rateLimit } from "@/lib/rate-limit";
 import { getClientIp } from "@/lib/shared/api-utils";
 import { env } from "@/lib/env";
@@ -39,6 +38,8 @@ export async function POST(req: Request) {
   }
 
   try {
+    const analyticsStorePath = "@/lib/analytics-store";
+    const { recordGrowthEvent } = await import(analyticsStorePath);
     await recordGrowthEvent({
       event: payload.event,
       clientId: payload.clientId?.trim() || undefined,
