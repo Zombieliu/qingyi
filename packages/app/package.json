@@ -36,7 +36,7 @@
     "cf:matrix": "node scripts/generate-cf-route-matrix.mjs",
     "cf:guard": "node scripts/check-api-edge-imports.mjs",
     "prepreview": "pnpm run check:node",
-    "preview": "pnpm run opennext:patch && OPEN_NEXT_BUILD=1 opennextjs-cloudflare build && opennextjs-cloudflare preview",
+    "preview": "pnpm run opennext:patch && OPEN_NEXT_BUILD=1 OPEN_NEXT_PREVIEW_SINGLE_FUNCTION=1 opennextjs-cloudflare build && OPEN_NEXT_PREVIEW_SINGLE_FUNCTION=1 opennextjs-cloudflare preview",
     "predeploy": "pnpm run check:node",
     "deploy": "pnpm run opennext:patch && OPEN_NEXT_BUILD=1 opennextjs-cloudflare build && opennextjs-cloudflare deploy",
     "preupload": "pnpm run check:node",
