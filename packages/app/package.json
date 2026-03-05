@@ -42,6 +42,8 @@
     "preupload": "pnpm run check:node",
     "upload": "pnpm run opennext:patch && OPEN_NEXT_BUILD=1 opennextjs-cloudflare build && opennextjs-cloudflare upload",
     "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts"
+    ,
+    "perf:admin-baseline": "node scripts/perf-admin-query-baseline.mjs"
   },
   "prisma": {
     "seed": "node prisma/seed.mjs"
