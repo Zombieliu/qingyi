@@ -17,6 +17,9 @@ type Alert = {
   threshold?: number;
 };
 
+const EDGE_INCOMPATIBLE_ALERT_COOLDOWN_MS = 5 * 60 * 1000;
+const edgeIncompatibleAlertTimestamps = new Map<string, number>();
+
 // Web Vitals thresholds (poor ratings per Google)
 const VITALS_THRESHOLDS: Record<string, { warning: number; critical: number; unit: string }> = {
   LCP: { warning: 2500, critical: 4000, unit: "ms" },
@@ -87,6 +90,32 @@ export function checkReconcileAlert(mismatched: number, total: number): Alert | 
   return null;
 }
 
+function buildEdgeIncompatibleAlert(params: {
+  path: string;
+  method: string;
+  role?: string;
+  runtime?: string;
+}): Alert {
+  const method = (params.method || "GET").toUpperCase();
+  const path = params.path || "/unknown";
+  const runtime = params.runtime || "edge";
+  const rolePart = params.role ? `, role=${params.role}` : "";
+
+  return {
+    level: "warning",
+    title: "⚠️ Edge Runtime DB Incompatible",
+    message: `${method} ${path} returned 503 edge_runtime_incompatible_db (runtime=${runtime}${rolePart})`,
+    metric: "edge_runtime_incompatible_db",
+  };
+}
+
+function shouldThrottleEdgeIncompatibleAlert(key: string, now = Date.now()): boolean {
+  const previous = edgeIncompatibleAlertTimestamps.get(key);
+  if (previous && now - previous < EDGE_INCOMPATIBLE_ALERT_COOLDOWN_MS) return true;
+  edgeIncompatibleAlertTimestamps.set(key, now);
+  return false;
+}
+
 /** Send alert to all configured channels */
 export async function sendAlert(alert: Alert): Promise<void> {
   // Always log
@@ -129,4 +158,21 @@ export async function alertOnVital(name: string, value: number, page: string): P
 export async function alertOnReconcile(mismatched: number, total: number): Promise<void> {
   const alert = checkReconcileAlert(mismatched, total);
   if (alert) await sendAlert(alert);
+}
+
+/** Alert when an endpoint returns controlled 503 edge_runtime_incompatible_db. */
+export async function alertOnEdgeRuntimeIncompatibleDb(params: {
+  path: string;
+  method: string;
+  role?: string;
+  runtime?: string;
+}): Promise<void> {
+  const key = `${params.method.toUpperCase()}::${params.path}`;
+  if (shouldThrottleEdgeIncompatibleAlert(key)) return;
+  await sendAlert(buildEdgeIncompatibleAlert(params));
+}
+
+/** Test helper: clear in-memory throttling state. */
+export function __resetAlertServiceForTests() {
+  edgeIncompatibleAlertTimestamps.clear();
 }

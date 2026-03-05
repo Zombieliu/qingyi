@@ -1,6 +1,7 @@
 import "server-only";
 import { NextResponse } from "next/server";
 import { randomHex } from "@/lib/shared/runtime-crypto";
+import { alertOnEdgeRuntimeIncompatibleDb } from "@/lib/services/alert-service";
 
 /**
  * API 路由 handler wrapper
@@ -22,6 +23,11 @@ export type ApiHandlerOptions = {
   rateLimit?: { max: number; window: string };
 };
 
+function isEdgeRuntimeIncompatibleError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error ?? "");
+  return message.includes("Code generation from strings disallowed");
+}
+
 export function withApiHandler(
   handler: (req: Request, ctx?: unknown) => Promise<NextResponse>,
   options?: ApiHandlerOptions
@@ -37,6 +43,23 @@ export function withApiHandler(
       return res;
     } catch (error) {
       console.error(`[${traceId}] Unhandled error:`, error);
+      if (isEdgeRuntimeIncompatibleError(error)) {
+        try {
+          const path = new URL(req.url).pathname || "/unknown";
+          await alertOnEdgeRuntimeIncompatibleDb({
+            path,
+            method: req.method || "GET",
+            role: options?.auth,
+            runtime: "edge",
+          });
+        } catch {
+          // alerting should never block fallback response
+        }
+        return NextResponse.json(
+          { error: "edge_runtime_incompatible_db", traceId },
+          { status: 503, headers: { "x-trace-id": traceId } }
+        );
+      }
       return NextResponse.json(
         { error: "internal_error", traceId },
         { status: 500, headers: { "x-trace-id": traceId } }

@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+const mockAlertEdgeIncompatible = vi.fn();
 
 // 用真实的 Headers 来模拟 NextResponse，保持与 api-response.test.ts 一致的风格
 const mockJson = vi.fn();
@@ -28,6 +29,9 @@ vi.mock("next/server", () => ({
       return res;
     },
   },
+}));
+vi.mock("@/lib/services/alert-service", () => ({
+  alertOnEdgeRuntimeIncompatibleDb: (...args: unknown[]) => mockAlertEdgeIncompatible(...args),
 }));
 
 import { withApiHandler } from "../api-handler";
@@ -114,7 +118,7 @@ describe("api-handler", () => {
     consoleError.mockRestore();
   });
 
-  it("returns 500 for edge-incompatible db errors", async () => {
+  it("returns 503 for edge-incompatible db errors and sends alert", async () => {
     const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
     const handler = vi
       .fn()
@@ -128,10 +132,34 @@ describe("api-handler", () => {
       headers: { get: (k: string) => string | undefined };
     };
 
-    expect(res.status).toBe(500);
-    expect(res.body.error).toBe("internal_error");
+    expect(res.status).toBe(503);
+    expect(res.body.error).toBe("edge_runtime_incompatible_db");
     expect(res.body.traceId).toMatch(/^[0-9a-f]{8}$/);
     expect(res.headers.get("x-trace-id")).toBe(res.body.traceId);
+    expect(mockAlertEdgeIncompatible).toHaveBeenCalledWith(
+      expect.objectContaining({
+        path: "/api/test",
+        method: "GET",
+        runtime: "edge",
+      })
+    );
+    consoleError.mockRestore();
+  });
+
+  it("passes auth option to edge incompatibility alert routing", async () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+    const handler = vi
+      .fn()
+      .mockRejectedValue(new Error("Code generation from strings disallowed for this context"));
+    const wrapped = withApiHandler(handler, { auth: "public" });
+    await wrapped(new Request("https://example.com/api/public-feed", { method: "POST" }));
+    expect(mockAlertEdgeIncompatible).toHaveBeenCalledWith(
+      expect.objectContaining({
+        path: "/api/public-feed",
+        method: "POST",
+        role: "public",
+      })
+    );
     consoleError.mockRestore();
   });
 

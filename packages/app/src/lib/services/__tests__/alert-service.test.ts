@@ -19,10 +19,13 @@ import {
   sendAlert,
   alertOnVital,
   alertOnReconcile,
+  alertOnEdgeRuntimeIncompatibleDb,
+  __resetAlertServiceForTests,
 } from "@/lib/services/alert-service";
 
 beforeEach(() => {
   vi.clearAllMocks();
+  __resetAlertServiceForTests();
 });
 
 describe("checkVitalAlert", () => {
@@ -181,5 +184,69 @@ describe("alertOnReconcile", () => {
   it("does nothing when no mismatches", async () => {
     await alertOnReconcile(0, 100);
     expect(mockCaptureMessage).not.toHaveBeenCalled();
+  });
+});
+
+describe("alertOnEdgeRuntimeIncompatibleDb", () => {
+  it("sends warning alert for edge-incompatible 503", async () => {
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    mockIsKookEnabled.mockReturnValue(false);
+
+    await alertOnEdgeRuntimeIncompatibleDb({
+      path: "/api/admin/reconcile",
+      method: "GET",
+      role: "finance",
+      runtime: "worker",
+    });
+
+    expect(mockCaptureMessage).toHaveBeenCalledWith(
+      expect.stringContaining("edge_runtime_incompatible_db"),
+      "warning"
+    );
+    vi.restoreAllMocks();
+  });
+
+  it("throttles duplicate alerts for the same method+path in cooldown window", async () => {
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    mockIsKookEnabled.mockReturnValue(false);
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-03-05T00:00:00.000Z"));
+
+    await alertOnEdgeRuntimeIncompatibleDb({
+      path: "/api/admin/reconcile",
+      method: "POST",
+      role: "admin",
+      runtime: "worker",
+    });
+    await alertOnEdgeRuntimeIncompatibleDb({
+      path: "/api/admin/reconcile",
+      method: "POST",
+      role: "admin",
+      runtime: "worker",
+    });
+
+    expect(mockCaptureMessage).toHaveBeenCalledTimes(1);
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
+  it("does not throttle different endpoints", async () => {
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    mockIsKookEnabled.mockReturnValue(false);
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-03-05T00:10:00.000Z"));
+
+    await alertOnEdgeRuntimeIncompatibleDb({
+      path: "/api/admin/reconcile",
+      method: "GET",
+    });
+    await alertOnEdgeRuntimeIncompatibleDb({
+      path: "/api/players",
+      method: "GET",
+    });
+
+    expect(mockCaptureMessage).toHaveBeenCalledTimes(2);
+    vi.useRealTimers();
+    vi.restoreAllMocks();
   });
 });
