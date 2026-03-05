@@ -3,6 +3,12 @@
 import { useState } from "react";
 import { RefreshCw, AlertTriangle, CheckCircle, Wrench } from "lucide-react";
 import { t } from "@/lib/i18n/t";
+import {
+  buildReconcileFailureMessage,
+  isEdgeRuntimeIncompatibleFailure,
+  parseReconcileApiFailure,
+  type ReconcileApiFailure,
+} from "./error-utils";
 
 type ReconcileItem = {
   orderId: string;
@@ -33,15 +39,26 @@ export default function ReconcilePage() {
   const [loading, setLoading] = useState(false);
   const [fixing, setFixing] = useState(false);
   const [days, setDays] = useState(7);
+  const [requestFailure, setRequestFailure] = useState<ReconcileApiFailure | null>(null);
+  const edgeRuntimeIncompatible = isEdgeRuntimeIncompatibleFailure(requestFailure);
 
   const runReconcile = async () => {
     setLoading(true);
     setFixResult(null);
+    setRequestFailure(null);
     try {
       const res = await fetch(`/api/admin/reconcile?days=${days}`);
-      if (res.ok) setReport(await res.json());
+      if (res.ok) {
+        setReport(await res.json());
+        return;
+      }
+      setRequestFailure(await parseReconcileApiFailure(res));
     } catch {
-      /* ignore */
+      setRequestFailure({
+        code: "network_error",
+        message: "network request failed",
+        status: 0,
+      });
     } finally {
       setLoading(false);
     }
@@ -50,15 +67,22 @@ export default function ReconcilePage() {
   const runAutoFix = async () => {
     if (!confirm(t("admin.panel.reconcile.i079"))) return;
     setFixing(true);
+    setRequestFailure(null);
     try {
       const res = await fetch(`/api/admin/reconcile?days=${days}`, { method: "POST" });
       if (res.ok) {
         const data = await res.json();
         setFixResult(data.autoFix);
         setReport(data.report);
+        return;
       }
+      setRequestFailure(await parseReconcileApiFailure(res));
     } catch {
-      /* ignore */
+      setRequestFailure({
+        code: "network_error",
+        message: "network request failed",
+        status: 0,
+      });
     } finally {
       setFixing(false);
     }
@@ -106,6 +130,35 @@ export default function ReconcilePage() {
           )}
         </div>
       </div>
+
+      {requestFailure && (
+        <div
+          className="admin-card"
+          style={{
+            marginBottom: 16,
+            background: edgeRuntimeIncompatible ? "#fff7ed" : "#fef2f2",
+            border: `1px solid ${edgeRuntimeIncompatible ? "#fdba74" : "#fecaca"}`,
+          }}
+        >
+          <div
+            style={{
+              fontWeight: 700,
+              marginBottom: 6,
+              color: edgeRuntimeIncompatible ? "#c2410c" : "#b91c1c",
+            }}
+          >
+            {edgeRuntimeIncompatible ? "运行环境受限" : "请求失败"}
+          </div>
+          <div style={{ fontSize: 13, color: edgeRuntimeIncompatible ? "#9a3412" : "#991b1b" }}>
+            {buildReconcileFailureMessage(requestFailure)}
+          </div>
+          {edgeRuntimeIncompatible && (
+            <div style={{ fontSize: 12, marginTop: 6, color: "#9a3412" }}>
+              建议：切换到 Node Runtime 环境后重试；当前请求已被安全降级为 503。
+            </div>
+          )}
+        </div>
+      )}
 
       {report && (
         <>
