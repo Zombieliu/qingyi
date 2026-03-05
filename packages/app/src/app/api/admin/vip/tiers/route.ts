@@ -11,6 +11,7 @@ import { recordAudit } from "@/lib/admin/admin-audit";
 import { parseBody } from "@/lib/shared/api-validation";
 import type { MembershipTierStatus } from "@/lib/admin/admin-types";
 import { decodeCursorParam, encodeCursorParam } from "@/lib/cursor-utils";
+import { parseIntegerQueryParam } from "@/lib/shared/query-params";
 
 const perkItemSchema = z.union([
   z.string(),
@@ -59,8 +60,12 @@ export async function GET(req: Request) {
   if (!auth.ok) return auth.response;
 
   const { searchParams } = new URL(req.url);
-  const page = Math.max(1, Number(searchParams.get("page") || "1"));
-  const pageSize = Math.min(200, Math.max(5, Number(searchParams.get("pageSize") || "20")));
+  const page = parseIntegerQueryParam(searchParams.get("page"), { fallback: 1, min: 1 });
+  const pageSize = parseIntegerQueryParam(searchParams.get("pageSize"), {
+    fallback: 20,
+    min: 5,
+    max: 200,
+  });
   const status = searchParams.get("status") || "";
   const q = searchParams.get("q") || "";
   const cursorRaw = searchParams.get("cursor");

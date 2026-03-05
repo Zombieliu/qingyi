@@ -81,4 +81,12 @@ describe("GET /api/admin/referral/list", () => {
     await GET(makeGetRequest({ page: "-5" }));
     expect(mockQueryReferrals).toHaveBeenCalledWith(expect.objectContaining({ page: 1 }));
   });
+
+  it("uses safe fallback pagination for invalid numeric params", async () => {
+    mockQueryReferrals.mockResolvedValue({ items: [], total: 0 });
+    await GET(makeGetRequest({ page: "abc", pageSize: "oops" }));
+    expect(mockQueryReferrals).toHaveBeenCalledWith(
+      expect.objectContaining({ page: 1, pageSize: 20 })
+    );
+  });
 });

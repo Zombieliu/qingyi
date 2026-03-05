@@ -61,4 +61,12 @@ describe("GET /api/admin/payments", () => {
     await GET(makeGet({ page: "1" }));
     expect(mockQueryPaymentEvents).toHaveBeenCalled();
   });
+
+  it("falls back to safe pagination defaults for invalid numeric params", async () => {
+    mockQueryPaymentEvents.mockResolvedValue({ items: [], total: 0 });
+    await GET(makeGet({ page: "abc", pageSize: "oops" }));
+    expect(mockQueryPaymentEvents).toHaveBeenCalledWith(
+      expect.objectContaining({ page: 1, pageSize: 30 })
+    );
+  });
 });

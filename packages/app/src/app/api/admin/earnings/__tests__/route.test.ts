@@ -70,4 +70,18 @@ describe("GET /api/admin/earnings", () => {
       expect.objectContaining({ from: expect.any(Number) })
     );
   });
+
+  it("falls back and clamps limit for invalid values", async () => {
+    mockGetCompanionEarnings.mockResolvedValue({ items: [] });
+    await GET(makeGet({ limit: "oops" }));
+    expect(mockGetCompanionEarnings).toHaveBeenCalledWith(expect.objectContaining({ limit: 50 }));
+
+    mockGetCompanionEarnings.mockClear();
+    await GET(makeGet({ limit: "-20" }));
+    expect(mockGetCompanionEarnings).toHaveBeenCalledWith(expect.objectContaining({ limit: 5 }));
+
+    mockGetCompanionEarnings.mockClear();
+    await GET(makeGet({ limit: "9999" }));
+    expect(mockGetCompanionEarnings).toHaveBeenCalledWith(expect.objectContaining({ limit: 200 }));
+  });
 });

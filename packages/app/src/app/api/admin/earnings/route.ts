@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin/admin-auth";
 import { getCompanionEarnings } from "@/lib/admin/admin-store";
+import { parseIntegerQueryParam } from "@/lib/shared/query-params";
 
 function parseDateParam(raw: string | null, endOfDay = false) {
   if (!raw) return undefined;
@@ -23,7 +24,11 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const from = parseDateParam(searchParams.get("from"));
   const to = parseDateParam(searchParams.get("to"), true);
-  const limit = Math.min(200, Math.max(5, Number(searchParams.get("limit") || "50")));
+  const limit = parseIntegerQueryParam(searchParams.get("limit"), {
+    fallback: 50,
+    min: 5,
+    max: 200,
+  });
   const result = await getCompanionEarnings({
     from: from?.getTime(),
     to: to?.getTime(),

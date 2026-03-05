@@ -143,6 +143,14 @@ describe("GET /api/admin/orders", () => {
     await GET(makeGetRequest({ page: "-5" }));
     expect(mockQueryOrders).toHaveBeenCalledWith(expect.objectContaining({ page: 1 }));
   });
+
+  it("falls back to safe pagination defaults for invalid numeric params", async () => {
+    mockQueryOrders.mockResolvedValue({ items: [], total: 0 });
+    await GET(makeGetRequest({ page: "abc", pageSize: "oops" }));
+    expect(mockQueryOrders).toHaveBeenCalledWith(
+      expect.objectContaining({ page: 1, pageSize: 20 })
+    );
+  });
 });
 
 // ─── POST ──────────────────────────────────────────────

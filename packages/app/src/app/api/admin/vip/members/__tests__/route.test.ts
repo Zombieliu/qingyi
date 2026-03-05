@@ -97,6 +97,14 @@ describe("GET /api/admin/vip/members", () => {
     await GET(makeGetRequest({ page: "1", pageSize: "2" }));
     expect(mockQueryMembers).toHaveBeenCalledWith(expect.objectContaining({ pageSize: 5 }));
   });
+
+  it("falls back to safe pagination defaults for invalid numeric params", async () => {
+    mockQueryMembers.mockResolvedValue({ items: [], total: 0 });
+    await GET(makeGetRequest({ page: "abc", pageSize: "oops" }));
+    expect(mockQueryMembers).toHaveBeenCalledWith(
+      expect.objectContaining({ page: 1, pageSize: 20 })
+    );
+  });
 });
 
 // ─── POST ──────────────────────────────────────────────

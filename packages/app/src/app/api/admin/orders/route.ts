@@ -7,6 +7,7 @@ import { recordAudit } from "@/lib/admin/admin-audit";
 import type { AdminOrder, OrderStage } from "@/lib/admin/admin-types";
 import { decodeCursorParam, encodeCursorParam } from "@/lib/cursor-utils";
 import { parseBody } from "@/lib/shared/api-validation";
+import { parseIntegerQueryParam } from "@/lib/shared/query-params";
 
 const postSchema = z.object({
   id: z.string().optional(),
@@ -25,8 +26,12 @@ export async function GET(req: Request) {
   const auth = await requireAdmin(req, { role: "viewer" });
   if (!auth.ok) return auth.response;
   const { searchParams } = new URL(req.url);
-  const page = Math.max(1, Number(searchParams.get("page") || "1"));
-  const pageSize = Math.min(200, Math.max(5, Number(searchParams.get("pageSize") || "20")));
+  const page = parseIntegerQueryParam(searchParams.get("page"), { fallback: 1, min: 1 });
+  const pageSize = parseIntegerQueryParam(searchParams.get("pageSize"), {
+    fallback: 20,
+    min: 5,
+    max: 200,
+  });
   const stage = searchParams.get("stage") || undefined;
   const q = searchParams.get("q") || undefined;
   const paymentStatus = searchParams.get("paymentStatus") || undefined;

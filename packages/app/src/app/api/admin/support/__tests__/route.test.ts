@@ -98,6 +98,14 @@ describe("GET /api/admin/support", () => {
       expect.objectContaining({ status: "待处理", q: "help" })
     );
   });
+
+  it("falls back to safe pagination defaults for invalid numeric params", async () => {
+    mockQuerySupportTickets.mockResolvedValue({ items: [], total: 0 });
+    await GET(makeGetRequest({ page: "abc", pageSize: "oops" }));
+    expect(mockQuerySupportTickets).toHaveBeenCalledWith(
+      expect.objectContaining({ page: 1, pageSize: 20 })
+    );
+  });
 });
 describe("POST /api/admin/support", () => {
   it("returns 401 when auth fails", async () => {
